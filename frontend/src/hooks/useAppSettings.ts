@@ -152,7 +152,7 @@ export function useAppSettings() {
     if (!appSettings || hasMigratedRef.current) return;
     hasMigratedRef.current = true;
 
-    const FAVORITES_KEY = 'remoteterm-favorites';
+    const FAVORITES_KEY = 'meshrik-favorites';
     let localFavorites: Array<{ type: 'channel' | 'contact'; id: string }> = [];
     try {
       const stored = localStorage.getItem(FAVORITES_KEY);

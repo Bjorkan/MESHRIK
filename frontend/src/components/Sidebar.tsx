@@ -118,7 +118,7 @@ type CollapseState = {
   repeaters: boolean;
 };
 
-const SIDEBAR_COLLAPSE_STATE_KEY = 'remoteterm-sidebar-collapse-state';
+const SIDEBAR_COLLAPSE_STATE_KEY = 'meshrik-sidebar-collapse-state';
 
 const DEFAULT_COLLAPSE_STATE: CollapseState = {
   tools: false,

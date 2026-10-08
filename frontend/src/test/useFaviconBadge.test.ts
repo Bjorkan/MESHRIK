@@ -67,7 +67,7 @@ describe('useFaviconBadge', () => {
       <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
       <link rel="shortcut icon" href="/favicon.ico" />
     `;
-    document.title = 'RemoteTerm for MeshCore';
+    document.title = 'MESHRIK for MeshCore';
     objectUrlCounter = 0;
     fetchMock = vi.fn().mockResolvedValue({
       ok: true,
@@ -161,7 +161,7 @@ describe('useFaviconBadge', () => {
         [makeChannel('fav-chan', true)]
       )
     ).toBe(10);
-    expect(getUnreadTitle({}, [], [])).toBe('RemoteTerm for MeshCore');
+    expect(getUnreadTitle({}, [], [])).toBe('MESHRIK for MeshCore');
     expect(
       getUnreadTitle(
         {
@@ -171,7 +171,7 @@ describe('useFaviconBadge', () => {
         [],
         [makeChannel('fav-chan', true)]
       )
-    ).toBe('(7) RemoteTerm');
+    ).toBe('(7) MESHRIK');
     expect(
       getUnreadTitle(
         {
@@ -180,7 +180,7 @@ describe('useFaviconBadge', () => {
         [],
         [makeChannel('fav-chan', true)]
       )
-    ).toBe('(99+) RemoteTerm');
+    ).toBe('(99+) MESHRIK');
   });
 
   it('switches between the base favicon and generated blob badges', async () => {
@@ -273,7 +273,7 @@ describe('useFaviconBadge', () => {
       }
     );
 
-    expect(document.title).toBe('RemoteTerm for MeshCore');
+    expect(document.title).toBe('MESHRIK for MeshCore');
 
     rerender({
       unreadCounts: {
@@ -284,10 +284,10 @@ describe('useFaviconBadge', () => {
       currentChannels: channels,
     });
 
-    expect(document.title).toBe('(4) RemoteTerm');
+    expect(document.title).toBe('(4) MESHRIK');
 
     unmount();
 
-    expect(document.title).toBe('RemoteTerm for MeshCore');
+    expect(document.title).toBe('MESHRIK for MeshCore');
   });
 });

@@ -126,8 +126,8 @@ def register_frontend_static_routes(app: FastAPI, frontend_dir: Path) -> bool:
         """Serve a dynamic web manifest using the active request base URL."""
         base = _resolve_request_base(request)
         manifest = {
-            "name": "RemoteTerm for MeshCore",
-            "short_name": "RemoteTerm",
+            "name": "MESHRIK for MeshCore",
+            "short_name": "MESHRIK",
             "id": base,
             "start_url": base,
             "scope": base,
@@ -182,19 +182,19 @@ def register_frontend_static_routes(app: FastAPI, frontend_dir: Path) -> bool:
                     "sizes": "1367x909",
                     "type": "image/png",
                     "form_factor": "wide",
-                    "label": "RemoteTerm desktop view",
+                    "label": "MESHRIK desktop view",
                 },
                 {
                     "src": f"{base}screenshot-mobile.png",
                     "sizes": "1170x2532",
                     "type": "image/png",
-                    "label": "RemoteTerm mobile view",
+                    "label": "MESHRIK mobile view",
                 },
                 {
                     "src": f"{base}screenshot-mobile-2.png",
                     "sizes": "750x1334",
                     "type": "image/png",
-                    "label": "RemoteTerm mobile conversation",
+                    "label": "MESHRIK mobile conversation",
                 },
             ],
         }

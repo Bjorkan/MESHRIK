@@ -1,7 +1,7 @@
 import type { HealthStatus } from '../../types';
 import { Separator } from '../ui/separator';
 
-const GITHUB_URL = 'https://github.com/jkingsman/Remote-Terminal-for-MeshCore';
+const GITHUB_URL = 'https://github.com/Bjorkan/MESHRIK';
 
 export function SettingsAboutSection({
   health,
@@ -18,7 +18,7 @@ export function SettingsAboutSection({
       <div className="space-y-6">
         {/* Version */}
         <div className="text-center space-y-1">
-          <h3 className="text-lg font-semibold">RemoteTerm for MeshCore</h3>
+          <h3 className="text-lg font-semibold">MESHRIK for MeshCore</h3>
           <div className="text-sm text-muted-foreground">
             v{version}
             {commit ? (
@@ -37,7 +37,16 @@ export function SettingsAboutSection({
         {/* Author & License */}
         <div className="text-sm text-center space-y-2">
           <p>
-            Made with love and open source by{' '}
+            MESHRIK is maintained by{' '}
+            <a
+              href="https://github.com/Bjorkan"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline"
+            >
+              Bjorkan
+            </a>
+            . Originally created with love and open source by{' '}
             <a
               href="https://jacksbrain.com"
               target="_blank"
@@ -59,7 +68,7 @@ export function SettingsAboutSection({
             </a>
           </p>
           <p>
-            This code is free, and ad-free, forever. If you love my work,{' '}
+            This code is free and ad-free. If you appreciate the original work,{' '}
             <a
               href="https://ko-fi.com/jackkingsman"
               target="_blank"

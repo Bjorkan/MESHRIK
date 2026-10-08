@@ -1,4 +1,4 @@
-const LOCAL_LABEL_KEY = 'remoteterm-local-label';
+const LOCAL_LABEL_KEY = 'meshrik-local-label';
 
 export interface LocalLabel {
   text: string;

@@ -769,7 +769,7 @@ describe('Sidebar section summaries', () => {
   });
 
   it('seeds favorites sort from the legacy global sort order when section prefs are missing', () => {
-    localStorage.setItem('remoteterm-sortOrder', 'alpha');
+    localStorage.setItem('meshrik-sortOrder', 'alpha');
 
     const publicChannel = makeChannel(PUBLIC_CHANNEL_KEY, 'Public');
     const zed = makeContact('11'.repeat(32), 'Zed', 1, { last_advert: 150, favorite: true });

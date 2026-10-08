@@ -24,7 +24,7 @@ VERSION=""
 GIT_HASH=""
 FULL_GIT_HASH=""
 OUTPUT_PATH=""
-BUNDLE_NAME="Remote-Terminal-for-MeshCore"
+BUNDLE_NAME="MESHRIK"
 SKIP_PREBUILT_BUILD=0
 
 while [ $# -gt 0 ]; do
@@ -70,7 +70,7 @@ release_validate_version "$VERSION"
 REPO_ROOT="$(release_repo_root)"
 FULL_GIT_HASH="${FULL_GIT_HASH:-$(release_resolve_full_hash "$REPO_ROOT")}"
 GIT_HASH="${GIT_HASH:-$(release_resolve_short_hash "$REPO_ROOT" "$FULL_GIT_HASH")}"
-OUTPUT_PATH="${OUTPUT_PATH:-$REPO_ROOT/remoteterm-prebuilt-frontend-v${VERSION}-${GIT_HASH}.zip}"
+OUTPUT_PATH="${OUTPUT_PATH:-$REPO_ROOT/meshrik-prebuilt-frontend-v${VERSION}-${GIT_HASH}.zip}"
 
 WORK_DIR="$(mktemp -d)"
 BUNDLE_DIR="$WORK_DIR/$BUNDLE_NAME"

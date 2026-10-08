@@ -3,7 +3,7 @@
  * plaintext mesh messages.
  *
  * MeshCore Open encodes some rich features into the message body with a short
- * prefix. RemoteTerm recognizes two of them for display:
+ * prefix. MESHRIK recognizes two of them for display:
  *
  *   g:<gifId>        Giphy GIF        -> https://media.giphy.com/media/<id>/giphy.gif
  *   r:<hash>:<index> Emoji reaction   -> <index> picks an emoji from a fixed list

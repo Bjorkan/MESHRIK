@@ -43,13 +43,13 @@ The Radio Settings config export/import feature uses these endpoints. When expor
 
 ## Contact Loading Issues
 
-RemoteTerm loads favorite and recently active contacts onto the radio so that the radio can automatically acknowledge incoming DMs on your behalf. To do this, it first enumerates the radio's existing contact table, then reconciles it with the desired working set.
+MESHRIK loads favorite and recently active contacts onto the radio so that the radio can automatically acknowledge incoming DMs on your behalf. To do this, it first enumerates the radio's existing contact table, then reconciles it with the desired working set.
 
 On BLE connections with many contacts (or radios with large contact tables from organic advertisements), the initial contact enumeration may time out. If this happens, the app will still attempt to load your favorites and recent contacts onto the radio on a best-effort basis, but without a full snapshot of what's already on the radio, some adds may be redundant or fail.
 
 If the radio's contact table is already full (from contacts added by advertisements or another client), the app may not be able to load all desired contacts. In this case you'll see a warning that auto-DM acking may not work for all contacts. To resolve this:
 
-- **Clear the radio's contact table** using another MeshCore client (e.g., the official companion app), then restart RemoteTerm
+- **Clear the radio's contact table** using another MeshCore client (e.g., the official companion app), then restart MESHRIK
 - **Lower the contact fill target** in Radio Settings to reduce how many contacts the app tries to load
 - **Enable autoevict mode** (see below) to let the radio automatically make room
 - If you don't need auto-DM acking, you can safely ignore these warnings — **sending and receiving messages is never affected**
@@ -62,11 +62,11 @@ Setting `MESHCORE_LOAD_WITH_AUTOEVICT=true` enables an alternative contact loadi
 - The app can load contacts even when it can't enumerate the radio's existing contact table (e.g., on slow BLE connections)
 - No contact removal step is needed during reconciliation
 
-**Trade-off:** Contacts loaded by the app are not marked as radio-side favorites, so they are eviction candidates if the radio receives a new advertisement while full. In practice, freshly-loaded contacts have a recent `lastmod` timestamp and will be among the last to be evicted. If you disconnect the radio from RemoteTerm and use it standalone, your contacts will not be protected from eviction by newer advertisements.
+**Trade-off:** Contacts loaded by the app are not marked as radio-side favorites, so they are eviction candidates if the radio receives a new advertisement while full. In practice, freshly-loaded contacts have a recent `lastmod` timestamp and will be among the last to be evicted. If you disconnect the radio from MESHRIK and use it standalone, your contacts will not be protected from eviction by newer advertisements.
 
 ## Sub-Path Reverse Proxy
 
-RemoteTerm works behind a reverse proxy that serves it under a sub-path (e.g. `/meshcore/` or Home Assistant ingress). All frontend asset and API paths are relative, so they resolve correctly under any prefix.
+MESHRIK works behind a reverse proxy that serves it under a sub-path (e.g. `/meshcore/` or Home Assistant ingress). All frontend asset and API paths are relative, so they resolve correctly under any prefix.
 
 **Requirements:**
 
@@ -88,7 +88,7 @@ For Docker Compose, generate the cert, mount it into the container, and override
 
 ```yaml
 services:
-  remoteterm:
+  meshrik:
     volumes:
       - ./data:/app/data
       - ./cert.pem:/app/cert.pem:ro
@@ -100,7 +100,7 @@ Accept the browser warning, or use [mkcert](https://github.com/FiloSottile/mkcer
 
 ## Systemd Service
 
-On Linux systems, this is the recommended installation method if you want RemoteTerm set up as a persistent systemd service that starts automatically on boot and restarts automatically if it crashes. Run the installer script from the repo root. It runs as your current user, installs from wherever you cloned the repo, and prints a quick-reference cheatsheet when done — no separate service account or path juggling required.
+On Linux systems, this is the recommended installation method if you want MESHRIK set up as a persistent systemd service that starts automatically on boot and restarts automatically if it crashes. Run the installer script from the repo root. It runs as your current user, installs from wherever you cloned the repo, and prints a quick-reference cheatsheet when done — no separate service account or path juggling required.
 
 ```bash
 bash scripts/setup/install_service.sh

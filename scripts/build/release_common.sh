@@ -84,10 +84,10 @@ release_ensure_buildx_builder() {
         return
     fi
 
-    if docker buildx inspect remoteterm-multiarch >/dev/null 2>&1; then
-        docker buildx use remoteterm-multiarch >/dev/null
+    if docker buildx inspect meshrik-multiarch >/dev/null 2>&1; then
+        docker buildx use meshrik-multiarch >/dev/null
     else
-        docker buildx create --name remoteterm-multiarch --use >/dev/null
+        docker buildx create --name meshrik-multiarch --use >/dev/null
     fi
     docker buildx inspect --bootstrap >/dev/null
 }

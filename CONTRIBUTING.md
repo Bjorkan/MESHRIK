@@ -81,8 +81,6 @@ npm run build
 | `extended_quality.sh` | `all_quality.sh` plus e2e tests and Docker build matrix. Used for release validation. |
 | `e2e.sh` | Thin wrapper that runs Playwright e2e tests from `tests/e2e/`. |
 | `docker_ci.sh` | Builds the Docker image and runs a smoke test against it. |
-| `test_aur_package.sh` | Builds the AUR package in an Arch container, then installs and boots it in a second container with port 8000 exposed (hang finish). |
-| `run_aur_with_radio.sh` | Like `test_aur_package.sh` but passes through the host serial device for testing with a real radio (hang finish). |
 
 </details>
 
@@ -91,15 +89,17 @@ npm run build
 
 | Script | Purpose |
 |--------|---------|
-| `publish.sh` | Full release ceremony: quality gate, version bump, changelog, frontend build, Docker multi-arch push, GitHub release. |
+| `publish.sh` | Full release ceremony: quality gate, version bump, changelog, frontend artifact, and GitHub release. Publishing the release triggers the GHCR workflow. |
 | `release_common.sh` | Shared shell helpers (version validation, formatting) sourced by other build scripts. |
 | `package_release_artifact.sh` | Builds the prebuilt-frontend release zip attached to GitHub releases. |
-| `push_docker_multiarch.sh` | Builds and pushes multi-arch Docker images (amd64 + arm64). |
+| `push_docker_multiarch.sh` | Manual recovery helper for pushing amd64 + arm64 images to GitHub Container Registry. Normal releases use `publish-container.yml`. |
 | `create_github_release.sh` | Creates a GitHub release with changelog notes and the release artifact. |
 | `extract_release_notes.sh` | Extracts the latest version's notes from `CHANGELOG.md` for the release body. |
 | `collect_licenses.sh` | Gathers third-party license attributions into `LICENSES.md`. |
 | `print_frontend_licenses.cjs` | Helper that extracts frontend npm dependency licenses. |
 | `dump_api_specs.py` | Dumps the OpenAPI spec from the running backend (developer utility). |
+
+Container publication is handled exclusively by `.github/workflows/publish-container.yml`. Publishing a GitHub release builds `linux/amd64` and `linux/arm64` images and pushes them to `ghcr.io/bjorkan/meshrik`; no Docker Hub or AUR credentials are used. The workflow can also be rerun manually with an explicit source ref and container tag.
 
 </details>
 
@@ -143,7 +143,7 @@ The test suite sends `!echo please give incoming message` to the echo channel (d
 
 Setup:
 1. Set up a second MeshCore radio within RF range of your test radio
-2. Run a RemoteTerm instance on the second radio
+2. Run a MESHRIK instance on the second radio
 3. Configure a bot on the second radio that monitors the echo channel and replies when it sees the trigger. Example bot code:
    ```python
    def bot(sender_name, sender_key, message_text, is_dm,

@@ -108,7 +108,7 @@ function PushDeviceManagement({
         <p className="text-[0.8125rem] text-muted-foreground">
           {window.isSecureContext
             ? 'Push notifications are not supported by this browser.'
-            : 'Web Push requires HTTPS. Access RemoteTerm over HTTPS (self-signed certificates work) to enable push notifications.'}
+            : 'Web Push requires HTTPS. Access MESHRIK over HTTPS (self-signed certificates work) to enable push notifications.'}
         </p>
       </div>
     );
@@ -678,7 +678,7 @@ function ThemePreview({ className }: { className?: string }) {
           sender="You"
           alignRight
           bubbleClassName="bg-msg-outgoing text-foreground"
-          text="Hi there! I'm using RemoteTerm."
+          text="Hi there! I'm using MESHRIK."
         />
       </div>
 

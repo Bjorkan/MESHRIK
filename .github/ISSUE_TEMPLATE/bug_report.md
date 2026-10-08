@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Report a problem with RemoteTerm for MeshCore
+about: Report a problem with MESHRIK for MeshCore
 title: ''
 labels: 'bug to fix'
 assignees: ''
@@ -21,7 +21,7 @@ assignees: ''
 3.
 
 ## 📡 Radio Node
-<!-- The MeshCore radio RemoteTerm is talking to. -->
+<!-- The MeshCore radio MESHRIK is talking to. -->
 - **Firmware version:** <!-- e.g. 1.15.0 -->
 - **Hardware / board type:** <!-- e.g. Heltec V3, RAK4631, T-Deck -->
 
@@ -35,7 +35,7 @@ assignees: ''
 ## 💻 Environment Information
 - **OS:** <!-- e.g. macOS 15, Windows 11, Raspberry Pi OS -->
 - **Browser / Version:** <!-- e.g. Chrome 150, Safari 18 -->
-- **RemoteTerm Version:** <!-- e.g. v3.15.2, or "wrapped" HA add-on -->
+- **MESHRIK Version:** <!-- e.g. v3.15.2, or "wrapped" HA add-on -->
 
 ## 📸 Screenshots / Debug Logs
 <!-- Screenshots are great. A debug snapshot or debug-level logs help enormously. -->

@@ -1549,7 +1549,7 @@ wheels = [
 ]
 
 [[package]]
-name = "remoteterm-meshcore"
+name = "meshrik-meshcore"
 version = "3.17.1"
 source = { virtual = "." }
 dependencies = [

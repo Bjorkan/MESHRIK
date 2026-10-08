@@ -487,7 +487,7 @@
 * Feature: Add flood scoping/regions
 * Feature: Global message search
 * Feature: Fully safe bot disable
-* Feature: Add default #remoteterm channel (lol sorry I had to)
+* Feature: Add default #meshrik channel
 * Feature: Custom recency pruning in visualizer
 * Bugfix: Be more cautious around null byte stripping
 * Bugfix: Clear channel-add interface on not-add-another
@@ -753,4 +753,3 @@ Update: Update meshcore-hashtag-cracker to include sender-identification correct
 ## [1.0.0] - 2026-01-13
 
 * Initial full release!
-

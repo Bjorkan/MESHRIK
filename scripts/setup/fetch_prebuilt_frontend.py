@@ -16,9 +16,9 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-REPO = "jkingsman/Remote-Terminal-for-MeshCore"
+REPO = "Bjorkan/MESHRIK"
 API_URL = f"https://api.github.com/repos/{REPO}/releases/latest"
-PREBUILT_PREFIX = "Remote-Terminal-for-MeshCore/frontend/prebuilt/"
+PREBUILT_PREFIX = "MESHRIK/frontend/prebuilt/"
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parent.parent
@@ -36,7 +36,7 @@ def find_prebuilt_asset(release: dict) -> tuple[str, str, str]:
     tag = release.get("tag_name", "")
     for asset in release.get("assets", []):
         name = asset.get("name", "")
-        if name.startswith("remoteterm-prebuilt-frontend-") and name.endswith(".zip"):
+        if name.startswith("meshrik-prebuilt-frontend-") and name.endswith(".zip"):
             return tag, name, asset["browser_download_url"]
     raise SystemExit(
         f"No prebuilt frontend artifact found in the latest release.\n"

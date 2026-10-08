@@ -1,4 +1,4 @@
-# RemoteTerm for MeshCore
+# MESHRIK for MeshCore
 
 Backend server + browser interface for MeshCore mesh radio networks, providing a rich, web-based power-user management and messaging system through a companion radio.
 
@@ -21,7 +21,7 @@ For advanced setup and troubleshooting see [README_ADVANCED.md](README_ADVANCED.
 ![Screenshot of the application's web interface](app_screenshot.png)
 
 > [!WARNING]
-> RemoteTerm does *full* management of the radio, meaning that once a radio is connected to RemoteTerm, all contacts/channels will be imported and offloaded to RemoteTerm and the contacts actually synced to the device will be governed by RemoteTerm. This means that RemoteTerm can be a poor fit for users who are looking to swap radios in and out, maintaining radio state (favorites, channels, etc.) irrespective of app usage.
+> MESHRIK does *full* management of the radio, meaning that once a radio is connected to MESHRIK, all contacts/channels will be imported and offloaded to MESHRIK and the contacts actually synced to the device will be governed by MESHRIK. This means that MESHRIK can be a poor fit for users who are looking to swap radios in and out, maintaining radio state (favorites, channels, etc.) irrespective of app usage.
 
 ## Requirements
 
@@ -71,8 +71,8 @@ usbipd attach --wsl --busid 3-8
 **This approach is recommended over Docker due to intermittent serial communications issues I've seen on \*nix systems.**
 
 ```bash
-git clone https://github.com/jkingsman/Remote-Terminal-for-MeshCore.git
-cd Remote-Terminal-for-MeshCore
+git clone https://github.com/Bjorkan/MESHRIK.git
+cd MESHRIK
 
 uv sync
 cd frontend && npm install && npm run build && cd ..
@@ -88,7 +88,7 @@ Source checkouts expect a normal frontend build in `frontend/dist`.
 > Running on lightweight hardware, or just don't want to build the frontend locally? From a cloned checkout, run `python3 scripts/setup/fetch_prebuilt_frontend.py` to fetch and unpack a prebuilt frontend into `frontend/prebuilt`, then start the app normally with `uv run uvicorn app.main:app --host 0.0.0.0 --port 8000`.
 
 > [!NOTE]
-> On Linux, you can also install RemoteTerm as a persistent `systemd` service that starts on boot and restarts automatically on failure:
+> On Linux, you can also install MESHRIK as a persistent `systemd` service that starts on boot and restarts automatically on failure:
 >
 > ```bash
 > bash scripts/setup/install_service.sh
@@ -141,10 +141,10 @@ sudo docker compose up -d
 
 > If you switched to a local build (`build: .` instead of `image:`), use `sudo docker compose up -d --build` instead — `pull` only fetches remote images.
 
-The example file and setup script default to the published Docker Hub image. To build locally from your checkout instead, replace:
+The example file and setup script default to the published GitHub Container Registry image. To build locally from your checkout instead, replace:
 
 ```yaml
-image: docker.io/jkingsman/remoteterm-meshcore:latest
+image: ghcr.io/bjorkan/meshrik:latest
 ```
 
 with:
@@ -166,29 +166,6 @@ To stop:
 ```bash
 sudo docker compose down
 ```
-
-## Install Path 3: Arch Linux (AUR)
-
-A [`remoteterm-meshcore`](https://aur.archlinux.org/packages/remoteterm-meshcore) package is available in the AUR. Install it with an AUR helper or build it manually:
-
-```bash
-# with an AUR helper
-yay -S remoteterm-meshcore
-
-# or manually
-git clone https://aur.archlinux.org/remoteterm-meshcore.git
-cd remoteterm-meshcore
-makepkg -si
-```
-
-Configure your radio connection, then start the service:
-
-```bash
-sudo vi /etc/remoteterm-meshcore/remoteterm.env
-sudo systemctl enable --now remoteterm-meshcore
-```
-
-Access the app at http://localhost:8000.
 
 ## Standard Environment Variables
 
@@ -230,7 +207,7 @@ uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
 > [!WARNING]
-> **Windows + MQTT fanout:** Python's default Windows event loop (ProactorEventLoop) is not compatible with the MQTT libraries used by RemoteTerm. If you configure any MQTT integration, add `--loop none` to your uvicorn command:
+> **Windows + MQTT fanout:** Python's default Windows event loop (ProactorEventLoop) is not compatible with the MQTT libraries used by MESHRIK. If you configure any MQTT integration, add `--loop none` to your uvicorn command:
 >
 > ```powershell
 > uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --loop none

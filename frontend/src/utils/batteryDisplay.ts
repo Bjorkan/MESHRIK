@@ -1,4 +1,4 @@
-export const BATTERY_DISPLAY_CHANGE_EVENT = 'remoteterm-battery-display-change';
+export const BATTERY_DISPLAY_CHANGE_EVENT = 'meshrik-battery-display-change';
 
 // Meshtastic default OCV table (meshtastic/firmware src/power.h)
 const OCV_TABLE: [number, number][] = [
@@ -39,8 +39,8 @@ export function formatBatteryLabel(
   return `${mv}mV`;
 }
 
-const PERCENT_KEY = 'remoteterm-show-battery-percent';
-const VOLTAGE_KEY = 'remoteterm-show-battery-voltage';
+const PERCENT_KEY = 'meshrik-show-battery-percent';
+const VOLTAGE_KEY = 'meshrik-show-battery-voltage';
 
 export function getShowBatteryPercent(): boolean {
   try {

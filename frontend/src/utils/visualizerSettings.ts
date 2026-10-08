@@ -1,4 +1,4 @@
-const VISUALIZER_SETTINGS_KEY = 'remoteterm-visualizer-settings';
+const VISUALIZER_SETTINGS_KEY = 'meshrik-visualizer-settings';
 
 export interface VisualizerSettings {
   showAmbiguousPaths: boolean;

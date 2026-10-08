@@ -3,7 +3,7 @@
 // a pure display tweak, stored per-browser in localStorage. GIF rendering
 // fetches images from media.giphy.com, so it is off by default.
 
-export const RENDER_RICH_PAYLOADS_KEY = 'remoteterm-render-rich-payloads';
+export const RENDER_RICH_PAYLOADS_KEY = 'meshrik-render-rich-payloads';
 
 export function getSavedRenderRichPayloads(): boolean {
   try {

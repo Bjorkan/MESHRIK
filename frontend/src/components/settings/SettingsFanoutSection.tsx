@@ -1090,17 +1090,11 @@ function MqttHaConfigEditor({
             tabIndex={0}
             className="underline cursor-pointer hover:text-primary transition-colors"
             onClick={() =>
-              window.open(
-                'https://github.com/jkingsman/Remote-Terminal-for-MeshCore/blob/main/README_HA.md',
-                '_blank'
-              )
+              window.open('https://github.com/Bjorkan/MESHRIK/blob/main/README_HA.md', '_blank')
             }
             onKeyDown={(e) => {
               if (e.key === 'Enter')
-                window.open(
-                  'https://github.com/jkingsman/Remote-Terminal-for-MeshCore/blob/main/README_HA.md',
-                  '_blank'
-                );
+                window.open('https://github.com/Bjorkan/MESHRIK/blob/main/README_HA.md', '_blank');
             }}
           >
             README_HA.md
@@ -2626,11 +2620,11 @@ function AppriseConfigEditor({
           className="h-4 w-4 rounded border-border"
         />
         <div>
-          <span className="text-sm">Forward RemoteTerm-sent messages</span>
+          <span className="text-sm">Forward MESHRIK-sent messages</span>
           <p className="text-[0.8125rem] text-muted-foreground">
-            Include DMs and channel messages sent by this RemoteTerm instance, including manual
-            sends and bot replies. Outgoing messages carry no routing path or signal data, so
-            path-related format fields render as direct and RSSI/SNR are empty.
+            Include DMs and channel messages sent by this MESHRIK instance, including manual sends
+            and bot replies. Outgoing messages carry no routing path or signal data, so path-related
+            format fields render as direct and RSSI/SNR are empty.
           </p>
         </div>
       </label>

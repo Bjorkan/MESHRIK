@@ -14,8 +14,6 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck source=scripts/build/release_common.sh
 source "$SCRIPT_DIR/release_common.sh"
 
-DOCKER_IMAGE="docker.io/jkingsman/remoteterm-meshcore"
-DOCKER_PLATFORMS="linux/amd64,linux/arm64"
 VERSION=""
 NOTES_FILE=""
 SKIP_QUALITY=0
@@ -58,7 +56,7 @@ while [ $# -gt 0 ]; do
     esac
 done
 
-echo -e "${YELLOW}=== RemoteTerm for MeshCore Publish Script ===${NC}"
+echo -e "${YELLOW}=== MESHRIK for MeshCore Publish Script ===${NC}"
 echo
 
 if [ "$SKIP_QUALITY" -eq 0 ]; then
@@ -182,7 +180,7 @@ echo
 # Get git hashes (after commit so they reflect the new commit)
 GIT_HASH=$(git rev-parse --short HEAD)
 FULL_GIT_HASH=$(git rev-parse HEAD)
-RELEASE_ASSET="remoteterm-prebuilt-frontend-v${VERSION}-${GIT_HASH}.zip"
+RELEASE_ASSET="meshrik-prebuilt-frontend-v${VERSION}-${GIT_HASH}.zip"
 RELEASE_ASSET_PATH="$REPO_ROOT/$RELEASE_ASSET"
 
 echo -e "${YELLOW}Building packaged frontend artifact...${NC}"
@@ -192,16 +190,6 @@ scripts/build/package_release_artifact.sh \
     --full-git-hash "$FULL_GIT_HASH" \
     --output "$RELEASE_ASSET_PATH"
 echo -e "${GREEN}Packaged release artifact created: $RELEASE_ASSET${NC}"
-echo
-
-# Build and push multi-arch docker image
-echo -e "${YELLOW}Building and pushing multi-arch Docker image...${NC}"
-scripts/build/push_docker_multiarch.sh \
-    --version "$VERSION" \
-    --git-hash "$GIT_HASH" \
-    --image "$DOCKER_IMAGE" \
-    --platforms "$DOCKER_PLATFORMS"
-echo -e "${GREEN}Multi-arch Docker build + push complete!${NC}"
 echo
 
 # Create GitHub release using the changelog notes for this version.
@@ -216,13 +204,8 @@ echo
 echo -e "${GREEN}=== Publish complete! ===${NC}"
 echo -e "Version: ${YELLOW}$VERSION${NC}"
 echo -e "Git hash: ${YELLOW}$GIT_HASH${NC}"
-echo -e "Docker tags pushed:"
-echo -e "  - $DOCKER_IMAGE:latest"
-echo -e "  - $DOCKER_IMAGE:$VERSION"
-echo -e "  - $DOCKER_IMAGE:$GIT_HASH"
-echo -e "Platforms:"
-echo -e "  - linux/amd64"
-echo -e "  - linux/arm64"
+echo -e "Container publishing:"
+echo -e "  - GitHub Actions will publish ghcr.io/bjorkan/meshrik for linux/amd64 and linux/arm64"
 echo -e "GitHub release:"
 echo -e "  - $VERSION"
 echo -e "Release artifact:"

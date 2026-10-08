@@ -1,8 +1,6 @@
-# RemoteTerm for MeshCore
+# MESHRIK for MeshCore
 
 ## Important Rules
-
-**NEVER make git commits.** A human must make all commits. You may stage files and prepare commit messages, but do not run `git commit`.
 
 If instructed to "run all tests" or "get ready for a commit" or other summative, work ending directives, run:
 
@@ -212,16 +210,14 @@ This message-layer echo/path handling is independent of raw-packet storage dedup
 │   │       ├── MapView.tsx       # Leaflet map showing node locations
 │   │       └── ...
 │   └── vite.config.ts
-├── pkg/aur/                # AUR package files (PKGBUILD, systemd service, env, install hooks)
 ├── scripts/                # Quality / release helpers (listing below is representative, not exhaustive)
 │   ├── build/
 │   │   ├── collect_licenses.sh # Gather third-party license attributions
-│   │   └── publish.sh          # Version bump, changelog, docker build & push
+│   │   └── publish.sh          # Version bump, changelog, artifact, and GitHub release
 │   ├── quality/
 │   │   ├── all_quality.sh      # Repo-standard autofix + validate gate
 │   │   ├── e2e.sh              # End-to-end test runner
 │   │   ├── extended_quality.sh # Quality gate plus e2e and Docker matrix
-│   │   └── test_aur_package.sh # Build + install AUR package in Arch Docker containers
 │   └── setup/
 │       ├── fetch_prebuilt_frontend.py # Download release frontend fallback
 │       └── install_service.sh         # Install/configure Linux systemd service
@@ -536,4 +532,4 @@ This does not indicate database corruption or a message-store bug. It is a parse
 
 Channel message storage deduplicates on `(type, conversation_key, text, sender_timestamp)`. Reviewers often flag this as "missing sender identity," but for channel messages the stored `text` already includes the displayed sender label (for example `Alice: hello`). That means two different users only collide when they produce the same rendered sender name, the same body text, and the same sender timestamp.
 
-In that case, RemoteTerm usually does not have enough information to distinguish "two independent same-name sends" from "one message observed again as an echo/repeat." Without a reliable sender identity at ingest, treating those packets as the same message is an accepted limitation of the observable data model, not an obvious correctness bug.
+In that case, MESHRIK usually does not have enough information to distinguish "two independent same-name sends" from "one message observed again as an echo/repeat." Without a reliable sender identity at ingest, treating those packets as the same message is an accepted limitation of the observable data model, not an obvious correctness bug.

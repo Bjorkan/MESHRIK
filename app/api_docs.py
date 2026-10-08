@@ -1,4 +1,4 @@
-"""Custom OpenAPI documentation page for the RemoteTerm API."""
+"""Custom OpenAPI documentation page for the MESHRIK API."""
 
 from __future__ import annotations
 
@@ -11,10 +11,10 @@ from fastapi.openapi.utils import get_openapi
 from fastapi.responses import HTMLResponse
 
 API_DESCRIPTION = (
-    "RemoteTerm exposes the MeshCore companion radio as a local REST and WebSocket API.\n\n"
+    "MESHRIK exposes the MeshCore companion radio as a local REST and WebSocket API.\n\n"
     "REST endpoints are mounted below `/api`. The live WebSocket stream is available at "
     "`/api/ws` for health, message, raw-packet, contact, and telemetry events.\n\n"
-    "**Trusted network note:** RemoteTerm is designed for trusted local networks. Optional "
+    "**Trusted network note:** MESHRIK is designed for trusted local networks. Optional "
     "HTTP Basic auth can be enabled for the whole app, but operators should pair it with "
     "HTTPS when credentials cross the network."
 )
@@ -454,7 +454,7 @@ def _build_swagger_docs_html(app: FastAPI) -> str:
   <body>
     <header class="docs-hero">
       <div class="docs-hero-inner">
-        <p class="docs-kicker">RemoteTerm API</p>
+        <p class="docs-kicker">MESHRIK API</p>
         <h1>{title}</h1>
         <p class="docs-lede">
           Explore radio control, messaging, packet inspection, push notifications,

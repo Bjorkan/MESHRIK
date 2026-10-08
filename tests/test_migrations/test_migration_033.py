@@ -7,11 +7,11 @@ from app.migrations import run_migrations, set_version
 
 
 class TestMigration033:
-    """Test migration 033: seed #remoteterm channel."""
+    """Test migration 033: seed #meshrik channel."""
 
     @pytest.mark.asyncio
-    async def test_migration_seeds_remoteterm_channel(self):
-        """Migration inserts the #remoteterm channel for new installs."""
+    async def test_migration_seeds_meshrik_channel(self):
+        """Migration inserts the #meshrik channel for new installs."""
         conn = await aiosqlite.connect(":memory:")
         conn.row_factory = aiosqlite.Row
         try:
@@ -41,11 +41,11 @@ class TestMigration033:
 
             cursor = await conn.execute(
                 "SELECT key, name, is_hashtag, on_radio FROM channels WHERE key = ?",
-                ("8959AE053F2201801342A1DBDDA184F6",),
+                ("1ABC598EA3EF6FC85604F15EB93930E8",),
             )
             row = await cursor.fetchone()
             assert row is not None
-            assert row["name"] == "#remoteterm"
+            assert row["name"] == "#meshrik"
             assert row["is_hashtag"] == 1
             assert row["on_radio"] == 0
         finally:
@@ -53,7 +53,7 @@ class TestMigration033:
 
     @pytest.mark.asyncio
     async def test_migration_does_not_overwrite_existing_channel(self):
-        """Migration is a no-op if #remoteterm already exists."""
+        """Migration is a no-op if #meshrik already exists."""
         conn = await aiosqlite.connect(":memory:")
         conn.row_factory = aiosqlite.Row
         try:
@@ -79,7 +79,7 @@ class TestMigration033:
             # Pre-existing channel with on_radio=1 (user added it to radio)
             await conn.execute(
                 "INSERT INTO channels (key, name, is_hashtag, on_radio) VALUES (?, ?, ?, ?)",
-                ("8959AE053F2201801342A1DBDDA184F6", "#remoteterm", 1, 1),
+                ("1ABC598EA3EF6FC85604F15EB93930E8", "#meshrik", 1, 1),
             )
             await conn.commit()
 
@@ -87,7 +87,7 @@ class TestMigration033:
 
             cursor = await conn.execute(
                 "SELECT on_radio FROM channels WHERE key = ?",
-                ("8959AE053F2201801342A1DBDDA184F6",),
+                ("1ABC598EA3EF6FC85604F15EB93930E8",),
             )
             row = await cursor.fetchone()
             assert row["on_radio"] == 1  # Not overwritten
