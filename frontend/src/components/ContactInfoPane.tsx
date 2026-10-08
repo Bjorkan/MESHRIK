@@ -12,10 +12,10 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts';
-import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
+import MapLibreMap, { Marker, Popup } from 'react-map-gl/maplibre';
 import { api, isAbortError } from '../api';
 import { formatTime } from '../utils/messageParser';
+import { DEFAULT_MAP_STYLE } from '../utils/mapLibre';
 import {
   getContactDisplayName,
   isPrefixOnlyContact,
@@ -1012,6 +1012,7 @@ function ContactTelemetrySection({
   const { distanceUnit } = useDistanceUnit();
   const [expanded, setExpanded] = useState(true);
   const [mapExpanded, setMapExpanded] = useState(false);
+  const [mapPopupOpen, setMapPopupOpen] = useState(false);
   const [chartExpanded, setChartExpanded] = useState(false);
   const [toggling, setToggling] = useState(false);
 
@@ -1152,33 +1153,46 @@ function ContactTelemetrySection({
                   </button>
                   {mapExpanded && (
                     <div className="mt-1 h-48 rounded border border-border overflow-hidden">
-                      <MapContainer
-                        center={[gpsValue!.latitude, gpsValue!.longitude]}
-                        zoom={13}
-                        className="h-full w-full"
-                        style={{ background: '#1a1a2e' }}
+                      <MapLibreMap
+                        initialViewState={{
+                          longitude: gpsValue!.longitude,
+                          latitude: gpsValue!.latitude,
+                          zoom: 13,
+                        }}
+                        mapStyle={DEFAULT_MAP_STYLE.url}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          background: DEFAULT_MAP_STYLE.background,
+                        }}
                       >
-                        <TileLayer
-                          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                        />
-                        <CircleMarker
-                          center={[gpsValue!.latitude, gpsValue!.longitude]}
-                          radius={7}
-                          pathOptions={{
-                            color: '#1d4ed8',
-                            fillColor: '#3b82f6',
-                            fillOpacity: 1,
-                            weight: 2,
-                          }}
+                        <Marker
+                          longitude={gpsValue!.longitude}
+                          latitude={gpsValue!.latitude}
+                          anchor="center"
                         >
-                          <Popup>
+                          <button
+                            type="button"
+                            className="h-3.5 w-3.5 rounded-full border-2 border-blue-700 bg-blue-500"
+                            onClick={() => setMapPopupOpen(true)}
+                            aria-label={`Show ${contact.name ?? contact.public_key.slice(0, 12)} on map`}
+                          />
+                        </Marker>
+                        {mapPopupOpen && (
+                          <Popup
+                            longitude={gpsValue!.longitude}
+                            latitude={gpsValue!.latitude}
+                            anchor="bottom"
+                            offset={10}
+                            closeOnClick={false}
+                            onClose={() => setMapPopupOpen(false)}
+                          >
                             <span className="text-sm">
                               {contact.name ?? contact.public_key.slice(0, 12)}
                             </span>
                           </Popup>
-                        </CircleMarker>
-                      </MapContainer>
+                        )}
+                      </MapLibreMap>
                     </div>
                   )}
                 </div>

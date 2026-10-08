@@ -1,45 +1,52 @@
-import { forwardRef } from 'react';
+import { forwardRef, useImperativeHandle } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { MapView } from '../components/MapView';
 import type { Contact } from '../types';
 
-vi.mock('react-leaflet', () => {
-  const BaseLayer = ({
-    children,
-  }: {
-    children: React.ReactNode;
-    name: string;
-    checked?: boolean;
-  }) => <div>{children}</div>;
-  const LayersControlMock = ({ children }: { children: React.ReactNode }) => <div>{children}</div>;
-  (LayersControlMock as unknown as { BaseLayer: typeof BaseLayer }).BaseLayer = BaseLayer;
+vi.mock('react-map-gl/maplibre', () => {
+  const mapApi = {
+    jumpTo: vi.fn(),
+    flyTo: vi.fn(),
+    fitBounds: vi.fn(),
+    getMap: vi.fn(() => ({
+      getContainer: vi.fn(() => document.createElement('div')),
+      project: vi.fn(() => ({ x: 0, y: 0 })),
+      on: vi.fn(),
+      off: vi.fn(),
+    })),
+  };
+  const MapMock = forwardRef<typeof mapApi, { children: React.ReactNode; mapStyle: string }>(
+    ({ children, mapStyle }, ref) => {
+      useImperativeHandle(ref, () => mapApi);
+      return (
+        <div data-testid="maplibre-map" data-map-style={mapStyle}>
+          {children}
+        </div>
+      );
+    }
+  );
   return {
-    MapContainer: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-    TileLayer: () => null,
-    CircleMarker: forwardRef<
-      HTMLDivElement,
-      { children: React.ReactNode; pathOptions?: { fillColor?: string } }
-    >(({ children, pathOptions }, ref) => (
-      <div ref={ref} data-fill-color={pathOptions?.fillColor}>
-        {children}
-      </div>
-    )),
+    default: MapMock,
+    Map: MapMock,
+    Marker: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
     Popup: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-    Polyline: () => null,
-    LayersControl: LayersControlMock,
-    useMap: () => ({
-      setView: vi.fn(),
-      fitBounds: vi.fn(),
-      setMaxZoom: vi.fn(),
-      setZoom: vi.fn(),
-      getZoom: vi.fn(() => 2),
-    }),
-    useMapEvents: () => null,
+    Source: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+    Layer: () => null,
+    NavigationControl: () => null,
   };
 });
 
 describe('MapView', () => {
+  it('uses an API-key-free OpenFreeMap vector style', () => {
+    render(<MapView contacts={[]} />);
+
+    expect(screen.getByTestId('maplibre-map')).toHaveAttribute(
+      'data-map-style',
+      'https://tiles.openfreemap.org/styles/liberty'
+    );
+  });
+
   it('renders a never-heard fallback for a focused contact without last_seen', () => {
     const contact: Contact = {
       public_key: 'aa'.repeat(32),
@@ -97,6 +104,7 @@ describe('MapView', () => {
 
     render(<MapView contacts={[contact]} onSelectContact={onSelectContact} />);
 
+    fireEvent.click(screen.getByRole('button', { name: 'Show Clickable on map' }));
     const link = screen.getByRole('button', { name: 'Clickable' });
     expect(link).toHaveAttribute('title', 'Open conversation with Clickable');
     fireEvent.click(link);
@@ -130,6 +138,7 @@ describe('MapView', () => {
     render(<MapView contacts={[contact]} />);
 
     expect(screen.queryByRole('button', { name: /open conversation with static/i })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Show Static on map' }));
     expect(screen.getByText('Static')).toBeInTheDocument();
   });
 
@@ -169,7 +178,7 @@ describe('MapView', () => {
       rerender(<MapView contacts={[contact]} focusedKey={null} />);
 
       expect(screen.getByText(/showing 1 contact heard in the last 7 days/i)).toBeInTheDocument();
-      expect(screen.getByText('Almost Stale')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Show Almost Stale on map' })).toBeInTheDocument();
     } finally {
       vi.useRealTimers();
     }
@@ -209,18 +218,18 @@ describe('MapView', () => {
       render(<MapView contacts={[fresh, older]} />);
 
       // Default window is 7 days, so both are visible.
-      expect(screen.getByText('Fresh Node')).toBeInTheDocument();
-      expect(screen.getByText('Older Node')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Show Fresh Node on map' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Show Older Node on map' })).toBeInTheDocument();
 
       fireEvent.click(screen.getByRole('button', { name: '<1h' }));
 
-      expect(screen.getByText('Fresh Node')).toBeInTheDocument();
-      expect(screen.queryByText('Older Node')).toBeNull();
+      expect(screen.getByRole('button', { name: 'Show Fresh Node on map' })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Show Older Node on map' })).toBeNull();
       expect(screen.getByText(/heard in the last 1 hour/i)).toBeInTheDocument();
 
       fireEvent.click(screen.getByRole('button', { name: '<1d' }));
 
-      expect(screen.getByText('Older Node')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Show Older Node on map' })).toBeInTheDocument();
     });
 
     it('reveals contacts older than the previous 7-day ceiling under "All"', () => {
@@ -229,11 +238,11 @@ describe('MapView', () => {
       render(<MapView contacts={[ancient]} />);
 
       // Previously the map capped at 7 days and this node was unreachable.
-      expect(screen.queryByText('Ancient Node')).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Show Ancient Node on map' })).toBeNull();
 
       fireEvent.click(screen.getByRole('button', { name: 'All' }));
 
-      expect(screen.getByText('Ancient Node')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Show Ancient Node on map' })).toBeInTheDocument();
       expect(screen.getByText(/heard at any time/i)).toBeInTheDocument();
     });
 
@@ -261,8 +270,10 @@ describe('MapView', () => {
           target: { value: '2026-03-15T12:30' },
         });
 
-        expect(screen.getByText('After Cutoff')).toBeInTheDocument();
-        expect(screen.queryByText('Before Cutoff')).toBeNull();
+        expect(
+          screen.getByRole('button', { name: 'Show After Cutoff on map' })
+        ).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Show Before Cutoff on map' })).toBeNull();
       } finally {
         vi.useRealTimers();
       }
@@ -275,7 +286,7 @@ describe('MapView', () => {
 
       fireEvent.click(screen.getByRole('button', { name: '<1h' }));
 
-      expect(screen.getByText('Stale Focus')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Show Stale Focus on map' })).toBeInTheDocument();
       expect(screen.getByText(/plus the focused contact/i)).toBeInTheDocument();
     });
   });
@@ -326,8 +337,8 @@ describe('MapView', () => {
 
     render(<MapView contacts={[visible, blocked]} blockedKeys={['bb'.repeat(32)]} />);
 
-    expect(screen.getByText('Visible')).toBeInTheDocument();
-    expect(screen.queryByText('Blocked')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Show Visible on map' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Show Blocked on map' })).toBeNull();
   });
 
   it('excludes contacts whose name is in blockedNames', () => {
@@ -376,7 +387,7 @@ describe('MapView', () => {
 
     render(<MapView contacts={[visible, blocked]} blockedNames={['BadActor']} />);
 
-    expect(screen.getByText('Visible')).toBeInTheDocument();
-    expect(screen.queryByText('BadActor')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Show Visible on map' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Show BadActor on map' })).toBeNull();
   });
 });

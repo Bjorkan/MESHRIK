@@ -207,7 +207,7 @@ This message-layer echo/path handling is independent of raw-packet storage dedup
 │   │   ├── useWebSocket.ts # WebSocket hook
 │   │   └── components/
 │   │       ├── CrackerPanel.tsx  # WebGPU key cracking
-│   │       ├── MapView.tsx       # Leaflet map showing node locations
+│   │       ├── MapView.tsx       # MapLibre map showing node locations
 │   │       └── ...
 │   └── vite.config.ts
 ├── scripts/                # Quality / release helpers (listing below is representative, not exhaustive)

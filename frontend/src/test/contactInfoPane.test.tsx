@@ -29,10 +29,9 @@ vi.mock('../components/ContactAvatar', () => ({
   ContactAvatar: () => <div data-testid="contact-avatar" />,
 }));
 
-vi.mock('react-leaflet', () => ({
-  MapContainer: () => null,
-  TileLayer: () => null,
-  CircleMarker: () => null,
+vi.mock('react-map-gl/maplibre', () => ({
+  default: () => null,
+  Marker: () => null,
   Popup: () => null,
 }));
 

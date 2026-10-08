@@ -57,6 +57,7 @@ describe('useFaviconBadge', () => {
     '<svg xmlns="http://www.w3.org/2000/svg"><rect width="1000" height="1000"/></svg>';
   const originalCreateObjectURL = URL.createObjectURL;
   const originalRevokeObjectURL = URL.revokeObjectURL;
+  const originalFetch = globalThis.fetch;
   let objectUrlCounter = 0;
   let fetchMock: ReturnType<typeof vi.fn>;
   let createObjectURLMock: ReturnType<typeof vi.fn>;
@@ -76,7 +77,7 @@ describe('useFaviconBadge', () => {
     createObjectURLMock = vi.fn(() => `blob:generated-${++objectUrlCounter}`);
     revokeObjectURLMock = vi.fn();
 
-    vi.stubGlobal('fetch', fetchMock);
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
     Object.defineProperty(URL, 'createObjectURL', {
       configurable: true,
       writable: true,
@@ -90,7 +91,7 @@ describe('useFaviconBadge', () => {
   });
 
   afterEach(() => {
-    vi.unstubAllGlobals();
+    globalThis.fetch = originalFetch;
     Object.defineProperty(URL, 'createObjectURL', {
       configurable: true,
       writable: true,

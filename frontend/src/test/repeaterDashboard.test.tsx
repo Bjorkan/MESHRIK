@@ -68,13 +68,13 @@ vi.mock('../components/ui/sonner', () => ({
   },
 }));
 
-// Mock leaflet imports (not needed in test)
-vi.mock('react-leaflet', () => ({
-  MapContainer: () => null,
-  TileLayer: () => null,
-  CircleMarker: () => null,
+// Mock MapLibre imports (not needed in test)
+vi.mock('react-map-gl/maplibre', () => ({
+  default: () => null,
+  Marker: () => null,
   Popup: () => null,
-  Polyline: () => null,
+  Source: () => null,
+  Layer: () => null,
 }));
 
 const REPEATER_KEY = 'aa'.repeat(32);

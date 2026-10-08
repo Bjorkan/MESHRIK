@@ -11,7 +11,7 @@ Keep it aligned with `frontend/src` source code.
 - shadcn/ui primitives
 - Tailwind utility classes + local CSS (`index.css`, `styles.css`)
 - Sonner (toasts)
-- Leaflet / react-leaflet (map)
+- MapLibre GL / react-map-gl (map)
 - `@michaelhart/meshcore-decoder` installed via npm alias to `meshcore-decoder-multibyte-patch`
 - `meshcore-hashtag-cracker` + `nosleep.js` (channel cracker)
 - Multibyte-aware decoder build published as `meshcore-decoder-multibyte-patch`
@@ -145,7 +145,7 @@ frontend/src/
 │   ├── BulkAddChannelResultModal.tsx # Results dialog for bulk channel creation
 │   ├── CommandPalette.tsx      # Command palette overlay
 │   ├── DirectTraceIcon.tsx     # Shared direct-trace glyph used in header/dashboard
-│   ├── NeighborsMiniMap.tsx    # Leaflet mini-map for repeater neighbor locations
+│   ├── NeighborsMiniMap.tsx    # MapLibre mini-map for repeater neighbor locations
 │   ├── settings/
 │   │   ├── settingsConstants.ts          # Settings section type, ordering, labels
 │   │   ├── SettingsRadioSection.tsx      # Name, keys, advert interval, max contacts, radio preset, freq/bw/sf/cr, txPower, lat/lon, reboot, mesh discovery
@@ -413,7 +413,7 @@ Clicking a contact's avatar in `ChatHeader` or `MessageList` opens a `ContactInf
 - Header: avatar, name, public key, type badge, on-radio badge
 - Info grid: last seen, first heard, last contacted, distance, hops
 - GPS location (clickable → map)
-- On-demand LPP telemetry: "Request" button fetches `POST /contacts/{key}/telemetry`, displays sensor readings via `LppSensorRow`, optional GPS mini-map (Leaflet), and history chart (Recharts). Opt-in tracking toggle uses `POST /settings/tracked-telemetry-contacts/toggle`.
+- On-demand LPP telemetry: "Request" button fetches `POST /contacts/{key}/telemetry`, displays sensor readings via `LppSensorRow`, optional GPS mini-map (MapLibre), and history chart (Recharts). Opt-in tracking toggle uses `POST /settings/tracked-telemetry-contacts/toggle`.
 - Favorite toggle
 - Name history ("Also Known As") — shown only when the contact has used multiple names
 - Message stats: DM count, channel message count

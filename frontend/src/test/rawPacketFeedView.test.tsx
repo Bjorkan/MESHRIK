@@ -114,12 +114,14 @@ function renderView({
 }
 
 describe('RawPacketFeedView', () => {
+  const originalMatchMedia = globalThis.matchMedia;
+
   beforeEach(() => {
     resetRawPacketStore();
   });
 
   afterEach(() => {
-    vi.unstubAllGlobals();
+    globalThis.matchMedia = originalMatchMedia;
   });
 
   it('opens a stats drawer with window controls and grouped summaries', () => {
@@ -164,19 +166,16 @@ describe('RawPacketFeedView', () => {
   });
 
   it('shows stats by default on desktop', () => {
-    vi.stubGlobal(
-      'matchMedia',
-      vi.fn().mockImplementation((query: string) => ({
-        matches: query === '(min-width: 768px)',
-        media: query,
-        onchange: null,
-        addListener: vi.fn(),
-        removeListener: vi.fn(),
-        addEventListener: vi.fn(),
-        removeEventListener: vi.fn(),
-        dispatchEvent: vi.fn(),
-      }))
-    );
+    globalThis.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: query === '(min-width: 768px)',
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
 
     renderView();
 

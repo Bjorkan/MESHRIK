@@ -1,7 +1,6 @@
-import { useEffect, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Tooltip, useMap } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import { useCallback, useRef, useState } from 'react';
+import MapLibreMap, { Marker, Popup, type MapRef } from 'react-map-gl/maplibre';
+import { DEFAULT_MAP_STYLE } from '../utils/mapLibre';
 import { isValidLocation } from '../utils/pathUtils';
 import type { ResolvedPath, SenderInfo } from '../utils/pathUtils';
 
@@ -11,84 +10,88 @@ interface PathRouteMapProps {
   height?: number;
 }
 
-// Colors for hop markers (indexed by hop number - 1)
 const HOP_COLORS = [
-  '#f97316', // Hop 1: orange
-  '#eab308', // Hop 2: yellow
-  '#22c55e', // Hop 3: green
-  '#06b6d4', // Hop 4: cyan
-  '#ec4899', // Hop 5: pink
-  '#f43f5e', // Hop 6: rose
-  '#a855f7', // Hop 7: purple
-  '#64748b', // Hop 8: slate
+  '#f97316',
+  '#eab308',
+  '#22c55e',
+  '#06b6d4',
+  '#ec4899',
+  '#f43f5e',
+  '#a855f7',
+  '#64748b',
 ];
-
-const SENDER_COLOR = '#3b82f6'; // blue
-const RECEIVER_COLOR = '#8b5cf6'; // violet
-
-function makeIcon(label: string, color: string): L.DivIcon {
-  return L.divIcon({
-    className: '',
-    iconSize: [24, 24],
-    iconAnchor: [12, 12],
-    html: `<div style="
-      width:24px;height:24px;border-radius:50%;
-      background:${color};color:#fff;
-      display:flex;align-items:center;justify-content:center;
-      font-size:11px;font-weight:700;
-      border:2px solid rgba(255,255,255,0.8);
-      box-shadow:0 1px 4px rgba(0,0,0,0.4);
-    ">${label}</div>`,
-  });
-}
+const SENDER_COLOR = '#3b82f6';
+const RECEIVER_COLOR = '#8b5cf6';
 
 function getHopColor(hopIndex: number): string {
   return HOP_COLORS[hopIndex % HOP_COLORS.length];
 }
 
-/** Collect all valid [lat, lon] points for bounds fitting */
 function collectPoints(resolved: ResolvedPath): [number, number][] {
-  const pts: [number, number][] = [];
+  const points: [number, number][] = [];
   if (isValidLocation(resolved.sender.lat, resolved.sender.lon)) {
-    pts.push([resolved.sender.lat!, resolved.sender.lon!]);
+    points.push([resolved.sender.lat!, resolved.sender.lon!]);
   }
   for (const hop of resolved.hops) {
-    for (const m of hop.matches) {
-      if (isValidLocation(m.lat, m.lon)) {
-        pts.push([m.lat!, m.lon!]);
-      }
+    for (const match of hop.matches) {
+      if (isValidLocation(match.lat, match.lon)) points.push([match.lat!, match.lon!]);
     }
   }
   if (isValidLocation(resolved.receiver.lat, resolved.receiver.lon)) {
-    pts.push([resolved.receiver.lat!, resolved.receiver.lon!]);
+    points.push([resolved.receiver.lat!, resolved.receiver.lon!]);
   }
-  return pts;
+  return points;
 }
 
-/** Fit map bounds once on mount, then let the user pan/zoom freely */
-function RouteMapBounds({ points }: { points: [number, number][] }) {
-  const map = useMap();
-  const fitted = useRef(false);
-
-  useEffect(() => {
-    if (fitted.current || points.length === 0) return;
-    fitted.current = true;
-    if (points.length === 1) {
-      map.setView(points[0], 12);
-    } else {
-      map.fitBounds(points as L.LatLngBoundsExpression, { padding: [30, 30], maxZoom: 14 });
-    }
-  }, [map, points]);
-
-  return null;
+function NumberedMarker({
+  label,
+  color,
+  longitude,
+  latitude,
+  description,
+}: {
+  label: string;
+  color: string;
+  longitude: number;
+  latitude: number;
+  description: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Marker longitude={longitude} latitude={latitude} anchor="center">
+        <button
+          type="button"
+          className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-white/80 text-[0.6875rem] font-bold text-white shadow-md"
+          style={{ backgroundColor: color }}
+          onClick={() => setOpen(true)}
+          aria-label={`Show ${label} node details`}
+        >
+          {label}
+        </button>
+      </Marker>
+      {open && (
+        <Popup
+          longitude={longitude}
+          latitude={latitude}
+          anchor="bottom"
+          offset={16}
+          closeOnClick={false}
+          onClose={() => setOpen(false)}
+        >
+          <div className="text-xs">{description}</div>
+        </Popup>
+      )}
+    </>
+  );
 }
 
 export function PathRouteMap({ resolved, senderInfo, height = 220 }: PathRouteMapProps) {
+  const mapRef = useRef<MapRef>(null);
   const points = collectPoints(resolved);
   const hasAnyGps = points.length > 0;
 
-  // Check if some nodes are missing GPS
-  let totalNodes = 2; // sender + receiver
+  let totalNodes = 2;
   let nodesWithGps = 0;
   if (isValidLocation(resolved.sender.lat, resolved.sender.lon)) nodesWithGps++;
   if (isValidLocation(resolved.receiver.lat, resolved.receiver.lon)) nodesWithGps++;
@@ -97,10 +100,28 @@ export function PathRouteMap({ resolved, senderInfo, height = 220 }: PathRouteMa
       totalNodes++;
     } else {
       totalNodes += hop.matches.length;
-      nodesWithGps += hop.matches.filter((m) => isValidLocation(m.lat, m.lon)).length;
+      nodesWithGps += hop.matches.filter((match) => isValidLocation(match.lat, match.lon)).length;
     }
   }
   const someMissingGps = hasAnyGps && nodesWithGps < totalNodes;
+
+  const fitRoute = useCallback(() => {
+    const map = mapRef.current;
+    if (!map || points.length === 0) return;
+    if (points.length === 1) {
+      map.jumpTo({ center: [points[0][1], points[0][0]], zoom: 12 });
+      return;
+    }
+    const lons = points.map(([, lon]) => lon);
+    const lats = points.map(([lat]) => lat);
+    map.fitBounds(
+      [
+        [Math.min(...lons), Math.min(...lats)],
+        [Math.max(...lons), Math.max(...lats)],
+      ],
+      { padding: 30, maxZoom: 14, duration: 0 }
+    );
+  }, [points]);
 
   if (!hasAnyGps) {
     return (
@@ -110,8 +131,7 @@ export function PathRouteMap({ resolved, senderInfo, height = 220 }: PathRouteMa
     );
   }
 
-  const center: [number, number] = points[0];
-
+  const center = points[0];
   return (
     <div>
       <div
@@ -120,65 +140,64 @@ export function PathRouteMap({ resolved, senderInfo, height = 220 }: PathRouteMa
         aria-label="Map showing message route between nodes"
         style={{ height }}
       >
-        <MapContainer
-          center={center}
-          zoom={10}
-          className="h-full w-full"
-          style={{ background: '#1a1a2e' }}
+        <MapLibreMap
+          ref={mapRef}
+          initialViewState={{ longitude: center[1], latitude: center[0], zoom: 10 }}
+          mapStyle={DEFAULT_MAP_STYLE.url}
+          onLoad={fitRoute}
+          style={{ width: '100%', height: '100%', background: DEFAULT_MAP_STYLE.background }}
         >
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-          <RouteMapBounds points={points} />
-
-          {/* Sender marker */}
           {isValidLocation(resolved.sender.lat, resolved.sender.lon) && (
-            <Marker
-              position={[resolved.sender.lat!, resolved.sender.lon!]}
-              icon={makeIcon('S', SENDER_COLOR)}
-            >
-              <Tooltip direction="top" offset={[0, -14]}>
-                <span className="font-mono">{resolved.sender.prefix}</span>
-                {' · '}
-                {senderInfo.name || 'Sender'}
-              </Tooltip>
-            </Marker>
+            <NumberedMarker
+              label="S"
+              color={SENDER_COLOR}
+              longitude={resolved.sender.lon!}
+              latitude={resolved.sender.lat!}
+              description={
+                <>
+                  <span className="font-mono">{resolved.sender.prefix}</span>
+                  {' · '}
+                  {senderInfo.name || 'Sender'}
+                </>
+              }
+            />
           )}
-
-          {/* Hop markers */}
           {resolved.hops.map((hop, hopIdx) =>
             hop.matches
-              .filter((m) => isValidLocation(m.lat, m.lon))
-              .map((m, mIdx) => (
-                <Marker
-                  key={`hop-${hopIdx}-${mIdx}`}
-                  position={[m.lat!, m.lon!]}
-                  icon={makeIcon(String(hopIdx + 1), getHopColor(hopIdx))}
-                >
-                  <Tooltip direction="top" offset={[0, -14]}>
-                    <span className="font-mono">{hop.prefix}</span>
-                    {' · '}
-                    {m.name || m.public_key.slice(0, 12)}
-                  </Tooltip>
-                </Marker>
+              .filter((match) => isValidLocation(match.lat, match.lon))
+              .map((match, matchIdx) => (
+                <NumberedMarker
+                  key={`hop-${hopIdx}-${matchIdx}`}
+                  label={String(hopIdx + 1)}
+                  color={getHopColor(hopIdx)}
+                  longitude={match.lon!}
+                  latitude={match.lat!}
+                  description={
+                    <>
+                      <span className="font-mono">{hop.prefix}</span>
+                      {' · '}
+                      {match.name || match.public_key.slice(0, 12)}
+                    </>
+                  }
+                />
               ))
           )}
-
-          {/* Receiver marker */}
           {isValidLocation(resolved.receiver.lat, resolved.receiver.lon) && (
-            <Marker
-              position={[resolved.receiver.lat!, resolved.receiver.lon!]}
-              icon={makeIcon('R', RECEIVER_COLOR)}
-            >
-              <Tooltip direction="top" offset={[0, -14]}>
-                <span className="font-mono">{resolved.receiver.prefix}</span>
-                {' · '}
-                {resolved.receiver.name || 'Receiver'}
-              </Tooltip>
-            </Marker>
+            <NumberedMarker
+              label="R"
+              color={RECEIVER_COLOR}
+              longitude={resolved.receiver.lon!}
+              latitude={resolved.receiver.lat!}
+              description={
+                <>
+                  <span className="font-mono">{resolved.receiver.prefix}</span>
+                  {' · '}
+                  {resolved.receiver.name || 'Receiver'}
+                </>
+              }
+            />
           )}
-        </MapContainer>
+        </MapLibreMap>
       </div>
       {someMissingGps && (
         <p className="text-xs text-muted-foreground mt-1">

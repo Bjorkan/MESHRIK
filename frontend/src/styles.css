@@ -53,15 +53,11 @@ body {
   border-right: none;
 }
 
-/* Constrain Leaflet map z-index to stay below modals/sheets */
-.leaflet-container {
+/* Constrain MapLibre maps and controls to stay below modals/sheets. */
+.maplibregl-map {
   z-index: 0 !important;
 }
 
-.leaflet-pane {
-  z-index: 0 !important;
-}
-
-.leaflet-control {
+.maplibregl-control-container {
   z-index: 10 !important;
 }

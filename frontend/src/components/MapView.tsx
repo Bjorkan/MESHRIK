@@ -1,20 +1,17 @@
 import { Fragment, useEffect, useState, useMemo, useRef, useCallback } from 'react';
-import {
-  MapContainer,
-  TileLayer,
-  CircleMarker,
+import MapLibreMap, {
+  Layer,
+  Marker,
+  NavigationControl,
   Popup,
-  useMap,
-  useMapEvents,
-  Polyline,
-  LayersControl,
-} from 'react-leaflet';
-import type { LatLngBoundsExpression, CircleMarker as LeafletCircleMarker } from 'leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+  Source,
+  type MapRef,
+} from 'react-map-gl/maplibre';
+import type { FeatureCollection, LineString } from 'geojson';
 import type { Contact, RadioConfig } from '../types';
 import { formatTime } from '../utils/messageParser';
 import { isValidLocation } from '../utils/pathUtils';
+import { DEFAULT_MAP_STYLE, MAP_STYLES } from '../utils/mapLibre';
 import { CONTACT_TYPE_REPEATER } from '../types';
 import {
   parsePacket,
@@ -38,73 +35,8 @@ interface MapViewProps {
   onSelectContact?: (contact: Contact) => void;
 }
 
-// --- Tile layer presets ---
-// Every provider here is free and works without an API key. Attribution strings
-// follow each provider's requirements; do not remove them. If you add a new
-// provider, verify its terms of service (especially for Esri / Google-style
-// satellite tiles) before committing.
-interface TileLayerPreset {
-  id: string;
-  label: string;
-  url: string;
-  attribution: string;
-  background: string;
-  /** Highest zoom the provider publishes tiles at. When the layer is active,
-   *  the map's zoom ceiling is tightened to this value via
-   *  `MaxZoomByActiveLayer` so the user cannot zoom into a grey void. */
-  maxZoom?: number;
-}
-
-// Global zoom bounds for the MapContainer itself. These are pinned to the
-// container so Leaflet's internal tile-range math never has to guess when
-// layers swap in/out via LayersControl. Without this, an initial-mount race
-// between MapContainer layout and LayersControl.BaseLayer addition has been
-// observed to throw "Attempted to load an infinite number of tiles".
 const MAP_MIN_ZOOM = 2;
 const MAP_MAX_ZOOM = 19;
-
-const TILE_LAYERS: readonly TileLayerPreset[] = [
-  {
-    id: 'light',
-    label: 'Light (OpenStreetMap)',
-    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-    background: '#1a1a2e',
-    maxZoom: 19,
-  },
-  {
-    id: 'dark',
-    label: 'Dark (CARTO)',
-    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-    attribution:
-      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
-    background: '#0d0d0d',
-    maxZoom: 19,
-  },
-  {
-    id: 'topographic',
-    label: 'Topographic (OpenTopoMap)',
-    url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
-    attribution:
-      'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)',
-    background: '#a3b3bc',
-    maxZoom: 17,
-  },
-  {
-    id: 'satellite',
-    label: 'Satellite (Esri)',
-    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    attribution:
-      'Tiles &copy; <a href="https://www.esri.com/">Esri</a> &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
-    background: '#1a1f2e',
-    // Esri's tile service advertises LODs up to 23 and returns HTTP 200 for
-    // every tile request, but the underlying imagery is only high-resolution
-    // up to ~18 in most developed areas and shallower in rural regions. We
-    // cap at 18 rather than 19 so users don't zoom into visibly-empty or
-    // severely-upscaled tiles. Remote regions may still be sparse at 18.
-    maxZoom: 18,
-  },
-] as const;
 
 const MAP_LAYER_STORAGE_KEY = 'meshrik-map-layer';
 const LEGACY_DARK_MAP_STORAGE_KEY = 'meshrik-dark-map';
@@ -112,51 +44,11 @@ const LEGACY_DARK_MAP_STORAGE_KEY = 'meshrik-dark-map';
 function getSavedLayerId(): string {
   try {
     const stored = localStorage.getItem(MAP_LAYER_STORAGE_KEY);
-    if (stored && TILE_LAYERS.some((l) => l.id === stored)) return stored;
-    // Legacy migration: boolean dark-map flag predates multi-layer support.
-    const legacyDark = localStorage.getItem(LEGACY_DARK_MAP_STORAGE_KEY) === 'true';
-    return legacyDark ? 'dark' : 'light';
+    if (stored && MAP_STYLES.some((style) => style.id === stored)) return stored;
+    return DEFAULT_MAP_STYLE.id;
   } catch {
-    return 'light';
+    return DEFAULT_MAP_STYLE.id;
   }
-}
-
-/**
- * Leaflet-internal companion component: listens for base-layer changes driven
- * by Leaflet's own LayersControl UI and pipes the selection back to React.
- * Kept separate so the persistence/state logic stays out of the render tree.
- */
-function LayerChangeWatcher({ onChange }: { onChange: (name: string) => void }) {
-  useMapEvents({
-    baselayerchange: (event) => {
-      if (event.name) onChange(event.name);
-    },
-  });
-  return null;
-}
-
-/**
- * Enforces the active layer's zoom ceiling on the underlying Leaflet map.
- *
- * Leaflet's `map.getMaxZoom()` prefers `options.maxZoom` (set on MapContainer)
- * over per-layer `maxZoom`, so a per-TileLayer cap is silently ignored unless
- * we push it down to the map itself. We do that here whenever the active
- * layer changes, and clamp the current zoom if the user happened to be zoomed
- * past the new cap at the moment of the switch.
- *
- * The MapContainer's fixed `minZoom`/`maxZoom` remain the absolute hull that
- * prevents the "Attempted to load an infinite number of tiles" race during
- * initial mount (see `MAP_MIN_ZOOM`/`MAP_MAX_ZOOM` below).
- */
-function MaxZoomByActiveLayer({ maxZoom }: { maxZoom: number }) {
-  const map = useMap();
-  useEffect(() => {
-    map.setMaxZoom(maxZoom);
-    if (map.getZoom() > maxZoom) {
-      map.setZoom(maxZoom);
-    }
-  }, [map, maxZoom]);
-  return null;
 }
 
 const MAP_RECENCY_COLORS = {
@@ -315,49 +207,58 @@ interface MapParticle {
 // --- Map bounds handler ---
 
 function MapBoundsHandler({
+  mapRef,
   contacts,
   focusedContact,
 }: {
+  mapRef: React.RefObject<MapRef>;
   contacts: Contact[];
   focusedContact: Contact | null;
 }) {
-  const map = useMap();
-  const [hasInitialized, setHasInitialized] = useState(false);
+  const hasInitialized = useRef(false);
 
   useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
     if (focusedContact && focusedContact.lat != null && focusedContact.lon != null) {
-      map.setView([focusedContact.lat, focusedContact.lon], 12);
-      setHasInitialized(true);
+      map.flyTo({ center: [focusedContact.lon, focusedContact.lat], zoom: 12 });
+      hasInitialized.current = true;
       return;
     }
 
-    if (hasInitialized) return;
+    if (hasInitialized.current) return;
 
     const fitToContacts = () => {
       if (contacts.length === 0) {
-        map.setView([20, 0], 2);
-        setHasInitialized(true);
+        map.jumpTo({ center: [0, 20], zoom: 2 });
+        hasInitialized.current = true;
         return;
       }
 
       if (contacts.length === 1) {
-        map.setView([contacts[0].lat!, contacts[0].lon!], 10);
-        setHasInitialized(true);
+        map.jumpTo({ center: [contacts[0].lon!, contacts[0].lat!], zoom: 10 });
+        hasInitialized.current = true;
         return;
       }
 
-      const bounds: LatLngBoundsExpression = contacts.map(
-        (c) => [c.lat!, c.lon!] as [number, number]
-      );
-      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 12 });
-      setHasInitialized(true);
+      const lons = contacts.map((contact) => contact.lon!);
+      const lats = contacts.map((contact) => contact.lat!);
+      const bounds: [[number, number], [number, number]] = [
+        [Math.min(...lons), Math.min(...lats)],
+        [Math.max(...lons), Math.max(...lats)],
+      ];
+      map.fitBounds(bounds, { padding: 50, maxZoom: 12, duration: 0 });
+      hasInitialized.current = true;
     };
 
     if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          map.setView([position.coords.latitude, position.coords.longitude], 8);
-          setHasInitialized(true);
+          map.jumpTo({
+            center: [position.coords.longitude, position.coords.latitude],
+            zoom: 8,
+          });
+          hasInitialized.current = true;
         },
         () => {
           fitToContacts();
@@ -367,19 +268,26 @@ function MapBoundsHandler({
     } else {
       fitToContacts();
     }
-  }, [map, contacts, hasInitialized, focusedContact]);
+  }, [mapRef, contacts, focusedContact]);
 
   return null;
 }
 
 // --- Canvas particle overlay ---
 
-function ParticleOverlay({ particles }: { particles: MapParticle[] }) {
-  const map = useMap();
+function ParticleOverlay({
+  mapRef,
+  particles,
+}: {
+  mapRef: React.RefObject<MapRef>;
+  particles: MapParticle[];
+}) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const animRef = useRef<number>(0);
 
   useEffect(() => {
+    const map = mapRef.current?.getMap();
+    if (!map) return;
     const container = map.getContainer();
     const canvas = document.createElement('canvas');
     canvas.style.position = 'absolute';
@@ -391,11 +299,12 @@ function ParticleOverlay({ particles }: { particles: MapParticle[] }) {
     canvasRef.current = canvas;
 
     const resize = () => {
-      const size = map.getSize();
-      canvas.width = size.x * window.devicePixelRatio;
-      canvas.height = size.y * window.devicePixelRatio;
-      canvas.style.width = `${size.x}px`;
-      canvas.style.height = `${size.y}px`;
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+      canvas.width = width * window.devicePixelRatio;
+      canvas.height = height * window.devicePixelRatio;
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
     };
     resize();
     map.on('resize', resize);
@@ -408,11 +317,12 @@ function ParticleOverlay({ particles }: { particles: MapParticle[] }) {
       container.removeChild(canvas);
       canvasRef.current = null;
     };
-  }, [map]);
+  }, [mapRef]);
 
   useEffect(() => {
+    const map = mapRef.current?.getMap();
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!map || !canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
@@ -431,7 +341,7 @@ function ParticleOverlay({ particles }: { particles: MapParticle[] }) {
         if (path.length < 2) continue;
 
         // Calculate total path length in pixels for even speed
-        const pixelPath = path.map((ll) => map.latLngToContainerPoint(L.latLng(ll[0], ll[1])));
+        const pixelPath = path.map(([lat, lon]) => map.project([lon, lat]));
         const segLengths: number[] = [];
         let totalLen = 0;
         for (let i = 1; i < pixelPath.length; i++) {
@@ -520,18 +430,7 @@ function ParticleOverlay({ particles }: { particles: MapParticle[] }) {
 
     animRef.current = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(animRef.current);
-  }, [map, particles]);
-
-  // Redraw on map move/zoom
-  useEffect(() => {
-    const redraw = () => {}; // Animation loop already redraws every frame
-    map.on('move', redraw);
-    map.on('zoom', redraw);
-    return () => {
-      map.off('move', redraw);
-      map.off('zoom', redraw);
-    };
-  }, [map]);
+  }, [mapRef, particles]);
 
   return null;
 }
@@ -546,19 +445,20 @@ export function MapView({
   blockedNames,
   onSelectContact,
 }: MapViewProps) {
+  const mapRef = useRef<MapRef>(null);
   const rawPackets = useRawPackets();
   const [sinceId, setSinceId] = useState<MapSinceId>(getSavedSinceId);
   const [customSince, setCustomSince] = useState('');
   const [nowSec, setNowSec] = useState(() => Date.now() / 1000);
   const [selectedLayerId, setSelectedLayerId] = useState<string>(getSavedLayerId);
-  const activeLayer = TILE_LAYERS.find((l) => l.id === selectedLayerId) ?? TILE_LAYERS[0];
+  const activeLayer = MAP_STYLES.find((style) => style.id === selectedLayerId) ?? DEFAULT_MAP_STYLE;
 
   // Sync layer selection across tabs and windows.
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
       if (e.key !== MAP_LAYER_STORAGE_KEY) return;
       const next = e.newValue ?? '';
-      if (TILE_LAYERS.some((l) => l.id === next)) {
+      if (MAP_STYLES.some((style) => style.id === next)) {
         setSelectedLayerId(next);
       }
     };
@@ -566,8 +466,8 @@ export function MapView({
     return () => window.removeEventListener('storage', onStorage);
   }, []);
 
-  const handleLayerChange = useCallback((layerName: string) => {
-    const match = TILE_LAYERS.find((l) => l.label === layerName);
+  const handleLayerChange = useCallback((layerId: string) => {
+    const match = MAP_STYLES.find((style) => style.id === layerId);
     if (!match) return;
     setSelectedLayerId(match.id);
     try {
@@ -843,33 +743,17 @@ export function MapView({
   const includesFocusedOutsideWindow =
     focusedContact != null && !isWithinSinceWindow(focusedContact.last_seen);
 
-  // Track marker refs to open popup programmatically
-  const markerRefs = useRef<Record<string, LeafletCircleMarker | null>>({});
-
-  const setMarkerRef = useCallback((key: string, ref: LeafletCircleMarker | null) => {
-    if (ref === null) {
-      delete markerRefs.current[key];
-      return;
-    }
-    markerRefs.current[key] = ref;
-  }, []);
+  const [openPopupKey, setOpenPopupKey] = useState<string | null>(null);
 
   useEffect(() => {
     const currentKeys = new Set(mappableContacts.map((contact) => contact.public_key));
-    for (const key of Object.keys(markerRefs.current)) {
-      if (!currentKeys.has(key)) {
-        delete markerRefs.current[key];
-      }
+    if (openPopupKey && !currentKeys.has(openPopupKey)) {
+      setOpenPopupKey(null);
     }
-  }, [mappableContacts]);
+  }, [mappableContacts, openPopupKey]);
 
   useEffect(() => {
-    if (focusedContact && markerRefs.current[focusedContact.public_key]) {
-      const timer = setTimeout(() => {
-        markerRefs.current[focusedContact.public_key]?.openPopup();
-      }, 100);
-      return () => clearTimeout(timer);
-    }
+    if (focusedContact) setOpenPopupKey(focusedContact.public_key);
   }, [focusedContact]);
 
   // Gather unique link paths for static route lines when packet viz is on
@@ -1088,42 +972,52 @@ export function MapView({
         role="img"
         aria-label="Map showing mesh node locations"
       >
-        <MapContainer
-          center={[20, 0]}
-          zoom={2}
+        <MapLibreMap
+          ref={mapRef}
+          initialViewState={{ longitude: 0, latitude: 20, zoom: 2 }}
           minZoom={MAP_MIN_ZOOM}
           maxZoom={MAP_MAX_ZOOM}
-          className="h-full w-full"
-          style={{ background: activeLayer.background }}
+          mapStyle={activeLayer.url}
+          style={{ width: '100%', height: '100%', background: activeLayer.background }}
         >
-          <LayersControl position="topright" collapsed={false}>
-            {TILE_LAYERS.map((layer) => (
-              <LayersControl.BaseLayer
-                key={layer.id}
-                name={layer.label}
-                checked={layer.id === selectedLayerId}
-              >
-                <TileLayer
-                  url={layer.url}
-                  attribution={layer.attribution}
-                  maxZoom={layer.maxZoom}
-                />
-              </LayersControl.BaseLayer>
-            ))}
-          </LayersControl>
-          <LayerChangeWatcher onChange={handleLayerChange} />
-          <MaxZoomByActiveLayer maxZoom={activeLayer.maxZoom ?? MAP_MAX_ZOOM} />
-          <MapBoundsHandler contacts={mappableContacts} focusedContact={focusedContact} />
+          <NavigationControl position="top-right" showCompass={false} />
+          <MapBoundsHandler
+            mapRef={mapRef}
+            contacts={mappableContacts}
+            focusedContact={focusedContact}
+          />
 
           {/* Faint route lines for active packet paths */}
           {showPackets &&
-            routeLines.map((line, i) => (
-              <Polyline
-                key={i}
-                positions={line.path}
-                pathOptions={{ color: line.color, weight: 1, opacity: 0.15, dashArray: '4 6' }}
-              />
-            ))}
+            routeLines.map((line, index) => {
+              const data: FeatureCollection<LineString> = {
+                type: 'FeatureCollection',
+                features: [
+                  {
+                    type: 'Feature',
+                    properties: {},
+                    geometry: {
+                      type: 'LineString',
+                      coordinates: line.path.map(([lat, lon]) => [lon, lat]),
+                    },
+                  },
+                ],
+              };
+              return (
+                <Source key={index} id={`packet-route-${index}`} type="geojson" data={data}>
+                  <Layer
+                    id={`packet-route-line-${index}`}
+                    type="line"
+                    paint={{
+                      'line-color': line.color,
+                      'line-width': 1,
+                      'line-opacity': 0.15,
+                      'line-dasharray': [4, 6],
+                    }}
+                  />
+                </Source>
+              );
+            })}
 
           {mappableContacts.map((contact) => {
             const isRepeater = contact.type === CONTACT_TYPE_REPEATER;
@@ -1134,22 +1028,36 @@ export function MapView({
                 ? formatTime(contact.last_seen)
                 : 'Never heard by this server';
             const radius = isRepeater ? 10 : 7;
+            const popupOpen = openPopupKey === contact.public_key;
 
             return (
               <Fragment key={contact.public_key}>
-                <CircleMarker
-                  key={contact.public_key}
-                  ref={(ref) => setMarkerRef(contact.public_key, ref)}
-                  center={[contact.lat!, contact.lon!]}
-                  radius={radius}
-                  pathOptions={{
-                    color: isRepeater ? MAP_REPEATER_RING : MAP_MARKER_STROKE,
-                    fillColor: color,
-                    fillOpacity: 0.9,
-                    weight: isRepeater ? 3 : 2,
-                  }}
-                >
-                  <Popup>
+                <Marker longitude={contact.lon!} latitude={contact.lat!} anchor="center">
+                  <button
+                    type="button"
+                    className="rounded-full"
+                    style={{
+                      width: radius * 2,
+                      height: radius * 2,
+                      backgroundColor: color,
+                      border: `${isRepeater ? 3 : 2}px solid ${
+                        isRepeater ? MAP_REPEATER_RING : MAP_MARKER_STROKE
+                      }`,
+                      opacity: 0.9,
+                    }}
+                    onClick={() => setOpenPopupKey(contact.public_key)}
+                    aria-label={`Show ${displayName} on map`}
+                  />
+                </Marker>
+                {popupOpen && (
+                  <Popup
+                    longitude={contact.lon!}
+                    latitude={contact.lat!}
+                    anchor="bottom"
+                    offset={radius + 4}
+                    closeOnClick={false}
+                    onClose={() => setOpenPopupKey(null)}
+                  >
                     <div className="text-sm">
                       <div className="font-medium flex items-center gap-1">
                         {isRepeater && (
@@ -1179,13 +1087,28 @@ export function MapView({
                       </div>
                     </div>
                   </Popup>
-                </CircleMarker>
+                )}
               </Fragment>
             );
           })}
 
-          {showPackets && <ParticleOverlay particles={particles} />}
-        </MapContainer>
+          {showPackets && <ParticleOverlay mapRef={mapRef} particles={particles} />}
+        </MapLibreMap>
+        <label className="absolute left-2 top-2 z-10 rounded bg-background/95 px-2 py-1 text-xs shadow">
+          <span className="sr-only">Map style</span>
+          <select
+            aria-label="Map style"
+            value={selectedLayerId}
+            onChange={(event) => handleLayerChange(event.target.value)}
+            className="bg-transparent text-foreground outline-none"
+          >
+            {MAP_STYLES.map((style) => (
+              <option key={style.id} value={style.id}>
+                {style.label}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
     </div>
   );
