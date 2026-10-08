@@ -190,6 +190,7 @@ export function SettingsRadioSection({
   const [pathHashMode, setPathHashMode] = useState('0');
   const [advertLocationSource, setAdvertLocationSource] = useState<'off' | 'current'>('current');
   const [multiAcksEnabled, setMultiAcksEnabled] = useState(false);
+  const [repeatEnabled, setRepeatEnabled] = useState(false);
   const [telemetryModeBase, setTelemetryModeBase] = useState(0);
   const [telemetryModeLoc, setTelemetryModeLoc] = useState(0);
   const [telemetryModeEnv, setTelemetryModeEnv] = useState(0);
@@ -229,6 +230,7 @@ export function SettingsRadioSection({
     setPathHashMode(String(config.path_hash_mode));
     setAdvertLocationSource(config.advert_location_source ?? 'current');
     setMultiAcksEnabled(config.multi_acks_enabled ?? false);
+    setRepeatEnabled(config.repeat_enabled ?? false);
     setTelemetryModeBase(config.telemetry_mode_base ?? 0);
     setTelemetryModeLoc(config.telemetry_mode_loc ?? 0);
     setTelemetryModeEnv(config.telemetry_mode_env ?? 0);
@@ -327,6 +329,9 @@ export function SettingsRadioSection({
         : {}),
       ...(multiAcksEnabled !== (config.multi_acks_enabled ?? false)
         ? { multi_acks_enabled: multiAcksEnabled }
+        : {}),
+      ...(config.repeat_enabled_supported && repeatEnabled !== (config.repeat_enabled ?? false)
+        ? { repeat_enabled: repeatEnabled }
         : {}),
       ...(telemetryModeBase !== (config.telemetry_mode_base ?? 0)
         ? { telemetry_mode_base: telemetryModeBase }
@@ -528,6 +533,7 @@ export function SettingsRadioSection({
     path_hash_mode: config.path_hash_mode,
     advert_location_source: config.advert_location_source ?? 'current',
     multi_acks_enabled: config.multi_acks_enabled ?? false,
+    ...(config.repeat_enabled_supported ? { repeat_enabled: config.repeat_enabled ?? false } : {}),
     telemetry_mode_base: config.telemetry_mode_base ?? 0,
     telemetry_mode_loc: config.telemetry_mode_loc ?? 0,
     telemetry_mode_env: config.telemetry_mode_env ?? 0,
@@ -602,6 +608,8 @@ export function SettingsRadioSection({
     if (data.advert_location_source === 'off' || data.advert_location_source === 'current')
       setAdvertLocationSource(data.advert_location_source);
     if (typeof data.multi_acks_enabled === 'boolean') setMultiAcksEnabled(data.multi_acks_enabled);
+    if (config.repeat_enabled_supported && typeof data.repeat_enabled === 'boolean')
+      setRepeatEnabled(data.repeat_enabled);
     if (typeof data.telemetry_mode_base === 'number')
       setTelemetryModeBase(data.telemetry_mode_base);
     if (typeof data.telemetry_mode_loc === 'number') setTelemetryModeLoc(data.telemetry_mode_loc);
@@ -621,6 +629,8 @@ export function SettingsRadioSection({
       update.advert_location_source = data.advert_location_source;
     if (typeof data.multi_acks_enabled === 'boolean')
       update.multi_acks_enabled = data.multi_acks_enabled;
+    if (config.repeat_enabled_supported && typeof data.repeat_enabled === 'boolean')
+      update.repeat_enabled = data.repeat_enabled;
     if (typeof data.telemetry_mode_base === 'number')
       update.telemetry_mode_base = data.telemetry_mode_base as number;
     if (typeof data.telemetry_mode_loc === 'number')
@@ -932,6 +942,23 @@ export function SettingsRadioSection({
           <Input id="max-tx" type="number" value={config.max_tx_power} disabled />
         </div>
       </div>
+
+      {config.repeat_enabled_supported && (
+        <div className="flex items-start gap-3 rounded-md border border-input p-3">
+          <Checkbox
+            id="repeat-enabled"
+            checked={repeatEnabled}
+            onCheckedChange={(checked) => setRepeatEnabled(checked === true)}
+          />
+          <div className="space-y-1">
+            <Label htmlFor="repeat-enabled">Companion Repeat Mode</Label>
+            <p className="text-[0.8125rem] text-muted-foreground">
+              Repeat eligible mesh traffic through this companion radio. Firmware may reject this
+              setting on unsupported frequencies.
+            </p>
+          </div>
+        </div>
+      )}
 
       {config.path_hash_mode_supported && (
         <div className="space-y-2">

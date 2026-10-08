@@ -577,6 +577,8 @@ class TestManualDisconnectCleanup:
         rm.firmware_build = "2025-02-01"
         rm.firmware_version = "1.2.3"
         rm.max_channels = 8
+        rm.repeat_enabled = True
+        rm.repeat_enabled_supported = True
         rm.path_hash_mode = 2
         rm.path_hash_mode_supported = True
         rm.note_channel_slot_loaded("AA" * 16, 0)
@@ -597,6 +599,8 @@ class TestManualDisconnectCleanup:
         assert rm.firmware_build is None
         assert rm.firmware_version is None
         assert rm.max_channels == 40
+        assert rm.repeat_enabled is None
+        assert rm.repeat_enabled_supported is False
         assert rm.path_hash_mode == 0
         assert rm.path_hash_mode_supported is False
         assert rm.get_cached_channel_slot("AA" * 16) is None

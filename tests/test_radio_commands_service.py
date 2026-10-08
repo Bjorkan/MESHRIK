@@ -8,6 +8,7 @@ from app.services.radio_commands import (
     KeystoreRefreshError,
     PathHashModeUnsupportedError,
     RadioCommandRejectedError,
+    RepeatModeUnsupportedError,
     apply_radio_config_update,
     import_private_key_and_refresh_keystore,
 )
@@ -25,6 +26,10 @@ def _mock_meshcore_with_info():
     mc.self_info = {
         "adv_lat": 10.0,
         "adv_lon": 20.0,
+        "radio_freq": 910.525,
+        "radio_bw": 62.5,
+        "radio_sf": 7,
+        "radio_cr": 5,
     }
     mc.commands = MagicMock()
     mc.commands.set_name = AsyncMock()
@@ -117,6 +122,59 @@ class TestApplyRadioConfigUpdate:
             )
 
         mc.commands.send_appstart.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_preserves_repeat_mode_when_updating_radio_parameters(self):
+        mc = _mock_meshcore_with_info()
+        update = RadioConfigUpdate(radio=RadioSettings(freq=869.525, bw=250, sf=10, cr=5))
+
+        await apply_radio_config_update(
+            mc,
+            update,
+            path_hash_mode_supported=True,
+            set_path_hash_mode=MagicMock(),
+            sync_radio_time_fn=AsyncMock(),
+            repeat_enabled_supported=True,
+            current_repeat_enabled=True,
+        )
+
+        mc.commands.set_radio.assert_awaited_once_with(
+            freq=869.525, bw=250.0, sf=10, cr=5, repeat=1
+        )
+
+    @pytest.mark.asyncio
+    async def test_updates_repeat_mode_using_current_radio_parameters(self):
+        mc = _mock_meshcore_with_info()
+        set_repeat_enabled = MagicMock()
+
+        await apply_radio_config_update(
+            mc,
+            RadioConfigUpdate(repeat_enabled=False),
+            path_hash_mode_supported=True,
+            set_path_hash_mode=MagicMock(),
+            sync_radio_time_fn=AsyncMock(),
+            repeat_enabled_supported=True,
+            current_repeat_enabled=True,
+            set_repeat_enabled=set_repeat_enabled,
+        )
+
+        mc.commands.set_radio.assert_awaited_once_with(freq=910.525, bw=62.5, sf=7, cr=5, repeat=0)
+        set_repeat_enabled.assert_called_once_with(False)
+
+    @pytest.mark.asyncio
+    async def test_rejects_repeat_mode_update_on_unsupported_firmware(self):
+        mc = _mock_meshcore_with_info()
+
+        with pytest.raises(RepeatModeUnsupportedError):
+            await apply_radio_config_update(
+                mc,
+                RadioConfigUpdate(repeat_enabled=True),
+                path_hash_mode_supported=True,
+                set_path_hash_mode=MagicMock(),
+                sync_radio_time_fn=AsyncMock(),
+            )
+
+        mc.commands.set_radio.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_raises_when_radio_rejects_advert_location_source(self):

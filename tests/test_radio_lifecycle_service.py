@@ -120,6 +120,8 @@ class TestRunPostConnectSetup:
         radio_manager.firmware_build = None
         radio_manager.firmware_version = None
         radio_manager.max_channels = 40
+        radio_manager.repeat_enabled = None
+        radio_manager.repeat_enabled_supported = False
         radio_manager.path_hash_mode = 0
         radio_manager.path_hash_mode_supported = False
 
@@ -166,6 +168,7 @@ class TestRunPostConnectSetup:
                     "fw_build": "2025-02-01",
                     "ver": "1.2.3",
                     "path_hash_mode": 2,
+                    "repeat": True,
                 }
             )
         )
@@ -186,6 +189,8 @@ class TestRunPostConnectSetup:
         radio_manager.firmware_build = None
         radio_manager.firmware_version = None
         radio_manager.max_channels = 40
+        radio_manager.repeat_enabled = None
+        radio_manager.repeat_enabled_supported = False
         radio_manager.path_hash_mode = 0
         radio_manager.path_hash_mode_supported = False
         radio_manager._acquire_operation_lock = AsyncMock()
@@ -216,3 +221,5 @@ class TestRunPostConnectSetup:
         assert radio_manager.firmware_version == "1.2.3"
         assert radio_manager.path_hash_mode == 2
         assert radio_manager.path_hash_mode_supported is True
+        assert radio_manager.repeat_enabled is True
+        assert radio_manager.repeat_enabled_supported is True

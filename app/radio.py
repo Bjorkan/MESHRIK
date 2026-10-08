@@ -175,6 +175,8 @@ class RadioManager:
         # host commands such as the mode-1 unscoped flood-scope frame (ver 12+).
         self.firmware_ver_code: int | None = None
         self.max_channels: int = 40
+        self.repeat_enabled: bool | None = None
+        self.repeat_enabled_supported: bool = False
         self.path_hash_mode: int = 0
         self.path_hash_mode_supported: bool = False
         self._channel_slot_by_key: OrderedDict[str, int] = OrderedDict()
@@ -222,6 +224,8 @@ class RadioManager:
         self.firmware_version = None
         self.firmware_ver_code = None
         self.max_channels = 40
+        self.repeat_enabled = None
+        self.repeat_enabled_supported = False
         self.path_hash_mode = 0
         self.path_hash_mode_supported = False
         self.reset_channel_send_cache()

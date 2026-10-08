@@ -37,6 +37,7 @@ from app.services.radio_commands import (
     KeystoreRefreshError,
     PathHashModeUnsupportedError,
     RadioCommandRejectedError,
+    RepeatModeUnsupportedError,
     apply_radio_config_update,
     import_private_key_and_refresh_keystore,
 )
@@ -106,6 +107,14 @@ class RadioConfigResponse(BaseModel):
         default=False,
         description="Whether the radio sends an extra direct ACK transmission",
     )
+    repeat_enabled: bool | None = Field(
+        default=None,
+        description="Whether companion repeat mode is enabled, when supported",
+    )
+    repeat_enabled_supported: bool = Field(
+        default=False,
+        description="Whether firmware supports companion repeat mode",
+    )
     telemetry_mode_base: int = Field(
         default=0,
         description="Base telemetry sharing mode (0=deny, 1=per-contact, 2=allow-all)",
@@ -139,6 +148,10 @@ class RadioConfigUpdate(BaseModel):
     multi_acks_enabled: bool | None = Field(
         default=None,
         description="Whether the radio sends an extra direct ACK transmission",
+    )
+    repeat_enabled: bool | None = Field(
+        default=None,
+        description="Whether companion repeat mode should be enabled",
     )
     telemetry_mode_base: int | None = Field(
         default=None, ge=0, le=2, description="Base telemetry sharing mode"
@@ -386,6 +399,8 @@ async def get_radio_config() -> RadioConfigResponse:
         path_hash_mode_supported=radio_manager.path_hash_mode_supported,
         advert_location_source=advert_location_source,
         multi_acks_enabled=bool(info.get("multi_acks", 0)),
+        repeat_enabled=radio_manager.repeat_enabled,
+        repeat_enabled_supported=radio_manager.repeat_enabled_supported,
         telemetry_mode_base=info.get("telemetry_mode_base", 0),
         telemetry_mode_loc=info.get("telemetry_mode_loc", 0),
         telemetry_mode_env=info.get("telemetry_mode_env", 0),
@@ -405,8 +420,13 @@ async def update_radio_config(update: RadioConfigUpdate) -> RadioConfigResponse:
                 path_hash_mode_supported=radio_manager.path_hash_mode_supported,
                 set_path_hash_mode=lambda mode: setattr(radio_manager, "path_hash_mode", mode),
                 sync_radio_time_fn=sync_radio_time,
+                repeat_enabled_supported=radio_manager.repeat_enabled_supported,
+                current_repeat_enabled=radio_manager.repeat_enabled,
+                set_repeat_enabled=lambda enabled: setattr(
+                    radio_manager, "repeat_enabled", enabled
+                ),
             )
-        except PathHashModeUnsupportedError as exc:
+        except (PathHashModeUnsupportedError, RepeatModeUnsupportedError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         except RadioCommandRejectedError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc

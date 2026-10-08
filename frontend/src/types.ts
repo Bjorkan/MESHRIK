@@ -17,6 +17,8 @@ export interface RadioConfig {
   path_hash_mode_supported: boolean;
   advert_location_source?: 'off' | 'current';
   multi_acks_enabled?: boolean;
+  repeat_enabled?: boolean | null;
+  repeat_enabled_supported?: boolean;
   telemetry_mode_base?: number;
   telemetry_mode_loc?: number;
   telemetry_mode_env?: number;
@@ -31,6 +33,7 @@ export interface RadioConfigUpdate {
   path_hash_mode?: number;
   advert_location_source?: 'off' | 'current';
   multi_acks_enabled?: boolean;
+  repeat_enabled?: boolean;
   telemetry_mode_base?: number;
   telemetry_mode_loc?: number;
   telemetry_mode_env?: number;

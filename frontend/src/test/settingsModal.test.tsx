@@ -47,6 +47,8 @@ const baseConfig: RadioConfig = {
   path_hash_mode_supported: false,
   advert_location_source: 'current',
   multi_acks_enabled: false,
+  repeat_enabled: null,
+  repeat_enabled_supported: false,
 };
 
 const baseHealth: HealthStatus = {
@@ -429,6 +431,24 @@ describe('SettingsModal', () => {
 
     await waitFor(() => {
       expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ multi_acks_enabled: true }));
+    });
+  });
+
+  it('shows and saves companion repeat mode when supported', async () => {
+    const { onSave } = renderModal({
+      config: {
+        ...baseConfig,
+        repeat_enabled: true,
+        repeat_enabled_supported: true,
+      },
+    });
+    openRadioSection();
+
+    fireEvent.click(screen.getByLabelText('Companion Repeat Mode'));
+    fireEvent.click(screen.getByRole('button', { name: 'Save Radio Config' }));
+
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ repeat_enabled: false }));
     });
   });
 

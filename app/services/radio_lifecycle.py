@@ -89,6 +89,8 @@ async def run_post_connect_setup(radio_manager) -> None:
                 radio_manager.firmware_version = None
                 radio_manager.firmware_ver_code = None
                 radio_manager.max_channels = 40
+                radio_manager.repeat_enabled = None
+                radio_manager.repeat_enabled_supported = False
                 radio_manager.path_hash_mode = 0
                 radio_manager.path_hash_mode_supported = False
                 try:
@@ -117,6 +119,12 @@ async def run_post_connect_setup(radio_manager) -> None:
                         radio_manager.device_info_loaded = True
                         radio_manager.firmware_ver_code = fw_ver
 
+                    if isinstance(fw_ver, int) and fw_ver >= 9:
+                        radio_manager.repeat_enabled_supported = True
+                        payload_repeat = payload.get("repeat")
+                        if isinstance(payload_repeat, bool):
+                            radio_manager.repeat_enabled = payload_repeat
+
                     if "path_hash_mode" in payload and isinstance(payload["path_hash_mode"], int):
                         radio_manager.path_hash_mode = payload["path_hash_mode"]
                         radio_manager.path_hash_mode_supported = True
@@ -124,7 +132,8 @@ async def run_post_connect_setup(radio_manager) -> None:
                     if _captured_frame:
                         # Raw-frame fallback / completion:
                         # byte 1 = fw_ver, byte 2 = max_contacts/2, byte 3 = max_channels,
-                        # bytes 8:20 = fw_build, 20:60 = model, 60:80 = ver, byte 81 = path_hash_mode
+                        # bytes 8:20 = fw_build, 20:60 = model, 60:80 = ver,
+                        # byte 80 = repeat mode, byte 81 = path_hash_mode
                         raw = _captured_frame[-1]
                         fw_ver = raw[1] if len(raw) > 1 else 0
                         if fw_ver >= 3:
@@ -140,6 +149,10 @@ async def run_post_connect_setup(radio_manager) -> None:
                                 radio_manager.device_model = _decode_fixed_string(raw, 20, 40)
                             if radio_manager.firmware_version is None:
                                 radio_manager.firmware_version = _decode_fixed_string(raw, 60, 20)
+                        if fw_ver >= 9:
+                            radio_manager.repeat_enabled_supported = True
+                            if radio_manager.repeat_enabled is None and len(raw) >= 81:
+                                radio_manager.repeat_enabled = raw[80] != 0
                         if (
                             not radio_manager.path_hash_mode_supported
                             and fw_ver >= 10

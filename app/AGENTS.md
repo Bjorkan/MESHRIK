@@ -236,8 +236,8 @@ Web Push is a standalone subsystem in `app/push/`, separate from the fanout modu
 - `GET /debug` — support snapshot with recent logs, live radio probe, slot/contact audits, and version/git info
 
 ### Radio
-- `GET /radio/config` — includes `path_hash_mode`, `path_hash_mode_supported`, advert-location on/off, and `multi_acks_enabled`
-- `PATCH /radio/config` — may update `path_hash_mode` (`0..2`) when firmware supports it, and `multi_acks_enabled`
+- `GET /radio/config` — includes `path_hash_mode`, `path_hash_mode_supported`, companion repeat-mode state/support, advert-location on/off, and `multi_acks_enabled`
+- `PATCH /radio/config` — may update `path_hash_mode` (`0..2`) and companion repeat mode when firmware supports them, plus `multi_acks_enabled`
 - `GET /radio/private-key` — export in-memory private key as hex (requires `MESHCORE_ENABLE_LOCAL_PRIVATE_KEY_EXPORT=true`)
 - `PUT /radio/private-key`
 - `POST /radio/advertise` — manual advert send; request body may set `mode` to `flood` or `zero_hop` (defaults to `flood`)
