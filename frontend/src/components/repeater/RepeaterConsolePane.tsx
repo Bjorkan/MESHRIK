@@ -72,6 +72,9 @@ export function ConsolePane({
           ref={inputRef}
           type="text"
           autoComplete="off"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
           name="console-input"
           value={input}
           onChange={(e) => setInput(e.target.value)}
