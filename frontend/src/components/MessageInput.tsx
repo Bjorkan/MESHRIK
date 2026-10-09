@@ -134,7 +134,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(fu
     async (e: FormEvent) => {
       e.preventDefault();
       const trimmed = text.trim();
-      if (!trimmed || sending || disabled) return;
+      if (!trimmed || sending || disabled || limitState === 'error') return;
 
       setSending(true);
       try {
@@ -155,7 +155,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(fu
       // Refocus after React re-enables the textarea
       setTimeout(() => textareaRef.current?.focus(), 0);
     },
-    [text, sending, disabled, onSend]
+    [text, sending, disabled, limitState, onSend]
   );
 
   const handleChange = useCallback((e: ChangeEvent<HTMLTextAreaElement>) => {
@@ -194,7 +194,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(fu
     [handleSubmit]
   );
 
-  const canSubmit = text.trim().length > 0;
+  const canSubmit = text.trim().length > 0 && limitState !== 'error';
 
   // Show counter for messages (not raw).
   // Desktop: always visible. Mobile: only show count after 100 characters.
@@ -220,6 +220,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(fu
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           placeholder={placeholder || 'Type a message...'}
+          aria-invalid={limitState === 'error'}
           disabled={disabled || sending}
           className={cn(
             'flex-1 min-w-0 resize-none overflow-y-auto',

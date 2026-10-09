@@ -175,17 +175,24 @@ describe('MessageInput', () => {
     });
   });
 
-  describe('send button remains enabled past hard limit (current behavior)', () => {
-    it('does not disable send button when over hard limit', () => {
-      // NOTE: This documents the current behavior where canSubmit only checks
-      // text.trim().length > 0, NOT the limit state. This is related to
-      // hitlist item 1.1 — the send button stays enabled even over the limit.
+  describe('hard limit enforcement', () => {
+    it('disables sending when the UTF-8 byte limit is reached', () => {
       renderInput({ conversationType: 'contact' });
-      const text = 'x'.repeat(200); // Well over 156 byte limit
+      const text = '🥝'.repeat(39); // 39 × 4 = 156 bytes
       fireEvent.change(getInput(), { target: { value: text } });
 
-      // Button is still enabled — canSubmit only checks non-empty text
-      expect(getSendButton()).toBeEnabled();
+      expect(getSendButton()).toBeDisabled();
+      expect(getInput()).toHaveAttribute('aria-invalid', 'true');
+    });
+
+    it('guards both form submission and Enter when over the hard limit', () => {
+      const { container } = renderInput({ conversationType: 'channel', senderName: 'MyNode' });
+      fireEvent.change(getInput(), { target: { value: 'x'.repeat(149) } });
+
+      fireEvent.submit(container.querySelector('form')!);
+      fireEvent.keyDown(getInput(), { key: 'Enter', shiftKey: false });
+
+      expect(onSend).not.toHaveBeenCalled();
     });
   });
 
