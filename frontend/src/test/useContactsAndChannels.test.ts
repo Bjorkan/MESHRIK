@@ -5,10 +5,14 @@
  * per page and continues until a page returns fewer than pageSize results).
  */
 
-import { act, renderHook } from '@testing-library/react';
+import { createElement, type PropsWithChildren } from 'react';
+import { act, renderHook, waitFor } from '@testing-library/react';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-import { useContactsAndChannels } from '../hooks/useContactsAndChannels';
+import { fetchAllContacts, useContactsAndChannels } from '../hooks/useContactsAndChannels';
+import { api } from '../api';
+import { createAppQueryClient } from '../queryClient';
 import type { BulkCreateHashtagChannelsResult, Contact } from '../types';
 
 // Mock api module
@@ -72,6 +76,8 @@ describe('useContactsAndChannels', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(api.getContacts).mockResolvedValue([]);
+    vi.mocked(api.getChannels).mockResolvedValue([]);
     pendingDeleteFallbackRef.current = false;
     hasSetDefaultConversation.current = false;
   });
@@ -81,37 +87,41 @@ describe('useContactsAndChannels', () => {
   });
 
   function renderUseContactsAndChannels() {
-    return renderHook(() =>
-      useContactsAndChannels({
-        setActiveConversation,
-        pendingDeleteFallbackRef,
-        hasSetDefaultConversation,
-        removeConversationMessages,
-      })
-    );
+    const queryClient = createAppQueryClient();
+    const wrapper = ({ children }: PropsWithChildren) =>
+      createElement(QueryClientProvider, { client: queryClient }, children);
+    return {
+      ...renderHook(
+        () =>
+          useContactsAndChannels({
+            setActiveConversation,
+            pendingDeleteFallbackRef,
+            hasSetDefaultConversation,
+            removeConversationMessages,
+          }),
+        { wrapper }
+      ),
+      queryClient,
+    };
   }
 
   describe('fetchAllContacts pagination', () => {
     it('returns contacts directly when fewer than page size', async () => {
-      const { api } = await import('../api');
       const contacts = makeContacts(50);
       vi.mocked(api.getContacts).mockResolvedValueOnce(contacts);
 
-      const { result } = renderUseContactsAndChannels();
-
       let fetched: Contact[] = [];
       await act(async () => {
-        fetched = await result.current.fetchAllContacts();
+        fetched = await fetchAllContacts();
       });
 
       expect(fetched).toHaveLength(50);
       // Should only call once (no pagination needed)
       expect(api.getContacts).toHaveBeenCalledTimes(1);
-      expect(api.getContacts).toHaveBeenCalledWith(1000, 0);
+      expect(api.getContacts).toHaveBeenCalledWith(1000, 0, undefined);
     });
 
     it('paginates when first page returns exactly page size', async () => {
-      const { api } = await import('../api');
       const page1 = makeContacts(1000, 0);
       const page2 = makeContacts(200, 1000);
 
@@ -119,21 +129,18 @@ describe('useContactsAndChannels', () => {
         .mockResolvedValueOnce(page1) // First page: full
         .mockResolvedValueOnce(page2); // Second page: partial (done)
 
-      const { result } = renderUseContactsAndChannels();
-
       let fetched: Contact[] = [];
       await act(async () => {
-        fetched = await result.current.fetchAllContacts();
+        fetched = await fetchAllContacts();
       });
 
       expect(fetched).toHaveLength(1200);
       expect(api.getContacts).toHaveBeenCalledTimes(2);
-      expect(api.getContacts).toHaveBeenNthCalledWith(1, 1000, 0);
-      expect(api.getContacts).toHaveBeenNthCalledWith(2, 1000, 1000);
+      expect(api.getContacts).toHaveBeenNthCalledWith(1, 1000, 0, undefined);
+      expect(api.getContacts).toHaveBeenNthCalledWith(2, 1000, 1000, undefined);
     });
 
     it('paginates through multiple full pages', async () => {
-      const { api } = await import('../api');
       const page1 = makeContacts(1000, 0);
       const page2 = makeContacts(1000, 1000);
       const page3 = makeContacts(500, 2000);
@@ -143,30 +150,25 @@ describe('useContactsAndChannels', () => {
         .mockResolvedValueOnce(page2)
         .mockResolvedValueOnce(page3);
 
-      const { result } = renderUseContactsAndChannels();
-
       let fetched: Contact[] = [];
       await act(async () => {
-        fetched = await result.current.fetchAllContacts();
+        fetched = await fetchAllContacts();
       });
 
       expect(fetched).toHaveLength(2500);
       expect(api.getContacts).toHaveBeenCalledTimes(3);
-      expect(api.getContacts).toHaveBeenNthCalledWith(3, 1000, 2000);
+      expect(api.getContacts).toHaveBeenNthCalledWith(3, 1000, 2000, undefined);
     });
 
     it('handles exactly page size total (boundary case)', async () => {
-      const { api } = await import('../api');
       const page1 = makeContacts(1000, 0);
       const page2: Contact[] = []; // Empty second page
 
       vi.mocked(api.getContacts).mockResolvedValueOnce(page1).mockResolvedValueOnce(page2);
 
-      const { result } = renderUseContactsAndChannels();
-
       let fetched: Contact[] = [];
       await act(async () => {
-        fetched = await result.current.fetchAllContacts();
+        fetched = await fetchAllContacts();
       });
 
       expect(fetched).toHaveLength(1000);
@@ -174,9 +176,31 @@ describe('useContactsAndChannels', () => {
     });
   });
 
+  it('does not let an older contacts response overwrite a newer realtime update', async () => {
+    let resolveContacts!: (contacts: Contact[]) => void;
+    let requestSignal: AbortSignal | undefined;
+    vi.mocked(api.getContacts).mockImplementationOnce((_limit, _offset, signal) => {
+      requestSignal = signal;
+      return new Promise<Contact[]>((resolve) => {
+        resolveContacts = resolve;
+      });
+    });
+
+    const { result } = renderUseContactsAndChannels();
+    const liveContact = makeContact('live');
+    const staleContact = makeContact('stale');
+
+    await waitFor(() => expect(api.getContacts).toHaveBeenCalledTimes(1));
+    act(() => result.current.setContacts([liveContact]));
+    expect(requestSignal?.aborted).toBe(true);
+
+    await act(async () => resolveContacts([staleContact]));
+
+    expect(result.current.contacts).toEqual([liveContact]);
+  });
+
   describe('bulk hashtag creation', () => {
     it('refreshes channels and returns the backend result', async () => {
-      const { api } = await import('../api');
       const resultPayload: BulkCreateHashtagChannelsResult = {
         created_channels: [
           {
@@ -196,7 +220,7 @@ describe('useContactsAndChannels', () => {
         message: 'Created 1 room',
       };
       vi.mocked(api.bulkCreateHashtagChannels).mockResolvedValueOnce(resultPayload);
-      vi.mocked(api.getChannels).mockResolvedValueOnce(resultPayload.created_channels);
+      vi.mocked(api.getChannels).mockResolvedValue(resultPayload.created_channels);
       vi.mocked(api.getUndecryptedPacketCount).mockResolvedValueOnce({ count: 9 });
 
       const { result } = renderUseContactsAndChannels();
@@ -215,7 +239,6 @@ describe('useContactsAndChannels', () => {
 
   describe('contact deletion', () => {
     it('warns when the database delete succeeds but radio removal fails', async () => {
-      const { api } = await import('../api');
       const { toast } = await import('../components/ui/sonner');
       vi.spyOn(window, 'confirm').mockReturnValue(true);
       vi.mocked(api.deleteContact).mockResolvedValueOnce({

@@ -5,7 +5,6 @@ import {
   type MutableRefObject,
   type SetStateAction,
 } from 'react';
-import { api } from '../api';
 import type { UseWebSocketOptions } from '../useWebSocket';
 import { toast } from '../components/ui/sonner';
 import { getStateKey } from '../utils/conversationState';
@@ -30,8 +29,9 @@ interface UseRealtimeAppStateArgs {
   reconcileOnReconnect: () => void;
   refreshUnreads: () => Promise<void>;
   setChannels: Dispatch<SetStateAction<Channel[]>>;
-  fetchAllContacts: () => Promise<Contact[]>;
+  refreshChannels: () => Promise<void>;
   setContacts: Dispatch<SetStateAction<Contact[]>>;
+  refreshContacts: () => Promise<void>;
   blockedKeysRef: MutableRefObject<string[]>;
   blockedNamesRef: MutableRefObject<string[]>;
   channelsRef: MutableRefObject<Channel[]>;
@@ -89,8 +89,9 @@ export function useRealtimeAppState({
   reconcileOnReconnect,
   refreshUnreads,
   setChannels,
-  fetchAllContacts,
+  refreshChannels,
   setContacts,
+  refreshContacts,
   blockedKeysRef,
   blockedNamesRef,
   channelsRef,
@@ -180,10 +181,8 @@ export function useRealtimeAppState({
         clearRawPackets();
         reconcileOnReconnect();
         refreshUnreads();
-        api.getChannels().then(setChannels).catch(console.error);
-        fetchAllContacts()
-          .then((data) => setContacts(data))
-          .catch(console.error);
+        refreshChannels().catch(console.error);
+        refreshContacts().catch(console.error);
       },
       onMessage: (msg: Message) => {
         if (isMessageBlocked(msg, blockedKeysRef.current, blockedNamesRef.current)) {
@@ -278,7 +277,6 @@ export function useRealtimeAppState({
       blockedNamesRef,
       channelsRef,
       checkMention,
-      fetchAllContacts,
       fetchConfig,
       removeConversationState,
       renameConversationState,
@@ -291,6 +289,8 @@ export function useRealtimeAppState({
       receiveMessageAck,
       observeMessage,
       refreshUnreads,
+      refreshChannels,
+      refreshContacts,
       reconcileOnReconnect,
       removeConversationMessages,
       setActiveConversation,

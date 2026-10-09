@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useRef, useState, useMemo, type MouseEvent } from 'react';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { api } from './api';
-import { takePrefetchOrFetch } from './prefetch';
 import { useWebSocket } from './useWebSocket';
 import {
   useAppShell,
@@ -29,6 +29,7 @@ import { getStateKey } from './utils/conversationState';
 import type { BulkCreateHashtagChannelsResult, Channel, Conversation, Message } from './types';
 import { CONTACT_TYPE_REPEATER, CONTACT_TYPE_ROOM } from './types';
 import { shouldAutoFocusInput } from './utils/autoFocusInput';
+import { createAppQueryClient } from './queryClient';
 
 interface ChannelUnreadMarker {
   channelId: string;
@@ -71,6 +72,16 @@ export function resolveUnreadMarkerId(
 }
 
 export function App() {
+  const [queryClient] = useState(createAppQueryClient);
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AppContent />
+    </QueryClientProvider>
+  );
+}
+
+function AppContent() {
   const quoteSearchOperatorValue = useCallback((value: string) => {
     return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
   }, []);
@@ -151,7 +162,7 @@ export function App() {
 
   const {
     appSettings,
-    fetchAppSettings,
+    refreshAppSettings,
     handleSaveAppSettings,
     handleToggleBlockedKey,
     handleToggleBlockedName,
@@ -186,9 +197,9 @@ export function App() {
     channels,
     undecryptedCount,
     setContacts,
-    setContactsLoaded,
     setChannels,
-    fetchAllContacts,
+    refreshContacts,
+    refreshChannels,
     fetchUndecryptedCount,
     handleCreateContact,
     handleCreateChannel,
@@ -397,8 +408,9 @@ export function App() {
     reconcileOnReconnect,
     refreshUnreads,
     setChannels,
-    fetchAllContacts,
+    refreshChannels,
     setContacts,
+    refreshContacts,
     blockedKeysRef,
     blockedNamesRef,
     channelsRef,
@@ -676,7 +688,7 @@ export function App() {
     regionDiscoveryLoading,
     onDiscoverRegions: handleDiscoverRegions,
     onHealthRefresh: handleHealthRefresh,
-    onRefreshAppSettings: fetchAppSettings,
+    onRefreshAppSettings: refreshAppSettings,
     blockedKeys: appSettings?.blocked_keys,
     blockedNames: appSettings?.blocked_names,
     onToggleBlockedKey: handleBlockKey,
@@ -736,32 +748,11 @@ export function App() {
   // Connect to WebSocket
   useWebSocket(wsHandlers);
 
-  // Initial fetch for config, settings, and data
+  // Remaining non-Query bootstrap fetches.
   useEffect(() => {
     fetchConfig();
-    fetchAppSettings();
     fetchUndecryptedCount();
-
-    // Fetch contacts and channels via REST (parallel, faster than WS serial push)
-    takePrefetchOrFetch('channels', api.getChannels).then(setChannels).catch(console.error);
-    fetchAllContacts()
-      .then((data) => {
-        setContacts(data);
-        setContactsLoaded(true);
-      })
-      .catch((err) => {
-        console.error(err);
-        setContactsLoaded(true);
-      });
-  }, [
-    fetchConfig,
-    fetchAppSettings,
-    fetchUndecryptedCount,
-    fetchAllContacts,
-    setChannels,
-    setContacts,
-    setContactsLoaded,
-  ]);
+  }, [fetchConfig, fetchUndecryptedCount]);
   return (
     <DistanceUnitProvider distanceUnit={distanceUnit} setDistanceUnit={setDistanceUnit}>
       <RichPayloadProvider

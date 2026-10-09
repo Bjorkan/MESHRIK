@@ -34,6 +34,7 @@ frontend/src/
 ├── api.ts                  # Typed REST client
 ├── types.ts                # Shared TS contracts
 ├── generated/api-schema.ts # Generated REST contract; never hand-edit
+├── queryClient.ts          # Query client defaults and typed query-key factories
 ├── useWebSocket.ts         # WS lifecycle + event dispatch
 ├── wsEvents.ts             # Typed WS event parsing / discriminated union
 ├── prefetch.ts             # Consumes prefetched API promises started in index.html
@@ -279,6 +280,10 @@ That gives the store a load-bearing invariant: **no ancestor of `MessageList` ma
 
 - Initial data: REST fetches (`api.ts`) for config/settings/channels/contacts/unreads.
 - REST wire types are generated from `frontend/openapi/openapi.json` into `src/generated/api-schema.ts` with `npm run api:generate`. Both files are checked in and CI runs `npm run api:check`; do not hand-edit generated output. Frontend-only view models remain in `types.ts`.
+- TanStack Query owns HTTP server state for contacts, channels, and settings. `queryClient.ts` is the single source for client defaults and keys. Keys run broad-to-specific (`contacts`, `channels`, `settings`, then `messages/conversation/...` or `messages/pages/...`) so invalidation can target a whole domain without knowing page details.
+- The app-root provider creates one Query client per app mount. Query reads keep the early promises started in `index.html` by consuming them through `takePrefetchOrFetch`; there is no second bootstrap cache.
+- WebSocket contact/channel deltas cancel in-flight list queries before targeted `setQueryData` updates, preventing an older HTTP response from rolling back live state. Reconnect invalidates the two list keys once. Do not invalidate/refetch a full list for every realtime event.
+- Query mutations never retry automatically. In particular, message sends and radio commands are non-idempotent and a timeout does not prove they failed to transmit.
 - WebSocket: realtime deltas/events.
 - On reconnect, the app refetches channels and contacts, refreshes unread counts, and reconciles the active conversation to recover disconnect-window drift.
 - On WS connect, backend sends `health` only; contacts/channels still come from REST.

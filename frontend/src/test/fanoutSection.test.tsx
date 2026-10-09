@@ -1,5 +1,6 @@
 import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SettingsFanoutSection } from '../components/settings/SettingsFanoutSection';
 import type { HealthStatus, FanoutConfig } from '../types';
 
@@ -48,12 +49,24 @@ const webhookConfig: FanoutConfig = {
   created_at: 1000,
 };
 
+function makeQueryClient() {
+  return new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, gcTime: 0 },
+      mutations: { retry: false },
+    },
+  });
+}
+
 function renderSection(overrides?: { health?: HealthStatus }) {
+  const queryClient = makeQueryClient();
   return render(
-    <SettingsFanoutSection
-      health={overrides?.health ?? baseHealth}
-      onHealthRefresh={vi.fn(async () => {})}
-    />
+    <QueryClientProvider client={queryClient}>
+      <SettingsFanoutSection
+        health={overrides?.health ?? baseHealth}
+        onHealthRefresh={vi.fn(async () => {})}
+      />
+    </QueryClientProvider>
   );
 }
 
@@ -61,11 +74,14 @@ function renderSectionWithRefresh(
   onHealthRefresh: () => Promise<void>,
   overrides?: { health?: HealthStatus }
 ) {
+  const queryClient = makeQueryClient();
   return render(
-    <SettingsFanoutSection
-      health={overrides?.health ?? baseHealth}
-      onHealthRefresh={onHealthRefresh}
-    />
+    <QueryClientProvider client={queryClient}>
+      <SettingsFanoutSection
+        health={overrides?.health ?? baseHealth}
+        onHealthRefresh={onHealthRefresh}
+      />
+    </QueryClientProvider>
   );
 }
 

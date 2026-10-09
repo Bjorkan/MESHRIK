@@ -1,6 +1,15 @@
-import { useState, useCallback, type MutableRefObject } from 'react';
+import {
+  useState,
+  useCallback,
+  useEffect,
+  type Dispatch,
+  type MutableRefObject,
+  type SetStateAction,
+} from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api';
 import { takePrefetchOrFetch } from '../prefetch';
+import { queryKeys } from '../queryClient';
 import { toast } from '../components/ui/sonner';
 import { getContactDisplayName } from '../utils/pubkey';
 import { findPublicChannel, PUBLIC_CHANNEL_KEY, PUBLIC_CHANNEL_NAME } from '../utils/publicChannel';
@@ -13,16 +22,89 @@ interface UseContactsAndChannelsArgs {
   removeConversationMessages: (conversationId: string) => void;
 }
 
+function applyStateAction<T>(previous: T, update: SetStateAction<T>): T {
+  return typeof update === 'function' ? (update as (value: T) => T)(previous) : update;
+}
+
+/** Fetch all contacts, preserving the early first-page prefetch and paginating beyond it. */
+export async function fetchAllContacts(signal?: AbortSignal): Promise<Contact[]> {
+  const pageSize = 1000;
+  const first = await takePrefetchOrFetch('contacts', () => api.getContacts(pageSize, 0, signal));
+  if (first.length < pageSize) return first;
+  let all = [...first];
+  let offset = pageSize;
+  while (true) {
+    const page = await api.getContacts(pageSize, offset, signal);
+    all = all.concat(page);
+    if (page.length < pageSize) break;
+    offset += pageSize;
+  }
+  return all;
+}
+
 export function useContactsAndChannels({
   setActiveConversation,
   pendingDeleteFallbackRef,
   hasSetDefaultConversation,
   removeConversationMessages,
 }: UseContactsAndChannelsArgs) {
-  const [contacts, setContacts] = useState<Contact[]>([]);
-  const [contactsLoaded, setContactsLoaded] = useState(false);
-  const [channels, setChannels] = useState<Channel[]>([]);
+  const queryClient = useQueryClient();
   const [undecryptedCount, setUndecryptedCount] = useState(0);
+
+  const contactsQuery = useQuery({
+    queryKey: queryKeys.contacts(),
+    queryFn: ({ signal }) => fetchAllContacts(signal),
+  });
+  const channelsQuery = useQuery({
+    queryKey: queryKeys.channels(),
+    queryFn: ({ signal }) => takePrefetchOrFetch('channels', () => api.getChannels(signal)),
+  });
+
+  const contacts = contactsQuery.data ?? [];
+  const contactsLoaded = !contactsQuery.isPending;
+  const channels = channelsQuery.data ?? [];
+
+  useEffect(() => {
+    if (contactsQuery.error) {
+      console.error('Failed to fetch contacts:', contactsQuery.error);
+    }
+  }, [contactsQuery.error]);
+
+  useEffect(() => {
+    if (channelsQuery.error) {
+      console.error('Failed to fetch channels:', channelsQuery.error);
+    }
+  }, [channelsQuery.error]);
+
+  const setContacts: Dispatch<SetStateAction<Contact[]>> = useCallback(
+    (update) => {
+      // Cancellation prevents an older HTTP response from overwriting a newer WS event.
+      void queryClient.cancelQueries({ queryKey: queryKeys.contacts() });
+      queryClient.setQueryData<Contact[]>(queryKeys.contacts(), (previous = []) =>
+        applyStateAction(previous, update)
+      );
+    },
+    [queryClient]
+  );
+
+  const setChannels: Dispatch<SetStateAction<Channel[]>> = useCallback(
+    (update) => {
+      void queryClient.cancelQueries({ queryKey: queryKeys.channels() });
+      queryClient.setQueryData<Channel[]>(queryKeys.channels(), (previous = []) =>
+        applyStateAction(previous, update)
+      );
+    },
+    [queryClient]
+  );
+
+  const refreshContacts = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: queryKeys.contacts() }),
+    [queryClient]
+  );
+  const refreshChannels = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: queryKeys.channels() }),
+    [queryClient]
+  );
 
   const fetchUndecryptedCountInternal = useCallback(async () => {
     try {
@@ -33,27 +115,10 @@ export function useContactsAndChannels({
     }
   }, []);
 
-  // Fetch all contacts, paginating if >1000
-  const fetchAllContacts = useCallback(async (): Promise<Contact[]> => {
-    const pageSize = 1000;
-    const first = await takePrefetchOrFetch('contacts', () => api.getContacts(pageSize, 0));
-    if (first.length < pageSize) return first;
-    let all = [...first];
-    let offset = pageSize;
-    while (true) {
-      const page = await api.getContacts(pageSize, offset);
-      all = all.concat(page);
-      if (page.length < pageSize) break;
-      offset += pageSize;
-    }
-    return all;
-  }, []);
-
   const handleCreateContact = useCallback(
     async (name: string, publicKey: string, tryHistorical: boolean, type?: number) => {
       const created = await api.createContact(publicKey, name || undefined, tryHistorical, type);
-      const data = await fetchAllContacts();
-      setContacts(data);
+      await refreshContacts();
 
       setActiveConversation({
         type: 'contact',
@@ -61,14 +126,13 @@ export function useContactsAndChannels({
         name: getContactDisplayName(created.name, created.public_key, created.last_advert),
       });
     },
-    [fetchAllContacts, setActiveConversation]
+    [refreshContacts, setActiveConversation]
   );
 
   const handleCreateChannel = useCallback(
     async (name: string, key: string, tryHistorical: boolean) => {
       const created = await api.createChannel(name, key);
-      const data = await api.getChannels();
-      setChannels(data);
+      await refreshChannels();
 
       setActiveConversation({
         type: 'channel',
@@ -84,7 +148,7 @@ export function useContactsAndChannels({
         fetchUndecryptedCountInternal();
       }
     },
-    [fetchUndecryptedCountInternal, setActiveConversation]
+    [fetchUndecryptedCountInternal, refreshChannels, setActiveConversation]
   );
 
   const handleCreateHashtagChannel = useCallback(
@@ -92,8 +156,7 @@ export function useContactsAndChannels({
       const channelName = name.startsWith('#') ? name : `#${name}`;
 
       const created = await api.createChannel(channelName);
-      const data = await api.getChannels();
-      setChannels(data);
+      await refreshChannels();
 
       setActiveConversation({
         type: 'channel',
@@ -109,7 +172,7 @@ export function useContactsAndChannels({
         fetchUndecryptedCountInternal();
       }
     },
-    [fetchUndecryptedCountInternal, setActiveConversation]
+    [fetchUndecryptedCountInternal, refreshChannels, setActiveConversation]
   );
 
   const handleBulkCreateHashtagChannels = useCallback(
@@ -118,8 +181,7 @@ export function useContactsAndChannels({
       tryHistorical: boolean
     ): Promise<BulkCreateHashtagChannelsResult> => {
       const result = await api.bulkCreateHashtagChannels(channelNames, tryHistorical);
-      const data = await api.getChannels();
-      setChannels(data);
+      await refreshChannels();
 
       if (tryHistorical && result.decrypt_started) {
         fetchUndecryptedCountInternal();
@@ -127,7 +189,7 @@ export function useContactsAndChannels({
 
       return result;
     },
-    [fetchUndecryptedCountInternal]
+    [fetchUndecryptedCountInternal, refreshChannels]
   );
 
   const handleDeleteChannel = useCallback(
@@ -159,6 +221,7 @@ export function useContactsAndChannels({
       pendingDeleteFallbackRef,
       removeConversationMessages,
       setActiveConversation,
+      setChannels,
     ]
   );
 
@@ -198,6 +261,8 @@ export function useContactsAndChannels({
       pendingDeleteFallbackRef,
       removeConversationMessages,
       setActiveConversation,
+      setChannels,
+      setContacts,
     ]
   );
 
@@ -207,9 +272,9 @@ export function useContactsAndChannels({
     channels,
     undecryptedCount,
     setContacts,
-    setContactsLoaded,
     setChannels,
-    fetchAllContacts,
+    refreshContacts,
+    refreshChannels,
     fetchUndecryptedCount: fetchUndecryptedCountInternal,
     handleCreateContact,
     handleCreateChannel,

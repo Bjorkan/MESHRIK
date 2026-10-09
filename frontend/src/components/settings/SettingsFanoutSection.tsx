@@ -8,6 +8,7 @@ import {
   Suspense,
   type ReactNode,
 } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { ChevronDown, Info } from 'lucide-react';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -24,7 +25,9 @@ import {
 import { toast } from '../ui/sonner';
 import { cn } from '@/lib/utils';
 import { api } from '../../api';
-import type { Channel, Contact, FanoutConfig, HealthStatus } from '../../types';
+import { fetchAllContacts } from '../../hooks/useContactsAndChannels';
+import { queryKeys } from '../../queryClient';
+import type { FanoutConfig, HealthStatus } from '../../types';
 
 const BotCodeEditor = lazy(() =>
   import('../BotCodeEditor').then((m) => ({ default: m.BotCodeEditor }))
@@ -873,33 +876,22 @@ function MqttHaConfigEditor({
   onChange: (config: Record<string, unknown>) => void;
   onScopeChange: (scope: Record<string, unknown>) => void;
 }) {
-  const [contacts, setContacts] = useState<Contact[]>([]);
-  const [trackedRepeaters, setTrackedRepeaters] = useState<string[]>([]);
+  const { data: contacts = [] } = useQuery({
+    queryKey: queryKeys.contacts(),
+    queryFn: ({ signal }) => fetchAllContacts(signal),
+  });
+  const { data: appSettings } = useQuery({
+    queryKey: queryKeys.settings(),
+    queryFn: ({ signal }) => api.getSettings(signal),
+  });
+  const trackedRepeaters = appSettings?.tracked_telemetry_repeaters ?? EMPTY_TRACKED_KEYS;
   const [contactSearch, setContactSearch] = useState('');
   const [radioConfig, setRadioConfig] = useState<{ public_key: string; name: string } | null>(null);
 
   useEffect(() => {
-    (async () => {
-      const all: Contact[] = [];
-      const pageSize = 1000;
-      let offset = 0;
-      while (true) {
-        const page = await api.getContacts(pageSize, offset);
-        all.push(...page);
-        if (page.length < pageSize) break;
-        offset += pageSize;
-      }
-      setContacts(all);
-    })().catch(console.error);
-
     api
       .getRadioConfig()
       .then((radio) => setRadioConfig({ public_key: radio.public_key, name: radio.name }))
-      .catch(console.error);
-
-    api
-      .getSettings()
-      .then((s) => setTrackedRepeaters(s.tracked_telemetry_repeaters ?? []))
       .catch(console.error);
   }, []);
 
@@ -2225,27 +2217,14 @@ function ScopeSelector({
   onChange: (scope: Record<string, unknown>) => void;
   showRawPackets?: boolean;
 }) {
-  const [channels, setChannels] = useState<Channel[]>([]);
-  const [contacts, setContacts] = useState<Contact[]>([]);
-
-  useEffect(() => {
-    api.getChannels().then(setChannels).catch(console.error);
-
-    // Paginate to fetch all contacts (API caps at 1000 per request)
-    (async () => {
-      const all: Contact[] = [];
-      const pageSize = 1000;
-      let offset = 0;
-
-      while (true) {
-        const page = await api.getContacts(pageSize, offset);
-        all.push(...page);
-        if (page.length < pageSize) break;
-        offset += pageSize;
-      }
-      setContacts(all);
-    })().catch(console.error);
-  }, []);
+  const { data: channels = [] } = useQuery({
+    queryKey: queryKeys.channels(),
+    queryFn: ({ signal }) => api.getChannels(signal),
+  });
+  const { data: contacts = [] } = useQuery({
+    queryKey: queryKeys.contacts(),
+    queryFn: ({ signal }) => fetchAllContacts(signal),
+  });
 
   const messages = scope.messages ?? 'all';
   const rawMode = getScopeMode(messages);

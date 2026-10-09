@@ -168,9 +168,10 @@ export const api = {
     }),
 
   // Contacts
-  getContacts: async (limit = 100, offset = 0): Promise<Contact[]> =>
+  getContacts: async (limit = 100, offset = 0, signal?: AbortSignal): Promise<Contact[]> =>
     fetchDefaultedJson<ContactsResponse, RestContact[]>(
-      `/contacts?limit=${limit}&offset=${offset}`
+      `/contacts?limit=${limit}&offset=${offset}`,
+      { signal }
     ),
   getRepeaterAdvertPaths: (limitPerRepeater = 10) =>
     fetchJson<ContactAdvertPathSummary[]>(
@@ -224,7 +225,8 @@ export const api = {
     }),
 
   // Channels
-  getChannels: () => fetchDefaultedJson<ChannelsResponse, Channel[]>('/channels'),
+  getChannels: (signal?: AbortSignal) =>
+    fetchDefaultedJson<ChannelsResponse, Channel[]>('/channels', { signal }),
   createChannel: (name: string, key?: string) =>
     fetchJson<Channel>('/channels', {
       method: 'POST',
@@ -350,7 +352,8 @@ export const api = {
     }),
 
   // App Settings
-  getSettings: () => fetchDefaultedJson<SettingsResponse, AppSettings>('/settings'),
+  getSettings: (signal?: AbortSignal) =>
+    fetchDefaultedJson<SettingsResponse, AppSettings>('/settings', { signal }),
   updateSettings: (settings: AppSettingsUpdate) =>
     fetchJson<AppSettings>('/settings', {
       method: 'PATCH',

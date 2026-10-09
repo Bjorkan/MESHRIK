@@ -79,8 +79,9 @@ function createRealtimeArgs(overrides: Partial<Parameters<typeof useRealtimeAppS
       reconcileOnReconnect: vi.fn(),
       refreshUnreads: vi.fn(async () => {}),
       setChannels,
-      fetchAllContacts: vi.fn(async () => [] as Contact[]),
+      refreshChannels: vi.fn(async () => {}),
       setContacts,
+      refreshContacts: vi.fn(async () => {}),
       blockedKeysRef: { current: [] as string[] },
       channelsRef: { current: [publicChannel] },
       blockedNamesRef: { current: [] as string[] },
@@ -113,31 +114,8 @@ describe('useRealtimeAppState', () => {
     mocks.api.getChannels.mockResolvedValue([publicChannel]);
   });
 
-  it('reconnect clears raw packets and refetches channels/contacts/unreads', async () => {
-    const contacts: Contact[] = [
-      {
-        public_key: 'bb'.repeat(32),
-        name: 'Bob',
-        type: 1,
-        flags: 0,
-        direct_path: null,
-        direct_path_len: 0,
-        direct_path_hash_mode: 0,
-        last_advert: null,
-        lat: null,
-        lon: null,
-        last_seen: null,
-        on_radio: false,
-        favorite: false,
-        last_contacted: null,
-        last_read_at: null,
-        first_seen: null,
-      },
-    ];
-
-    const { args, fns } = createRealtimeArgs({
-      fetchAllContacts: vi.fn(async () => contacts),
-    });
+  it('reconnect clears raw packets and refreshes channels/contacts/unreads', async () => {
+    const { args } = createRealtimeArgs();
 
     const { result } = renderHook(() => useRealtimeAppState(args));
 
@@ -150,39 +128,14 @@ describe('useRealtimeAppState', () => {
     await waitFor(() => {
       expect(args.reconcileOnReconnect).toHaveBeenCalledTimes(1);
       expect(args.refreshUnreads).toHaveBeenCalledTimes(1);
-      expect(mocks.api.getChannels).toHaveBeenCalledTimes(1);
-      expect(args.fetchAllContacts).toHaveBeenCalledTimes(1);
+      expect(args.refreshChannels).toHaveBeenCalledTimes(1);
+      expect(args.refreshContacts).toHaveBeenCalledTimes(1);
       expect(getRawPackets()).toEqual([]);
-      expect(fns.setChannels).toHaveBeenCalledWith([publicChannel]);
-      expect(fns.setContacts).toHaveBeenCalledWith(contacts);
     });
   });
 
   it('reconnect skips active-conversation reconcile while browsing mid-history', async () => {
-    const contacts: Contact[] = [
-      {
-        public_key: 'bb'.repeat(32),
-        name: 'Bob',
-        type: 1,
-        flags: 0,
-        direct_path: null,
-        direct_path_len: 0,
-        direct_path_hash_mode: 0,
-        last_advert: null,
-        lat: null,
-        lon: null,
-        last_seen: null,
-        on_radio: false,
-        favorite: false,
-        last_contacted: null,
-        last_read_at: null,
-        first_seen: null,
-      },
-    ];
-
-    const { args, fns } = createRealtimeArgs({
-      fetchAllContacts: vi.fn(async () => contacts),
-    });
+    const { args } = createRealtimeArgs();
 
     const { result } = renderHook(() => useRealtimeAppState(args));
 
@@ -195,11 +148,9 @@ describe('useRealtimeAppState', () => {
     await waitFor(() => {
       expect(args.reconcileOnReconnect).toHaveBeenCalledTimes(1);
       expect(args.refreshUnreads).toHaveBeenCalledTimes(1);
-      expect(mocks.api.getChannels).toHaveBeenCalledTimes(1);
-      expect(args.fetchAllContacts).toHaveBeenCalledTimes(1);
+      expect(args.refreshChannels).toHaveBeenCalledTimes(1);
+      expect(args.refreshContacts).toHaveBeenCalledTimes(1);
       expect(getRawPackets()).toEqual([]);
-      expect(fns.setChannels).toHaveBeenCalledWith([publicChannel]);
-      expect(fns.setContacts).toHaveBeenCalledWith(contacts);
     });
   });
 
