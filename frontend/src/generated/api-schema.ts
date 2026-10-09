@@ -2716,6 +2716,34 @@ export interface components {
        */
       type: string;
     };
+    /**
+     * FanoutConfigResponse
+     * @description Fanout config as returned by the API (matches repository dict shape).
+     */
+    FanoutConfigResponse: {
+      /** Config */
+      config: {
+        [key: string]: unknown;
+      };
+      /** Created At */
+      created_at: number;
+      /** Enabled */
+      enabled: boolean;
+      /** Id */
+      id: string;
+      /** Name */
+      name: string;
+      /** Scope */
+      scope: {
+        [key: string]: unknown;
+      };
+      /** Sort Order */
+      sort_order: number;
+      /** Type */
+      type: string;
+    } & {
+      [key: string]: unknown;
+    };
     /** FanoutConfigUpdate */
     FanoutConfigUpdate: {
       /**
@@ -10796,9 +10824,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
-            [key: string]: unknown;
-          }[];
+          'application/json': components['schemas']['FanoutConfigResponse'][];
         };
       };
       /** @description Bad request */
@@ -10975,9 +11001,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
-            [key: string]: unknown;
-          };
+          'application/json': components['schemas']['FanoutConfigResponse'];
         };
       };
       /** @description Bad request */
@@ -11492,9 +11516,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
-            [key: string]: unknown;
-          };
+          'application/json': components['schemas']['FanoutConfigResponse'];
         };
       };
       /** @description Bad request */

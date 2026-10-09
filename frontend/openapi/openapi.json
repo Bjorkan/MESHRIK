@@ -2088,6 +2088,58 @@
         "title": "FanoutConfigCreate",
         "type": "object"
       },
+      "FanoutConfigResponse": {
+        "additionalProperties": true,
+        "description": "Fanout config as returned by the API (matches repository dict shape).",
+        "properties": {
+          "config": {
+            "additionalProperties": true,
+            "title": "Config",
+            "type": "object"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "integer"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "scope": {
+            "additionalProperties": true,
+            "title": "Scope",
+            "type": "object"
+          },
+          "sort_order": {
+            "title": "Sort Order",
+            "type": "integer"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "name",
+          "enabled",
+          "config",
+          "scope",
+          "sort_order",
+          "created_at"
+        ],
+        "title": "FanoutConfigResponse",
+        "type": "object"
+      },
       "FanoutConfigUpdate": {
         "properties": {
           "config": {
@@ -15609,8 +15661,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "additionalProperties": true,
-                    "type": "object"
+                    "$ref": "#/components/schemas/FanoutConfigResponse"
                   },
                   "title": "Response List Fanout Configs Api Fanout Get",
                   "type": "array"
@@ -15895,9 +15946,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Create Fanout Config Api Fanout Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/FanoutConfigResponse"
                 }
               }
             },
@@ -16717,9 +16766,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Update Fanout Config Api Fanout  Config Id  Patch",
-                  "type": "object"
+                  "$ref": "#/components/schemas/FanoutConfigResponse"
                 }
               }
             },

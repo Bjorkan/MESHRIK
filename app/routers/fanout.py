@@ -80,6 +80,21 @@ class FanoutConfigCreate(BaseModel):
     enabled: bool = Field(default=True, description="Whether enabled on creation")
 
 
+class FanoutConfigResponse(BaseModel):
+    """Fanout config as returned by the API (matches repository dict shape)."""
+
+    model_config = {"extra": "allow"}
+
+    id: str
+    type: str
+    name: str
+    enabled: bool
+    config: dict
+    scope: dict
+    sort_order: int
+    created_at: int
+
+
 class FanoutConfigUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, description="Updated label")
     config: dict | None = Field(default=None, description="Updated config blob")
@@ -401,14 +416,15 @@ def _bot_system_disabled_detail() -> str | None:
     return None
 
 
-@router.get("")
-async def list_fanout_configs() -> list[dict]:
+@router.get("", response_model=list[FanoutConfigResponse])
+async def list_fanout_configs() -> list[FanoutConfigResponse]:
     """List all fanout configs."""
-    return await FanoutConfigRepository.get_all()
+    configs = await FanoutConfigRepository.get_all()
+    return configs  # type: ignore[return-value]
 
 
-@router.post("")
-async def create_fanout_config(body: FanoutConfigCreate) -> dict:
+@router.post("", response_model=FanoutConfigResponse)
+async def create_fanout_config(body: FanoutConfigCreate) -> FanoutConfigResponse:
     """Create a new fanout config."""
     if body.type not in _VALID_TYPES:
         raise HTTPException(
@@ -437,11 +453,11 @@ async def create_fanout_config(body: FanoutConfigCreate) -> dict:
         await fanout_manager.reload_config(cfg["id"])
 
     logger.info("Created fanout config %s (type=%s, name=%s)", cfg["id"], body.type, body.name)
-    return cfg
+    return cfg  # type: ignore[return-value]
 
 
-@router.patch("/{config_id}")
-async def update_fanout_config(config_id: str, body: FanoutConfigUpdate) -> dict:
+@router.patch("/{config_id}", response_model=FanoutConfigResponse)
+async def update_fanout_config(config_id: str, body: FanoutConfigUpdate) -> FanoutConfigResponse:
     """Update a fanout config. Triggers module reload."""
     existing = await FanoutConfigRepository.get(config_id)
     if existing is None:
@@ -471,7 +487,7 @@ async def update_fanout_config(config_id: str, body: FanoutConfigUpdate) -> dict
     await fanout_manager.reload_config(config_id)
 
     logger.info("Updated fanout config %s", config_id)
-    return updated
+    return updated  # type: ignore[return-value]
 
 
 @router.delete("/{config_id}")
