@@ -1,7 +1,7 @@
 import logging
 import time
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 from app.models import Message, MessagePath
 from app.repository import ContactRepository, MessageRepository, RawPacketRepository
@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 BroadcastFn = Callable[..., Any]
+MessageSendStatus = Literal["pending", "confirmed", "unknown"]
 LOG_MESSAGE_PREVIEW_LEN = 32
 
 
@@ -66,6 +67,7 @@ def build_message_model(
     sender_key: str | None = None,
     outgoing: bool = False,
     acked: int = 0,
+    send_status: MessageSendStatus = "confirmed",
     sender_name: str | None = None,
     channel_name: str | None = None,
     packet_id: int | None = None,
@@ -86,6 +88,7 @@ def build_message_model(
         sender_key=sender_key,
         outgoing=outgoing,
         acked=acked,
+        send_status=send_status,
         sender_name=sender_name,
         channel_name=channel_name,
         packet_id=packet_id,
@@ -121,6 +124,7 @@ async def build_stored_outgoing_channel_message(
     sender_name: str | None,
     sender_key: str | None,
     channel_name: str | None,
+    send_status: MessageSendStatus = "confirmed",
     message_repository=MessageRepository,
 ) -> Message:
     """Build the current payload for a stored outgoing channel message."""
@@ -135,6 +139,7 @@ async def build_stored_outgoing_channel_message(
         paths=paths,
         outgoing=True,
         acked=acked_count,
+        send_status=send_status,
         sender_name=sender_name,
         sender_key=sender_key,
         channel_name=channel_name,
@@ -507,6 +512,7 @@ async def create_outgoing_direct_message(
     text: str,
     sender_timestamp: int,
     received_at: int,
+    send_status: MessageSendStatus = "confirmed",
     broadcast_fn: BroadcastFn,
     message_repository=MessageRepository,
 ) -> Message | None:
@@ -518,6 +524,7 @@ async def create_outgoing_direct_message(
         sender_timestamp=sender_timestamp,
         received_at=received_at,
         outgoing=True,
+        send_status=send_status,
     )
     if msg_id is None:
         return None
@@ -531,6 +538,7 @@ async def create_outgoing_direct_message(
         received_at=received_at,
         outgoing=True,
         acked=0,
+        send_status=send_status,
     )
     broadcast_message(message=message, broadcast_fn=broadcast_fn)
     return message
@@ -547,6 +555,7 @@ async def create_outgoing_channel_message(
     channel_name: str | None,
     broadcast_fn: BroadcastFn,
     broadcast: bool = True,
+    send_status: MessageSendStatus = "confirmed",
     message_repository=MessageRepository,
 ) -> Message | None:
     """Store and broadcast an outgoing channel message."""
@@ -557,6 +566,7 @@ async def create_outgoing_channel_message(
         sender_timestamp=sender_timestamp,
         received_at=received_at,
         outgoing=True,
+        send_status=send_status,
         sender_name=sender_name,
         sender_key=sender_key,
     )
@@ -572,6 +582,7 @@ async def create_outgoing_channel_message(
         sender_name=sender_name,
         sender_key=sender_key,
         channel_name=channel_name,
+        send_status=send_status,
         message_repository=message_repository,
     )
     if broadcast:

@@ -1074,8 +1074,8 @@ class TestResendChannelMessage:
         assert sent_timestamp == now + 1
 
     @pytest.mark.asyncio
-    async def test_resend_no_radio_response_returns_408_and_creates_no_new_row(self, test_db):
-        """When resend returns None, report unknown outcome and create no new message row."""
+    async def test_resend_no_radio_response_returns_408_and_preserves_unknown_row(self, test_db):
+        """When resend returns None, retain the new message with an unknown outcome."""
         mc = _make_mc(name="MyNode")
         chan_key = "c1" * 16
         await ChannelRepository.upsert(key=chan_key, name="#resend-none")
@@ -1106,7 +1106,11 @@ class TestResendChannelMessage:
         messages = await MessageRepository.get_all(
             msg_type="CHAN", conversation_key=chan_key.upper(), limit=10
         )
-        assert len(messages) == 1
+        assert len(messages) == 2
+        resent = next(message for message in messages if message.id != msg_id)
+        assert resent.text == "MyNode: hello"
+        assert resent.outgoing is True
+        assert resent.send_status == "unknown"
 
     @pytest.mark.asyncio
     async def test_resend_non_outgoing_returns_400(self, test_db):
@@ -1716,8 +1720,8 @@ class TestRadioExceptionMidSend:
         assert len(messages) == 0
 
     @pytest.mark.asyncio
-    async def test_dm_send_no_radio_response_returns_408_without_storing_message(self, test_db):
-        """When mc.commands.send_msg() returns None, report unknown outcome and store nothing."""
+    async def test_dm_send_no_radio_response_returns_408_and_preserves_message(self, test_db):
+        """When a DM gets no response, retain it with an unknown send outcome."""
         mc = _make_mc()
         pub_key = "ac" * 32
         await _insert_contact(pub_key, "Alice")
@@ -1739,13 +1743,14 @@ class TestRadioExceptionMidSend:
         messages = await MessageRepository.get_all(
             msg_type="PRIV", conversation_key=pub_key, limit=10
         )
-        assert len(messages) == 0
+        assert len(messages) == 1
+        assert messages[0].text == "Did this send?"
+        assert messages[0].outgoing is True
+        assert messages[0].send_status == "unknown"
 
     @pytest.mark.asyncio
-    async def test_channel_send_no_radio_response_returns_408_without_storing_message(
-        self, test_db
-    ):
-        """When mc.commands.send_chan_msg() returns None, report unknown outcome and store nothing."""
+    async def test_channel_send_no_radio_response_returns_408_and_preserves_message(self, test_db):
+        """When a channel send gets no response, retain it with an unknown outcome."""
         mc = _make_mc(name="TestNode")
         chan_key = "ad" * 16
         await ChannelRepository.upsert(key=chan_key, name="#unknown-outcome")
@@ -1767,7 +1772,10 @@ class TestRadioExceptionMidSend:
         messages = await MessageRepository.get_all(
             msg_type="CHAN", conversation_key=chan_key.upper(), limit=10
         )
-        assert len(messages) == 0
+        assert len(messages) == 1
+        assert messages[0].text == "TestNode: Did this send?"
+        assert messages[0].outgoing is True
+        assert messages[0].send_status == "unknown"
 
     @pytest.mark.asyncio
     async def test_channel_send_radio_exception_no_orphan_message(self, test_db):

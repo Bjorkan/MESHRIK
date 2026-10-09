@@ -428,6 +428,7 @@ class Message(BaseModel):
     sender_key: str | None = None
     outgoing: bool = False
     acked: int = 0
+    send_status: Literal["pending", "confirmed", "unknown"] = "confirmed"
     sender_name: str | None = None
     channel_name: str | None = None
     packet_id: int | None = Field(

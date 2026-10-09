@@ -324,6 +324,8 @@ export interface Message {
   outgoing: boolean;
   /** ACK count: 0 = not acked, 1+ = number of acks/flood echoes received */
   acked: number;
+  /** Radio command outcome for outgoing messages. Older payloads imply confirmed. */
+  send_status?: 'pending' | 'confirmed' | 'unknown';
   sender_name: string | null;
   channel_name?: string | null;
   packet_id?: number | null;

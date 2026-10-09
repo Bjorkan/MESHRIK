@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS messages (
     signature TEXT,
     outgoing INTEGER DEFAULT 0,
     acked INTEGER DEFAULT 0,
+    send_status TEXT NOT NULL DEFAULT 'confirmed',
     sender_name TEXT,
     sender_key TEXT
     -- Deduplication: channel echoes/repeats use a content/time unique index so

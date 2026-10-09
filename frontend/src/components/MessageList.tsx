@@ -1373,6 +1373,20 @@ export function MessageList({
                           ) : (
                             <span className="text-muted-foreground">{` ✓${msg.acked > 1 ? msg.acked : ''}`}</span>
                           )
+                        ) : msg.send_status === 'unknown' ? (
+                          <span
+                            className="text-warning"
+                            title="Radio did not confirm this send; delivery is unknown"
+                            aria-label="Delivery unknown because the radio did not confirm the send"
+                          >
+                            {' '}
+                            ⚠
+                          </span>
+                        ) : msg.send_status === 'pending' ? (
+                          <span className="text-muted-foreground" title="Send still pending">
+                            {' '}
+                            …
+                          </span>
                         ) : onResendChannelMessage && msg.type === 'CHAN' ? (
                           <span
                             className="text-muted-foreground cursor-pointer hover:text-primary"

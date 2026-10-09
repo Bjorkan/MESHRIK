@@ -94,10 +94,11 @@ app/
 ### Outgoing messages
 
 1. Send endpoints in `routers/messages.py` validate requests and delegate to `services/message_send.py`.
-2. Service-layer send workflows call MeshCore commands, persist outgoing messages, and wire ACK tracking.
+2. Service-layer send workflows persist channel sends as pending before calling MeshCore, persist DMs once the radio command returns, and wire ACK tracking.
 3. Endpoint broadcasts WS `message` event so all live clients update.
 4. ACK/repeat updates arrive later as `message_acked` events.
-5. Channel resend (`POST /messages/channel/{id}/resend`) strips the sender name prefix by exact match against the current radio name. This assumes the radio name hasn't changed between the original send and the resend. Name changes require an explicit radio config update and are rare, but the `new_timestamp=true` resend path has no time window, so a mismatch is possible if the name was changed between the original send and a later resend.
+5. A radio command timeout has an ambiguous outcome: retain and broadcast the outgoing row with `send_status="unknown"` instead of deleting it. Explicit radio errors still fail without retaining an unsent row.
+6. Channel resend (`POST /messages/channel/{id}/resend`) strips the sender name prefix by exact match against the current radio name. This assumes the radio name hasn't changed between the original send and the resend. Name changes require an explicit radio config update and are rare, but the `new_timestamp=true` resend path has no time window, so a mismatch is possible if the name was changed between the original send and a later resend.
 
 ### Connection lifecycle
 
@@ -135,7 +136,7 @@ app/
 - `services/dm_ingest.py` is the one place that should decide fallback-context resolution, DM dedup/reconciliation, and packet-linked vs. content-based storage behavior.
 - `CONTACT_MSG_RECV` is a fallback path, not a parallel source of truth. If you change DM storage behavior, trace both `event_handlers.py` and `packet_processor.py`.
 - DM ACK tracking is an in-memory pending/buffered map in `services/dm_ack_tracker.py`, with periodic expiry from `radio_sync.py`.
-- Outgoing DMs send once inline, store/broadcast immediately after the first successful `MSG_SENT`, then may retry up to 2 more times in the background only when the initial `MSG_SENT` result includes an expected ACK code and the message remains unacked.
+- Outgoing DMs send once inline, then store/broadcast as confirmed after `MSG_SENT` or as unknown after a missing radio response. Confirmed sends may retry up to 2 more times in the background only when the initial result includes an expected ACK code and the message remains unacked.
 - DM retry timing follows the firmware-provided `suggested_timeout` from `PACKET_MSG_SENT`; do not replace it with a fixed app timeout unless you intentionally want more aggressive duplicate-prone retries.
 - Direct-message send behavior is intended to emulate `meshcore_py.commands.send_msg_with_retry(...)` when the radio provides an expected ACK code: stage the effective contact route on the radio, send, wait for ACK, and on the final retry force flood via `reset_path(...)`.
 - Non-final DM attempts use the contact's effective route (`override > direct > flood`). The final retry is intentionally sent as flood even when a routing override exists.

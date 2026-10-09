@@ -287,7 +287,7 @@ That gives the store a load-bearing invariant: **no ancestor of `MessageList` ma
 
 ### Message behavior
 
-- Outgoing sends are added to UI after the send API returns (not pre-send optimistic insertion), then persisted server-side.
+- Outgoing sends are persisted server-side and added through the API/WS result rather than pre-send optimistic insertion. If the radio command times out, the backend broadcasts the retained message with `send_status="unknown"` even though the API returns 408, and the timeline shows a warning marker.
 - Backend also emits WS `message` for outgoing sends so other clients stay in sync.
 - ACK/repeat updates arrive as `message_acked` events.
 - Outgoing channel messages show a 30-second resend control; resend calls `POST /api/messages/channel/{message_id}/resend`.

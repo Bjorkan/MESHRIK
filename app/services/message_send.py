@@ -660,6 +660,21 @@ async def send_direct_message_to_contact(
                 "No response from radio after direct send to %s; send outcome is unknown",
                 contact.public_key[:12],
             )
+            message = await create_outgoing_direct_message(
+                conversation_key=contact.public_key.lower(),
+                text=text,
+                sender_timestamp=sender_timestamp,
+                received_at=sent_at,
+                send_status="unknown",
+                broadcast_fn=broadcast_fn,
+                message_repository=message_repository,
+            )
+            if message is None:
+                raise HTTPException(
+                    status_code=422,
+                    detail="Failed to store outgoing message - unexpected duplicate",
+                )
+            await contact_repository.update_last_contacted(contact.public_key.lower(), sent_at)
             raise HTTPException(status_code=408, detail=NO_RADIO_RESPONSE_AFTER_SEND_DETAIL)
 
         if result.type == EventType.ERROR:
@@ -861,6 +876,7 @@ async def send_channel_message_to_channel(
                 channel_name=channel.name,
                 broadcast_fn=broadcast_fn,
                 broadcast=False,
+                send_status="pending",
                 message_repository=message_repository,
             )
             if outgoing_message is None:
@@ -894,6 +910,29 @@ async def send_channel_message_to_channel(
                 raise HTTPException(
                     status_code=422, detail=f"Failed to send message: {result.payload}"
                 )
+            await message_repository.update_send_status(outgoing_message.id, "confirmed")
+    except HTTPException as exc:
+        if outgoing_message is not None and exc.status_code == 408:
+            assert sender_timestamp is not None
+            assert sent_at is not None
+            await message_repository.update_send_status(outgoing_message.id, "unknown")
+            unknown_message = await build_stored_outgoing_channel_message(
+                message_id=outgoing_message.id,
+                conversation_key=channel_key_upper,
+                text=text_with_sender,
+                sender_timestamp=sender_timestamp,
+                received_at=sent_at,
+                sender_name=radio_name or None,
+                sender_key=our_public_key,
+                channel_name=channel.name,
+                send_status="unknown",
+                message_repository=message_repository,
+            )
+            broadcast_message(message=unknown_message, broadcast_fn=broadcast_fn)
+        elif outgoing_message is not None:
+            await message_repository.delete_by_id(outgoing_message.id)
+            outgoing_message = None
+        raise
     except Exception:
         if outgoing_message is not None:
             await message_repository.delete_by_id(outgoing_message.id)
@@ -999,6 +1038,7 @@ async def resend_channel_message_record(
                     channel_name=channel.name,
                     broadcast_fn=broadcast_fn,
                     broadcast=False,
+                    send_status="pending",
                     message_repository=message_repository,
                 )
                 if new_message is None:
@@ -1030,6 +1070,29 @@ async def resend_channel_message_record(
                     status_code=422,
                     detail=f"Failed to resend message: {result.payload}",
                 )
+            if new_message is not None:
+                await message_repository.update_send_status(new_message.id, "confirmed")
+    except HTTPException as exc:
+        if new_message is not None and exc.status_code == 408:
+            assert sent_at is not None
+            await message_repository.update_send_status(new_message.id, "unknown")
+            unknown_message = await build_stored_outgoing_channel_message(
+                message_id=new_message.id,
+                conversation_key=message.conversation_key,
+                text=message.text,
+                sender_timestamp=sender_timestamp,
+                received_at=sent_at,
+                sender_name=radio_name or None,
+                sender_key=resend_public_key,
+                channel_name=channel.name,
+                send_status="unknown",
+                message_repository=message_repository,
+            )
+            broadcast_message(message=unknown_message, broadcast_fn=broadcast_fn)
+        elif new_message is not None:
+            await message_repository.delete_by_id(new_message.id)
+            new_message = None
+        raise
     except Exception:
         if new_message is not None:
             await message_repository.delete_by_id(new_message.id)

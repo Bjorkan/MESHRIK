@@ -88,6 +88,26 @@ describe('MessageList channel sender rendering', () => {
     expect(screen.queryByText('nl-gr')).not.toBeInTheDocument();
   });
 
+  it('shows an explicit warning when the radio send outcome is unknown', () => {
+    render(
+      <MessageList
+        messages={[
+          createMessage({
+            outgoing: true,
+            text: 'Did this send?',
+            send_status: 'unknown',
+          }),
+        ]}
+        contacts={[]}
+        loading={false}
+      />
+    );
+
+    expect(
+      screen.getByLabelText('Delivery unknown because the radio did not confirm the send')
+    ).toBeInTheDocument();
+  });
+
   it('shows per-hop byte width in the path badge when the toggle is on', () => {
     render(
       <PathHopWidthProvider showPathHopWidth setShowPathHopWidth={() => {}}>

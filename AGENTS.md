@@ -161,6 +161,8 @@ MeshCore firmware can encode path hops as 1-byte, 2-byte, or 3-byte identifiers.
 4. Message stored in database with `outgoing=true`
 5. For direct messages: ACK tracked; for channel: repeat detection
 
+Outgoing messages include `send_status`. A missing radio response is an ambiguous outcome, so the backend retains and broadcasts the row as `unknown` while returning HTTP 408; explicit radio errors do not retain a row that is known not to have been sent.
+
 Direct-message send behavior intentionally mirrors the firmware/library `send_msg_with_retry(...)` flow:
 - We push the contact's effective route to the radio via `add_contact(...)` before sending.
 - If the initial `MSG_SENT` result includes an expected ACK code, background retries are armed.

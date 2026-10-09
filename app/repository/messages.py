@@ -63,6 +63,7 @@ class MessageRepository:
         txt_type: int = 0,
         signature: str | None = None,
         outgoing: bool = False,
+        send_status: str = "confirmed",
         sender_name: str | None = None,
         sender_key: str | None = None,
         transport_code: int | None = None,
@@ -97,8 +98,9 @@ class MessageRepository:
                 """
                 INSERT OR IGNORE INTO messages (type, conversation_key, text, sender_timestamp,
                                                 received_at, paths, txt_type, signature, outgoing,
-                                                sender_name, sender_key, transport_code, region)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                                send_status, sender_name, sender_key,
+                                                transport_code, region)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     msg_type,
@@ -110,6 +112,7 @@ class MessageRepository:
                     txt_type,
                     signature,
                     outgoing,
+                    send_status,
                     sender_name,
                     normalized_sender_key,
                     transport_code,
@@ -364,6 +367,7 @@ class MessageRepository:
         packet_id = None
         transport_code = None
         region = None
+        send_status = "confirmed"
         if hasattr(row, "keys"):
             row_keys = row.keys()
             if "packet_id" in row_keys:
@@ -372,6 +376,8 @@ class MessageRepository:
                 transport_code = row["transport_code"]
             if "region" in row_keys:
                 region = row["region"]
+            if "send_status" in row_keys:
+                send_status = row["send_status"]
 
         return Message(
             id=row["id"],
@@ -386,6 +392,7 @@ class MessageRepository:
             sender_key=row["sender_key"],
             outgoing=bool(row["outgoing"]),
             acked=row["acked"],
+            send_status=send_status,
             sender_name=row["sender_name"],
             packet_id=packet_id,
             transport_code=transport_code,
@@ -589,11 +596,24 @@ class MessageRepository:
         """
         async with db.tx() as conn:
             async with conn.execute(
-                "UPDATE messages SET acked = acked + 1 WHERE id = ? RETURNING acked",
+                """UPDATE messages
+                   SET acked = acked + 1, send_status = 'confirmed'
+                   WHERE id = ? RETURNING acked""",
                 (message_id,),
             ) as cursor:
                 row = await cursor.fetchone()
         return row["acked"] if row else 1
+
+    @staticmethod
+    async def update_send_status(message_id: int, send_status: str) -> None:
+        """Update an outgoing message's persisted radio-send outcome."""
+        if send_status not in {"pending", "confirmed", "unknown"}:
+            raise ValueError(f"Invalid message send status: {send_status}")
+        async with db.tx() as conn:
+            await conn.execute(
+                "UPDATE messages SET send_status = ? WHERE id = ? AND outgoing = 1",
+                (send_status, message_id),
+            )
 
     @staticmethod
     async def get_ack_and_paths(message_id: int) -> tuple[int, list[MessagePath] | None]:
