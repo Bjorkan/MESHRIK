@@ -1,0 +1,11 @@
+# Repository issue template chooser.
+# Enable GitHub Discussions and private vulnerability reporting in repository
+# Settings before relying on the links below.
+blank_issues_enabled: false
+contact_links:
+  - name: "Questions & support"
+    url: "https://github.com/Bjorkan/MESHRIK/discussions"
+    about: "Ask for installation, configuration, and usage help in Discussions instead of filing a bug."
+  - name: "Report a security vulnerability"
+    url: "https://github.com/Bjorkan/MESHRIK/security/policy"
+    about: "Follow the private-reporting guidance. Do not disclose vulnerabilities in public issues."

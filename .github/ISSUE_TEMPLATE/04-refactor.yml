@@ -1,0 +1,65 @@
+name: "Refactor / maintenance"
+description: "Propose technical debt reduction or architectural cleanup without changing intended behavior."
+title: "[Refactor] "
+labels: ["type: refactor"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template for internal changes that should preserve user-visible behavior. For new features or defects, choose the corresponding template.
+  - type: textarea
+    id: location
+    attributes:
+      label: "Affected code / components"
+      description: "Include source files, modules, related issues or call paths where possible."
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: "Technical problem"
+      description: "What duplication, fragility, complexity or maintenance risk exists today?"
+    validations:
+      required: true
+  - type: textarea
+    id: proposed-change
+    attributes:
+      label: "Proposed approach"
+      description: "Describe the refactor, boundaries and migration strategy."
+    validations:
+      required: true
+  - type: dropdown
+    id: affected-areas
+    attributes:
+      label: "Relevant area(s)"
+      description: "Maintainers apply area labels during triage."
+      multiple: true
+      options:
+        - "Frontend / UI"
+        - "Backend / API / database"
+        - "Radio / MeshCore connectivity"
+        - "Messaging / channels / packets"
+        - "Maps / GPS / routes"
+        - "Integrations / fanout"
+        - "Bots"
+        - "Infrastructure / installation / CI"
+        - "Security"
+        - "Not sure"
+    validations:
+      required: true
+  - type: textarea
+    id: invariants
+    attributes:
+      label: "Behavior that must not change"
+      description: "API or storage compatibility, message ordering, radio traffic, UI behavior, etc."
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: "Validation plan"
+      description: "Which tests or checks establish the refactor is safe?"
+  - type: textarea
+    id: context
+    attributes:
+      label: "Related issues / additional context"

@@ -1,0 +1,57 @@
+name: "Documentation"
+description: "Report missing, confusing, or outdated documentation."
+title: "[Docs] "
+labels: ["type: documentation"]
+body:
+  - type: textarea
+    id: target
+    attributes:
+      label: "Documentation location"
+      description: "Link to the README, guide, configuration example, command, or page needing work."
+      placeholder: "URL, filename or section heading"
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: "What's missing, wrong, or confusing?"
+      description: "Describe what a reader would misunderstand or be unable to do."
+    validations:
+      required: true
+  - type: textarea
+    id: improvement
+    attributes:
+      label: "Suggested correction or addition"
+      description: "Provide corrected guidance, a topic to cover, or an example."
+    validations:
+      required: true
+  - type: dropdown
+    id: audience
+    attributes:
+      label: "Audience"
+      options:
+        - "Users / operators"
+        - "Contributors / developers"
+        - "Both"
+        - "Not sure"
+  - type: dropdown
+    id: affected-areas
+    attributes:
+      label: "Relevant area(s)"
+      description: "Maintainers assign area labels during triage."
+      multiple: true
+      options:
+        - "Frontend / UI"
+        - "Backend / API / database"
+        - "Radio / MeshCore connectivity"
+        - "Messaging / channels / packets"
+        - "Maps / GPS / routes"
+        - "Integrations / fanout"
+        - "Bots"
+        - "Infrastructure / installation / CI"
+        - "Security"
+        - "Not sure"
+  - type: textarea
+    id: context
+    attributes:
+      label: "Additional examples / references"

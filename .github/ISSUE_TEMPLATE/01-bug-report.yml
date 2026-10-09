@@ -1,0 +1,108 @@
+name: "Bug report"
+description: "Report a reproducible bug or unexpected behavior in MESHRIK."
+title: "[Bug] "
+labels: ["type: bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Check for duplicates before submitting. For security vulnerabilities, follow the [security policy](https://github.com/Bjorkan/MESHRIK/security/policy) instead of posting publicly. Radio details are optional when the issue is UI-only.
+  - type: textarea
+    id: problem
+    attributes:
+      label: "Problem description"
+      description: "What is broken? Include the user-visible impact."
+      placeholder: "Describe the problem in a few sentences."
+    validations:
+      required: true
+  - type: dropdown
+    id: affected-areas
+    attributes:
+      label: "Affected area(s)"
+      description: "Select all that apply. This helps triage; area labels are assigned by maintainers."
+      multiple: true
+      options:
+        - "Frontend / UI"
+        - "Backend / API / database"
+        - "Radio / MeshCore connectivity"
+        - "Messaging / channels / packets"
+        - "Maps / GPS / routes"
+        - "Integrations / fanout"
+        - "Bots"
+        - "Infrastructure / installation / CI"
+        - "Security"
+        - "Not sure"
+    validations:
+      required: true
+  - type: textarea
+    id: observed-behavior
+    attributes:
+      label: "Actual behavior"
+      description: "What happens now? Include exact error text if helpful."
+    validations:
+      required: true
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: "Expected behavior"
+      description: "What should happen instead?"
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: "Steps to reproduce"
+      description: "List steps from a known starting point. If intermittent, describe the circumstances and frequency."
+      placeholder: |
+        1. Open ...
+        2. Select ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: "MESHRIK version"
+      description: "Release number, git commit, or Home Assistant add-on version if relevant."
+      placeholder: "e.g. v3.x.x, main at <commit>, or HA add-on version"
+  - type: dropdown
+    id: installation
+    attributes:
+      label: "Installation method"
+      options:
+        - "Native / from source"
+        - "Docker / container"
+        - "Home Assistant add-on"
+        - "Prebuilt frontend"
+        - "Other / not sure"
+  - type: input
+    id: environment
+    attributes:
+      label: "OS and browser (if relevant)"
+      placeholder: "e.g. Raspberry Pi OS; Firefox 140 / Android Chrome"
+  - type: dropdown
+    id: connection
+    attributes:
+      label: "Radio connection (if relevant)"
+      description: "Choose 'Not related to radio' for frontend-only problems."
+      options:
+        - "Not related to radio"
+        - "Direct USB / Serial"
+        - "Direct TCP"
+        - "Direct BLE"
+        - "Intermediary / companion / frameserver"
+        - "Other / unknown"
+  - type: input
+    id: firmware
+    attributes:
+      label: "MeshCore firmware and hardware (if relevant)"
+      placeholder: "e.g. firmware 1.15.x; Heltec V3 / RAK4631"
+  - type: textarea
+    id: evidence
+    attributes:
+      label: "Screenshots, logs, and additional context"
+      description: "Optional. Redact private keys, credentials, channel keys, tokens and other sensitive data."
+      placeholder: |
+        Screenshots, concise console errors, or sanitized logs.
+        MESHRIK debug snapshot: Settings → About → Open debug support snapshot (or /api/debug).
+        Review the snapshot for sensitive content before posting; omit sections you are uncomfortable sharing.

@@ -1,0 +1,54 @@
+name: "Enhancement"
+description: "Suggest an improvement to a feature MESHRIK already has."
+title: "[Enhancement] "
+labels: ["type: enhancement"]
+body:
+  - type: textarea
+    id: existing
+    attributes:
+      label: "Existing functionality"
+      description: "Which current feature or workflow should be improved?"
+    validations:
+      required: true
+  - type: textarea
+    id: limitation
+    attributes:
+      label: "Current limitation"
+      description: "Why is the existing behavior insufficient? If something is broken, use Bug report instead."
+    validations:
+      required: true
+  - type: textarea
+    id: improvement
+    attributes:
+      label: "Desired improvement"
+      description: "Explain the proposed behavior and how to tell when it is complete."
+    validations:
+      required: true
+  - type: dropdown
+    id: affected-areas
+    attributes:
+      label: "Relevant area(s)"
+      description: "Choose relevant components; maintainers apply area labels."
+      multiple: true
+      options:
+        - "Frontend / UI"
+        - "Backend / API / database"
+        - "Radio / MeshCore connectivity"
+        - "Messaging / channels / packets"
+        - "Maps / GPS / routes"
+        - "Integrations / fanout"
+        - "Bots"
+        - "Infrastructure / installation / CI"
+        - "Security"
+        - "Not sure"
+    validations:
+      required: true
+  - type: textarea
+    id: risks
+    attributes:
+      label: "Compatibility / side effects"
+      description: "Optional. Consider existing settings, storage, API contracts, radio behavior, or UI accessibility."
+  - type: textarea
+    id: context
+    attributes:
+      label: "References / screenshots"

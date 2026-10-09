@@ -1,0 +1,57 @@
+name: "Testing / quality"
+description: "Improve automated tests, reliability checks, or regression coverage."
+title: "[Testing] "
+labels: ["type: testing"]
+body:
+  - type: textarea
+    id: gap
+    attributes:
+      label: "Coverage gap or quality risk"
+      description: "What behavior, regression, or edge case is not adequately checked?"
+    validations:
+      required: true
+  - type: textarea
+    id: proposed-tests
+    attributes:
+      label: "Proposed tests or checks"
+      description: "Describe target assertions, fixtures, and how failures should be detected."
+    validations:
+      required: true
+  - type: dropdown
+    id: affected-areas
+    attributes:
+      label: "Relevant area(s)"
+      description: "Maintainers apply area labels during triage."
+      multiple: true
+      options:
+        - "Frontend / UI"
+        - "Backend / API / database"
+        - "Radio / MeshCore connectivity"
+        - "Messaging / channels / packets"
+        - "Maps / GPS / routes"
+        - "Integrations / fanout"
+        - "Bots"
+        - "Infrastructure / installation / CI"
+        - "Security"
+        - "Not sure"
+    validations:
+      required: true
+  - type: dropdown
+    id: hardware-requirements
+    attributes:
+      label: "Hardware dependency"
+      description: "Prefer isolated tests where possible."
+      options:
+        - "No radio needed / mocked"
+        - "One test radio needed"
+        - "Multiple radios / live mesh traffic needed"
+        - "Not yet known"
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: "Acceptance criteria"
+      description: "What must pass, and what behavior must remain unchanged?"
+  - type: textarea
+    id: context
+    attributes:
+      label: "Related issues / files / existing tests"

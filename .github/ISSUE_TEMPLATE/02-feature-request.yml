@@ -1,0 +1,63 @@
+name: "Feature request"
+description: "Suggest a new capability for MESHRIK."
+title: "[Feature] "
+labels: ["type: feature"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Focus on the user problem first. MESHRIK's [contributing guidelines](https://github.com/Bjorkan/MESHRIK/blob/main/CONTRIBUTING.md) discourage automatic/interval-based radio traffic and ingestion of internet traffic onto the mesh. For early questions or discussion, use GitHub Discussions when available.
+  - type: textarea
+    id: problem
+    attributes:
+      label: "What problem does this solve?"
+      description: "Describe the unmet need and who encounters it."
+      placeholder: "I am trying to ... but currently ..."
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: "Proposed feature"
+      description: "What should MESHRIK do? Describe the user-facing workflow rather than only code choices."
+    validations:
+      required: true
+  - type: dropdown
+    id: affected-areas
+    attributes:
+      label: "Relevant area(s)"
+      description: "Select all that apply. Maintainers assign area labels during triage."
+      multiple: true
+      options:
+        - "Frontend / UI"
+        - "Backend / API / database"
+        - "Radio / MeshCore connectivity"
+        - "Messaging / channels / packets"
+        - "Maps / GPS / routes"
+        - "Integrations / fanout"
+        - "Bots"
+        - "Infrastructure / installation / CI"
+        - "Security"
+        - "Not sure"
+    validations:
+      required: true
+  - type: textarea
+    id: use-case
+    attributes:
+      label: "Example use case"
+      description: "Show a typical workflow or acceptance scenario."
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: "Alternatives and workarounds"
+      description: "Existing workflows you tried, or other ways to solve this problem."
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: "Radio, protocol, privacy, or compatibility considerations"
+      description: "Optional; mention any impact on mesh traffic or existing installations."
+  - type: textarea
+    id: context
+    attributes:
+      label: "Additional context"
+      description: "Mockups, screenshots, external references, or a related issue."
