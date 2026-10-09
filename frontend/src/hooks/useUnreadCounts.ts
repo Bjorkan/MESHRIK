@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { api } from '../api';
 import {
   getLastMessageTimes,
@@ -9,6 +10,7 @@ import {
 } from '../utils/conversationState';
 import type { Channel, Contact, Conversation, Message, UnreadCounts } from '../types';
 import { takePrefetchOrFetch } from '../prefetch';
+import { queryKeys } from '../queryClient';
 
 type UnreadTrackedConversation = Conversation & { type: 'channel' | 'contact' };
 type PendingReadBoundary = {
@@ -51,6 +53,7 @@ export function useUnreadCounts(
   contacts: Contact[],
   activeConversation: Conversation | null
 ): UseUnreadCountsResult {
+  const queryClient = useQueryClient();
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
   const [mentions, setMentions] = useState<Record<string, boolean>>({});
   const [lastMessageTimes, setLastMessageTimes] = useState<ConversationTimes>(getLastMessageTimes);
@@ -165,12 +168,17 @@ export function useUnreadCounts(
     [applyUnreads]
   );
 
-  // Fetch unreads from the server-side endpoint.
+  // Fetch unreads from the server-side endpoint through Query.
   // Also re-marks the active conversation as read so the server's last_read_at
   // stays current (otherwise subsequent fetches would re-report the same unreads).
   const fetchUnreads = useCallback(async () => {
     try {
-      await applyUnreadRequest(api.getUnreads());
+      await applyUnreadRequest(
+        queryClient.fetchQuery({
+          queryKey: queryKeys.unreads(),
+          queryFn: () => api.getUnreads(),
+        })
+      );
     } catch (err) {
       console.error('Failed to fetch unreads:', err);
     }
@@ -180,10 +188,10 @@ export function useUnreadCounts(
     } else if (ac?.type === 'contact') {
       api.markContactRead(ac.id).catch(() => {});
     }
-  }, [applyUnreadRequest]);
+  }, [applyUnreadRequest, queryClient]);
 
   // On mount, consume the prefetched promise (started in index.html before
-  // React loaded) or fall back to a fresh fetch.
+  // React loaded) or fall back to a fresh fetch through Query.
   // Re-fetch when channel/contact count changes mid-session (new sync, cracker
   // channel created, etc.). Skip only the very first run of this effect; after
   // that, any count change should trigger a refresh, even if the other
@@ -192,10 +200,15 @@ export function useUnreadCounts(
   const contactsLen = contacts.length;
   const hasObservedCountsRef = useRef(false);
   useEffect(() => {
-    applyUnreadRequest(takePrefetchOrFetch('unreads', api.getUnreads)).catch((err) => {
+    applyUnreadRequest(
+      queryClient.fetchQuery({
+        queryKey: queryKeys.unreads(),
+        queryFn: () => takePrefetchOrFetch('unreads', () => api.getUnreads()),
+      })
+    ).catch((err) => {
       console.error('Failed to fetch unreads:', err);
     });
-  }, [applyUnreadRequest]);
+  }, [applyUnreadRequest, queryClient]);
   useEffect(() => {
     if (!hasObservedCountsRef.current) {
       hasObservedCountsRef.current = true;
@@ -407,6 +420,11 @@ export function useUnreadCounts(
     renameConversationState,
     removeConversationState,
     markAllRead,
-    refreshUnreads: fetchUnreads,
+    refreshUnreads: refreshUnreads,
   };
+
+  async function refreshUnreads() {
+    await queryClient.invalidateQueries({ queryKey: queryKeys.unreads() });
+    await fetchUnreads();
+  }
 }

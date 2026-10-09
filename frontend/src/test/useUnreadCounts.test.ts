@@ -8,6 +8,8 @@
 
 import { act, renderHook } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { createElement, type ReactNode } from 'react';
 
 import { useUnreadCounts } from '../hooks/useUnreadCounts';
 import type { Channel, Contact, Conversation, Message, UnreadCounts } from '../types';
@@ -115,14 +117,26 @@ describe('useUnreadCounts', () => {
     vi.restoreAllMocks();
   });
 
+  function makeQueryClient() {
+    return new QueryClient({
+      defaultOptions: {
+        queries: { retry: false, gcTime: 0 },
+        mutations: { retry: false },
+      },
+    });
+  }
+
   function renderWith({
     channels = [] as Channel[],
     contacts = [] as Contact[],
     activeConversation = null as Conversation | null,
   } = {}) {
+    const queryClient = makeQueryClient();
+    const wrapper = ({ children }: { children: ReactNode }) =>
+      createElement(QueryClientProvider, { client: queryClient }, children);
     return renderHook(
       ({ channels: ch, contacts: ct, activeConversation: ac }) => useUnreadCounts(ch, ct, ac),
-      { initialProps: { channels, contacts, activeConversation } }
+      { initialProps: { channels, contacts, activeConversation }, wrapper }
     );
   }
 

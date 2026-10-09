@@ -181,8 +181,9 @@ describe('useContactsAndChannels', () => {
     let requestSignal: AbortSignal | undefined;
     vi.mocked(api.getContacts).mockImplementationOnce((_limit, _offset, signal) => {
       requestSignal = signal;
-      return new Promise<Contact[]>((resolve) => {
+      return new Promise<Contact[]>((resolve, reject) => {
         resolveContacts = resolve;
+        signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
       });
     });
 
@@ -194,7 +195,15 @@ describe('useContactsAndChannels', () => {
     act(() => result.current.setContacts([liveContact]));
     expect(requestSignal?.aborted).toBe(true);
 
-    await act(async () => resolveContacts([staleContact]));
+    // The stale promise rejects because the signal was aborted, so it cannot
+    // overwrite the live data. We must still settle the microtask queue.
+    await act(async () => {
+      try {
+        resolveContacts([staleContact]);
+      } catch {
+        // rejection expected from abort listener above
+      }
+    });
 
     expect(result.current.contacts).toEqual([liveContact]);
   });
