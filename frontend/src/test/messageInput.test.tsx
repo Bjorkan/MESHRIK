@@ -196,6 +196,22 @@ describe('MessageInput', () => {
     });
   });
 
+  describe('keyboard submission', () => {
+    it('does not send when Enter confirms an active IME composition', () => {
+      renderInput({ conversationType: 'contact' });
+      fireEvent.change(getInput(), { target: { value: 'こんにちは' } });
+
+      fireEvent.keyDown(getInput(), {
+        key: 'Enter',
+        shiftKey: false,
+        isComposing: true,
+      });
+
+      expect(onSend).not.toHaveBeenCalled();
+      expect(getInput()).toHaveValue('こんにちは');
+    });
+  });
+
   describe('send failure toasts', () => {
     it('shows the radio no-response toast when the send outcome is unknown', async () => {
       onSend.mockRejectedValueOnce(

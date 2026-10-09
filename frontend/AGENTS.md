@@ -293,6 +293,7 @@ That gives the store a load-bearing invariant: **no ancestor of `MessageList` ma
 - Incoming messages displayed in the active conversation debounce an exact-message `mark-read` request. The pending boundary is flushed when leaving the conversation; the backend advances it monotonically so delayed requests cannot consume newer unseen messages.
 - Unread HTTP snapshots are guarded by both request and local-mutation generations. A response is applied only if it is still the newest request and no WebSocket/navigation mutation occurred while it was in flight.
 - `MessageInput` enforces its computed UTF-8 hard limit in both the disabled state and submit handler. Channel limits include the sender-name prefix overhead; text at or beyond the displayed hard limit is not submitted.
+- `MessageInput` ignores Enter-to-send while the native keyboard event reports active IME composition; Enter remains available to confirm CJK and other composed input.
 - Outgoing channel messages show a 30-second resend control; resend calls `POST /api/messages/channel/{message_id}/resend`.
 - Conversation-scoped message caching now lives inside `useConversationMessages.ts` rather than a standalone `messageCache.ts` module. If you touch message timeline restore/dedup/reconnect behavior, start there.
 - `contact_resolved` is a real-time identity migration event, not just a contact-list update. Changes in that area need to consider active conversation state, cached messages, unread state keys, and reconnect reconciliation together.
