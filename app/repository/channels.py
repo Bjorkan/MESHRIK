@@ -108,13 +108,58 @@ class ChannelRepository:
                 pass
 
     @staticmethod
-    async def update_last_read_at(key: str, timestamp: int | None = None) -> bool:
+    async def update_last_read_at(
+        key: str,
+        timestamp: int | None = None,
+        message_id: int | None = None,
+    ) -> bool:
         """Update the timestamp and message-ID read cursor for a channel.
+
+        When ``message_id`` is provided, advance only through that exact
+        message. This lets delayed clients acknowledge what was actually
+        visible without accidentally consuming newer arrivals.
 
         Returns True if a row was updated, False if channel not found.
         """
-        ts = timestamp if timestamp is not None else int(time.time())
         async with db.tx() as conn:
+            if message_id is not None:
+                async with conn.execute(
+                    "SELECT last_read_at, last_read_message_id FROM channels WHERE key = ?",
+                    (key.upper(),),
+                ) as cursor:
+                    channel_row = await cursor.fetchone()
+                if channel_row is None:
+                    return False
+
+                async with conn.execute(
+                    """
+                    SELECT received_at, id
+                    FROM messages
+                    WHERE id = ? AND type = 'CHAN' AND conversation_key = ?
+                    """,
+                    (message_id, key.upper()),
+                ) as cursor:
+                    boundary = await cursor.fetchone()
+                if boundary is None:
+                    return False
+
+                current = (
+                    channel_row["last_read_at"] or 0,
+                    channel_row["last_read_message_id"] or 0,
+                )
+                requested = (boundary["received_at"], boundary["id"])
+                if requested > current:
+                    await conn.execute(
+                        """
+                        UPDATE channels
+                        SET last_read_at = ?, last_read_message_id = ?
+                        WHERE key = ?
+                        """,
+                        (*requested, key.upper()),
+                    )
+                return True
+
+            ts = timestamp if timestamp is not None else int(time.time())
             async with conn.execute(
                 """
                 UPDATE channels

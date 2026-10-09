@@ -454,30 +454,124 @@ describe('useUnreadCounts', () => {
       received_at: 1700002000,
     });
 
-    await act(async () => {
-      result.current.recordMessageEvent({
-        msg: activeMsg,
-        activeConversation: true,
-        isNewMessage: true,
-        hasMention: true,
+    vi.useFakeTimers();
+    try {
+      await act(async () => {
+        result.current.recordMessageEvent({
+          msg: activeMsg,
+          activeConversation: true,
+          isNewMessage: true,
+          hasMention: true,
+        });
+        result.current.recordMessageEvent({
+          msg: makeMessage({
+            id: 7,
+            type: 'CHAN',
+            conversation_key: CHANNEL_KEY,
+            received_at: 1700002001,
+          }),
+          activeConversation: false,
+          isNewMessage: false,
+          hasMention: true,
+        });
       });
-      result.current.recordMessageEvent({
-        msg: makeMessage({
-          id: 7,
-          type: 'CHAN',
-          conversation_key: CHANNEL_KEY,
-          received_at: 1700002001,
-        }),
-        activeConversation: false,
-        isNewMessage: false,
-        hasMention: true,
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(250);
       });
-    });
+    } finally {
+      vi.useRealTimers();
+    }
 
     expect(result.current.unreadCounts[getStateKey('contact', CONTACT_KEY)]).toBeUndefined();
     expect(result.current.unreadCounts[getStateKey('channel', CHANNEL_KEY)]).toBeUndefined();
     expect(result.current.lastMessageTimes[getStateKey('contact', CONTACT_KEY)]).toBe(1700002000);
     expect(result.current.lastMessageTimes[getStateKey('channel', CHANNEL_KEY)]).toBe(1700002001);
+  });
+
+  it('debounces active-message read updates and persists the newest exact boundary', async () => {
+    const mocks = await getMockedApi();
+    const activeConv: Conversation = { type: 'channel', id: CHANNEL_KEY, name: 'Test' };
+    const { result } = renderWith({
+      channels: [makeChannel(CHANNEL_KEY, 'Test')],
+      activeConversation: activeConv,
+    });
+
+    await act(async () => {
+      await vi.waitFor(() => expect(mocks.getUnreads).toHaveBeenCalled());
+    });
+    mocks.markChannelRead.mockClear();
+
+    vi.useFakeTimers();
+    try {
+      act(() => {
+        result.current.recordMessageEvent({
+          msg: makeMessage({
+            id: 40,
+            type: 'CHAN',
+            conversation_key: CHANNEL_KEY,
+            received_at: 1700003000,
+          }),
+          activeConversation: true,
+          isNewMessage: true,
+        });
+        result.current.recordMessageEvent({
+          msg: makeMessage({
+            id: 41,
+            type: 'CHAN',
+            conversation_key: CHANNEL_KEY,
+            received_at: 1700003000,
+          }),
+          activeConversation: true,
+          isNewMessage: true,
+        });
+      });
+
+      expect(mocks.markChannelRead).not.toHaveBeenCalled();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(250);
+      });
+      expect(mocks.markChannelRead).toHaveBeenCalledTimes(1);
+      expect(mocks.markChannelRead).toHaveBeenCalledWith(CHANNEL_KEY, 41);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('flushes the latest active-message boundary when leaving a conversation', async () => {
+    const mocks = await getMockedApi();
+    const activeConv: Conversation = { type: 'contact', id: CONTACT_KEY, name: 'Alice' };
+    const { result, rerender } = renderWith({
+      contacts: [makeContact(CONTACT_KEY)],
+      activeConversation: activeConv,
+    });
+
+    await act(async () => {
+      await vi.waitFor(() => expect(mocks.getUnreads).toHaveBeenCalled());
+    });
+    mocks.markContactRead.mockClear();
+
+    vi.useFakeTimers();
+    try {
+      act(() => {
+        result.current.recordMessageEvent({
+          msg: makeMessage({ id: 52, received_at: 1700004000 }),
+          activeConversation: true,
+          isNewMessage: true,
+        });
+      });
+
+      rerender({
+        channels: [],
+        contacts: [makeContact(CONTACT_KEY)],
+        activeConversation: null,
+      });
+
+      expect(mocks.markContactRead).toHaveBeenCalledTimes(1);
+      expect(mocks.markContactRead).toHaveBeenCalledWith(CONTACT_KEY, 52);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('seeds the first-unread boundary when a conversation goes unread over the socket', async () => {

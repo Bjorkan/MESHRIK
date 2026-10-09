@@ -172,10 +172,11 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ public_key: publicKey, name, type, try_historical: tryHistorical }),
     }),
-  markContactRead: (publicKey: string) =>
-    fetchJson<{ status: string; public_key: string }>(`/contacts/${publicKey}/mark-read`, {
-      method: 'POST',
-    }),
+  markContactRead: (publicKey: string, messageId?: number) =>
+    fetchJson<{ status: string; public_key: string }>(
+      `/contacts/${publicKey}/mark-read${messageId === undefined ? '' : `?message_id=${messageId}`}`,
+      { method: 'POST' }
+    ),
   sendRepeaterCommand: (publicKey: string, command: string) =>
     fetchJson<CommandResponse>(`/contacts/${publicKey}/command`, {
       method: 'POST',
@@ -210,10 +211,11 @@ export const api = {
   deleteChannel: (key: string) =>
     fetchJson<{ status: string }>(`/channels/${key}`, { method: 'DELETE' }),
   getChannelDetail: (key: string) => fetchJson<ChannelDetail>(`/channels/${key}/detail`),
-  markChannelRead: (key: string) =>
-    fetchJson<{ status: string; key: string }>(`/channels/${key}/mark-read`, {
-      method: 'POST',
-    }),
+  markChannelRead: (key: string, messageId?: number) =>
+    fetchJson<{ status: string; key: string }>(
+      `/channels/${key}/mark-read${messageId === undefined ? '' : `?message_id=${messageId}`}`,
+      { method: 'POST' }
+    ),
   setChannelFloodScopeOverride: (key: string, floodScopeOverride: string) =>
     fetchJson<Channel>(`/channels/${key}/flood-scope-override`, {
       method: 'POST',

@@ -437,7 +437,7 @@ All endpoints are prefixed with `/api` (e.g., `/api/health`).
 
 Read state is tracked **server-side** for consistency across devices:
 - Stored as a `(last_read_at, last_read_message_id)` cursor on contacts and channels. The ID tie-breaker prevents a later arrival in the same second from being treated as read, while the timestamp keeps historically decrypted older messages behind the boundary.
-- Updated via `POST /api/contacts/{public_key}/mark-read` and `POST /api/channels/{key}/mark-read`
+- Updated via `POST /api/contacts/{public_key}/mark-read` and `POST /api/channels/{key}/mark-read`; both accept optional `message_id` to advance only through an exact visible message. The frontend debounces these exact-boundary updates while a conversation is open and flushes them when leaving.
 - Bulk update via `POST /api/read-state/mark-all-read`
 - Aggregated counts via `GET /api/read-state/unreads` (server-side computation of counts, mention flags, `last_message_times`, `last_read_ats`, and `first_unread_ids`)
 

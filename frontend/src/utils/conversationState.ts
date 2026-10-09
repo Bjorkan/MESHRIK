@@ -5,8 +5,8 @@
  * This file provides helper functions for generating state keys
  * and managing conversation times.
  *
- * Read state (last_read_at) is tracked server-side for consistency
- * across devices - see useUnreadCounts hook.
+ * Read state (timestamp plus message-ID cursor) is tracked server-side for
+ * consistency across devices - see useUnreadCounts hook.
  */
 
 const SORT_ORDER_KEY = 'meshrik-sortOrder';

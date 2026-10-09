@@ -1097,6 +1097,60 @@ class TestReadStateEndpoints:
         assert result["first_unread_ids"][f"contact-{contact_key}"] == contact_after_id
 
     @pytest.mark.asyncio
+    async def test_mark_read_through_exact_message_boundary_is_monotonic(self, test_db, client):
+        """Delayed active-view updates must not consume newer or regress past newer messages."""
+        chan_key = "EXACTBOUNDARYCHANEXACTBOUNDARYC"
+        contact_key = "de" * 32
+        await ChannelRepository.upsert(key=chan_key, name="Exact boundary")
+        await _insert_contact(contact_key, "Alice")
+
+        async def create_pair(msg_type: str, conversation_key: str) -> tuple[int, int]:
+            first = await MessageRepository.create(
+                msg_type=msg_type,
+                text=f"{msg_type} first",
+                received_at=2000,
+                conversation_key=conversation_key,
+                sender_timestamp=2000,
+            )
+            second = await MessageRepository.create(
+                msg_type=msg_type,
+                text=f"{msg_type} second",
+                received_at=2000,
+                conversation_key=conversation_key,
+                sender_timestamp=2001,
+            )
+            assert first is not None
+            assert second is not None
+            return first, second
+
+        first_channel, second_channel = await create_pair("CHAN", chan_key)
+        first_contact, second_contact = await create_pair("PRIV", contact_key)
+
+        channel_response = await client.post(
+            f"/api/channels/{chan_key}/mark-read?message_id={first_channel}"
+        )
+        contact_response = await client.post(
+            f"/api/contacts/{contact_key}/mark-read?message_id={first_contact}"
+        )
+        assert channel_response.status_code == 200
+        assert contact_response.status_code == 200
+
+        result = await MessageRepository.get_unread_counts(None)
+        assert result["counts"][f"channel-{chan_key}"] == 1
+        assert result["counts"][f"contact-{contact_key}"] == 1
+
+        await client.post(f"/api/channels/{chan_key}/mark-read?message_id={second_channel}")
+        await client.post(f"/api/contacts/{contact_key}/mark-read?message_id={second_contact}")
+        # A delayed request for the older visible boundary must not move either
+        # cursor backwards and resurrect already-read messages.
+        await client.post(f"/api/channels/{chan_key}/mark-read?message_id={first_channel}")
+        await client.post(f"/api/contacts/{contact_key}/mark-read?message_id={first_contact}")
+
+        result = await MessageRepository.get_unread_counts(None)
+        assert result["counts"].get(f"channel-{chan_key}", 0) == 0
+        assert result["counts"].get(f"contact-{contact_key}", 0) == 0
+
+    @pytest.mark.asyncio
     async def test_first_unread_id_ignores_muted_and_outgoing(self, test_db):
         """Muted channels are excluded from unread counts, so they must not
         report a boundary either."""

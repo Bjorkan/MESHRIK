@@ -348,13 +348,13 @@ async def create_contact(
 
 
 @router.post("/{public_key}/mark-read")
-async def mark_contact_read(public_key: str) -> dict:
+async def mark_contact_read(public_key: str, message_id: int | None = None) -> dict:
     """Mark a contact conversation as read at its current timestamp/message-ID boundary."""
     contact = await _resolve_contact_or_404(public_key)
 
-    updated = await ContactRepository.update_last_read_at(contact.public_key)
+    updated = await ContactRepository.update_last_read_at(contact.public_key, message_id=message_id)
     if not updated:
-        raise HTTPException(status_code=500, detail="Failed to update read state")
+        raise HTTPException(status_code=400, detail="Invalid message read boundary")
 
     return {"status": "ok", "public_key": contact.public_key}
 

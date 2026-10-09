@@ -11,6 +11,14 @@ import type { Channel, Contact, Conversation, Message, UnreadCounts } from '../t
 import { takePrefetchOrFetch } from '../prefetch';
 
 type UnreadTrackedConversation = Conversation & { type: 'channel' | 'contact' };
+type PendingReadBoundary = {
+  type: 'channel' | 'contact';
+  id: string;
+  messageId: number;
+  receivedAt: number;
+};
+
+const ACTIVE_READ_DEBOUNCE_MS = 250;
 
 function isUnreadTrackedConversation(
   conversation: Conversation | null
@@ -54,6 +62,54 @@ export function useUnreadCounts(
   // every conversation switch).
   const activeConvRef = useRef(activeConversation);
   activeConvRef.current = activeConversation;
+  const pendingReadBoundaryRef = useRef<PendingReadBoundary | null>(null);
+  const pendingReadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const persistReadBoundary = useCallback((boundary: PendingReadBoundary) => {
+    const request =
+      boundary.type === 'channel'
+        ? api.markChannelRead(boundary.id, boundary.messageId)
+        : api.markContactRead(boundary.id, boundary.messageId);
+    request.catch((err) => {
+      console.error(`Failed to mark active ${boundary.type} as read on server:`, err);
+    });
+  }, []);
+
+  const flushPendingRead = useCallback(() => {
+    if (pendingReadTimerRef.current !== null) {
+      clearTimeout(pendingReadTimerRef.current);
+      pendingReadTimerRef.current = null;
+    }
+    const boundary = pendingReadBoundaryRef.current;
+    pendingReadBoundaryRef.current = null;
+    if (boundary) {
+      persistReadBoundary(boundary);
+    }
+  }, [persistReadBoundary]);
+
+  const scheduleReadBoundary = useCallback(
+    (boundary: PendingReadBoundary) => {
+      const pending = pendingReadBoundaryRef.current;
+      if (pending && (pending.type !== boundary.type || pending.id !== boundary.id)) {
+        flushPendingRead();
+      }
+
+      const current = pendingReadBoundaryRef.current;
+      if (
+        !current ||
+        boundary.receivedAt > current.receivedAt ||
+        (boundary.receivedAt === current.receivedAt && boundary.messageId > current.messageId)
+      ) {
+        pendingReadBoundaryRef.current = boundary;
+      }
+
+      if (pendingReadTimerRef.current !== null) {
+        clearTimeout(pendingReadTimerRef.current);
+      }
+      pendingReadTimerRef.current = setTimeout(flushPendingRead, ACTIVE_READ_DEBOUNCE_MS);
+    },
+    [flushPendingRead]
+  );
 
   // Apply unreads data to state, filtering out the active conversation
   // (the user is already viewing it, so its count should stay at 0).
@@ -162,7 +218,12 @@ export function useUnreadCounts(
         });
       }
     }
-  }, [activeConversation]);
+
+    // Flush the latest exact message boundary before leaving. The backend
+    // advances monotonically through that message, so arrivals after the view
+    // changed cannot be accidentally consumed by a delayed request.
+    return flushPendingRead;
+  }, [activeConversation, flushPendingRead]);
 
   const incrementUnread = useCallback(
     (stateKey: string, messageId: number, hasMention?: boolean) => {
@@ -215,11 +276,18 @@ export function useUnreadCounts(
       const updated = setLastMessageTime(stateKey, timestamp);
       setLastMessageTimes(updated);
 
-      if (!isActiveConversation && !msg.outgoing && isNewMessage) {
+      if (isActiveConversation && !msg.outgoing && isNewMessage) {
+        scheduleReadBoundary({
+          type: msg.type === 'CHAN' ? 'channel' : 'contact',
+          id: msg.conversation_key,
+          messageId: msg.id,
+          receivedAt: timestamp,
+        });
+      } else if (!isActiveConversation && !msg.outgoing && isNewMessage) {
         incrementUnread(stateKey, msg.id, hasMention);
       }
     },
-    [incrementUnread]
+    [incrementUnread, scheduleReadBoundary]
   );
 
   const renameConversationState = useCallback((oldStateKey: string, newStateKey: string) => {

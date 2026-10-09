@@ -547,13 +547,63 @@ class ContactRepository:
                 pass
 
     @staticmethod
-    async def update_last_read_at(public_key: str, timestamp: int | None = None) -> bool:
+    async def update_last_read_at(
+        public_key: str,
+        timestamp: int | None = None,
+        message_id: int | None = None,
+    ) -> bool:
         """Update the timestamp and message-ID read cursor for a contact.
+
+        When ``message_id`` is provided, advance only through that exact
+        message. This lets delayed clients acknowledge what was actually
+        visible without accidentally consuming newer arrivals.
 
         Returns True if a row was updated, False if contact not found.
         """
-        ts = timestamp if timestamp is not None else int(time.time())
         async with db.tx() as conn:
+            normalized_key = public_key.lower()
+            if message_id is not None:
+                async with conn.execute(
+                    """
+                    SELECT last_read_at, last_read_message_id
+                    FROM contacts
+                    WHERE public_key = ?
+                    """,
+                    (normalized_key,),
+                ) as cursor:
+                    contact_row = await cursor.fetchone()
+                if contact_row is None:
+                    return False
+
+                async with conn.execute(
+                    """
+                    SELECT received_at, id
+                    FROM messages
+                    WHERE id = ? AND type = 'PRIV' AND conversation_key = ?
+                    """,
+                    (message_id, normalized_key),
+                ) as cursor:
+                    boundary = await cursor.fetchone()
+                if boundary is None:
+                    return False
+
+                current = (
+                    contact_row["last_read_at"] or 0,
+                    contact_row["last_read_message_id"] or 0,
+                )
+                requested = (boundary["received_at"], boundary["id"])
+                if requested > current:
+                    await conn.execute(
+                        """
+                        UPDATE contacts
+                        SET last_read_at = ?, last_read_message_id = ?
+                        WHERE public_key = ?
+                        """,
+                        (*requested, normalized_key),
+                    )
+                return True
+
+            ts = timestamp if timestamp is not None else int(time.time())
             async with conn.execute(
                 """
                 UPDATE contacts
@@ -567,7 +617,7 @@ class ContactRepository:
                     ), 0)
                 WHERE public_key = ?
                 """,
-                (ts, ts, public_key.lower()),
+                (ts, ts, normalized_key),
             ) as cursor:
                 rowcount = cursor.rowcount
         return rowcount > 0
