@@ -98,7 +98,7 @@ app/
 3. Endpoint broadcasts WS `message` event so all live clients update.
 4. ACK/repeat updates arrive later as `message_acked` events.
 5. A radio command timeout has an ambiguous outcome: retain and broadcast the outgoing row with `send_status="unknown"` instead of deleting it. Explicit radio errors still fail without retaining an unsent row.
-6. Channel resend (`POST /messages/channel/{id}/resend`) strips the sender name prefix by exact match against the current radio name. This assumes the radio name hasn't changed between the original send and the resend. Name changes require an explicit radio config update and are rare, but the `new_timestamp=true` resend path has no time window, so a mismatch is possible if the name was changed between the original send and a later resend.
+6. Channel resend (`POST /messages/channel/{id}/resend`) strips the sender prefix using the message's historical `sender_name`, falling back to the current radio name for legacy rows without sender metadata. A `new_timestamp=true` resend stores the current radio name with the newly transmitted row, so stored text continues to match the on-air payload after a rename.
 
 ### Connection lifecycle
 

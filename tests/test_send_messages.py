@@ -1206,6 +1206,63 @@ class TestResendChannelMessage:
         assert call_kwargs["msg"] == "hello world"
 
     @pytest.mark.asyncio
+    async def test_resend_strips_historical_sender_prefix_after_radio_rename(self, test_db):
+        mc = _make_mc(name="NewName")
+        chan_key = "e7" * 16
+        await ChannelRepository.upsert(key=chan_key, name="#renamed")
+
+        now = int(time.time()) - 5
+        msg_id = await MessageRepository.create(
+            msg_type="CHAN",
+            text="OldName: hello world",
+            conversation_key=chan_key.upper(),
+            sender_timestamp=now,
+            received_at=now,
+            outgoing=True,
+            sender_name="OldName",
+        )
+        assert msg_id is not None
+
+        with (
+            patch("app.routers.messages.radio_manager.require_connected", return_value=mc),
+            patch.object(radio_manager, "_meshcore", mc),
+        ):
+            await resend_channel_message(msg_id, new_timestamp=False)
+
+        assert mc.commands.send_chan_msg.await_args.kwargs["msg"] == "hello world"
+
+    @pytest.mark.asyncio
+    async def test_new_timestamp_resend_stores_current_name_after_radio_rename(self, test_db):
+        mc = _make_mc(name="NewName")
+        chan_key = "e8" * 16
+        await ChannelRepository.upsert(key=chan_key, name="#renamed-new")
+
+        old_ts = int(time.time()) - 60
+        msg_id = await MessageRepository.create(
+            msg_type="CHAN",
+            text="OldName: hello world",
+            conversation_key=chan_key.upper(),
+            sender_timestamp=old_ts,
+            received_at=old_ts,
+            outgoing=True,
+            sender_name="OldName",
+        )
+        assert msg_id is not None
+
+        with (
+            patch("app.routers.messages.radio_manager.require_connected", return_value=mc),
+            patch.object(radio_manager, "_meshcore", mc),
+            patch("app.routers.messages.broadcast_event"),
+        ):
+            result = await resend_channel_message(msg_id, new_timestamp=True)
+
+        resent = await MessageRepository.get_by_id(result.message_id)
+        assert resent is not None
+        assert resent.text == "NewName: hello world"
+        assert resent.sender_name == "NewName"
+        assert mc.commands.send_chan_msg.await_args.kwargs["msg"] == "hello world"
+
+    @pytest.mark.asyncio
     async def test_resend_new_timestamp_skips_window(self, test_db):
         """new_timestamp=True succeeds even when the 30s window has expired."""
         mc = _make_mc(name="MyNode")
@@ -1637,6 +1694,35 @@ class TestChannelEchoWatchdog:
         call_kwargs = mc.commands.send_chan_msg.await_args.kwargs
         assert call_kwargs["msg"] == "payload"  # sender prefix stripped
         assert call_kwargs["timestamp"] == now.to_bytes(4, "little")
+
+    @pytest.mark.asyncio
+    async def test_watchdog_strips_historical_sender_prefix_after_radio_rename(self, test_db):
+        chan_key = "e9" * 16
+        await ChannelRepository.upsert(key=chan_key, name="#renamed-watchdog")
+
+        now = int(time.time())
+        msg_id = await MessageRepository.create(
+            msg_type="CHAN",
+            text="OldName: payload",
+            conversation_key=chan_key.upper(),
+            sender_timestamp=now,
+            received_at=now,
+            outgoing=True,
+            sender_name="OldName",
+        )
+        assert msg_id is not None
+
+        mc = _make_mc(name="NewName")
+
+        with patch.object(radio_manager, "_meshcore", mc):
+            await message_send_service._channel_echo_watchdog(
+                message_id=msg_id,
+                radio_manager=radio_manager,
+                broadcast_fn=MagicMock(),
+                error_broadcast_fn=MagicMock(),
+            )
+
+        assert mc.commands.send_chan_msg.await_args.kwargs["msg"] == "payload"
 
     @pytest.mark.asyncio
     async def test_watchdog_handles_radio_busy_gracefully(self, test_db):

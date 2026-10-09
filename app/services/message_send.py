@@ -71,6 +71,14 @@ DEFAULT_DM_ACK_TIMEOUT_MS = 10000
 DM_RETRY_WAIT_MARGIN = 1.2
 
 
+def _channel_message_body(*, text: str, sender_name: str | None, radio_name: str) -> str:
+    """Return the radio payload body from a stored, sender-prefixed channel message."""
+    for candidate in (sender_name, radio_name):
+        if candidate and text.startswith(f"{candidate}: "):
+            return text[len(f"{candidate}: ") :]
+    return text
+
+
 async def allocate_outgoing_sender_timestamp(
     *,
     message_repository,
@@ -793,12 +801,15 @@ async def _channel_echo_watchdog(
 
         timestamp_bytes = msg.sender_timestamp.to_bytes(4, "little")
 
-        # Strip sender name prefix to get the raw text for the radio
+        # Strip the historical sender prefix. The radio may have been renamed
+        # since the original send and will add its current name itself.
         async with radio_manager.radio_operation("echo_watchdog_resend", blocking=False) as mc:
             radio_name = mc.self_info.get("name", "") if mc.self_info else ""
-            text_to_send = msg.text
-            if radio_name and text_to_send.startswith(f"{radio_name}: "):
-                text_to_send = text_to_send[len(f"{radio_name}: ") :]
+            text_to_send = _channel_message_body(
+                text=msg.text,
+                sender_name=msg.sender_name,
+                radio_name=radio_name,
+            )
 
             result = await send_channel_message_with_effective_scope(
                 mc=mc,
@@ -1015,11 +1026,14 @@ async def resend_channel_message_record(
         async with radio_manager.radio_operation("resend_channel_message") as mc:
             radio_name = mc.self_info.get("name", "") if mc.self_info else ""
             resend_public_key = (mc.self_info.get("public_key") or None) if mc.self_info else None
-            text_to_send = message.text
-            if radio_name and text_to_send.startswith(f"{radio_name}: "):
-                text_to_send = text_to_send[len(f"{radio_name}: ") :]
+            text_to_send = _channel_message_body(
+                text=message.text,
+                sender_name=message.sender_name,
+                radio_name=radio_name,
+            )
             if new_timestamp:
                 sent_at = int(now_fn())
+                stored_text = f"{radio_name}: {text_to_send}" if radio_name else text_to_send
                 sender_timestamp = await allocate_outgoing_sender_timestamp(
                     message_repository=message_repository,
                     msg_type="CHAN",
@@ -1030,7 +1044,7 @@ async def resend_channel_message_record(
                 timestamp_bytes = sender_timestamp.to_bytes(4, "little")
                 new_message = await create_outgoing_channel_message(
                     conversation_key=message.conversation_key,
-                    text=message.text,
+                    text=stored_text,
                     sender_timestamp=sender_timestamp,
                     received_at=sent_at,
                     sender_name=radio_name or None,
@@ -1079,7 +1093,7 @@ async def resend_channel_message_record(
             unknown_message = await build_stored_outgoing_channel_message(
                 message_id=new_message.id,
                 conversation_key=message.conversation_key,
-                text=message.text,
+                text=stored_text,
                 sender_timestamp=sender_timestamp,
                 received_at=sent_at,
                 sender_name=radio_name or None,
@@ -1114,7 +1128,7 @@ async def resend_channel_message_record(
         new_message = await build_stored_outgoing_channel_message(
             message_id=new_message.id,
             conversation_key=message.conversation_key,
-            text=message.text,
+            text=stored_text,
             sender_timestamp=sender_timestamp,
             received_at=sent_at,
             sender_name=radio_name or None,
