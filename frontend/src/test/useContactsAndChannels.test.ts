@@ -181,9 +181,8 @@ describe('useContactsAndChannels', () => {
     let requestSignal: AbortSignal | undefined;
     vi.mocked(api.getContacts).mockImplementationOnce((_limit, _offset, signal) => {
       requestSignal = signal;
-      return new Promise<Contact[]>((resolve, reject) => {
+      return new Promise<Contact[]>((resolve) => {
         resolveContacts = resolve;
-        signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
       });
     });
 
@@ -195,17 +194,12 @@ describe('useContactsAndChannels', () => {
     act(() => result.current.setContacts([liveContact]));
     expect(requestSignal?.aborted).toBe(true);
 
-    // The stale promise rejects because the signal was aborted, so it cannot
-    // overwrite the live data. We must still settle the microtask queue.
-    await act(async () => {
-      try {
-        resolveContacts([staleContact]);
-      } catch {
-        // rejection expected from abort listener above
-      }
-    });
+    // Resolve the stale promise; the cancelled query must not overwrite the cache.
+    await act(async () => resolveContacts([staleContact]));
 
-    expect(result.current.contacts).toEqual([liveContact]);
+    // The live data set by setContacts must survive the stale resolution.
+    // Use waitFor to allow Query to process the stale result internally.
+    await waitFor(() => expect(result.current.contacts).toEqual([liveContact]), { timeout: 1000 });
   });
 
   describe('bulk hashtag creation', () => {

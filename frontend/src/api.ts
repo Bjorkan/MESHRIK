@@ -50,6 +50,17 @@ import type { paths } from './generated/api-schema';
 
 const API_BASE = './api';
 
+/** Extract the 200 JSON response type for a path + method.
+ * @public — available for typed fetch wrappers; unused until schemas are fully hardened. */
+export type ApiResponse<
+  P extends keyof paths,
+  M extends keyof paths[P] & string,
+> = paths[P][M] extends {
+  responses: { 200: { content: { 'application/json': infer R } } };
+}
+  ? R
+  : never;
+
 type ContactsResponse =
   paths['/api/contacts']['get']['responses'][200]['content']['application/json'];
 type ChannelsResponse =
