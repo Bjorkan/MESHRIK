@@ -255,8 +255,8 @@ Web Push is a standalone subsystem in `app/push/`, separate from the fanout modu
 - `GET /contacts/analytics` — unified keyed-or-name analytics payload
 - `GET /contacts/repeaters/advert-paths` — recent advert paths for all contacts
 - `POST /contacts`
-- `POST /contacts/bulk-delete`
-- `DELETE /contacts/{public_key}`
+- `POST /contacts/bulk-delete` — reports database deletion count separately from successful/failed radio removals
+- `DELETE /contacts/{public_key}` — returns `status: "partial"` plus `radio_error` when local deletion succeeds but radio removal fails
 - `POST /contacts/{public_key}/mark-read`
 - `POST /contacts/{public_key}/command`
 - `POST /contacts/{public_key}/routing-override`

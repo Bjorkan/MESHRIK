@@ -74,6 +74,20 @@ export interface RadioRegionDiscoveryResponse {
 
 export type RadioAdvertMode = 'flood' | 'zero_hop';
 
+export interface ContactDeleteResult {
+  status: 'ok' | 'partial';
+  database_deleted: boolean;
+  radio_deleted: boolean | null;
+  radio_error: string | null;
+}
+
+export interface BulkDeleteContactsResult {
+  deleted: number;
+  radio_deleted: number;
+  radio_failed: number;
+  radio_failures: Array<{ public_key: string; error: string }>;
+}
+
 export interface FanoutStatusEntry {
   name: string;
   type: string;

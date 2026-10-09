@@ -2,10 +2,12 @@ import type {
   AppSettings,
   AppSettingsUpdate,
   BulkCreateHashtagChannelsResult,
+  BulkDeleteContactsResult,
   Channel,
   ChannelDetail,
   CommandResponse,
   Contact,
+  ContactDeleteResult,
   ContactAnalytics,
   ContactAdvertPathSummary,
   ContactTelemetryResponse,
@@ -158,11 +160,11 @@ export const api = {
     });
   },
   deleteContact: (publicKey: string) =>
-    fetchJson<{ status: string }>(`/contacts/${publicKey}`, {
+    fetchJson<ContactDeleteResult>(`/contacts/${publicKey}`, {
       method: 'DELETE',
     }),
   bulkDeleteContacts: (publicKeys: string[]) =>
-    fetchJson<{ deleted: number }>('/contacts/bulk-delete', {
+    fetchJson<BulkDeleteContactsResult>('/contacts/bulk-delete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ public_keys: publicKeys }),

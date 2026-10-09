@@ -220,7 +220,14 @@ export function BulkDeleteContactsModal({
     try {
       const keysToDelete = [...selectedKeys];
       const result = await api.bulkDeleteContacts(keysToDelete);
-      toast.success(`Deleted ${result.deleted} contact${result.deleted === 1 ? '' : 's'}`);
+      const deletedLabel = `Deleted ${result.deleted} contact${result.deleted === 1 ? '' : 's'}`;
+      if (result.radio_failed > 0) {
+        toast.warning(deletedLabel, {
+          description: `${result.radio_failed} could not be removed from the radio and may return during synchronization.`,
+        });
+      } else {
+        toast.success(deletedLabel);
+      }
       onDeleted(keysToDelete);
       resetAndClose();
     } catch (err) {

@@ -363,6 +363,14 @@ class BulkDeleteRequest(BaseModel):
     public_keys: list[str] = Field(description="Public keys to delete")
 
 
+def _radio_contact_removal_error(result) -> str | None:
+    if result is None:
+        return "No response from radio"
+    if result.type == EventType.ERROR:
+        return f"Radio rejected removal: {result.payload}"
+    return None
+
+
 @router.post("/bulk-delete")
 async def bulk_delete_contacts(request: BulkDeleteRequest) -> dict:
     """Delete multiple contacts from the database (and radio if present)."""
@@ -375,16 +383,41 @@ async def bulk_delete_contacts(request: BulkDeleteRequest) -> dict:
         if contact:
             contacts_to_delete.append(contact)
 
+    radio_deleted = 0
+    radio_failures: list[dict[str, str]] = []
+    radio_processed: set[str] = set()
+
     # Remove from radio in a single locked operation (blocks until radio is free)
     if radio_manager.is_connected and contacts_to_delete:
         try:
             async with radio_manager.radio_operation("bulk_delete_contacts_from_radio") as mc:
                 for contact in contacts_to_delete:
-                    radio_contact = mc.get_contact_by_key_prefix(contact.public_key[:12])
-                    if radio_contact:
-                        await mc.commands.remove_contact(radio_contact)
+                    try:
+                        radio_contact = mc.get_contact_by_key_prefix(contact.public_key[:12])
+                        if not radio_contact:
+                            continue
+                        result = await mc.commands.remove_contact(radio_contact)
+                        error = _radio_contact_removal_error(result)
+                        if error:
+                            radio_failures.append(
+                                {"public_key": contact.public_key, "error": error}
+                            )
+                        else:
+                            radio_deleted += 1
+                    except Exception as exc:
+                        logger.warning(
+                            "Radio removal failed for contact %s",
+                            contact.public_key[:12],
+                            exc_info=True,
+                        )
+                        radio_failures.append({"public_key": contact.public_key, "error": str(exc)})
+                    finally:
+                        radio_processed.add(contact.public_key)
         except Exception as e:
             logger.warning("Radio removal during bulk delete failed: %s", e)
+            for contact in contacts_to_delete:
+                if contact.public_key not in radio_processed:
+                    radio_failures.append({"public_key": contact.public_key, "error": str(e)})
 
     # Delete from database and broadcast events
     deleted = 0
@@ -394,7 +427,12 @@ async def bulk_delete_contacts(request: BulkDeleteRequest) -> dict:
         deleted += 1
 
     logger.info("Bulk deleted %d/%d contacts", deleted, len(request.public_keys))
-    return {"deleted": deleted}
+    return {
+        "deleted": deleted,
+        "radio_deleted": radio_deleted,
+        "radio_failed": len(radio_failures),
+        "radio_failures": radio_failures,
+    }
 
 
 @router.delete("/{public_key}")
@@ -402,15 +440,27 @@ async def delete_contact(public_key: str) -> dict:
     """Delete a contact from the database (and radio if present)."""
     contact = await _resolve_contact_or_404(public_key)
 
+    radio_deleted: bool | None = None
+    radio_error: str | None = None
+
     # Remove from radio if connected and contact is on radio
     if radio_manager.is_connected:
-        async with radio_manager.radio_operation("delete_contact_from_radio") as mc:
-            radio_contact = mc.get_contact_by_key_prefix(contact.public_key[:12])
-            if radio_contact:
-                logger.info(
-                    "Removing contact %s from radio before deletion", contact.public_key[:12]
-                )
-                await mc.commands.remove_contact(radio_contact)
+        try:
+            async with radio_manager.radio_operation("delete_contact_from_radio") as mc:
+                radio_contact = mc.get_contact_by_key_prefix(contact.public_key[:12])
+                if radio_contact:
+                    logger.info(
+                        "Removing contact %s from radio before deletion", contact.public_key[:12]
+                    )
+                    result = await mc.commands.remove_contact(radio_contact)
+                    radio_error = _radio_contact_removal_error(result)
+                    radio_deleted = radio_error is None
+        except Exception as exc:
+            logger.warning(
+                "Radio removal failed for contact %s", contact.public_key[:12], exc_info=True
+            )
+            radio_deleted = False
+            radio_error = str(exc)
 
     # Delete from database
     await ContactRepository.delete(contact.public_key)
@@ -420,7 +470,12 @@ async def delete_contact(public_key: str) -> dict:
 
     broadcast_event("contact_deleted", {"public_key": contact.public_key})
 
-    return {"status": "ok"}
+    return {
+        "status": "partial" if radio_error else "ok",
+        "database_deleted": True,
+        "radio_deleted": radio_deleted,
+        "radio_error": radio_error,
+    }
 
 
 @router.post("/{public_key}/trace", response_model=TraceResponse)

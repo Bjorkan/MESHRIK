@@ -466,7 +466,7 @@ class TestDeleteContact:
 
         mock_mc = MagicMock()
         mock_mc.get_contact_by_key_prefix = MagicMock(return_value=mock_radio_contact)
-        mock_mc.commands.remove_contact = AsyncMock()
+        mock_mc.commands.remove_contact = AsyncMock(return_value=_radio_result())
 
         with patch("app.routers.contacts.radio_manager") as mock_rm:
             mock_rm.is_connected = True
@@ -477,6 +477,72 @@ class TestDeleteContact:
 
         assert response.status_code == 200
         mock_mc.commands.remove_contact.assert_called_once_with(mock_radio_contact)
+        assert response.json()["radio_deleted"] is True
+
+    @pytest.mark.asyncio
+    async def test_delete_reports_partial_success_when_radio_rejects_removal(self, test_db, client):
+        await _insert_contact(KEY_A, on_radio=True)
+        mock_radio_contact = MagicMock()
+        mock_mc = MagicMock()
+        mock_mc.get_contact_by_key_prefix = MagicMock(return_value=mock_radio_contact)
+        mock_mc.commands.remove_contact = AsyncMock(
+            return_value=_radio_result(EventType.ERROR, "contact locked")
+        )
+
+        with patch("app.routers.contacts.radio_manager") as mock_rm:
+            mock_rm.is_connected = True
+            mock_rm.radio_operation = _noop_radio_operation(mock_mc)
+            response = await client.delete(f"/api/contacts/{KEY_A}")
+
+        assert response.status_code == 200
+        assert response.json() == {
+            "status": "partial",
+            "database_deleted": True,
+            "radio_deleted": False,
+            "radio_error": "Radio rejected removal: contact locked",
+        }
+        assert await ContactRepository.get_by_key(KEY_A) is None
+
+
+class TestBulkDeleteContacts:
+    @pytest.mark.asyncio
+    async def test_reports_radio_failures_separately_from_database_deletes(self, test_db, client):
+        await _insert_contact(KEY_A, "Alice", on_radio=True)
+        await _insert_contact(KEY_B, "Bob", on_radio=True)
+        radio_contacts = {
+            KEY_A[:12]: MagicMock(),
+            KEY_B[:12]: MagicMock(),
+        }
+        mock_mc = MagicMock()
+        mock_mc.get_contact_by_key_prefix = MagicMock(
+            side_effect=lambda prefix: radio_contacts.get(prefix)
+        )
+        mock_mc.commands.remove_contact = AsyncMock(
+            side_effect=[
+                _radio_result(),
+                _radio_result(EventType.ERROR, "contact locked"),
+            ]
+        )
+
+        with patch("app.routers.contacts.radio_manager") as mock_rm:
+            mock_rm.is_connected = True
+            mock_rm.radio_operation = _noop_radio_operation(mock_mc)
+            response = await client.post(
+                "/api/contacts/bulk-delete",
+                json={"public_keys": [KEY_A, KEY_B]},
+            )
+
+        assert response.status_code == 200
+        assert response.json() == {
+            "deleted": 2,
+            "radio_deleted": 1,
+            "radio_failed": 1,
+            "radio_failures": [
+                {"public_key": KEY_B, "error": "Radio rejected removal: contact locked"}
+            ],
+        }
+        assert await ContactRepository.get_by_key(KEY_A) is None
+        assert await ContactRepository.get_by_key(KEY_B) is None
 
 
 class TestCreateContactWithHistorical:
