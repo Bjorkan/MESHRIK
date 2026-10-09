@@ -21,7 +21,15 @@ vi.mock('../components/MessageList', () => ({
 vi.mock('../components/MessageInput', () => ({
   MessageInput: React.forwardRef((_props, ref) => {
     React.useImperativeHandle(ref, () => ({ appendText: vi.fn() }));
-    return <div data-testid="message-input" />;
+    const [draft, setDraft] = React.useState('');
+    return (
+      <input
+        data-testid="message-input"
+        aria-label="Message draft"
+        value={draft}
+        onChange={(event) => setDraft(event.target.value)}
+      />
+    );
   }),
 }));
 
@@ -234,6 +242,31 @@ describe('ConversationPane', () => {
       expect(screen.getByTestId('message-list')).toBeInTheDocument();
       expect(screen.getByTestId('message-input')).toBeInTheDocument();
     });
+  });
+
+  it('clears the previous conversation draft when switching conversations', () => {
+    const firstConversation: Conversation = {
+      type: 'channel',
+      id: channel.key,
+      name: channel.name,
+    };
+    const secondConversation: Conversation = {
+      type: 'channel',
+      id: '11'.repeat(16),
+      name: 'Operations',
+    };
+    const { rerender } = render(
+      <ConversationPane {...createProps({ activeConversation: firstConversation })} />
+    );
+
+    fireEvent.change(screen.getByLabelText('Message draft'), {
+      target: { value: 'message intended for Public' },
+    });
+    expect(screen.getByLabelText('Message draft')).toHaveValue('message intended for Public');
+
+    rerender(<ConversationPane {...createProps({ activeConversation: secondConversation })} />);
+
+    expect(screen.getByLabelText('Message draft')).toHaveValue('');
   });
 
   it('renders the trace tool pane for trace conversations', () => {

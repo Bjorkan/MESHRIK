@@ -359,6 +359,7 @@ export function ConversationPane({
       )}
       {showRoomChat && !(activeConversation.type === 'contact' && isPrefixOnlyActiveContact) ? (
         <MessageInput
+          key={`${activeConversation.type}:${activeConversation.id}`}
           ref={messageInputRef}
           onSend={onSendMessage}
           disabled={!health?.radio_connected}
