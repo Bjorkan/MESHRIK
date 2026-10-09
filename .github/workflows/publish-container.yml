@@ -1,8 +1,9 @@
 name: Publish container
 
 on:
-  push:
-    branches: [main]
+  workflow_run:
+    workflows: [All Quality]
+    types: [completed]
   release:
     types: [published]
   workflow_dispatch:
@@ -16,18 +17,19 @@ on:
         required: true
 
 permissions:
+  actions: read
   contents: read
   packages: write
 
 concurrency:
   group: >-
     publish-container-${{
-      github.event_name == 'push' && 'edge' ||
+      github.event_name == 'workflow_run' && 'edge' ||
       github.event.release.tag_name ||
       inputs.tag
     }}
-  # A newer main push must be the last workflow allowed to move :edge.
-  cancel-in-progress: ${{ github.event_name == 'push' }}
+  # A newer quality-approved main push must be the last workflow allowed to move :edge.
+  cancel-in-progress: ${{ github.event_name == 'workflow_run' }}
 
 env:
   REGISTRY: ghcr.io
@@ -35,18 +37,28 @@ env:
 
 jobs:
   publish:
-    if: github.repository == 'Bjorkan/MESHRIK'
+    if: >-
+      github.repository == 'Bjorkan/MESHRIK' &&
+      (
+        (
+          github.event_name == 'workflow_run' &&
+          github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.head_branch == 'main' &&
+          github.event.workflow_run.event == 'push'
+        ) ||
+        github.event_name == 'release' ||
+        github.event_name == 'workflow_dispatch'
+      )
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
       DISPATCH_TOKEN: ${{ secrets.HA_MESHRIK_DISPATCH_TOKEN }}
-      GH_TOKEN: ${{ secrets.HA_MESHRIK_DISPATCH_TOKEN }}
 
     steps:
       - name: Check out release source
         uses: actions/checkout@v7
         with:
-          ref: ${{ github.event_name == 'push' && github.sha || github.event.release.tag_name || inputs.ref }}
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.event.release.tag_name || inputs.ref }}
 
       - name: Protect reserved channel tags
         if: github.event_name == 'workflow_dispatch'
@@ -67,6 +79,28 @@ jobs:
         run: |
           echo "short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
           echo "full=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Require a successful quality gate for the source commit
+        if: github.event_name != 'workflow_run'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SOURCE_SHA: ${{ steps.commit.outputs.full }}
+        shell: bash
+        run: |
+          gh run list \
+            --repo "${GITHUB_REPOSITORY}" \
+            --workflow all-quality.yml \
+            --commit "${SOURCE_SHA}" \
+            --status completed \
+            --limit 20 \
+            --json conclusion,event,headSha \
+            | jq -e --arg sha "${SOURCE_SHA}" '
+                any(.[];
+                  .headSha == $sha and
+                  .conclusion == "success" and
+                  (.event == "push" or .event == "pull_request")
+                )
+              '
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
@@ -90,7 +124,7 @@ jobs:
             type=semver,pattern={{version}},value=${{ github.event.release.tag_name }},enable=${{ github.event_name == 'release' }}
             type=semver,pattern={{major}}.{{minor}},value=${{ github.event.release.tag_name }},enable=${{ github.event_name == 'release' }}
             type=raw,value=latest,enable=${{ github.event_name == 'release' && !github.event.release.prerelease }}
-            type=raw,value=edge,enable=${{ github.event_name == 'push' }}
+            type=raw,value=edge,enable=${{ github.event_name == 'workflow_run' }}
             type=raw,value=${{ inputs.tag }},enable=${{ github.event_name == 'workflow_dispatch' }}
             type=raw,value=sha-${{ steps.commit.outputs.full }}
           labels: |
@@ -128,6 +162,7 @@ jobs:
       - name: Notify HA-MESHRIK of stable publication
         if: github.event_name == 'release' && !github.event.release.prerelease && env.DISPATCH_TOKEN != ''
         env:
+          GH_TOKEN: ${{ secrets.HA_MESHRIK_DISPATCH_TOKEN }}
           SOURCE_VERSION: ${{ github.event.release.tag_name }}
           SOURCE_SHA: ${{ steps.commit.outputs.full }}
           IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
@@ -148,8 +183,9 @@ jobs:
           gh api --method POST repos/Bjorkan/HA-MESHRIK/dispatches --input - <<<"${payload}"
 
       - name: Notify HA-MESHRIK of edge publication
-        if: github.event_name == 'push' && env.DISPATCH_TOKEN != ''
+        if: github.event_name == 'workflow_run' && env.DISPATCH_TOKEN != ''
         env:
+          GH_TOKEN: ${{ secrets.HA_MESHRIK_DISPATCH_TOKEN }}
           SOURCE_SHA: ${{ steps.commit.outputs.full }}
           IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
         shell: bash

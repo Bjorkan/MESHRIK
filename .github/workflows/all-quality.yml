@@ -54,7 +54,7 @@ jobs:
         run: uv run pyright app/
 
       - name: Backend tests
-        run: PYTHONPATH=. uv run pytest tests/ -v
+        run: PYTHONPATH=. uv run python -m pytest tests/ -v
 
   frontend-checks:
     runs-on: ubuntu-latest

@@ -107,6 +107,20 @@ def test_valid_dist_serves_static_and_spa_fallback(tmp_path):
         assert asset_response.headers["cache-control"] == ASSET_CACHE_CONTROL
 
 
+def test_frontend_routes_do_not_change_openapi_contract(tmp_path):
+    app = FastAPI()
+    dist_dir = tmp_path / "frontend" / "dist"
+    dist_dir.mkdir(parents=True)
+    (dist_dir / "index.html").write_text("<html><body>index page</body></html>")
+
+    schema_before = app.openapi()
+    app.openapi_schema = None
+    assert register_frontend_static_routes(app, dist_dir) is True
+    schema_after = app.openapi()
+
+    assert schema_after == schema_before
+
+
 def test_webmanifest_uses_forwarded_origin_headers(tmp_path):
     app = FastAPI()
     dist_dir = tmp_path / "frontend" / "dist"

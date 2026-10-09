@@ -64,7 +64,7 @@ echo -e "${GREEN}Passed!${NC}"
 
 echo -ne "${BLUE}[pytest]${NC} "
 cd "$REPO_ROOT"
-PYTHONPATH=. uv run pytest tests/ -q --no-header --tb=short
+PYTHONPATH=. uv run python -m pytest tests/ -q --no-header --tb=short
 echo -e "${GREEN}Passed!${NC}"
 
 echo -ne "${BLUE}[vitest]${NC} "

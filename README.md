@@ -159,7 +159,7 @@ Then run:
 sudo docker compose up -d --build
 ```
 
-Container channels are deliberately separate: `:latest` moves only after a non-prerelease GitHub Release is published, while `:edge` moves after every successful build of `main`. Each publication also receives an immutable `sha-<full-commit>` tag and contains amd64 and arm64 images.
+Container channels are deliberately separate: `:latest` moves only after a non-prerelease GitHub Release whose exact source commit has passed **All Quality**, while `:edge` moves only after **All Quality** succeeds for a push to `main`. A red or cancelled quality run cannot start publication. Each publication also receives an immutable `sha-<full-commit>` tag and contains amd64 and arm64 images.
 
 After a successful channel publication, the workflow can notify the HA wrapper repository with the exact commit and multi-architecture digest. Repository maintainers enable this by adding an `HA_MESHRIK_DISPATCH_TOKEN` secret containing a fine-grained token with **Contents: read and write** access to `Bjorkan/HA-MESHRIK`. Missing tokens skip only the downstream notification; container publication and verification still run.
 

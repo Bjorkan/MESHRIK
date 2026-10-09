@@ -116,12 +116,12 @@ def register_frontend_static_routes(app: FastAPI, frontend_dir: Path) -> bool:
             assets_dir,
         )
 
-    @app.get("/")
+    @app.get("/", include_in_schema=False)
     async def serve_index():
         """Serve the frontend index.html."""
         return _file_response(index_file, cache_control=INDEX_CACHE_CONTROL)
 
-    @app.get("/site.webmanifest")
+    @app.get("/site.webmanifest", include_in_schema=False)
     async def serve_webmanifest(request: Request):
         """Serve a dynamic web manifest using the active request base URL."""
         base = _resolve_request_base(request)
@@ -204,7 +204,7 @@ def register_frontend_static_routes(app: FastAPI, frontend_dir: Path) -> bool:
             headers={"Cache-Control": "no-store"},
         )
 
-    @app.get("/{path:path}")
+    @app.get("/{path:path}", include_in_schema=False)
     async def serve_frontend(path: str):
         """Serve frontend files, falling back to index.html for SPA routing."""
         if path == "api" or path.startswith("api/"):
