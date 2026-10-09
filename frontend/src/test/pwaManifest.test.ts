@@ -36,4 +36,11 @@ describe('development PWA manifest', () => {
       expect(existsSync(resolve(publicDir, asset.src.replace(/^\.\//, '')))).toBe(true);
     }
   });
+
+  it('uses the MESHRIK name for iOS home-screen shortcuts', () => {
+    const indexHtml = readFileSync(resolve(process.cwd(), 'index.html'), 'utf8');
+
+    expect(indexHtml).toContain('<meta name="apple-mobile-web-app-title" content="MESHRIK" />');
+    expect(indexHtml).not.toContain('content="MCTerm"');
+  });
 });
