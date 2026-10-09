@@ -3,7 +3,6 @@ import { lazy, Suspense, useEffect, useMemo, useState, type Ref } from 'react';
 import { ChatHeader } from './ChatHeader';
 import { MessageInput, type MessageInputHandle } from './MessageInput';
 import { MessageList } from './MessageList';
-import { RawPacketFeedView } from './RawPacketFeedView';
 import { RoomServerPanel } from './RoomServerPanel';
 import { TracePane } from './TracePane';
 import type {
@@ -30,6 +29,9 @@ const RepeaterDashboard = lazy(() =>
 const MapView = lazy(() => import('./MapView').then((m) => ({ default: m.MapView })));
 const VisualizerView = lazy(() =>
   import('./VisualizerView').then((m) => ({ default: m.VisualizerView }))
+);
+const RawPacketFeedView = lazy(() =>
+  import('./RawPacketFeedView').then((m) => ({ default: m.RawPacketFeedView }))
 );
 
 interface ConversationPaneProps {
@@ -243,7 +245,11 @@ export function ConversationPane({
   }
 
   if (activeConversation.type === 'raw') {
-    return <RawPacketFeedView contacts={contacts} channels={channels} />;
+    return (
+      <Suspense fallback={<LoadingPane label="Loading packet feed..." />}>
+        <RawPacketFeedView contacts={contacts} channels={channels} />
+      </Suspense>
+    );
   }
 
   if (activeConversation.type === 'search') {

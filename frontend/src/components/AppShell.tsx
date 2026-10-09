@@ -14,8 +14,6 @@ import { Sidebar } from './Sidebar';
 import { ConversationPane } from './ConversationPane';
 import { NewMessageModal } from './NewMessageModal';
 import { BulkAddChannelResultModal } from './BulkAddChannelResultModal';
-import { ContactInfoPane } from './ContactInfoPane';
-import { ChannelInfoPane } from './ChannelInfoPane';
 import { CommandPalette } from './CommandPalette';
 import { SecurityWarningModal } from './SecurityWarningModal';
 import { Toaster } from './ui/sonner';
@@ -39,6 +37,12 @@ const CrackerPanel = lazy(() =>
   import('./CrackerPanel').then((m) => ({ default: m.CrackerPanel }))
 );
 const SearchView = lazy(() => import('./SearchView').then((m) => ({ default: m.SearchView })));
+const ContactInfoPane = lazy(() =>
+  import('./ContactInfoPane').then((m) => ({ default: m.ContactInfoPane }))
+);
+const ChannelInfoPane = lazy(() =>
+  import('./ChannelInfoPane').then((m) => ({ default: m.ChannelInfoPane }))
+);
 
 type SidebarProps = ComponentProps<typeof Sidebar>;
 type ConversationPaneProps = ComponentProps<typeof ConversationPane>;
@@ -371,8 +375,16 @@ export function AppShell({
         onRepeaterAutoLogin={onRepeaterAutoLogin}
       />
       <SecurityWarningModal health={statusProps.health} />
-      <ContactInfoPane {...contactInfoPaneProps} />
-      <ChannelInfoPane {...channelInfoPaneProps} />
+      {contactInfoPaneProps.contactKey !== null && (
+        <Suspense fallback={null}>
+          <ContactInfoPane {...contactInfoPaneProps} />
+        </Suspense>
+      )}
+      {channelInfoPaneProps.channelKey !== null && (
+        <Suspense fallback={null}>
+          <ChannelInfoPane {...channelInfoPaneProps} />
+        </Suspense>
+      )}
       <Toaster
         position="top-right"
         offset={toastTopOffset !== undefined ? { top: toastTopOffset } : undefined}
