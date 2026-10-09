@@ -51,6 +51,7 @@ const DEFAULT_MESHRANK_BROKER_HOST = 'meshrank.net';
 const DEFAULT_MESHRANK_BROKER_PORT = 8883;
 const DEFAULT_MESHRANK_TRANSPORT = 'tcp';
 const DEFAULT_MESHRANK_AUTH_MODE = 'none';
+const EMPTY_TRACKED_KEYS: string[] = [];
 const DEFAULT_MESHRANK_IATA = 'XYZ';
 
 function createCommunityConfigDefaults(
@@ -902,8 +903,8 @@ function MqttHaConfigEditor({
       .catch(console.error);
   }, []);
 
-  const selectedContacts = (config.tracked_contacts as string[]) || [];
-  const selectedRepeaters = (config.tracked_repeaters as string[]) || [];
+  const selectedContacts = (config.tracked_contacts as string[]) || EMPTY_TRACKED_KEYS;
+  const selectedRepeaters = (config.tracked_repeaters as string[]) || EMPTY_TRACKED_KEYS;
 
   const contactOptions = useMemo(
     () => contacts.filter((c) => c.type === 0 || c.type === 1 || c.type === 3),
@@ -932,11 +933,13 @@ function MqttHaConfigEditor({
     });
   }, [contactOptions, contactSearchLower, selectedContacts]);
 
-  const selectedContactDetails = contactOptions.filter((c) =>
-    selectedContacts.includes(c.public_key)
+  const selectedContactDetails = useMemo(
+    () => contactOptions.filter((c) => selectedContacts.includes(c.public_key)),
+    [contactOptions, selectedContacts]
   );
-  const selectedRepeaterDetails = repeaterOptions.filter((c) =>
-    selectedRepeaters.includes(c.public_key)
+  const selectedRepeaterDetails = useMemo(
+    () => repeaterOptions.filter((c) => selectedRepeaters.includes(c.public_key)),
+    [repeaterOptions, selectedRepeaters]
   );
   const prefix = ((config.topic_prefix as string) || 'meshcore').trim() || 'meshcore';
 
