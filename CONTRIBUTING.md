@@ -66,9 +66,25 @@ PYTHONPATH=. uv run pytest tests/ -v
 cd frontend
 npm run lint:fix
 npm run format
+npm run api:generate
 npm run test:run
 npm run build
 ```
+
+### Generated REST API contracts
+
+The backend OpenAPI schema is the source of truth for frontend REST types. No running server or
+physical radio is required. After changing a FastAPI route, request model, or response model, run:
+
+```bash
+cd frontend
+npm run api:generate
+```
+
+Commit both `frontend/openapi/openapi.json` and
+`frontend/src/generated/api-schema.ts`. `npm run api:check` regenerates them and fails when the
+checked-in artifacts are stale; CI runs that check on every push and pull request. WebSocket payloads
+remain governed separately by `app/events.py` and `frontend/src/wsEvents.ts`.
 
 ## Quality + Publishing Scripts
 
@@ -97,7 +113,7 @@ npm run build
 | `extract_release_notes.sh` | Extracts the latest version's notes from `CHANGELOG.md` for the release body. |
 | `collect_licenses.sh` | Gathers third-party license attributions into `LICENSES.md`. |
 | `print_frontend_licenses.cjs` | Helper that extracts frontend npm dependency licenses. |
-| `dump_api_specs.py` | Dumps the OpenAPI spec from the running backend (developer utility). |
+| `dump_api_specs.py` | Deterministically exports OpenAPI and optional WebSocket schemas directly from backend code; no running server or radio is required. |
 
 Container publication is handled exclusively by `.github/workflows/publish-container.yml`. Publishing a GitHub release builds `linux/amd64` and `linux/arm64` images and pushes them to `ghcr.io/bjorkan/meshrik`; no Docker Hub or AUR credentials are used. The workflow can also be rerun manually with an explicit source ref and container tag.
 

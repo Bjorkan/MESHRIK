@@ -1,3 +1,8 @@
+import type { components } from './generated/api-schema';
+
+type ApiSchemas = components['schemas'];
+type RequireFields<T, K extends keyof T> = T & Required<Pick<T, K>>;
+
 interface RadioSettings {
   freq: number;
   bw: number;
@@ -158,38 +163,26 @@ export interface MaintenanceResult {
   vacuumed: boolean;
 }
 
-export interface Contact {
-  public_key: string;
-  name: string | null;
-  type: number;
-  flags: number;
-  direct_path: string | null;
-  direct_path_len: number;
-  direct_path_hash_mode: number;
-  direct_path_updated_at?: number | null;
-  route_override_path?: string | null;
-  route_override_len?: number | null;
-  route_override_hash_mode?: number | null;
-  effective_route?: ContactRoute | null;
-  effective_route_source?: 'override' | 'direct' | 'flood';
-  direct_route?: ContactRoute | null;
-  route_override?: ContactRoute | null;
-  last_advert: number | null;
-  lat: number | null;
-  lon: number | null;
-  last_seen: number | null;
-  on_radio: boolean;
-  favorite: boolean;
-  last_contacted: number | null;
-  last_read_at: number | null;
-  first_seen: number | null;
-}
+type ContactViewRequiredFields =
+  | 'name'
+  | 'direct_path'
+  | 'last_advert'
+  | 'lat'
+  | 'lon'
+  | 'last_seen'
+  | 'last_contacted'
+  | 'last_read_at'
+  | 'first_seen';
 
-export interface ContactRoute {
-  path: string;
-  path_len: number;
-  path_hash_mode: number;
-}
+/** REST contact contract with default-emitted nullable fields required by the view layer. */
+export type Contact = Omit<
+  RequireFields<ApiSchemas['Contact'], ContactViewRequiredFields>,
+  'effective_route_source'
+> & {
+  effective_route_source?: ApiSchemas['Contact']['effective_route_source'];
+};
+
+export type ContactRoute = ApiSchemas['ContactRoute'];
 
 export interface ContactAdvertPath {
   path: string;
@@ -254,31 +247,12 @@ export interface ContactAnalytics {
   weekly_activity: ContactAnalyticsWeeklyBucket[];
 }
 
-export interface Channel {
-  key: string;
-  name: string;
-  is_hashtag: boolean;
-  on_radio: boolean;
-  flood_scope_override?: string | null;
-  path_hash_mode_override?: number | null;
-  last_read_at: number | null;
-  favorite: boolean;
-  muted: boolean;
-}
+/** REST channel contract with the default-emitted read cursor required by the view layer. */
+export type Channel = RequireFields<ApiSchemas['Channel'], 'last_read_at'>;
 
-export interface ChannelMessageCounts {
-  last_1h: number;
-  last_24h: number;
-  last_48h: number;
-  last_7d: number;
-  all_time: number;
-}
+export type ChannelMessageCounts = ApiSchemas['ChannelMessageCounts'];
 
-export interface ChannelTopSender {
-  sender_name: string;
-  sender_key: string | null;
-  message_count: number;
-}
+export type ChannelTopSender = RequireFields<ApiSchemas['ChannelTopSender'], 'sender_key'>;
 
 export interface BulkCreateHashtagChannelsResult {
   created_channels: Channel[];
@@ -289,77 +263,52 @@ export interface BulkCreateHashtagChannelsResult {
   message: string;
 }
 
-export interface PathHashWidthStats {
-  total_packets: number;
-  single_byte: number;
-  double_byte: number;
-  triple_byte: number;
-  single_byte_pct: number;
-  double_byte_pct: number;
-  triple_byte_pct: number;
-}
+export type PathHashWidthStats = ApiSchemas['PathHashWidthStats'];
 
-export interface ChannelDetail {
+type ChannelDetailDefaults =
+  | 'message_counts'
+  | 'first_message_at'
+  | 'top_senders_24h'
+  | 'path_hash_width_24h';
+
+export type ChannelDetail = Omit<
+  RequireFields<ApiSchemas['ChannelDetail'], ChannelDetailDefaults>,
+  'channel' | 'message_counts' | 'top_senders_24h' | 'path_hash_width_24h'
+> & {
   channel: Channel;
   message_counts: ChannelMessageCounts;
-  first_message_at: number | null;
-  unique_sender_count: number;
   top_senders_24h: ChannelTopSender[];
   path_hash_width_24h: PathHashWidthStats;
-}
+};
 
-/** A single path that a message took to reach us */
-export interface MessagePath {
-  /** Hex-encoded routing path */
-  path: string;
-  /** Unix timestamp when this path was received */
-  received_at: number;
-  /** Hop count (number of intermediate nodes). Null for legacy data (infer as len(path)/2). */
-  path_len?: number | null;
-  /** Last-hop RSSI in dBm (null if not available, e.g. older data) */
-  rssi?: number | null;
-  /** Last-hop SNR in dB (null if not available, e.g. older data) */
-  snr?: number | null;
-}
+export type MessagePath = ApiSchemas['MessagePath'];
 
-export interface Message {
-  id: number;
+type MessageViewRequiredFields =
+  | 'sender_timestamp'
+  | 'paths'
+  | 'signature'
+  | 'sender_key'
+  | 'sender_name';
+
+/** REST message contract refined for known message kinds and legacy WebSocket payloads. */
+export type Message = Omit<
+  RequireFields<ApiSchemas['Message'], MessageViewRequiredFields>,
+  'type' | 'send_status'
+> & {
   type: 'PRIV' | 'CHAN';
-  /** For PRIV: sender's PublicKey (or prefix). For CHAN: ChannelKey */
-  conversation_key: string;
-  text: string;
-  sender_timestamp: number | null;
-  received_at: number;
-  /** List of routing paths this message arrived via. Null for outgoing messages. */
-  paths: MessagePath[] | null;
-  txt_type: number;
-  signature: string | null;
-  sender_key: string | null;
-  outgoing: boolean;
-  /** ACK count: 0 = not acked, 1+ = number of acks/flood echoes received */
-  acked: number;
-  /** Radio command outcome for outgoing messages. Older payloads imply confirmed. */
-  send_status?: 'pending' | 'confirmed' | 'unknown';
-  sender_name: string | null;
-  channel_name?: string | null;
-  packet_id?: number | null;
-  /** Region scope transport code (uint16) when this arrived via a transport-routed packet. */
-  transport_code?: number | null;
-  /** Resolved region name for the transport code, if it matched a known region. */
-  region?: string | null;
-}
+  send_status?: ApiSchemas['Message']['send_status'];
+};
 
-export interface MessagesAroundResponse {
+export type MessagesAroundResponse = Omit<ApiSchemas['MessagesAroundResponse'], 'messages'> & {
   messages: Message[];
-  has_older: boolean;
-  has_newer: boolean;
-}
+};
 
-export interface ResendChannelMessageResponse {
-  status: string;
-  message_id: number;
-  message?: Message;
-}
+export type ResendChannelMessageResponse = Omit<
+  ApiSchemas['ResendChannelMessageResponse'],
+  'message'
+> & {
+  message?: Message | null;
+};
 
 type ConversationType = 'contact' | 'channel' | 'raw' | 'map' | 'visualizer' | 'search' | 'trace';
 
@@ -396,37 +345,19 @@ export interface RawPacket {
   region?: string | null;
 }
 
-export interface AppSettings {
-  max_radio_contacts: number;
-  auto_decrypt_dm_on_advert: boolean;
-  last_message_times: Record<string, number>;
-  advert_interval: number;
-  last_advert_time: number;
-  flood_scope: string;
-  known_regions: string[];
-  blocked_keys: string[];
-  blocked_names: string[];
-  discovery_blocked_types: number[];
-  tracked_telemetry_repeaters: string[];
-  tracked_telemetry_contacts: string[];
-  auto_resend_channel: boolean;
-  telemetry_interval_hours: number;
-  telemetry_routed_hourly: boolean;
-}
+type AppSettingsDefaultFields =
+  | 'last_message_times'
+  | 'known_regions'
+  | 'blocked_keys'
+  | 'blocked_names'
+  | 'discovery_blocked_types'
+  | 'tracked_telemetry_repeaters'
+  | 'tracked_telemetry_contacts';
 
-export interface AppSettingsUpdate {
-  max_radio_contacts?: number;
-  auto_decrypt_dm_on_advert?: boolean;
-  advert_interval?: number;
-  auto_resend_channel?: boolean;
-  flood_scope?: string;
-  known_regions?: string[];
-  blocked_keys?: string[];
-  blocked_names?: string[];
-  discovery_blocked_types?: number[];
-  telemetry_interval_hours?: number;
-  telemetry_routed_hourly?: boolean;
-}
+/** REST settings contract with backend default-factory fields required after serialization. */
+export type AppSettings = RequireFields<ApiSchemas['AppSettings'], AppSettingsDefaultFields>;
+
+export type AppSettingsUpdate = ApiSchemas['AppSettingsUpdate'];
 
 export interface TelemetrySchedule {
   preferred_hours: number;

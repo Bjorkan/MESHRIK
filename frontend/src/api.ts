@@ -46,8 +46,20 @@ import type {
   TraceResponse,
   UnreadCounts,
 } from './types';
+import type { paths } from './generated/api-schema';
 
 const API_BASE = './api';
+
+type ContactsResponse =
+  paths['/api/contacts']['get']['responses'][200]['content']['application/json'];
+type ChannelsResponse =
+  paths['/api/channels']['get']['responses'][200]['content']['application/json'];
+type MessagesResponse =
+  paths['/api/messages']['get']['responses'][200]['content']['application/json'];
+type SettingsResponse =
+  paths['/api/settings']['get']['responses'][200]['content']['application/json'];
+type RestContact = Contact & Required<Pick<ContactsResponse[number], 'effective_route_source'>>;
+type RestMessage = Message & Required<Pick<MessagesResponse[number], 'send_status'>>;
 
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
   const hasBody = options?.body !== undefined;
@@ -73,6 +85,17 @@ async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
     throw new Error(errorMessage);
   }
   return res.json();
+}
+
+/**
+ * FastAPI serializes Pydantic defaults, although OpenAPI marks defaulted response fields optional.
+ * Keep that refinement explicit at the REST boundary while retaining the generated wire contract.
+ */
+async function fetchDefaultedJson<TWire, TView extends TWire>(
+  url: string,
+  options?: RequestInit
+): Promise<TView> {
+  return (await fetchJson<TWire>(url, options)) as TView;
 }
 
 /** Check if an error is an AbortError (request was cancelled) */
@@ -145,8 +168,10 @@ export const api = {
     }),
 
   // Contacts
-  getContacts: (limit = 100, offset = 0) =>
-    fetchJson<Contact[]>(`/contacts?limit=${limit}&offset=${offset}`),
+  getContacts: async (limit = 100, offset = 0): Promise<Contact[]> =>
+    fetchDefaultedJson<ContactsResponse, RestContact[]>(
+      `/contacts?limit=${limit}&offset=${offset}`
+    ),
   getRepeaterAdvertPaths: (limitPerRepeater = 10) =>
     fetchJson<ContactAdvertPathSummary[]>(
       `/contacts/repeaters/advert-paths?limit_per_repeater=${limitPerRepeater}`
@@ -199,7 +224,7 @@ export const api = {
     }),
 
   // Channels
-  getChannels: () => fetchJson<Channel[]>('/channels'),
+  getChannels: () => fetchDefaultedJson<ChannelsResponse, Channel[]>('/channels'),
   createChannel: (name: string, key?: string) =>
     fetchJson<Channel>('/channels', {
       method: 'POST',
@@ -244,7 +269,7 @@ export const api = {
       q?: string;
     },
     signal?: AbortSignal
-  ) => {
+  ): Promise<Message[]> => {
     const searchParams = new URLSearchParams();
     if (params?.limit !== undefined) searchParams.set('limit', params.limit.toString());
     if (params?.offset !== undefined) searchParams.set('offset', params.offset.toString());
@@ -256,7 +281,10 @@ export const api = {
     if (params?.after_id !== undefined) searchParams.set('after_id', params.after_id.toString());
     if (params?.q) searchParams.set('q', params.q);
     const query = searchParams.toString();
-    return fetchJson<Message[]>(`/messages${query ? `?${query}` : ''}`, { signal });
+    return fetchDefaultedJson<MessagesResponse, RestMessage[]>(
+      `/messages${query ? `?${query}` : ''}`,
+      { signal }
+    );
   },
   getMessagesAround: (
     messageId: number,
@@ -322,7 +350,7 @@ export const api = {
     }),
 
   // App Settings
-  getSettings: () => fetchJson<AppSettings>('/settings'),
+  getSettings: () => fetchDefaultedJson<SettingsResponse, AppSettings>('/settings'),
   updateSettings: (settings: AppSettingsUpdate) =>
     fetchJson<AppSettings>('/settings', {
       method: 'PATCH',

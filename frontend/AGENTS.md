@@ -33,6 +33,7 @@ frontend/src/
 ├── App.tsx                 # Data/orchestration entry that wires hooks into AppShell
 ├── api.ts                  # Typed REST client
 ├── types.ts                # Shared TS contracts
+├── generated/api-schema.ts # Generated REST contract; never hand-edit
 ├── useWebSocket.ts         # WS lifecycle + event dispatch
 ├── wsEvents.ts             # Typed WS event parsing / discriminated union
 ├── prefetch.ts             # Consumes prefetched API promises started in index.html
@@ -277,6 +278,7 @@ That gives the store a load-bearing invariant: **no ancestor of `MessageList` ma
 ### Initial load + realtime
 
 - Initial data: REST fetches (`api.ts`) for config/settings/channels/contacts/unreads.
+- REST wire types are generated from `frontend/openapi/openapi.json` into `src/generated/api-schema.ts` with `npm run api:generate`. Both files are checked in and CI runs `npm run api:check`; do not hand-edit generated output. Frontend-only view models remain in `types.ts`.
 - WebSocket: realtime deltas/events.
 - On reconnect, the app refetches channels and contacts, refreshes unread counts, and reconciles the active conversation to recover disconnect-window drift.
 - On WS connect, backend sends `health` only; contacts/channels still come from REST.

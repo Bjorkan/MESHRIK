@@ -231,6 +231,11 @@ Web Push is a standalone subsystem in `app/push/`, separate from the fanout modu
 
 ## API Surface (all under `/api`)
 
+The REST OpenAPI document is exported deterministically by `scripts/build/dump_api_specs.py` and
+drives `frontend/src/generated/api-schema.ts`. Route/request/response contract changes require
+`cd frontend && npm run api:generate`; CI rejects stale generated artifacts. Schema export imports
+the FastAPI app without entering its lifespan, so it needs neither a running server nor a radio.
+
 ### Health
 - `GET /health`
 
