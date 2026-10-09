@@ -1,6 +1,8 @@
 name: Publish container
 
 on:
+  push:
+    branches: [main]
   release:
     types: [published]
   workflow_dispatch:
@@ -18,8 +20,14 @@ permissions:
   packages: write
 
 concurrency:
-  group: publish-container-${{ github.event.release.tag_name || inputs.tag }}
-  cancel-in-progress: false
+  group: >-
+    publish-container-${{
+      github.event_name == 'push' && 'edge' ||
+      github.event.release.tag_name ||
+      inputs.tag
+    }}
+  # A newer main push must be the last workflow allowed to move :edge.
+  cancel-in-progress: ${{ github.event_name == 'push' }}
 
 env:
   REGISTRY: ghcr.io
@@ -30,17 +38,35 @@ jobs:
     if: github.repository == 'Bjorkan/MESHRIK'
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    env:
+      DISPATCH_TOKEN: ${{ secrets.HA_MESHRIK_DISPATCH_TOKEN }}
+      GH_TOKEN: ${{ secrets.HA_MESHRIK_DISPATCH_TOKEN }}
 
     steps:
       - name: Check out release source
         uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.release.tag_name || inputs.ref }}
+          ref: ${{ github.event_name == 'push' && github.sha || github.event.release.tag_name || inputs.ref }}
+
+      - name: Protect reserved channel tags
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          REQUESTED_TAG: ${{ inputs.tag }}
+        shell: bash
+        run: |
+          case "${REQUESTED_TAG}" in
+            latest|edge)
+              echo "Manual dispatch may not overwrite reserved tag ${REQUESTED_TAG}." >&2
+              exit 1
+              ;;
+          esac
 
       - name: Resolve commit hash
         id: commit
         shell: bash
-        run: echo "short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+          echo "full=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
@@ -64,8 +90,9 @@ jobs:
             type=semver,pattern={{version}},value=${{ github.event.release.tag_name }},enable=${{ github.event_name == 'release' }}
             type=semver,pattern={{major}}.{{minor}},value=${{ github.event.release.tag_name }},enable=${{ github.event_name == 'release' }}
             type=raw,value=latest,enable=${{ github.event_name == 'release' && !github.event.release.prerelease }}
+            type=raw,value=edge,enable=${{ github.event_name == 'push' }}
             type=raw,value=${{ inputs.tag }},enable=${{ github.event_name == 'workflow_dispatch' }}
-            type=raw,value=${{ steps.commit.outputs.short }}
+            type=raw,value=sha-${{ steps.commit.outputs.full }}
           labels: |
             org.opencontainers.image.title=MESHRIK
             org.opencontainers.image.description=Web interface for MeshCore radio mesh networks
@@ -73,6 +100,7 @@ jobs:
             org.opencontainers.image.licenses=MIT
 
       - name: Build and publish container
+        id: build
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -84,3 +112,55 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Verify public multi-platform image
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        shell: bash
+        run: |
+          docker logout "${REGISTRY}"
+          docker buildx imagetools inspect --raw "${REGISTRY}/${IMAGE_NAME}@${DIGEST}" \
+            | jq -e '
+                [.manifests[].platform | select(.os == "linux") | .architecture]
+                | contains(["amd64", "arm64"])
+              '
+
+      - name: Notify HA-MESHRIK of stable publication
+        if: github.event_name == 'release' && !github.event.release.prerelease && env.DISPATCH_TOKEN != ''
+        env:
+          SOURCE_VERSION: ${{ github.event.release.tag_name }}
+          SOURCE_SHA: ${{ steps.commit.outputs.full }}
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+          RELEASE_URL: ${{ github.event.release.html_url }}
+        shell: bash
+        run: |
+          payload=$(jq -n \
+            --arg version "${SOURCE_VERSION#v}" \
+            --arg sha "${SOURCE_SHA}" \
+            --arg digest "${IMAGE_DIGEST}" \
+            --arg url "${RELEASE_URL}" \
+            '{event_type: "meshrik-stable-published", client_payload: {
+              source_version: $version,
+              source_sha: $sha,
+              image_digest: $digest,
+              source_url: $url
+            }}')
+          gh api --method POST repos/Bjorkan/HA-MESHRIK/dispatches --input - <<<"${payload}"
+
+      - name: Notify HA-MESHRIK of edge publication
+        if: github.event_name == 'push' && env.DISPATCH_TOKEN != ''
+        env:
+          SOURCE_SHA: ${{ steps.commit.outputs.full }}
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+        shell: bash
+        run: |
+          payload=$(jq -n \
+            --arg sha "${SOURCE_SHA}" \
+            --arg digest "${IMAGE_DIGEST}" \
+            --arg url "https://github.com/Bjorkan/MESHRIK/commit/${SOURCE_SHA}" \
+            '{event_type: "meshrik-edge-published", client_payload: {
+              source_sha: $sha,
+              image_digest: $digest,
+              source_url: $url
+            }}')
+          gh api --method POST repos/Bjorkan/HA-MESHRIK/dispatches --input - <<<"${payload}"

@@ -159,6 +159,10 @@ Then run:
 sudo docker compose up -d --build
 ```
 
+Container channels are deliberately separate: `:latest` moves only after a non-prerelease GitHub Release is published, while `:edge` moves after every successful build of `main`. Each publication also receives an immutable `sha-<full-commit>` tag and contains amd64 and arm64 images.
+
+After a successful channel publication, the workflow can notify the HA wrapper repository with the exact commit and multi-architecture digest. Repository maintainers enable this by adding an `HA_MESHRIK_DISPATCH_TOKEN` secret containing a fine-grained token with **Contents: read and write** access to `Bjorkan/HA-MESHRIK`. Missing tokens skip only the downstream notification; container publication and verification still run.
+
 The container runs as root by default for maximum serial passthrough compatibility across host setups. On Linux, if you switch between native and Docker runs, `./data` can end up root-owned. If you do not need that serial compatibility behavior, you can enable the optional `user: "${UID:-1000}:${GID:-1000}"` line in `docker-compose.yml` to keep ownership aligned with your host user.
 
 To stop:
