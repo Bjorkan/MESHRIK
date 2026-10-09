@@ -127,13 +127,18 @@ export function SearchView({
 
   useEffect(() => {
     return () => {
-      abortRef.current?.abort();
+      const controller = abortRef.current;
+      abortRef.current = null;
+      controller?.abort();
     };
   }, []);
 
   // Fetch search results
   useEffect(() => {
     if (!debouncedQuery) {
+      abortRef.current?.abort();
+      abortRef.current = null;
+      setLoading(false);
       setResults([]);
       setHasMore(false);
       return;
@@ -147,6 +152,7 @@ export function SearchView({
     api
       .getMessages({ q: debouncedQuery, limit: SEARCH_PAGE_SIZE, offset: 0 }, controller.signal)
       .then((data) => {
+        if (abortRef.current !== controller) return;
         setResults(data as SearchResult[]);
         setHasMore(data.length >= SEARCH_PAGE_SIZE);
         setOffset(data.length);
@@ -157,7 +163,10 @@ export function SearchView({
         }
       })
       .finally(() => {
-        setLoading(false);
+        if (abortRef.current === controller) {
+          abortRef.current = null;
+          setLoading(false);
+        }
       });
 
     return () => controller.abort();
@@ -174,6 +183,7 @@ export function SearchView({
     api
       .getMessages({ q: debouncedQuery, limit: SEARCH_PAGE_SIZE, offset }, controller.signal)
       .then((data) => {
+        if (abortRef.current !== controller) return;
         setResults((prev) => {
           const existingIds = new Set(prev.map((r) => r.id));
           const unique = (data as SearchResult[]).filter((r) => !existingIds.has(r.id));
@@ -188,7 +198,10 @@ export function SearchView({
         }
       })
       .finally(() => {
-        setLoading(false);
+        if (abortRef.current === controller) {
+          abortRef.current = null;
+          setLoading(false);
+        }
       });
   }, [debouncedQuery, loading, offset]);
 
