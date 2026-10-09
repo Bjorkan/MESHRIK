@@ -297,6 +297,7 @@ That gives the store a load-bearing invariant: **no ancestor of `MessageList` ma
 - Search and pagination requests own their loading/results updates through their `AbortController`. A superseded request may settle, but only the controller still stored in `abortRef` can update results or clear the spinner.
 - Outgoing channel messages show a 30-second resend control; resend calls `POST /api/messages/channel/{message_id}/resend`.
 - Conversation-scoped message caching now lives inside `useConversationMessages.ts` rather than a standalone `messageCache.ts` module. If you touch message timeline restore/dedup/reconnect behavior, start there.
+- Reconciliation compares every `Message` field plus every field of each ordered path entry. Backend corrections such as sender identity, region/transport metadata, packet linkage, send status, or same-length path replacement must refresh the cached timeline.
 - `contact_resolved` is a real-time identity migration event, not just a contact-list update. Changes in that area need to consider active conversation state, cached messages, unread state keys, and reconnect reconciliation together.
 
 ### Visualizer behavior

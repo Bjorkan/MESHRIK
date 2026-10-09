@@ -152,29 +152,50 @@ export function reconcileConversationMessages(
   current: Message[],
   fetched: Message[]
 ): Message[] | null {
-  const currentById = new Map<
-    number,
-    { acked: number; pathsLen: number; text: string; packetId: number | null | undefined }
-  >();
-  for (const message of current) {
-    currentById.set(message.id, {
-      acked: message.acked,
-      pathsLen: message.paths?.length ?? 0,
-      text: message.text,
-      packetId: message.packet_id,
+  const pathsEqual = (left: MessagePath[] | null, right: MessagePath[] | null): boolean => {
+    if (left === right) return true;
+    if (!left || !right || left.length !== right.length) return false;
+    return left.every((path, index) => {
+      const other = right[index];
+      return (
+        path.path === other.path &&
+        path.received_at === other.received_at &&
+        path.path_len === other.path_len &&
+        path.rssi === other.rssi &&
+        path.snr === other.snr
+      );
     });
+  };
+
+  const messagesEqual = (left: Message, right: Message): boolean =>
+    left.id === right.id &&
+    left.type === right.type &&
+    left.conversation_key === right.conversation_key &&
+    left.text === right.text &&
+    left.sender_timestamp === right.sender_timestamp &&
+    left.received_at === right.received_at &&
+    pathsEqual(left.paths, right.paths) &&
+    left.txt_type === right.txt_type &&
+    left.signature === right.signature &&
+    left.sender_key === right.sender_key &&
+    left.outgoing === right.outgoing &&
+    left.acked === right.acked &&
+    left.send_status === right.send_status &&
+    left.sender_name === right.sender_name &&
+    left.channel_name === right.channel_name &&
+    left.packet_id === right.packet_id &&
+    left.transport_code === right.transport_code &&
+    left.region === right.region;
+
+  const currentById = new Map<number, Message>();
+  for (const message of current) {
+    currentById.set(message.id, message);
   }
 
   let needsUpdate = false;
   for (const message of fetched) {
     const currentMessage = currentById.get(message.id);
-    if (
-      !currentMessage ||
-      currentMessage.acked !== message.acked ||
-      currentMessage.pathsLen !== (message.paths?.length ?? 0) ||
-      currentMessage.text !== message.text ||
-      currentMessage.packetId !== message.packet_id
-    ) {
+    if (!currentMessage || !messagesEqual(currentMessage, message)) {
       needsUpdate = true;
       break;
     }

@@ -490,6 +490,46 @@ describe('messageCache', () => {
       expect(merged![0].paths).toHaveLength(2);
     });
 
+    it('detects changed path metadata even when path counts match', () => {
+      const current = [
+        createMessage({
+          id: 1,
+          paths: [{ path: '1A', received_at: 1700000000, path_len: 1, rssi: -90, snr: 4 }],
+        }),
+      ];
+      const fetched = [
+        createMessage({
+          id: 1,
+          paths: [{ path: '2B', received_at: 1700000001, path_len: 1, rssi: -80, snr: 6 }],
+        }),
+      ];
+
+      const merged = reconcileConversationMessages(current, fetched);
+
+      expect(merged).not.toBeNull();
+      expect(merged![0].paths).toEqual(fetched[0].paths);
+    });
+
+    it.each([
+      ['sender key', { sender_key: 'ab'.repeat(32) }],
+      ['sender name', { sender_name: 'Corrected sender' }],
+      ['region', { region: '#Sweden' }],
+      ['transport code', { transport_code: 0x1234 }],
+      ['packet link', { packet_id: 42 }],
+      ['signature', { signature: 'verified-signature' }],
+      ['text type', { txt_type: 1 }],
+      ['channel name', { channel_name: '#updated' }],
+      ['send status', { send_status: 'unknown' as const }],
+    ])('detects changed %s metadata', (_label, changedFields) => {
+      const current = [createMessage({ id: 1 })];
+      const fetched = [createMessage({ id: 1, ...changedFields })];
+
+      const merged = reconcileConversationMessages(current, fetched);
+
+      expect(merged).not.toBeNull();
+      expect(merged![0]).toMatchObject(changedFields);
+    });
+
     it('detects stale text (e.g. post-decryption)', () => {
       const current = [createMessage({ id: 1, text: '[encrypted]' })];
       const fetched = [createMessage({ id: 1, text: 'Hello world' })];
@@ -499,7 +539,7 @@ describe('messageCache', () => {
       expect(merged![0].text).toBe('Hello world');
     });
 
-    it('returns null when acked, paths length, and text all match', () => {
+    it('returns null when all message fields match', () => {
       const paths = [{ path: '1A', received_at: 1700000000 }];
       const current = [createMessage({ id: 1, acked: 2, paths, text: 'Hello' })];
       const fetched = [createMessage({ id: 1, acked: 2, paths, text: 'Hello' })];
