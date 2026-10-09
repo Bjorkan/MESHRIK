@@ -1,0 +1,43 @@
+# Category: Show and tell
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Share what you have built with MESHRIK: setups, dashboards, custom bots,
+        visualizations, and useful integration examples.
+
+        Screenshots are welcome. Remove radio private keys, credentials, and
+        personal/message data before sharing. Please don't promote unsafe RF automation.
+
+  - type: textarea
+    id: showcase
+    attributes:
+      label: What did you build or set up?
+      description: Tell the community what you made and how you use it.
+      placeholder: Describe the setup, goal, and most interesting details.
+    validations:
+      required: true
+
+  - type: textarea
+    id: how_it_works
+    attributes:
+      label: How does it work?
+      description: Optional hardware, architecture, integrations, or configuration details.
+    validations:
+      required: false
+
+  - type: textarea
+    id: media
+    attributes:
+      label: Screenshots, demo, code, or links
+      description: Attach images or link to a public project or walkthrough.
+    validations:
+      required: false
+
+  - type: textarea
+    id: lessons
+    attributes:
+      label: Lessons learned or tips for others
+      description: Optional troubleshooting notes, trade-offs, or suggestions.
+    validations:
+      required: false

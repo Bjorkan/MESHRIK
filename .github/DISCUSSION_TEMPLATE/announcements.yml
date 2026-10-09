@@ -1,0 +1,33 @@
+# Category: Announcements (maintainer posts)
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this category for official MESHRIK announcements, releases, and important notices.
+        Regular support questions belong in **Help & Troubleshooting**.
+
+  - type: textarea
+    id: announcement
+    attributes:
+      label: Announcement
+      description: What has changed, and why does it matter to users?
+      placeholder: Explain the update and who it affects.
+    validations:
+      required: true
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: User impact or required action
+      description: Include migration steps or breaking changes if applicable.
+      placeholder: No action needed, or describe the steps users should take.
+    validations:
+      required: false
+
+  - type: input
+    id: related_release
+    attributes:
+      label: Release or documentation link
+      placeholder: https://github.com/Bjorkan/MESHRIK/releases
+    validations:
+      required: false

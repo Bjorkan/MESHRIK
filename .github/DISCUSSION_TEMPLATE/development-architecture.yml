@@ -1,0 +1,59 @@
+# Category: Development & Architecture
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Discuss MESHRIK architecture, APIs, implementation approaches, and contributor workflows.
+        Read [CONTRIBUTING.md](https://github.com/Bjorkan/MESHRIK/blob/main/CONTRIBUTING.md)
+        for project constraints. For an agreed, actionable change, create an
+        [issue](https://github.com/Bjorkan/MESHRIK/issues/new/choose) and link this discussion.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Technical area
+      description: Which part of MESHRIK does this discussion concern?
+      options:
+        - Frontend / React
+        - Backend / API / database
+        - MeshCore / radio protocol
+        - Messaging / realtime state
+        - Maps / visualization
+        - Integrations / bots
+        - CI / build / deployment
+        - Cross-cutting / other
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Problem or design context
+      description: Explain the current behavior, architectural constraint, or trade-off.
+      placeholder: Include relevant modules, files, or links where possible.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Approach or proposal
+      description: Describe a possible solution, if you have one.
+    validations:
+      required: false
+
+  - type: textarea
+    id: questions
+    attributes:
+      label: Questions for discussion
+      description: What decisions, trade-offs, or feedback do you want from maintainers?
+    validations:
+      required: true
+
+  - type: textarea
+    id: considerations
+    attributes:
+      label: Compatibility, testing, and alternatives
+      description: Consider radio safety, backwards compatibility, migrations, and testing.
+    validations:
+      required: false

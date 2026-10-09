@@ -1,0 +1,60 @@
+# Category: MeshCore & Integrations
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Discuss MeshCore devices, firmware, radio interoperability, and MESHRIK
+        integrations such as MQTT, Home Assistant, LetsMesh, MeshRank, and webhooks.
+        For specific support requests use **Help & Troubleshooting** instead.
+
+        Respect MESHRIK's [project guidelines](https://github.com/Bjorkan/MESHRIK/blob/main/CONTRIBUTING.md):
+        no interval-based automated radio traffic or Internet-to-mesh ingestion.
+        Do not paste radio private keys, channel keys, or integration credentials.
+
+  - type: dropdown
+    id: topic
+    attributes:
+      label: Discussion topic
+      options:
+        - Radio hardware / firmware / transport
+        - MeshCore protocol / interoperability
+        - MQTT / Home Assistant
+        - LetsMesh / MeshRank / community maps
+        - Webhooks / cloud forwarding / notifications
+        - Python bots
+        - Other integration / ecosystem topic
+    validations:
+      required: false
+
+  - type: textarea
+    id: discussion
+    attributes:
+      label: What would you like to discuss?
+      description: Include the integration, goal, or interoperability question.
+      placeholder: Describe the relevant setup and what you would like to understand.
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: Relevant versions or hardware
+      description: Optional MESHRIK version, MeshCore firmware, device model, or integration version.
+    validations:
+      required: false
+
+  - type: textarea
+    id: findings
+    attributes:
+      label: Observations, configuration examples, or references
+      description: Share sanitized examples, relevant links, and any compatibility constraints.
+    validations:
+      required: false
+
+  - type: textarea
+    id: questions
+    attributes:
+      label: Specific questions for the community
+      description: What feedback, comparison, or testing would be helpful?
+    validations:
+      required: false

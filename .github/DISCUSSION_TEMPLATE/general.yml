@@ -1,0 +1,26 @@
+# Category: General
+body:
+  - type: markdown
+    attributes:
+      value: |
+        General conversations about MESHRIK and its community are welcome here.
+        For setup or troubleshooting, use **Help & Troubleshooting**; for early feature
+        ideas, use **Ideas & Feedback**. Confirmed bugs belong in
+        [Issues](https://github.com/Bjorkan/MESHRIK/issues/new/choose).
+
+  - type: textarea
+    id: topic
+    attributes:
+      label: What would you like to discuss?
+      description: Give some context so others can join the conversation.
+      placeholder: Share your question, perspective, or topic.
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional details or links
+      description: Optional references, screenshots, or related discussions.
+    validations:
+      required: false

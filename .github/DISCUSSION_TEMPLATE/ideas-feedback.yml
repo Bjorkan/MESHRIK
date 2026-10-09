@@ -1,0 +1,61 @@
+# Category: Ideas & Feedback
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this category to explore ideas and collect feedback *before* scoping an issue.
+        For a concrete, agreed feature request, use
+        [Issues](https://github.com/Bjorkan/MESHRIK/issues/new/choose).
+
+        MESHRIK does not aim to automate periodic RF traffic or ingest Internet
+        content onto the mesh; see
+        [contribution guidelines](https://github.com/Bjorkan/MESHRIK/blob/main/CONTRIBUTING.md).
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem or need are you addressing?
+      description: Focus on the use case, rather than only the suggested implementation.
+      placeholder: Describe who is affected and what is difficult today.
+    validations:
+      required: true
+
+  - type: textarea
+    id: idea
+    attributes:
+      label: Your idea or feedback
+      description: Describe the change you would like to explore.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Most relevant area
+      options:
+        - Frontend / UX
+        - Backend / API
+        - Radio / MeshCore
+        - Messaging / channels
+        - Maps / visualization
+        - Integrations / bots
+        - Installation / deployment
+        - Documentation / other
+    validations:
+      required: false
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives or existing workarounds
+      description: What have you considered or tried already?
+    validations:
+      required: false
+
+  - type: textarea
+    id: references
+    attributes:
+      label: Mockups, examples, or related discussions
+      description: Optional images or links that help others evaluate the idea.
+    validations:
+      required: false

@@ -1,0 +1,81 @@
+# Category: Help & Troubleshooting (use the Question / Answer category format)
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ask for help with installing, configuring, connecting, or using MESHRIK.
+        If you have a reproducible software defect, use a
+        [Bug report](https://github.com/Bjorkan/MESHRIK/issues/new/choose) instead.
+
+        **Privacy:** Never post private keys, channel keys, credentials, API tokens,
+        personal message contents, or unredacted logs. Redact sensitive details before
+        attaching a screenshot or debug snapshot.
+
+  - type: textarea
+    id: question
+    attributes:
+      label: What do you need help with?
+      description: What are you trying to do, and what happens instead?
+      placeholder: Describe the question or problem, including any error messages.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: installation
+    attributes:
+      label: Installation method
+      options:
+        - Native / source checkout
+        - Docker / Docker Compose
+        - Home Assistant add-on
+        - Prebuilt frontend
+        - Other / not sure
+    validations:
+      required: false
+
+  - type: dropdown
+    id: connection
+    attributes:
+      label: Radio connection
+      description: Select the closest option; UI-only questions may not need a radio.
+      options:
+        - Not applicable / UI-only
+        - USB serial
+        - TCP
+        - BLE
+        - Intermediary / companion / frameserver
+        - Other / not sure
+    validations:
+      required: false
+
+  - type: input
+    id: version
+    attributes:
+      label: MESHRIK version
+      placeholder: Example - v3.17.1, edge, or commit SHA
+    validations:
+      required: false
+
+  - type: input
+    id: platform
+    attributes:
+      label: OS, browser, and radio model / firmware (if relevant)
+      placeholder: Example - Raspberry Pi OS, Firefox, RAK4631 with MeshCore 1.x
+    validations:
+      required: false
+
+  - type: textarea
+    id: attempted
+    attributes:
+      label: What have you already tried?
+      description: Include configuration changes or documentation you followed.
+    validations:
+      required: false
+
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Error messages, logs, or screenshots (redacted)
+      description: Paste only non-sensitive excerpts or attach redacted files.
+    validations:
+      required: false
