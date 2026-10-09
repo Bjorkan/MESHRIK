@@ -199,8 +199,10 @@ export function useContactsAndChannels({
         pendingDeleteFallbackRef.current = true;
         await api.deleteChannel(key);
         removeConversationMessages(key);
-        const refreshedChannels = await api.getChannels();
-        setChannels(refreshedChannels);
+        const refreshedChannels = await queryClient.fetchQuery({
+          queryKey: queryKeys.channels(),
+          queryFn: ({ signal }) => api.getChannels(signal),
+        });
         const publicChannel = findPublicChannel(refreshedChannels);
         hasSetDefaultConversation.current = true;
         setActiveConversation({
@@ -219,9 +221,9 @@ export function useContactsAndChannels({
     [
       hasSetDefaultConversation,
       pendingDeleteFallbackRef,
+      queryClient,
       removeConversationMessages,
       setActiveConversation,
-      setChannels,
     ]
   );
 
@@ -233,8 +235,10 @@ export function useContactsAndChannels({
         const deleteResult = await api.deleteContact(publicKey);
         removeConversationMessages(publicKey);
         setContacts((prev) => prev.filter((c) => c.public_key !== publicKey));
-        const refreshedChannels = await api.getChannels();
-        setChannels(refreshedChannels);
+        const refreshedChannels = await queryClient.fetchQuery({
+          queryKey: queryKeys.channels(),
+          queryFn: ({ signal }) => api.getChannels(signal),
+        });
         const publicChannel = findPublicChannel(refreshedChannels);
         hasSetDefaultConversation.current = true;
         setActiveConversation({
@@ -259,9 +263,9 @@ export function useContactsAndChannels({
     [
       hasSetDefaultConversation,
       pendingDeleteFallbackRef,
+      queryClient,
       removeConversationMessages,
       setActiveConversation,
-      setChannels,
       setContacts,
     ]
   );

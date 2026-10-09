@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useRef, useState, useMemo, type MouseEvent } from 'react';
-import { QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { api } from './api';
 import { useWebSocket } from './useWebSocket';
 import {
@@ -30,6 +30,7 @@ import type { BulkCreateHashtagChannelsResult, Channel, Conversation, Message } 
 import { CONTACT_TYPE_REPEATER, CONTACT_TYPE_ROOM } from './types';
 import { shouldAutoFocusInput } from './utils/autoFocusInput';
 import { createAppQueryClient } from './queryClient';
+import { queryKeys } from './queryClient';
 
 interface ChannelUnreadMarker {
   channelId: string;
@@ -82,6 +83,7 @@ export function App() {
 }
 
 function AppContent() {
+  const queryClient = useQueryClient();
   const quoteSearchOperatorValue = useCallback((value: string) => {
     return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
   }, []);
@@ -468,8 +470,10 @@ function AppContent() {
   const handleCreateCrackedChannel = useCallback(
     async (name: string, key: string) => {
       const created = await api.createChannel(name, key);
-      const updatedChannels = await api.getChannels();
-      setChannels(updatedChannels);
+      await queryClient.fetchQuery({
+        queryKey: queryKeys.channels(),
+        queryFn: ({ signal }) => api.getChannels(signal),
+      });
       await api.decryptHistoricalPackets({
         key_type: 'channel',
         channel_key: created.key,
@@ -478,7 +482,7 @@ function AppContent() {
         console.error('Failed to refresh undecrypted count after cracked channel create:', error);
       });
     },
-    [fetchUndecryptedCount, setChannels]
+    [fetchUndecryptedCount, queryClient]
   );
 
   const handleRepeaterAutoLogin = useCallback(
