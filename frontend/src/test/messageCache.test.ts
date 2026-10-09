@@ -452,10 +452,36 @@ describe('messageCache', () => {
         createMessage({ id: 2 }),
       ];
 
-      const merged = reconcileConversationMessages(current, fetched);
+      const merged = reconcileConversationMessages(current, fetched, true);
       expect(merged).not.toBeNull();
       // Should have fetched page + older paginated message
       expect(merged!.map((m) => m.id)).toEqual([4, 3, 2, 1]);
+    });
+
+    it('removes messages missing inside the fetched page range', () => {
+      const current = [5, 4, 3, 2, 1].map((id) =>
+        createMessage({ id, received_at: 1700000000 + id })
+      );
+      const fetched = [5, 3, 2].map((id) => createMessage({ id, received_at: 1700000000 + id }));
+
+      const merged = reconcileConversationMessages(current, fetched, true);
+
+      expect(merged).not.toBeNull();
+      expect(merged!.map((message) => message.id)).toEqual([5, 3, 2, 1]);
+    });
+
+    it('removes every missing message when the fetched page is exhaustive', () => {
+      const current = [
+        createMessage({ id: 3, received_at: 1700000003 }),
+        createMessage({ id: 2, received_at: 1700000002 }),
+        createMessage({ id: 1, received_at: 1700000001 }),
+      ];
+      const fetched = [createMessage({ id: 2, received_at: 1700000002 })];
+
+      const merged = reconcileConversationMessages(current, fetched, false);
+
+      expect(merged).not.toBeNull();
+      expect(merged!.map((message) => message.id)).toEqual([2]);
     });
 
     it('returns null for empty fetched and empty current', () => {
