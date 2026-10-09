@@ -291,6 +291,7 @@ That gives the store a load-bearing invariant: **no ancestor of `MessageList` ma
 - Backend also emits WS `message` for outgoing sends so other clients stay in sync.
 - ACK/repeat updates arrive as `message_acked` events.
 - Incoming messages displayed in the active conversation debounce an exact-message `mark-read` request. The pending boundary is flushed when leaving the conversation; the backend advances it monotonically so delayed requests cannot consume newer unseen messages.
+- Unread HTTP snapshots are guarded by both request and local-mutation generations. A response is applied only if it is still the newest request and no WebSocket/navigation mutation occurred while it was in flight.
 - Outgoing channel messages show a 30-second resend control; resend calls `POST /api/messages/channel/{message_id}/resend`.
 - Conversation-scoped message caching now lives inside `useConversationMessages.ts` rather than a standalone `messageCache.ts` module. If you touch message timeline restore/dedup/reconnect behavior, start there.
 - `contact_resolved` is a real-time identity migration event, not just a contact-list update. Changes in that area need to consider active conversation state, cached messages, unread state keys, and reconnect reconciliation together.

@@ -10,7 +10,7 @@ import { act, renderHook } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 import { useUnreadCounts } from '../hooks/useUnreadCounts';
-import type { Channel, Contact, Conversation, Message } from '../types';
+import type { Channel, Contact, Conversation, Message, UnreadCounts } from '../types';
 import { getStateKey } from '../utils/conversationState';
 
 // Mock api module
@@ -437,6 +437,45 @@ describe('useUnreadCounts', () => {
     expect(result.current.unreadCounts[getStateKey('channel', CHANNEL_KEY)]).toBe(1);
     expect(result.current.mentions[getStateKey('channel', CHANNEL_KEY)]).toBe(true);
     expect(result.current.lastMessageTimes[getStateKey('channel', CHANNEL_KEY)]).toBe(1700001234);
+  });
+
+  it('does not let an older unread fetch overwrite a newer WebSocket message', async () => {
+    const mocks = await getMockedApi();
+    let resolveRequest!: (value: UnreadCounts) => void;
+    const staleRequest = new Promise<UnreadCounts>((resolve) => {
+      resolveRequest = resolve;
+    });
+    mocks.getUnreads.mockReturnValueOnce(staleRequest);
+
+    const { result } = renderWith({ channels: [makeChannel(CHANNEL_KEY, 'Test')] });
+    await act(async () => {
+      await vi.waitFor(() => expect(mocks.getUnreads).toHaveBeenCalledTimes(1));
+    });
+
+    act(() => {
+      result.current.recordMessageEvent({
+        msg: makeMessage({ id: 88, type: 'CHAN', conversation_key: CHANNEL_KEY }),
+        activeConversation: false,
+        isNewMessage: true,
+        hasMention: true,
+      });
+    });
+
+    await act(async () => {
+      resolveRequest({
+        counts: {},
+        mentions: {},
+        last_message_times: {},
+        first_unread_ids: {},
+        last_read_ats: {},
+      });
+      await staleRequest;
+    });
+
+    const key = getStateKey('channel', CHANNEL_KEY);
+    expect(result.current.unreadCounts[key]).toBe(1);
+    expect(result.current.mentions[key]).toBe(true);
+    expect(result.current.firstUnreadIds[key]).toBe(88);
   });
 
   it('recordMessageEvent skips unread increment for active or non-new messages but still tracks time', async () => {

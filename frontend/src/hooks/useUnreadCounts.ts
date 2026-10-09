@@ -62,6 +62,13 @@ export function useUnreadCounts(
   // every conversation switch).
   const activeConvRef = useRef(activeConversation);
   activeConvRef.current = activeConversation;
+  const unreadMutationVersionRef = useRef(0);
+  const unreadRequestVersionRef = useRef(0);
+  const activeStateKeyRef = useRef(
+    isUnreadTrackedConversation(activeConversation)
+      ? getStateKey(activeConversation.type, activeConversation.id)
+      : null
+  );
   const pendingReadBoundaryRef = useRef<PendingReadBoundary | null>(null);
   const pendingReadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -140,12 +147,30 @@ export function useUnreadCounts(
     }
   }, []);
 
+  // An unread fetch is a snapshot. Apply it only if it is still the newest
+  // request and no local WS/navigation mutation happened while it was in
+  // flight; otherwise it would erase newer live state.
+  const applyUnreadRequest = useCallback(
+    async (request: Promise<UnreadCounts>) => {
+      const requestVersion = ++unreadRequestVersionRef.current;
+      const mutationVersion = unreadMutationVersionRef.current;
+      const data = await request;
+      if (
+        requestVersion === unreadRequestVersionRef.current &&
+        mutationVersion === unreadMutationVersionRef.current
+      ) {
+        applyUnreads(data);
+      }
+    },
+    [applyUnreads]
+  );
+
   // Fetch unreads from the server-side endpoint.
   // Also re-marks the active conversation as read so the server's last_read_at
   // stays current (otherwise subsequent fetches would re-report the same unreads).
   const fetchUnreads = useCallback(async () => {
     try {
-      applyUnreads(await api.getUnreads());
+      await applyUnreadRequest(api.getUnreads());
     } catch (err) {
       console.error('Failed to fetch unreads:', err);
     }
@@ -155,7 +180,7 @@ export function useUnreadCounts(
     } else if (ac?.type === 'contact') {
       api.markContactRead(ac.id).catch(() => {});
     }
-  }, [applyUnreads]);
+  }, [applyUnreadRequest]);
 
   // On mount, consume the prefetched promise (started in index.html before
   // React loaded) or fall back to a fresh fetch.
@@ -167,12 +192,10 @@ export function useUnreadCounts(
   const contactsLen = contacts.length;
   const hasObservedCountsRef = useRef(false);
   useEffect(() => {
-    takePrefetchOrFetch('unreads', api.getUnreads)
-      .then(applyUnreads)
-      .catch((err) => {
-        console.error('Failed to fetch unreads:', err);
-      });
-  }, [applyUnreads]);
+    applyUnreadRequest(takePrefetchOrFetch('unreads', api.getUnreads)).catch((err) => {
+      console.error('Failed to fetch unreads:', err);
+    });
+  }, [applyUnreadRequest]);
   useEffect(() => {
     if (!hasObservedCountsRef.current) {
       hasObservedCountsRef.current = true;
@@ -184,6 +207,14 @@ export function useUnreadCounts(
   // Mark conversation as read when user views it
   // Calls server API to persist read state across devices
   useEffect(() => {
+    const activeStateKey = isUnreadTrackedConversation(activeConversation)
+      ? getStateKey(activeConversation.type, activeConversation.id)
+      : null;
+    if (activeStateKeyRef.current !== activeStateKey) {
+      activeStateKeyRef.current = activeStateKey;
+      unreadMutationVersionRef.current += 1;
+    }
+
     if (isUnreadTrackedConversation(activeConversation)) {
       const key = getStateKey(activeConversation.type, activeConversation.id);
 
@@ -227,6 +258,7 @@ export function useUnreadCounts(
 
   const incrementUnread = useCallback(
     (stateKey: string, messageId: number, hasMention?: boolean) => {
+      unreadMutationVersionRef.current += 1;
       setUnreadCounts((prev) => ({
         ...prev,
         [stateKey]: (prev[stateKey] || 0) + 1,
@@ -292,6 +324,7 @@ export function useUnreadCounts(
 
   const renameConversationState = useCallback((oldStateKey: string, newStateKey: string) => {
     if (oldStateKey === newStateKey) return;
+    unreadMutationVersionRef.current += 1;
 
     setUnreadCounts((prev) => {
       if (!(oldStateKey in prev)) return prev;
@@ -321,6 +354,7 @@ export function useUnreadCounts(
   }, []);
 
   const removeConversationState = useCallback((stateKey: string) => {
+    unreadMutationVersionRef.current += 1;
     setUnreadCounts((prev) => {
       if (!(stateKey in prev)) return prev;
       const next = { ...prev };
@@ -350,6 +384,7 @@ export function useUnreadCounts(
   // Mark all conversations as read
   // Calls single bulk API endpoint to persist read state
   const markAllRead = useCallback(() => {
+    unreadMutationVersionRef.current += 1;
     // Update local state immediately
     setUnreadCounts({});
     setMentions({});
