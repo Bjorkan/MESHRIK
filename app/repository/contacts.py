@@ -548,15 +548,26 @@ class ContactRepository:
 
     @staticmethod
     async def update_last_read_at(public_key: str, timestamp: int | None = None) -> bool:
-        """Update the last_read_at timestamp for a contact.
+        """Update the timestamp and message-ID read cursor for a contact.
 
         Returns True if a row was updated, False if contact not found.
         """
         ts = timestamp if timestamp is not None else int(time.time())
         async with db.tx() as conn:
             async with conn.execute(
-                "UPDATE contacts SET last_read_at = ? WHERE public_key = ?",
-                (ts, public_key.lower()),
+                """
+                UPDATE contacts
+                SET last_read_at = ?,
+                    last_read_message_id = COALESCE((
+                        SELECT MAX(m.id)
+                        FROM messages m
+                        WHERE m.type = 'PRIV'
+                          AND m.conversation_key = contacts.public_key
+                          AND m.received_at <= ?
+                    ), 0)
+                WHERE public_key = ?
+                """,
+                (ts, ts, public_key.lower()),
             ) as cursor:
                 rowcount = cursor.rowcount
         return rowcount > 0
@@ -615,7 +626,8 @@ class ContactRepository:
         async with db.tx() as conn:
             async with conn.execute(
                 """
-                SELECT public_key, last_seen, last_contacted, first_seen, last_read_at
+                SELECT public_key, last_seen, last_contacted, first_seen,
+                       last_read_at, last_read_message_id
                 FROM contacts
                 WHERE length(public_key) < 64
                   AND ? LIKE public_key || '%'
@@ -677,6 +689,15 @@ class ContactRepository:
                             WHEN ? < contacts.first_seen THEN ?
                             ELSE contacts.first_seen
                         END,
+                        last_read_message_id = CASE
+                            WHEN contacts.last_read_at IS NULL THEN ?
+                            WHEN ? IS NULL THEN contacts.last_read_message_id
+                            WHEN ? > contacts.last_read_at THEN ?
+                            WHEN ? = contacts.last_read_at
+                                 AND COALESCE(?, 0) > COALESCE(contacts.last_read_message_id, 0)
+                                THEN ?
+                            ELSE contacts.last_read_message_id
+                        END,
                         last_read_at = CASE
                             WHEN contacts.last_read_at IS NULL THEN ?
                             WHEN ? IS NULL THEN contacts.last_read_at
@@ -698,6 +719,13 @@ class ContactRepository:
                         row["first_seen"],
                         row["first_seen"],
                         row["first_seen"],
+                        row["last_read_message_id"],
+                        row["last_read_at"],
+                        row["last_read_at"],
+                        row["last_read_message_id"],
+                        row["last_read_at"],
+                        row["last_read_message_id"],
+                        row["last_read_message_id"],
                         row["last_read_at"],
                         row["last_read_at"],
                         row["last_read_at"],
@@ -717,7 +745,20 @@ class ContactRepository:
     async def mark_all_read(timestamp: int) -> None:
         """Mark all contacts as read at the given timestamp."""
         async with db.tx() as conn:
-            async with conn.execute("UPDATE contacts SET last_read_at = ?", (timestamp,)):
+            async with conn.execute(
+                """
+                UPDATE contacts
+                SET last_read_at = ?,
+                    last_read_message_id = COALESCE((
+                        SELECT MAX(m.id)
+                        FROM messages m
+                        WHERE m.type = 'PRIV'
+                          AND m.conversation_key = contacts.public_key
+                          AND m.received_at <= ?
+                    ), 0)
+                """,
+                (timestamp, timestamp),
+            ):
                 pass
 
     @staticmethod

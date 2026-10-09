@@ -27,7 +27,7 @@ async def test_adds_confirmed_send_status_to_existing_messages():
         )
         await conn.commit()
 
-        assert await run_migrations(conn) == 1
+        assert await run_migrations(conn) == LATEST_SCHEMA_VERSION - 63
         assert await get_version(conn) == LATEST_SCHEMA_VERSION
 
         cursor = await conn.execute("SELECT send_status FROM messages")

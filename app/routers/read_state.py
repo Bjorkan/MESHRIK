@@ -22,7 +22,7 @@ router = APIRouter(prefix="/read-state", tags=["read-state"])
 async def get_unreads() -> UnreadCounts:
     """Get unread counts, mention flags, and last message times for all conversations.
 
-    Computes unread counts server-side using last_read_at timestamps on
+    Computes unread counts server-side using timestamp/message-ID cursors on
     channels and contacts, avoiding the need to fetch bulk messages.
     The radio's own name is sourced directly from the connected radio
     for @mention detection.
@@ -44,8 +44,8 @@ async def get_unreads() -> UnreadCounts:
 async def mark_all_read() -> dict:
     """Mark all contacts and channels as read.
 
-    Updates last_read_at to current timestamp for all contacts and channels
-    using two repository updates (same timestamp value across both tables).
+    Updates each conversation's timestamp/message-ID cursor using two repository
+    updates (the same timestamp value across both tables).
     """
     now = int(time.time())
 

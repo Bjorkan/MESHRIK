@@ -1050,6 +1050,53 @@ class TestReadStateEndpoints:
         assert result["first_unread_ids"][f"channel-{chan_key}"] == min(ids)
 
     @pytest.mark.asyncio
+    async def test_messages_arriving_after_read_in_same_second_remain_unread(self, test_db):
+        """The message ID cursor disambiguates arrivals in the read boundary second."""
+        chan_key = "SAMESECONDCHANNELSAMESECONDCHAN"
+        contact_key = "cd" * 32
+        await ChannelRepository.upsert(key=chan_key, name="Same second")
+        await _insert_contact(contact_key, "Alice")
+
+        await MessageRepository.create(
+            msg_type="CHAN",
+            text="before channel mark",
+            received_at=1000,
+            conversation_key=chan_key,
+            sender_timestamp=1000,
+        )
+        await MessageRepository.create(
+            msg_type="PRIV",
+            text="before contact mark",
+            received_at=1000,
+            conversation_key=contact_key,
+            sender_timestamp=1000,
+        )
+        await ChannelRepository.update_last_read_at(chan_key, 1000)
+        await ContactRepository.update_last_read_at(contact_key, 1000)
+
+        channel_after_id = await MessageRepository.create(
+            msg_type="CHAN",
+            text="after channel mark",
+            received_at=1000,
+            conversation_key=chan_key,
+            sender_timestamp=1001,
+        )
+        contact_after_id = await MessageRepository.create(
+            msg_type="PRIV",
+            text="after contact mark",
+            received_at=1000,
+            conversation_key=contact_key,
+            sender_timestamp=1001,
+        )
+
+        result = await MessageRepository.get_unread_counts(None)
+
+        assert result["counts"][f"channel-{chan_key}"] == 1
+        assert result["first_unread_ids"][f"channel-{chan_key}"] == channel_after_id
+        assert result["counts"][f"contact-{contact_key}"] == 1
+        assert result["first_unread_ids"][f"contact-{contact_key}"] == contact_after_id
+
+    @pytest.mark.asyncio
     async def test_first_unread_id_ignores_muted_and_outgoing(self, test_db):
         """Muted channels are excluded from unread counts, so they must not
         report a boundary either."""

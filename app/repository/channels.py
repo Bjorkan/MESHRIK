@@ -109,15 +109,26 @@ class ChannelRepository:
 
     @staticmethod
     async def update_last_read_at(key: str, timestamp: int | None = None) -> bool:
-        """Update the last_read_at timestamp for a channel.
+        """Update the timestamp and message-ID read cursor for a channel.
 
         Returns True if a row was updated, False if channel not found.
         """
         ts = timestamp if timestamp is not None else int(time.time())
         async with db.tx() as conn:
             async with conn.execute(
-                "UPDATE channels SET last_read_at = ? WHERE key = ?",
-                (ts, key.upper()),
+                """
+                UPDATE channels
+                SET last_read_at = ?,
+                    last_read_message_id = COALESCE((
+                        SELECT MAX(m.id)
+                        FROM messages m
+                        WHERE m.type = 'CHAN'
+                          AND m.conversation_key = channels.key
+                          AND m.received_at <= ?
+                    ), 0)
+                WHERE key = ?
+                """,
+                (ts, ts, key.upper()),
             ) as cursor:
                 rowcount = cursor.rowcount
         return rowcount > 0
@@ -148,5 +159,18 @@ class ChannelRepository:
     async def mark_all_read(timestamp: int) -> None:
         """Mark all channels as read at the given timestamp."""
         async with db.tx() as conn:
-            async with conn.execute("UPDATE channels SET last_read_at = ?", (timestamp,)):
+            async with conn.execute(
+                """
+                UPDATE channels
+                SET last_read_at = ?,
+                    last_read_message_id = COALESCE((
+                        SELECT MAX(m.id)
+                        FROM messages m
+                        WHERE m.type = 'CHAN'
+                          AND m.conversation_key = channels.key
+                          AND m.received_at <= ?
+                    ), 0)
+                """,
+                (timestamp, timestamp),
+            ):
                 pass

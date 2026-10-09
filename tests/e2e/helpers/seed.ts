@@ -74,7 +74,18 @@ def seed_messages(key_hex: str, opts: dict):
 
 
 def set_channel_last_read(key_hex: str, last_read: int | None):
-    conn.execute("UPDATE channels SET last_read_at = ? WHERE key = ?", (last_read, key_hex))
+    conn.execute(
+        """
+        UPDATE channels
+        SET last_read_at = ?,
+            last_read_message_id = (
+                SELECT MAX(id) FROM messages
+                WHERE type = 'CHAN' AND conversation_key = ? AND received_at <= ?
+            )
+        WHERE key = ?
+        """,
+        (last_read, key_hex, last_read, key_hex),
+    )
     conn.commit()
 
 

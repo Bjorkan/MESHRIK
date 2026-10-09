@@ -435,8 +435,8 @@ All endpoints are prefixed with `/api` (e.g., `/api/health`).
 
 ### Read State Tracking
 
-Read state (`last_read_at`) is tracked **server-side** for consistency across devices:
-- Stored as Unix timestamp in `contacts.last_read_at` and `channels.last_read_at`
+Read state is tracked **server-side** for consistency across devices:
+- Stored as a `(last_read_at, last_read_message_id)` cursor on contacts and channels. The ID tie-breaker prevents a later arrival in the same second from being treated as read, while the timestamp keeps historically decrypted older messages behind the boundary.
 - Updated via `POST /api/contacts/{public_key}/mark-read` and `POST /api/channels/{key}/mark-read`
 - Bulk update via `POST /api/read-state/mark-all-read`
 - Aggregated counts via `GET /api/read-state/unreads` (server-side computation of counts, mention flags, `last_message_times`, `last_read_ats`, and `first_unread_ids`)

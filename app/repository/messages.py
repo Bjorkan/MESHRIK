@@ -780,7 +780,13 @@ class MessageRepository:
                 FROM messages m
                 JOIN channels c ON m.conversation_key = c.key
                 WHERE m.type = 'CHAN' AND m.outgoing = 0
-                  AND m.received_at > COALESCE(c.last_read_at, 0)
+                  AND (
+                      m.received_at > COALESCE(c.last_read_at, 0)
+                      OR (
+                          m.received_at = COALESCE(c.last_read_at, 0)
+                          AND m.id > COALESCE(c.last_read_message_id, 0)
+                      )
+                  )
                   AND COALESCE(c.muted, 0) = 0
                   {blocked_sql}
                 GROUP BY m.conversation_key
@@ -806,7 +812,13 @@ class MessageRepository:
                 FROM messages m
                 LEFT JOIN contacts ct ON m.conversation_key = ct.public_key
                 WHERE m.type = 'PRIV' AND m.outgoing = 0
-                  AND m.received_at > COALESCE(ct.last_read_at, 0)
+                  AND (
+                      m.received_at > COALESCE(ct.last_read_at, 0)
+                      OR (
+                          m.received_at = COALESCE(ct.last_read_at, 0)
+                          AND m.id > COALESCE(ct.last_read_message_id, 0)
+                      )
+                  )
                   {blocked_sql}
                 GROUP BY m.conversation_key
                 """,
@@ -857,10 +869,31 @@ class MessageRepository:
                     LEFT JOIN channels c ON m.type = 'CHAN' AND m.conversation_key = c.key
                     LEFT JOIN contacts ct ON m.type = 'PRIV' AND m.conversation_key = ct.public_key
                     WHERE m.outgoing = 0
-                      AND m.received_at > COALESCE(
-                              CASE WHEN m.type = 'CHAN' THEN c.last_read_at ELSE ct.last_read_at END,
+                      AND (
+                          m.received_at > COALESCE(
+                              CASE
+                                  WHEN m.type = 'CHAN' THEN c.last_read_at
+                                  ELSE ct.last_read_at
+                              END,
                               0
                           )
+                          OR (
+                              m.received_at = COALESCE(
+                                  CASE
+                                      WHEN m.type = 'CHAN' THEN c.last_read_at
+                                      ELSE ct.last_read_at
+                                  END,
+                                  0
+                              )
+                              AND m.id > COALESCE(
+                                  CASE
+                                      WHEN m.type = 'CHAN' THEN c.last_read_message_id
+                                      ELSE ct.last_read_message_id
+                                  END,
+                                  0
+                              )
+                          )
+                      )
                       AND (m.type <> 'CHAN' OR COALESCE(c.muted, 0) = 0)
                       {blocked_sql}
                 )

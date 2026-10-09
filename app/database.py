@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS contacts (
     last_contacted INTEGER,
     first_seen INTEGER,
     last_read_at INTEGER,
+    last_read_message_id INTEGER,
     favorite INTEGER DEFAULT 0
 );
 
@@ -42,6 +43,7 @@ CREATE TABLE IF NOT EXISTS channels (
     flood_scope_override TEXT,
     path_hash_mode_override INTEGER,
     last_read_at INTEGER,
+    last_read_message_id INTEGER,
     favorite INTEGER DEFAULT 0,
     muted INTEGER DEFAULT 0
 );

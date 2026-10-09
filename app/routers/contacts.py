@@ -349,7 +349,7 @@ async def create_contact(
 
 @router.post("/{public_key}/mark-read")
 async def mark_contact_read(public_key: str) -> dict:
-    """Mark a contact conversation as read (update last_read_at timestamp)."""
+    """Mark a contact conversation as read at its current timestamp/message-ID boundary."""
     contact = await _resolve_contact_or_404(public_key)
 
     updated = await ContactRepository.update_last_read_at(contact.public_key)
