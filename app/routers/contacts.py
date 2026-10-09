@@ -376,10 +376,12 @@ async def bulk_delete_contacts(request: BulkDeleteRequest) -> dict:
     """Delete multiple contacts from the database (and radio if present)."""
     from app.websocket import broadcast_event
 
+    normalized_keys = list(dict.fromkeys(key.lower() for key in request.public_keys))
+
     # Resolve all contacts first
     contacts_to_delete: list[Contact] = []
-    for key in request.public_keys:
-        contact = await ContactRepository.get_by_key(key.lower())
+    for key in normalized_keys:
+        contact = await ContactRepository.get_by_key(key)
         if contact:
             contacts_to_delete.append(contact)
 
@@ -426,7 +428,7 @@ async def bulk_delete_contacts(request: BulkDeleteRequest) -> dict:
         broadcast_event("contact_deleted", {"public_key": contact.public_key})
         deleted += 1
 
-    logger.info("Bulk deleted %d/%d contacts", deleted, len(request.public_keys))
+    logger.info("Bulk deleted %d/%d unique contacts", deleted, len(normalized_keys))
     return {
         "deleted": deleted,
         "radio_deleted": radio_deleted,

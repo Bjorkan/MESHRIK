@@ -506,6 +506,28 @@ class TestDeleteContact:
 
 class TestBulkDeleteContacts:
     @pytest.mark.asyncio
+    async def test_deduplicates_normalized_public_keys(self, test_db, client):
+        await _insert_contact(KEY_A, "Alice", on_radio=True)
+        mock_radio_contact = MagicMock()
+        mock_mc = MagicMock()
+        mock_mc.get_contact_by_key_prefix = MagicMock(return_value=mock_radio_contact)
+        mock_mc.commands.remove_contact = AsyncMock(return_value=_radio_result())
+
+        with patch("app.routers.contacts.radio_manager") as mock_rm:
+            mock_rm.is_connected = True
+            mock_rm.radio_operation = _noop_radio_operation(mock_mc)
+            response = await client.post(
+                "/api/contacts/bulk-delete",
+                json={"public_keys": [KEY_A.upper(), KEY_A, KEY_A.upper()]},
+            )
+
+        assert response.status_code == 200
+        assert response.json()["deleted"] == 1
+        assert response.json()["radio_deleted"] == 1
+        mock_mc.get_contact_by_key_prefix.assert_called_once_with(KEY_A[:12])
+        mock_mc.commands.remove_contact.assert_awaited_once_with(mock_radio_contact)
+
+    @pytest.mark.asyncio
     async def test_reports_radio_failures_separately_from_database_deletes(self, test_db, client):
         await _insert_contact(KEY_A, "Alice", on_radio=True)
         await _insert_contact(KEY_B, "Bob", on_radio=True)
