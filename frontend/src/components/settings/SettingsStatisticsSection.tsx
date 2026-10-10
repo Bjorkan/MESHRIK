@@ -14,6 +14,7 @@ import {
 import { Separator } from '../ui/separator';
 import { api } from '../../api';
 import type { RegionScopeStats, StatisticsResponse } from '../../types';
+import { formatLocaleNumber } from '@/utils/localeNumber';
 
 function formatPercent(value: number): string {
   return `${value.toFixed(1)}%`;
@@ -47,7 +48,8 @@ function RegionScopeStatsPanel({ stats }: { stats: RegionScopeStats }) {
         <div className="flex justify-between items-center gap-4">
           <span className="text-sm text-muted-foreground">Scoped messages</span>
           <span className="font-medium text-right">
-            {stats.scoped_messages.toLocaleString()} of {stats.total_messages.toLocaleString()}
+            {formatLocaleNumber(stats.scoped_messages)} of{' '}
+            {formatLocaleNumber(stats.total_messages)}
             {showTrafficPct && (
               <span className="text-muted-foreground"> ({formatPercent(stats.scoped_pct)})</span>
             )}
@@ -56,7 +58,7 @@ function RegionScopeStatsPanel({ stats }: { stats: RegionScopeStats }) {
         <div className="flex justify-between items-center gap-4">
           <span className="text-sm text-muted-foreground">Senders using regions</span>
           <span className="font-medium text-right">
-            {stats.scoped_senders.toLocaleString()} of {stats.total_senders.toLocaleString()}
+            {formatLocaleNumber(stats.scoped_senders)} of {formatLocaleNumber(stats.total_senders)}
             {stats.total_senders > 0 && (
               <span className="text-muted-foreground">
                 {' '}
@@ -170,7 +172,7 @@ function PacketsPerHourChart({ buckets }: { buckets: { timestamp: number; count:
             strokeDasharray: '3 3',
           }}
           labelFormatter={(idx) => data[Number(idx)]?.label ?? ''}
-          formatter={(value) => [`${Number(value).toLocaleString()} packets`, 'Count']}
+          formatter={(value) => [`${formatLocaleNumber(Number(value))} packets`, 'Count']}
         />
         <Area
           type="monotone"
@@ -452,7 +454,7 @@ export function SettingsStatisticsSection({ className }: { className?: string })
                     cursor={{ fill: 'hsl(var(--muted))', opacity: 0.5 }}
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     formatter={(value: any, _: any, props: any) => [
-                      `${Number(value).toLocaleString()} (${formatPercent(props.payload.pct)})`,
+                      `${formatLocaleNumber(Number(value))} (${formatPercent(props.payload.pct)})`,
                       'Packets',
                     ]}
                   />
@@ -506,7 +508,7 @@ export function SettingsStatisticsSection({ className }: { className?: string })
                     <RechartsTooltip
                       {...TOOLTIP_STYLE}
                       cursor={{ fill: 'hsl(var(--muted))', opacity: 0.5 }}
-                      formatter={(value) => [`${Number(value).toLocaleString()} messages`, null]}
+                      formatter={(value) => [`${formatLocaleNumber(Number(value))} messages`, null]}
                     />
                     <Bar dataKey="messages" radius={[0, 4, 4, 0]} maxBarSize={16}>
                       {stats.busiest_channels_24h.map((_, i) => (

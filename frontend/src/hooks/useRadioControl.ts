@@ -1,11 +1,11 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, type SetStateAction } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api';
-import { takePrefetchOrFetch } from '../prefetch';
+import { queryKeys } from '../queryClient';
 import { toast } from '../components/ui/sonner';
 import type {
   HealthStatus,
   RadioAdvertMode,
-  RadioConfig,
   RadioConfigUpdate,
   RadioDiscoveryResponse,
   RadioDiscoveryTarget,
@@ -13,8 +13,17 @@ import type {
 } from '../types';
 
 export function useRadioControl() {
-  const [health, setHealth] = useState<HealthStatus | null>(null);
-  const [config, setConfig] = useState<RadioConfig | null>(null);
+  const queryClient = useQueryClient();
+  const healthQuery = useQuery({
+    queryKey: queryKeys.health(),
+    queryFn: api.getHealth,
+  });
+  const configQuery = useQuery({
+    queryKey: queryKeys.radioConfig(),
+    queryFn: api.getRadioConfig,
+  });
+  const health = healthQuery.data ?? null;
+  const config = configQuery.data ?? null;
   const [meshDiscovery, setMeshDiscovery] = useState<RadioDiscoveryResponse | null>(null);
   const [meshDiscoveryLoadingTarget, setMeshDiscoveryLoadingTarget] =
     useState<RadioDiscoveryTarget | null>(null);
@@ -31,21 +40,31 @@ export function useRadioControl() {
     };
   }, []);
 
+  const setHealth = useCallback(
+    (update: SetStateAction<HealthStatus | null>) => {
+      queryClient.setQueryData<HealthStatus | null>(queryKeys.health(), (previous = null) =>
+        typeof update === 'function'
+          ? (update as (value: HealthStatus | null) => HealthStatus | null)(previous)
+          : update
+      );
+    },
+    [queryClient]
+  );
+
   const fetchConfig = useCallback(async () => {
     try {
-      const data = await takePrefetchOrFetch('config', api.getRadioConfig);
-      setConfig(data);
+      await queryClient.invalidateQueries({ queryKey: queryKeys.radioConfig() });
     } catch (err) {
       console.error('Failed to fetch config:', err);
     }
-  }, []);
+  }, [queryClient]);
 
   const handleSaveConfig = useCallback(
     async (update: RadioConfigUpdate) => {
-      await api.updateRadioConfig(update);
-      await fetchConfig();
+      const updated = await api.updateRadioConfig(update);
+      queryClient.setQueryData(queryKeys.radioConfig(), updated);
     },
-    [fetchConfig]
+    [queryClient]
   );
 
   const handleSetPrivateKey = useCallback(
@@ -80,13 +99,13 @@ export function useRadioControl() {
       }
     };
     pollUntilReconnected();
-  }, [fetchConfig]);
+  }, [fetchConfig, setHealth]);
 
   const handleDisconnect = useCallback(async () => {
     await api.disconnectRadio();
     const pausedHealth = await api.getHealth();
     setHealth(pausedHealth);
-  }, []);
+  }, [setHealth]);
 
   const handleReconnect = useCallback(async () => {
     await api.reconnectRadio();
@@ -95,7 +114,7 @@ export function useRadioControl() {
     if (refreshedHealth.radio_connected) {
       await fetchConfig();
     }
-  }, [fetchConfig]);
+  }, [fetchConfig, setHealth]);
 
   const handleAdvertise = useCallback(async (mode: RadioAdvertMode = 'flood') => {
     try {
@@ -158,18 +177,16 @@ export function useRadioControl() {
 
   const handleHealthRefresh = useCallback(async () => {
     try {
-      const data = await api.getHealth();
-      setHealth(data);
+      await queryClient.invalidateQueries({ queryKey: queryKeys.health() });
     } catch (err) {
       console.error('Failed to refresh health:', err);
     }
-  }, []);
+  }, [queryClient]);
 
   return {
     health,
     setHealth,
     config,
-    setConfig,
     prevHealthRef,
     fetchConfig,
     handleSaveConfig,

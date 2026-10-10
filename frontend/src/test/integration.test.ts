@@ -12,9 +12,48 @@ import { describe, it, expect } from 'vitest';
 import fixtures from './fixtures/websocket_events.json';
 import { getStateKey } from '../utils/conversationState';
 import { mergeContactIntoList } from '../utils/contactMerge';
-import { ConversationMessageCache } from '../hooks/useConversationMessages';
 import { getMessageContentKey } from '../utils/messageIdentity';
 import type { Contact, Message } from '../types';
+
+class TestMessageCache {
+  private entries = new Map<string, { messages: Message[]; hasOlderMessages: boolean }>();
+
+  get(id: string) {
+    return this.entries.get(id);
+  }
+
+  addMessage(id: string, message: Message): boolean {
+    const entry = this.entries.get(id) ?? { messages: [], hasOlderMessages: true };
+    const contentKey = getMessageContentKey(message);
+    if (
+      entry.messages.some(
+        (existing) => existing.id === message.id || getMessageContentKey(existing) === contentKey
+      )
+    ) {
+      return false;
+    }
+    this.entries.set(id, { ...entry, messages: [...entry.messages, message].slice(-200) });
+    return true;
+  }
+
+  updateAck(messageId: number, acked: number, paths?: NonNullable<Message['paths']>) {
+    for (const [id, entry] of this.entries) {
+      this.entries.set(id, {
+        ...entry,
+        messages: entry.messages.map((message) =>
+          message.id === messageId
+            ? {
+                ...message,
+                acked: Math.max(message.acked, acked),
+                ...(paths !== undefined &&
+                  paths.length >= (message.paths?.length ?? 0) && { paths }),
+              }
+            : message
+        ),
+      });
+    }
+  }
+}
 
 /**
  * Minimal state for testing message dedup and unread logic.
@@ -25,7 +64,7 @@ interface MockState {
   unreadCounts: Record<string, number>;
   lastMessageTimes: Record<string, number>;
   seenActiveContent: Set<string>;
-  messageCache: ConversationMessageCache;
+  messageCache: TestMessageCache;
 }
 
 function createMockState(): MockState {
@@ -34,7 +73,7 @@ function createMockState(): MockState {
     unreadCounts: {},
     lastMessageTimes: {},
     seenActiveContent: new Set(),
-    messageCache: new ConversationMessageCache(),
+    messageCache: new TestMessageCache(),
   };
 }
 
@@ -338,7 +377,7 @@ describe('Integration: Contact Merge', () => {
 
 describe('Integration: ACK + messageCache propagation', () => {
   it('updateAck updates acked count on cached message', () => {
-    const messageCache = new ConversationMessageCache();
+    const messageCache = new TestMessageCache();
     const msg: Message = {
       id: 100,
       type: 'PRIV',
@@ -364,7 +403,7 @@ describe('Integration: ACK + messageCache propagation', () => {
   });
 
   it('updateAck updates paths when longer', () => {
-    const messageCache = new ConversationMessageCache();
+    const messageCache = new TestMessageCache();
     const msg: Message = {
       id: 101,
       type: 'PRIV',
@@ -394,7 +433,7 @@ describe('Integration: ACK + messageCache propagation', () => {
   });
 
   it('preserves higher existing ack count (max semantics)', () => {
-    const messageCache = new ConversationMessageCache();
+    const messageCache = new TestMessageCache();
     const msg: Message = {
       id: 102,
       type: 'PRIV',
@@ -420,7 +459,7 @@ describe('Integration: ACK + messageCache propagation', () => {
   });
 
   it('is a no-op for unknown message ID', () => {
-    const messageCache = new ConversationMessageCache();
+    const messageCache = new TestMessageCache();
     const msg: Message = {
       id: 103,
       type: 'PRIV',

@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { QueryClient } from '@tanstack/react-query';
+import { queryKeys } from '../queryClient';
 
 interface PrefetchWindow extends Window {
   __prefetch?: unknown;
@@ -45,5 +47,33 @@ describe('takePrefetchOrFetch', () => {
     await expect(takePrefetchOrFetch('undecryptedCount', fallback)).resolves.toEqual({ count: 11 });
     expect(fallback).toHaveBeenCalledTimes(1);
     expect(warnSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('adopts bootstrap promises into the Query cache', async () => {
+    const unreads = {
+      counts: {},
+      mentions: {},
+      last_message_times: {},
+      first_unread_ids: {},
+      last_read_ats: {},
+    };
+    setPrefetchStore({
+      config: Promise.resolve({ public_key: 'local' }),
+      settings: Promise.resolve({}),
+      channels: Promise.resolve([]),
+      contacts: Promise.resolve([]),
+      unreads: Promise.resolve(unreads),
+      undecryptedCount: Promise.resolve({ count: 7 }),
+    });
+
+    const { primePrefetchCache } = await import('../prefetch');
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    primePrefetchCache(queryClient);
+
+    await vi.waitFor(() => {
+      expect(queryClient.getQueryData(queryKeys.radioConfig())).toEqual({ public_key: 'local' });
+      expect(queryClient.getQueryData(queryKeys.unreads())).toEqual(unreads);
+      expect(queryClient.getQueryData(queryKeys.undecryptedCount())).toEqual({ count: 7 });
+    });
   });
 });

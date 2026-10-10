@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, type SetStateAction } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api';
-import { takePrefetchOrFetch } from '../prefetch';
 import { queryKeys } from '../queryClient';
 import { toast } from '../components/ui/sonner';
 import { initLastMessageTimes } from '../utils/conversationState';
@@ -11,7 +10,7 @@ export function useAppSettings() {
   const queryClient = useQueryClient();
   const settingsQuery = useQuery({
     queryKey: queryKeys.settings(),
-    queryFn: ({ signal }) => takePrefetchOrFetch('settings', () => api.getSettings(signal)),
+    queryFn: ({ signal }) => api.getSettings(signal),
   });
   const appSettings = settingsQuery.data ?? null;
 

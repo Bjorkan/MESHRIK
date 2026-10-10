@@ -17,14 +17,12 @@ import type {
   Message,
   MessagesAroundResponse,
   RawPacket,
-  RadioAdvertMode,
   RadioConfig,
   RadioConfigUpdate,
   RadioDiscoveryResponse,
   RadioRegionDiscoveryResponse,
   RadioTraceHopRequest,
   RadioTraceResponse,
-  RadioDiscoveryTarget,
   PathDiscoveryResponse,
   PushSubscriptionInfo,
   ResendChannelMessageResponse,
@@ -61,16 +59,41 @@ export type ApiResponse<
   ? R
   : never;
 
+export type ApiRequestBody<
+  P extends keyof paths,
+  M extends keyof paths[P] & string,
+> = paths[P][M] extends {
+  requestBody?: { content: { 'application/json': infer B } };
+}
+  ? NonNullable<B>
+  : never;
+
+export type ApiQuery<
+  P extends keyof paths,
+  M extends keyof paths[P] & string,
+> = paths[P][M] extends { parameters: { query?: infer Q } } ? NonNullable<Q> : never;
+
+export type ApiPathParams<
+  P extends keyof paths,
+  M extends keyof paths[P] & string,
+> = paths[P][M] extends { parameters: { path?: infer Params } } ? Params : never;
+
 type ContactsResponse =
   paths['/api/contacts']['get']['responses'][200]['content']['application/json'];
-type ChannelsResponse =
-  paths['/api/channels']['get']['responses'][200]['content']['application/json'];
 type MessagesResponse =
   paths['/api/messages']['get']['responses'][200]['content']['application/json'];
-type SettingsResponse =
-  paths['/api/settings']['get']['responses'][200]['content']['application/json'];
+type CreateContactBody = ApiRequestBody<'/api/contacts', 'post'>;
+type CreateChannelBody = ApiRequestBody<'/api/channels', 'post'>;
+type SendDirectMessageBody = ApiRequestBody<'/api/messages/direct', 'post'>;
+type SendChannelMessageBody = ApiRequestBody<'/api/messages/channel', 'post'>;
+type UpdateSettingsBody = ApiRequestBody<'/api/settings', 'patch'>;
 type RestContact = Contact & Required<Pick<ContactsResponse[number], 'effective_route_source'>>;
 type RestMessage = Message & Required<Pick<MessagesResponse[number], 'send_status'>>;
+type DeepPartial<T> = T extends readonly (infer Item)[]
+  ? DeepPartial<Item>[]
+  : T extends object
+    ? { [Key in keyof T]?: DeepPartial<T[Key]> }
+    : T;
 
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
   const hasBody = options?.body !== undefined;
@@ -102,11 +125,46 @@ async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
  * FastAPI serializes Pydantic defaults, although OpenAPI marks defaulted response fields optional.
  * Keep that refinement explicit at the REST boundary while retaining the generated wire contract.
  */
-async function fetchDefaultedJson<TWire, TView extends TWire>(
+async function fetchDefaultedJson<TWire, TView>(
   url: string,
   options?: RequestInit
 ): Promise<TView> {
-  return (await fetchJson<TWire>(url, options)) as TView;
+  return (await fetchJson<TWire>(url, options)) as unknown as TView;
+}
+
+/** Bind each request to its generated OpenAPI operation while retaining the shared fetch behavior. */
+function fetchApi<P extends keyof paths, M extends keyof paths[P] & string>(
+  url: string,
+  options?: RequestInit
+): Promise<ApiResponse<P, M>> {
+  return fetchJson<ApiResponse<P, M>>(url, options);
+}
+
+/** Refine fields that FastAPI always emits although OpenAPI marks their defaults optional. */
+function fetchApiView<P extends keyof paths, M extends keyof paths[P] & string, TView>(
+  url: string,
+  options?: RequestInit,
+  ..._contractCheck: ApiResponse<P, M> extends DeepPartial<TView> ? [] : [never]
+): Promise<TView> {
+  return fetchDefaultedJson<ApiResponse<P, M>, TView>(url, options);
+}
+
+/** Keep weak legacy OpenAPI responses endpoint-bound until their backend models are hardened. */
+function fetchApiLooseView<P extends keyof paths, M extends keyof paths[P] & string, TView>(
+  url: string,
+  options?: RequestInit
+): Promise<TView> {
+  return fetchDefaultedJson<ApiResponse<P, M>, TView>(url, options);
+}
+
+function apiBody<P extends keyof paths, M extends keyof paths[P] & string>(
+  value: ApiRequestBody<P, M>
+): string {
+  return jsonBody(value);
+}
+
+function jsonBody<T>(value: T): string {
+  return JSON.stringify(value);
 }
 
 /** Check if an error is an AbortError (request was cancelled) */
@@ -127,160 +185,234 @@ interface DecryptResult {
 
 export const api = {
   // Health
-  getHealth: () => fetchJson<HealthStatus>('/health'),
+  getHealth: () => fetchApiView<'/api/health', 'get', HealthStatus>('/health'),
 
   // Radio config
-  getRadioConfig: () => fetchJson<RadioConfig>('/radio/config'),
-  updateRadioConfig: (config: RadioConfigUpdate) =>
-    fetchJson<RadioConfig>('/radio/config', {
+  getRadioConfig: () => fetchApiView<'/api/radio/config', 'get', RadioConfig>('/radio/config'),
+  updateRadioConfig: (config: RadioConfigUpdate & ApiRequestBody<'/api/radio/config', 'patch'>) =>
+    fetchApiView<'/api/radio/config', 'patch', RadioConfig>('/radio/config', {
       method: 'PATCH',
-      body: JSON.stringify(config),
+      body: apiBody<'/api/radio/config', 'patch'>(config),
     }),
-  getPrivateKey: () => fetchJson<{ private_key: string }>('/radio/private-key'),
-  setPrivateKey: (privateKey: string) =>
-    fetchJson<{ status: string }>('/radio/private-key', {
+  getPrivateKey: () =>
+    fetchApiView<'/api/radio/private-key', 'get', { private_key: string }>('/radio/private-key'),
+  setPrivateKey: (privateKey: ApiRequestBody<'/api/radio/private-key', 'put'>['private_key']) =>
+    fetchApiView<'/api/radio/private-key', 'put', { status: string }>('/radio/private-key', {
       method: 'PUT',
-      body: JSON.stringify({ private_key: privateKey }),
+      body: apiBody<'/api/radio/private-key', 'put'>({ private_key: privateKey }),
     }),
-  sendAdvertisement: (mode: RadioAdvertMode = 'flood') =>
-    fetchJson<{ status: string }>('/radio/advertise', {
+  sendAdvertisement: (mode: ApiRequestBody<'/api/radio/advertise', 'post'>['mode'] = 'flood') =>
+    fetchApiView<'/api/radio/advertise', 'post', { status: string }>('/radio/advertise', {
       method: 'POST',
-      body: JSON.stringify({ mode }),
+      body: apiBody<'/api/radio/advertise', 'post'>({ mode }),
     }),
-  discoverMesh: (target: RadioDiscoveryTarget) =>
-    fetchJson<RadioDiscoveryResponse>('/radio/discover', {
+  discoverMesh: (target: ApiRequestBody<'/api/radio/discover', 'post'>['target']) =>
+    fetchApiView<'/api/radio/discover', 'post', RadioDiscoveryResponse>('/radio/discover', {
       method: 'POST',
-      body: JSON.stringify({ target }),
+      body: apiBody<'/api/radio/discover', 'post'>({ target }),
     }),
   discoverRegions: (publicKeys?: string[]) =>
-    fetchJson<RadioRegionDiscoveryResponse>('/radio/discover-regions', {
+    fetchApiView<'/api/radio/discover-regions', 'post', RadioRegionDiscoveryResponse>(
+      '/radio/discover-regions',
+      {
+        method: 'POST',
+        body: apiBody<'/api/radio/discover-regions', 'post'>(
+          publicKeys && publicKeys.length > 0
+            ? { public_keys: publicKeys, max_repeaters: 5 }
+            : { max_repeaters: 5 }
+        ),
+      }
+    ),
+  requestRadioTrace: (
+    hopHashBytes: ApiRequestBody<'/api/radio/trace', 'post'>['hop_hash_bytes'],
+    hops: ApiRequestBody<'/api/radio/trace', 'post'>['hops'] & RadioTraceHopRequest[]
+  ) =>
+    fetchApiView<'/api/radio/trace', 'post', RadioTraceResponse>('/radio/trace', {
       method: 'POST',
-      body: JSON.stringify(publicKeys && publicKeys.length > 0 ? { public_keys: publicKeys } : {}),
-    }),
-  requestRadioTrace: (hopHashBytes: 1 | 2 | 4, hops: RadioTraceHopRequest[]) =>
-    fetchJson<RadioTraceResponse>('/radio/trace', {
-      method: 'POST',
-      body: JSON.stringify({ hop_hash_bytes: hopHashBytes, hops }),
+      body: apiBody<'/api/radio/trace', 'post'>({ hop_hash_bytes: hopHashBytes, hops }),
     }),
   rebootRadio: () =>
-    fetchJson<{ status: string; message: string }>('/radio/reboot', {
-      method: 'POST',
-    }),
-  disconnectRadio: () =>
-    fetchJson<{ status: string; message: string; connected: boolean; paused: boolean }>(
-      '/radio/disconnect',
+    fetchApiView<'/api/radio/reboot', 'post', { status: string; message: string }>(
+      '/radio/reboot',
       {
         method: 'POST',
       }
     ),
-  reconnectRadio: () =>
-    fetchJson<{ status: string; message: string; connected: boolean }>('/radio/reconnect', {
+  disconnectRadio: () =>
+    fetchApiView<
+      '/api/radio/disconnect',
+      'post',
+      { status: string; message: string; connected: boolean; paused: boolean }
+    >('/radio/disconnect', {
       method: 'POST',
     }),
+  reconnectRadio: () =>
+    fetchApiView<
+      '/api/radio/reconnect',
+      'post',
+      { status: string; message: string; connected: boolean }
+    >('/radio/reconnect', { method: 'POST' }),
 
   // Contacts
-  getContacts: async (limit = 100, offset = 0, signal?: AbortSignal): Promise<Contact[]> =>
-    fetchDefaultedJson<ContactsResponse, RestContact[]>(
+  getContacts: async (
+    limit: ApiQuery<'/api/contacts', 'get'>['limit'] = 100,
+    offset: ApiQuery<'/api/contacts', 'get'>['offset'] = 0,
+    signal?: AbortSignal
+  ): Promise<Contact[]> =>
+    fetchApiView<'/api/contacts', 'get', RestContact[]>(
       `/contacts?limit=${limit}&offset=${offset}`,
       { signal }
     ),
-  getRepeaterAdvertPaths: (limitPerRepeater = 10) =>
-    fetchJson<ContactAdvertPathSummary[]>(
+  getRepeaterAdvertPaths: (
+    limitPerRepeater: ApiQuery<
+      '/api/contacts/repeaters/advert-paths',
+      'get'
+    >['limit_per_repeater'] = 10
+  ) =>
+    fetchApiView<'/api/contacts/repeaters/advert-paths', 'get', ContactAdvertPathSummary[]>(
       `/contacts/repeaters/advert-paths?limit_per_repeater=${limitPerRepeater}`
     ),
-  getContactAnalytics: (params: { publicKey?: string; name?: string }, signal?: AbortSignal) => {
+  getContactAnalytics: (
+    params: {
+      publicKey?: ApiQuery<'/api/contacts/analytics', 'get'>['public_key'];
+      name?: ApiQuery<'/api/contacts/analytics', 'get'>['name'];
+    },
+    signal?: AbortSignal
+  ) => {
     const searchParams = new URLSearchParams();
     if (params.publicKey) searchParams.set('public_key', params.publicKey);
     if (params.name) searchParams.set('name', params.name);
-    return fetchJson<ContactAnalytics>(`/contacts/analytics?${searchParams.toString()}`, {
-      signal,
-    });
+    return fetchApiView<'/api/contacts/analytics', 'get', ContactAnalytics>(
+      `/contacts/analytics?${searchParams.toString()}`,
+      { signal }
+    );
   },
   deleteContact: (publicKey: string) =>
-    fetchJson<ContactDeleteResult>(`/contacts/${publicKey}`, {
-      method: 'DELETE',
-    }),
+    fetchApiView<'/api/contacts/{public_key}', 'delete', ContactDeleteResult>(
+      `/contacts/${publicKey}`,
+      {
+        method: 'DELETE',
+      }
+    ),
   bulkDeleteContacts: (publicKeys: string[]) =>
-    fetchJson<BulkDeleteContactsResult>('/contacts/bulk-delete', {
+    fetchApiView<'/api/contacts/bulk-delete', 'post', BulkDeleteContactsResult>(
+      '/contacts/bulk-delete',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: apiBody<'/api/contacts/bulk-delete', 'post'>({ public_keys: publicKeys }),
+      }
+    ),
+  createContact: (
+    publicKey: CreateContactBody['public_key'],
+    name?: CreateContactBody['name'],
+    tryHistorical: CreateContactBody['try_historical'] = false,
+    type: CreateContactBody['type'] = 0
+  ) =>
+    fetchApiView<'/api/contacts', 'post', Contact>('/contacts', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ public_keys: publicKeys }),
+      body: jsonBody<CreateContactBody>({
+        public_key: publicKey,
+        ...(name !== undefined && { name }),
+        type,
+        try_historical: tryHistorical,
+      }),
     }),
-  createContact: (publicKey: string, name?: string, tryHistorical?: boolean, type?: number) =>
-    fetchJson<Contact>('/contacts', {
-      method: 'POST',
-      body: JSON.stringify({ public_key: publicKey, name, type, try_historical: tryHistorical }),
-    }),
-  markContactRead: (publicKey: string, messageId?: number) =>
-    fetchJson<{ status: string; public_key: string }>(
+  markContactRead: (
+    publicKey: string,
+    messageId?: ApiQuery<'/api/contacts/{public_key}/mark-read', 'post'>['message_id']
+  ) =>
+    fetchApi<'/api/contacts/{public_key}/mark-read', 'post'>(
       `/contacts/${publicKey}/mark-read${messageId === undefined ? '' : `?message_id=${messageId}`}`,
       { method: 'POST' }
     ),
   sendRepeaterCommand: (publicKey: string, command: string) =>
-    fetchJson<CommandResponse>(`/contacts/${publicKey}/command`, {
-      method: 'POST',
-      body: JSON.stringify({ command }),
-    }),
+    fetchApiView<'/api/contacts/{public_key}/command', 'post', CommandResponse>(
+      `/contacts/${publicKey}/command`,
+      {
+        method: 'POST',
+        body: apiBody<'/api/contacts/{public_key}/command', 'post'>({ command }),
+      }
+    ),
   requestTrace: (publicKey: string) =>
-    fetchJson<TraceResponse>(`/contacts/${publicKey}/trace`, {
-      method: 'POST',
-    }),
+    fetchApiView<'/api/contacts/{public_key}/trace', 'post', TraceResponse>(
+      `/contacts/${publicKey}/trace`,
+      {
+        method: 'POST',
+      }
+    ),
   requestPathDiscovery: (publicKey: string) =>
-    fetchJson<PathDiscoveryResponse>(`/contacts/${publicKey}/path-discovery`, {
-      method: 'POST',
-    }),
+    fetchApiView<'/api/contacts/{public_key}/path-discovery', 'post', PathDiscoveryResponse>(
+      `/contacts/${publicKey}/path-discovery`,
+      {
+        method: 'POST',
+      }
+    ),
   setContactRoutingOverride: (publicKey: string, route: string) =>
-    fetchJson<{ status: string; public_key: string }>(`/contacts/${publicKey}/routing-override`, {
-      method: 'POST',
-      body: JSON.stringify({ route }),
-    }),
+    fetchApi<'/api/contacts/{public_key}/routing-override', 'post'>(
+      `/contacts/${publicKey}/routing-override`,
+      {
+        method: 'POST',
+        body: apiBody<'/api/contacts/{public_key}/routing-override', 'post'>({ route }),
+      }
+    ),
 
   // Channels
   getChannels: (signal?: AbortSignal) =>
-    fetchDefaultedJson<ChannelsResponse, Channel[]>('/channels', { signal }),
-  createChannel: (name: string, key?: string) =>
-    fetchJson<Channel>('/channels', {
+    fetchApiView<'/api/channels', 'get', Channel[]>('/channels', { signal }),
+  createChannel: (name: CreateChannelBody['name'], key?: CreateChannelBody['key']) =>
+    fetchApiView<'/api/channels', 'post', Channel>('/channels', {
       method: 'POST',
-      body: JSON.stringify({ name, key }),
+      body: jsonBody<CreateChannelBody>({ name, key }),
     }),
-  bulkCreateHashtagChannels: (channelNames: string[], tryHistorical?: boolean) =>
-    fetchJson<BulkCreateHashtagChannelsResult>('/channels/bulk-hashtag', {
-      method: 'POST',
-      body: JSON.stringify({ channel_names: channelNames, try_historical: tryHistorical }),
-    }),
+  bulkCreateHashtagChannels: (channelNames: string[], tryHistorical = false) =>
+    fetchApiView<'/api/channels/bulk-hashtag', 'post', BulkCreateHashtagChannelsResult>(
+      '/channels/bulk-hashtag',
+      {
+        method: 'POST',
+        body: apiBody<'/api/channels/bulk-hashtag', 'post'>({
+          channel_names: channelNames,
+          try_historical: tryHistorical,
+        }),
+      }
+    ),
   deleteChannel: (key: string) =>
-    fetchJson<{ status: string }>(`/channels/${key}`, { method: 'DELETE' }),
-  getChannelDetail: (key: string) => fetchJson<ChannelDetail>(`/channels/${key}/detail`),
-  markChannelRead: (key: string, messageId?: number) =>
-    fetchJson<{ status: string; key: string }>(
+    fetchApi<'/api/channels/{key}', 'delete'>(`/channels/${key}`, { method: 'DELETE' }),
+  getChannelDetail: (key: string) =>
+    fetchApiView<'/api/channels/{key}/detail', 'get', ChannelDetail>(`/channels/${key}/detail`),
+  markChannelRead: (
+    key: string,
+    messageId?: ApiQuery<'/api/channels/{key}/mark-read', 'post'>['message_id']
+  ) =>
+    fetchApi<'/api/channels/{key}/mark-read', 'post'>(
       `/channels/${key}/mark-read${messageId === undefined ? '' : `?message_id=${messageId}`}`,
       { method: 'POST' }
     ),
   setChannelFloodScopeOverride: (key: string, floodScopeOverride: string) =>
-    fetchJson<Channel>(`/channels/${key}/flood-scope-override`, {
-      method: 'POST',
-      body: JSON.stringify({ flood_scope_override: floodScopeOverride }),
-    }),
+    fetchApiView<'/api/channels/{key}/flood-scope-override', 'post', Channel>(
+      `/channels/${key}/flood-scope-override`,
+      {
+        method: 'POST',
+        body: apiBody<'/api/channels/{key}/flood-scope-override', 'post'>({
+          flood_scope_override: floodScopeOverride,
+        }),
+      }
+    ),
 
   setChannelPathHashModeOverride: (key: string, pathHashModeOverride: number | null) =>
-    fetchJson<Channel>(`/channels/${key}/path-hash-mode-override`, {
-      method: 'POST',
-      body: JSON.stringify({ path_hash_mode_override: pathHashModeOverride }),
-    }),
+    fetchApiView<'/api/channels/{key}/path-hash-mode-override', 'post', Channel>(
+      `/channels/${key}/path-hash-mode-override`,
+      {
+        method: 'POST',
+        body: apiBody<'/api/channels/{key}/path-hash-mode-override', 'post'>({
+          path_hash_mode_override: pathHashModeOverride,
+        }),
+      }
+    ),
 
   // Messages
   getMessages: (
-    params?: {
-      limit?: number;
-      offset?: number;
-      type?: 'PRIV' | 'CHAN';
-      conversation_key?: string;
-      before?: number;
-      before_id?: number;
-      after?: number;
-      after_id?: number;
-      q?: string;
-    },
+    params?: ApiQuery<'/api/messages', 'get'>,
     signal?: AbortSignal
   ): Promise<Message[]> => {
     const searchParams = new URLSearchParams();
@@ -288,265 +420,317 @@ export const api = {
     if (params?.offset !== undefined) searchParams.set('offset', params.offset.toString());
     if (params?.type) searchParams.set('type', params.type);
     if (params?.conversation_key) searchParams.set('conversation_key', params.conversation_key);
-    if (params?.before !== undefined) searchParams.set('before', params.before.toString());
-    if (params?.before_id !== undefined) searchParams.set('before_id', params.before_id.toString());
-    if (params?.after !== undefined) searchParams.set('after', params.after.toString());
-    if (params?.after_id !== undefined) searchParams.set('after_id', params.after_id.toString());
+    if (params?.before != null) searchParams.set('before', params.before.toString());
+    if (params?.before_id != null) searchParams.set('before_id', params.before_id.toString());
+    if (params?.after != null) searchParams.set('after', params.after.toString());
+    if (params?.after_id != null) searchParams.set('after_id', params.after_id.toString());
     if (params?.q) searchParams.set('q', params.q);
     const query = searchParams.toString();
-    return fetchDefaultedJson<MessagesResponse, RestMessage[]>(
+    return fetchApiView<'/api/messages', 'get', RestMessage[]>(
       `/messages${query ? `?${query}` : ''}`,
       { signal }
     );
   },
   getMessagesAround: (
-    messageId: number,
-    type?: 'PRIV' | 'CHAN',
-    conversationKey?: string,
+    messageId: ApiPathParams<'/api/messages/around/{message_id}', 'get'>['message_id'],
+    type?: ApiQuery<'/api/messages/around/{message_id}', 'get'>['type'],
+    conversationKey?: ApiQuery<'/api/messages/around/{message_id}', 'get'>['conversation_key'],
     signal?: AbortSignal
   ) => {
     const searchParams = new URLSearchParams();
     if (type) searchParams.set('type', type);
     if (conversationKey) searchParams.set('conversation_key', conversationKey);
     const query = searchParams.toString();
-    return fetchJson<MessagesAroundResponse>(
+    return fetchApiView<'/api/messages/around/{message_id}', 'get', MessagesAroundResponse>(
       `/messages/around/${messageId}${query ? `?${query}` : ''}`,
       { signal }
     );
   },
-  sendDirectMessage: (destination: string, text: string) =>
-    fetchJson<Message>('/messages/direct', {
+  sendDirectMessage: (
+    destination: SendDirectMessageBody['destination'],
+    text: SendDirectMessageBody['text']
+  ) =>
+    fetchApiView<'/api/messages/direct', 'post', Message>('/messages/direct', {
       method: 'POST',
-      body: JSON.stringify({ destination, text }),
+      body: jsonBody<SendDirectMessageBody>({ destination, text }),
     }),
-  sendChannelMessage: (channelKey: string, text: string) =>
-    fetchJson<Message>('/messages/channel', {
+  sendChannelMessage: (
+    channelKey: SendChannelMessageBody['channel_key'],
+    text: SendChannelMessageBody['text']
+  ) =>
+    fetchApiView<'/api/messages/channel', 'post', Message>('/messages/channel', {
       method: 'POST',
-      body: JSON.stringify({ channel_key: channelKey, text }),
+      body: jsonBody<SendChannelMessageBody>({ channel_key: channelKey, text }),
     }),
-  resendChannelMessage: (messageId: number, newTimestamp?: boolean) =>
-    fetchJson<ResendChannelMessageResponse>(
+  resendChannelMessage: (
+    messageId: ApiPathParams<'/api/messages/channel/{message_id}/resend', 'post'>['message_id'],
+    newTimestamp?: ApiQuery<'/api/messages/channel/{message_id}/resend', 'post'>['new_timestamp']
+  ) =>
+    fetchApiView<'/api/messages/channel/{message_id}/resend', 'post', ResendChannelMessageResponse>(
       `/messages/channel/${messageId}/resend${newTimestamp ? '?new_timestamp=true' : ''}`,
       { method: 'POST' }
     ),
 
   // Packets
-  getPacket: (packetId: number) => fetchJson<RawPacket>(`/packets/${packetId}`),
-  getUndecryptedPacketCount: () => fetchJson<{ count: number }>('/packets/undecrypted/count'),
-  decryptHistoricalPackets: (params: {
-    key_type: 'channel' | 'contact';
-    channel_key?: string;
-    channel_name?: string;
-  }) =>
-    fetchJson<DecryptResult>('/packets/decrypt/historical', {
-      method: 'POST',
-      body: JSON.stringify(params),
-    }),
+  getPacket: (packetId: number) =>
+    fetchApiView<'/api/packets/{packet_id}', 'get', RawPacket>(`/packets/${packetId}`),
+  getUndecryptedPacketCount: () =>
+    fetchApiView<'/api/packets/undecrypted/count', 'get', { count: number }>(
+      '/packets/undecrypted/count'
+    ),
+  decryptHistoricalPackets: (params: ApiRequestBody<'/api/packets/decrypt/historical', 'post'>) =>
+    fetchApiView<'/api/packets/decrypt/historical', 'post', DecryptResult>(
+      '/packets/decrypt/historical',
+      {
+        method: 'POST',
+        body: apiBody<'/api/packets/decrypt/historical', 'post'>(params),
+      }
+    ),
   runMaintenance: (options: { pruneUndecryptedDays?: number; purgeLinkedRawPackets?: boolean }) =>
-    fetchJson<MaintenanceResult>('/packets/maintenance', {
+    fetchApiView<'/api/packets/maintenance', 'post', MaintenanceResult>('/packets/maintenance', {
       method: 'POST',
-      body: JSON.stringify({
+      body: apiBody<'/api/packets/maintenance', 'post'>({
         ...(options.pruneUndecryptedDays !== undefined && {
           prune_undecrypted_days: options.pruneUndecryptedDays,
         }),
-        ...(options.purgeLinkedRawPackets !== undefined && {
-          purge_linked_raw_packets: options.purgeLinkedRawPackets,
-        }),
+        purge_linked_raw_packets: options.purgeLinkedRawPackets ?? false,
       }),
     }),
 
   // Read State
-  getUnreads: () => fetchJson<UnreadCounts>('/read-state/unreads'),
+  getUnreads: () =>
+    fetchApiView<'/api/read-state/unreads', 'get', UnreadCounts>('/read-state/unreads'),
   markAllRead: () =>
-    fetchJson<{ status: string; timestamp: number }>('/read-state/mark-all-read', {
+    fetchApi<'/api/read-state/mark-all-read', 'post'>('/read-state/mark-all-read', {
       method: 'POST',
     }),
 
   // App Settings
   getSettings: (signal?: AbortSignal) =>
-    fetchDefaultedJson<SettingsResponse, AppSettings>('/settings', { signal }),
-  updateSettings: (settings: AppSettingsUpdate) =>
-    fetchJson<AppSettings>('/settings', {
+    fetchApiView<'/api/settings', 'get', AppSettings>('/settings', { signal }),
+  updateSettings: (settings: AppSettingsUpdate & UpdateSettingsBody) =>
+    fetchApiView<'/api/settings', 'patch', AppSettings>('/settings', {
       method: 'PATCH',
-      body: JSON.stringify(settings),
+      body: jsonBody<UpdateSettingsBody>(settings),
     }),
 
   // Block lists
   toggleBlockedKey: (key: string) =>
-    fetchJson<AppSettings>('/settings/blocked-keys/toggle', {
-      method: 'POST',
-      body: JSON.stringify({ key }),
-    }),
+    fetchApiView<'/api/settings/blocked-keys/toggle', 'post', AppSettings>(
+      '/settings/blocked-keys/toggle',
+      {
+        method: 'POST',
+        body: apiBody<'/api/settings/blocked-keys/toggle', 'post'>({ key }),
+      }
+    ),
   toggleBlockedName: (name: string) =>
-    fetchJson<AppSettings>('/settings/blocked-names/toggle', {
-      method: 'POST',
-      body: JSON.stringify({ name }),
-    }),
+    fetchApiView<'/api/settings/blocked-names/toggle', 'post', AppSettings>(
+      '/settings/blocked-names/toggle',
+      {
+        method: 'POST',
+        body: apiBody<'/api/settings/blocked-names/toggle', 'post'>({ name }),
+      }
+    ),
 
   // Tracked telemetry
   toggleTrackedTelemetry: (publicKey: string) =>
-    fetchJson<TrackedTelemetryResponse>('/settings/tracked-telemetry/toggle', {
-      method: 'POST',
-      body: JSON.stringify({ public_key: publicKey }),
-    }),
+    fetchApiView<'/api/settings/tracked-telemetry/toggle', 'post', TrackedTelemetryResponse>(
+      '/settings/tracked-telemetry/toggle',
+      {
+        method: 'POST',
+        body: apiBody<'/api/settings/tracked-telemetry/toggle', 'post'>({
+          public_key: publicKey,
+        }),
+      }
+    ),
 
-  getTelemetrySchedule: () => fetchJson<TelemetrySchedule>('/settings/tracked-telemetry/schedule'),
+  getTelemetrySchedule: () =>
+    fetchApiView<'/api/settings/tracked-telemetry/schedule', 'get', TelemetrySchedule>(
+      '/settings/tracked-telemetry/schedule'
+    ),
 
   // Tracked contact telemetry
   toggleTrackedTelemetryContact: (publicKey: string) =>
-    fetchJson<TrackedTelemetryContactsResponse>('/settings/tracked-telemetry-contacts/toggle', {
+    fetchApiView<
+      '/api/settings/tracked-telemetry-contacts/toggle',
+      'post',
+      TrackedTelemetryContactsResponse
+    >('/settings/tracked-telemetry-contacts/toggle', {
       method: 'POST',
-      body: JSON.stringify({ public_key: publicKey }),
+      body: apiBody<'/api/settings/tracked-telemetry-contacts/toggle', 'post'>({
+        public_key: publicKey,
+      }),
     }),
 
   getContactTelemetrySchedule: () =>
-    fetchJson<TelemetrySchedule>('/settings/tracked-telemetry-contacts/schedule'),
+    fetchApiView<'/api/settings/tracked-telemetry-contacts/schedule', 'get', TelemetrySchedule>(
+      '/settings/tracked-telemetry-contacts/schedule'
+    ),
 
   // Favorites
   toggleFavorite: (type: 'channel' | 'contact', id: string) =>
-    fetchJson<{ type: string; id: string; favorite: boolean }>('/settings/favorites/toggle', {
+    fetchApi<'/api/settings/favorites/toggle', 'post'>('/settings/favorites/toggle', {
       method: 'POST',
-      body: JSON.stringify({ type, id }),
+      body: apiBody<'/api/settings/favorites/toggle', 'post'>({ type, id }),
     }),
 
   toggleChannelMute: (key: string) =>
-    fetchJson<{ key: string; muted: boolean }>('/settings/muted-channels/toggle', {
+    fetchApi<'/api/settings/muted-channels/toggle', 'post'>('/settings/muted-channels/toggle', {
       method: 'POST',
-      body: JSON.stringify({ key }),
+      body: apiBody<'/api/settings/muted-channels/toggle', 'post'>({ key }),
     }),
 
   // Fanout
-  getFanoutConfigs: () => fetchJson<FanoutConfig[]>('/fanout'),
-  createFanoutConfig: (config: {
-    type: string;
-    name: string;
-    config: Record<string, unknown>;
-    scope: Record<string, unknown>;
-    enabled?: boolean;
-  }) =>
-    fetchJson<FanoutConfig>('/fanout', {
+  getFanoutConfigs: () => fetchApiView<'/api/fanout', 'get', FanoutConfig[]>('/fanout'),
+  createFanoutConfig: (config: ApiRequestBody<'/api/fanout', 'post'>) =>
+    fetchApiView<'/api/fanout', 'post', FanoutConfig>('/fanout', {
       method: 'POST',
-      body: JSON.stringify(config),
+      body: apiBody<'/api/fanout', 'post'>(config),
     }),
-  updateFanoutConfig: (
-    id: string,
-    update: {
-      name?: string;
-      config?: Record<string, unknown>;
-      scope?: Record<string, unknown>;
-      enabled?: boolean;
-    }
-  ) =>
-    fetchJson<FanoutConfig>(`/fanout/${id}`, {
+  updateFanoutConfig: (id: string, update: ApiRequestBody<'/api/fanout/{config_id}', 'patch'>) =>
+    fetchApiView<'/api/fanout/{config_id}', 'patch', FanoutConfig>(`/fanout/${id}`, {
       method: 'PATCH',
-      body: JSON.stringify(update),
+      body: apiBody<'/api/fanout/{config_id}', 'patch'>(update),
     }),
   deleteFanoutConfig: (id: string) =>
-    fetchJson<{ deleted: boolean }>(`/fanout/${id}`, {
+    fetchApi<'/api/fanout/{config_id}', 'delete'>(`/fanout/${id}`, {
       method: 'DELETE',
     }),
   disableBotsUntilRestart: () =>
-    fetchJson<{
-      status: string;
-      bots_disabled: boolean;
-      bots_disabled_source: 'env' | 'until_restart';
-    }>('/fanout/bots/disable-until-restart', {
-      method: 'POST',
-    }),
+    fetchApi<'/api/fanout/bots/disable-until-restart', 'post'>(
+      '/fanout/bots/disable-until-restart',
+      {
+        method: 'POST',
+      }
+    ),
 
   // Statistics
-  getStatistics: () => fetchJson<StatisticsResponse>('/statistics'),
+  getStatistics: () => fetchApiView<'/api/statistics', 'get', StatisticsResponse>('/statistics'),
 
   // Granular repeater endpoints
   repeaterLogin: (publicKey: string, password: string) =>
-    fetchJson<RepeaterLoginResponse>(`/contacts/${publicKey}/repeater/login`, {
-      method: 'POST',
-      body: JSON.stringify({ password }),
-    }),
+    fetchApiView<'/api/contacts/{public_key}/repeater/login', 'post', RepeaterLoginResponse>(
+      `/contacts/${publicKey}/repeater/login`,
+      {
+        method: 'POST',
+        body: apiBody<'/api/contacts/{public_key}/repeater/login', 'post'>({ password }),
+      }
+    ),
   repeaterStatus: (publicKey: string) =>
-    fetchJson<RepeaterStatusResponse>(`/contacts/${publicKey}/repeater/status`, {
-      method: 'POST',
-    }),
+    fetchApiLooseView<'/api/contacts/{public_key}/repeater/status', 'post', RepeaterStatusResponse>(
+      `/contacts/${publicKey}/repeater/status`,
+      { method: 'POST' }
+    ),
   repeaterNeighbors: (publicKey: string) =>
-    fetchJson<RepeaterNeighborsResponse>(`/contacts/${publicKey}/repeater/neighbors`, {
-      method: 'POST',
-    }),
+    fetchApiView<
+      '/api/contacts/{public_key}/repeater/neighbors',
+      'post',
+      RepeaterNeighborsResponse
+    >(`/contacts/${publicKey}/repeater/neighbors`, { method: 'POST' }),
   repeaterNodeInfo: (publicKey: string) =>
-    fetchJson<RepeaterNodeInfoResponse>(`/contacts/${publicKey}/repeater/node-info`, {
-      method: 'POST',
-    }),
+    fetchApiView<'/api/contacts/{public_key}/repeater/node-info', 'post', RepeaterNodeInfoResponse>(
+      `/contacts/${publicKey}/repeater/node-info`,
+      { method: 'POST' }
+    ),
   repeaterAcl: (publicKey: string) =>
-    fetchJson<RepeaterAclResponse>(`/contacts/${publicKey}/repeater/acl`, {
-      method: 'POST',
-    }),
+    fetchApiView<'/api/contacts/{public_key}/repeater/acl', 'post', RepeaterAclResponse>(
+      `/contacts/${publicKey}/repeater/acl`,
+      { method: 'POST' }
+    ),
   repeaterRadioSettings: (publicKey: string) =>
-    fetchJson<RepeaterRadioSettingsResponse>(`/contacts/${publicKey}/repeater/radio-settings`, {
-      method: 'POST',
-    }),
+    fetchApiView<
+      '/api/contacts/{public_key}/repeater/radio-settings',
+      'post',
+      RepeaterRadioSettingsResponse
+    >(`/contacts/${publicKey}/repeater/radio-settings`, { method: 'POST' }),
   repeaterAdvertIntervals: (publicKey: string) =>
-    fetchJson<RepeaterAdvertIntervalsResponse>(`/contacts/${publicKey}/repeater/advert-intervals`, {
-      method: 'POST',
-    }),
+    fetchApiView<
+      '/api/contacts/{public_key}/repeater/advert-intervals',
+      'post',
+      RepeaterAdvertIntervalsResponse
+    >(`/contacts/${publicKey}/repeater/advert-intervals`, { method: 'POST' }),
   repeaterOwnerInfo: (publicKey: string) =>
-    fetchJson<RepeaterOwnerInfoResponse>(`/contacts/${publicKey}/repeater/owner-info`, {
-      method: 'POST',
-    }),
+    fetchApiView<
+      '/api/contacts/{public_key}/repeater/owner-info',
+      'post',
+      RepeaterOwnerInfoResponse
+    >(`/contacts/${publicKey}/repeater/owner-info`, { method: 'POST' }),
   repeaterRegions: (publicKey: string) =>
-    fetchJson<RepeaterRegionsResponse>(`/contacts/${publicKey}/repeater/regions`, {
-      method: 'POST',
-    }),
+    fetchApiView<'/api/contacts/{public_key}/repeater/regions', 'post', RepeaterRegionsResponse>(
+      `/contacts/${publicKey}/repeater/regions`,
+      { method: 'POST' }
+    ),
   repeaterLppTelemetry: (publicKey: string) =>
-    fetchJson<RepeaterLppTelemetryResponse>(`/contacts/${publicKey}/repeater/lpp-telemetry`, {
-      method: 'POST',
-    }),
+    fetchApiLooseView<
+      '/api/contacts/{public_key}/repeater/lpp-telemetry',
+      'post',
+      RepeaterLppTelemetryResponse
+    >(`/contacts/${publicKey}/repeater/lpp-telemetry`, { method: 'POST' }),
   repeaterTelemetryHistory: (publicKey: string) =>
-    fetchJson<TelemetryHistoryEntry[]>(`/contacts/${publicKey}/repeater/telemetry-history`),
+    fetchApiLooseView<
+      '/api/contacts/{public_key}/repeater/telemetry-history',
+      'get',
+      TelemetryHistoryEntry[]
+    >(`/contacts/${publicKey}/repeater/telemetry-history`),
   // Contact telemetry (universal, any contact type)
   requestContactTelemetry: (publicKey: string) =>
-    fetchJson<ContactTelemetryResponse>(`/contacts/${publicKey}/telemetry`, {
-      method: 'POST',
-    }),
+    fetchApiLooseView<'/api/contacts/{public_key}/telemetry', 'post', ContactTelemetryResponse>(
+      `/contacts/${publicKey}/telemetry`,
+      { method: 'POST' }
+    ),
   contactTelemetryHistory: (publicKey: string) =>
-    fetchJson<TelemetryHistoryEntry[]>(`/contacts/${publicKey}/telemetry-history`),
+    fetchApiLooseView<
+      '/api/contacts/{public_key}/telemetry-history',
+      'get',
+      TelemetryHistoryEntry[]
+    >(`/contacts/${publicKey}/telemetry-history`),
   roomLogin: (publicKey: string, password: string) =>
-    fetchJson<RepeaterLoginResponse>(`/contacts/${publicKey}/room/login`, {
-      method: 'POST',
-      body: JSON.stringify({ password }),
-    }),
+    fetchApiView<'/api/contacts/{public_key}/room/login', 'post', RepeaterLoginResponse>(
+      `/contacts/${publicKey}/room/login`,
+      {
+        method: 'POST',
+        body: apiBody<'/api/contacts/{public_key}/room/login', 'post'>({ password }),
+      }
+    ),
   roomStatus: (publicKey: string) =>
-    fetchJson<RepeaterStatusResponse>(`/contacts/${publicKey}/room/status`, {
-      method: 'POST',
-    }),
+    fetchApiLooseView<'/api/contacts/{public_key}/room/status', 'post', RepeaterStatusResponse>(
+      `/contacts/${publicKey}/room/status`,
+      { method: 'POST' }
+    ),
   roomAcl: (publicKey: string) =>
-    fetchJson<RepeaterAclResponse>(`/contacts/${publicKey}/room/acl`, {
-      method: 'POST',
-    }),
+    fetchApiView<'/api/contacts/{public_key}/room/acl', 'post', RepeaterAclResponse>(
+      `/contacts/${publicKey}/room/acl`,
+      { method: 'POST' }
+    ),
   roomLppTelemetry: (publicKey: string) =>
-    fetchJson<RepeaterLppTelemetryResponse>(`/contacts/${publicKey}/room/lpp-telemetry`, {
-      method: 'POST',
-    }),
+    fetchApiLooseView<
+      '/api/contacts/{public_key}/room/lpp-telemetry',
+      'post',
+      RepeaterLppTelemetryResponse
+    >(`/contacts/${publicKey}/room/lpp-telemetry`, { method: 'POST' }),
 
   // Push Notifications
-  getVapidPublicKey: () => fetchJson<{ public_key: string }>('/push/vapid-public-key'),
-  pushSubscribe: (subscription: {
-    endpoint: string;
-    p256dh: string;
-    auth: string;
-    label?: string;
-  }) =>
-    fetchJson<PushSubscriptionInfo>('/push/subscribe', {
+  getVapidPublicKey: () => fetchApi<'/api/push/vapid-public-key', 'get'>('/push/vapid-public-key'),
+  pushSubscribe: (subscription: ApiRequestBody<'/api/push/subscribe', 'post'>) =>
+    fetchApiView<'/api/push/subscribe', 'post', PushSubscriptionInfo>('/push/subscribe', {
       method: 'POST',
-      body: JSON.stringify(subscription),
+      body: apiBody<'/api/push/subscribe', 'post'>(subscription),
     }),
-  getPushSubscriptions: () => fetchJson<PushSubscriptionInfo[]>('/push/subscriptions'),
+  getPushSubscriptions: () =>
+    fetchApiView<'/api/push/subscriptions', 'get', PushSubscriptionInfo[]>('/push/subscriptions'),
   deletePushSubscription: (id: string) =>
-    fetchJson<{ deleted: boolean }>(`/push/subscriptions/${id}`, { method: 'DELETE' }),
+    fetchApi<'/api/push/subscriptions/{subscription_id}', 'delete'>(`/push/subscriptions/${id}`, {
+      method: 'DELETE',
+    }),
   testPushSubscription: (id: string) =>
-    fetchJson<{ status: string }>(`/push/subscriptions/${id}/test`, { method: 'POST' }),
-  getPushConversations: () => fetchJson<string[]>('/push/conversations'),
+    fetchApi<'/api/push/subscriptions/{subscription_id}/test', 'post'>(
+      `/push/subscriptions/${id}/test`,
+      { method: 'POST' }
+    ),
+  getPushConversations: () => fetchApi<'/api/push/conversations', 'get'>('/push/conversations'),
   togglePushConversation: (key: string) =>
-    fetchJson<string[]>('/push/conversations/toggle', {
+    fetchApi<'/api/push/conversations/toggle', 'post'>('/push/conversations/toggle', {
       method: 'POST',
-      body: JSON.stringify({ key }),
+      body: apiBody<'/api/push/conversations/toggle', 'post'>({ key }),
     }),
 };

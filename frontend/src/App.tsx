@@ -31,6 +31,7 @@ import { CONTACT_TYPE_REPEATER, CONTACT_TYPE_ROOM } from './types';
 import { shouldAutoFocusInput } from './utils/autoFocusInput';
 import { createAppQueryClient } from './queryClient';
 import { queryKeys } from './queryClient';
+import { primePrefetchCache } from './prefetch';
 
 interface ChannelUnreadMarker {
   channelId: string;
@@ -73,7 +74,11 @@ export function resolveUnreadMarkerId(
 }
 
 export function App() {
-  const [queryClient] = useState(createAppQueryClient);
+  const [queryClient] = useState(() => {
+    const client = createAppQueryClient();
+    primePrefetchCache(client);
+    return client;
+  });
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -470,10 +475,7 @@ function AppContent() {
   const handleCreateCrackedChannel = useCallback(
     async (name: string, key: string) => {
       const created = await api.createChannel(name, key);
-      await queryClient.fetchQuery({
-        queryKey: queryKeys.channels(),
-        queryFn: ({ signal }) => api.getChannels(signal),
-      });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.channels() });
       await api.decryptHistoricalPackets({
         key_type: 'channel',
         channel_key: created.key,
@@ -752,11 +754,6 @@ function AppContent() {
   // Connect to WebSocket
   useWebSocket(wsHandlers);
 
-  // Remaining non-Query bootstrap fetches.
-  useEffect(() => {
-    fetchConfig();
-    fetchUndecryptedCount();
-  }, [fetchConfig, fetchUndecryptedCount]);
   return (
     <DistanceUnitProvider distanceUnit={distanceUnit} setDistanceUnit={setDistanceUnit}>
       <RichPayloadProvider

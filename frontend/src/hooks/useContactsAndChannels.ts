@@ -1,5 +1,4 @@
 import {
-  useState,
   useCallback,
   useEffect,
   type Dispatch,
@@ -8,12 +7,14 @@ import {
 } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api';
-import { takePrefetchOrFetch } from '../prefetch';
+import { fetchAllContacts } from '../prefetch';
 import { queryKeys } from '../queryClient';
 import { toast } from '../components/ui/sonner';
 import { getContactDisplayName } from '../utils/pubkey';
 import { findPublicChannel, PUBLIC_CHANNEL_KEY, PUBLIC_CHANNEL_NAME } from '../utils/publicChannel';
 import type { BulkCreateHashtagChannelsResult, Channel, Contact, Conversation } from '../types';
+
+export { fetchAllContacts } from '../prefetch';
 
 interface UseContactsAndChannelsArgs {
   setActiveConversation: (conv: Conversation | null) => void;
@@ -26,22 +27,6 @@ function applyStateAction<T>(previous: T, update: SetStateAction<T>): T {
   return typeof update === 'function' ? (update as (value: T) => T)(previous) : update;
 }
 
-/** Fetch all contacts, preserving the early first-page prefetch and paginating beyond it. */
-export async function fetchAllContacts(signal?: AbortSignal): Promise<Contact[]> {
-  const pageSize = 1000;
-  const first = await takePrefetchOrFetch('contacts', () => api.getContacts(pageSize, 0, signal));
-  if (first.length < pageSize) return first;
-  let all = [...first];
-  let offset = pageSize;
-  while (true) {
-    const page = await api.getContacts(pageSize, offset, signal);
-    all = all.concat(page);
-    if (page.length < pageSize) break;
-    offset += pageSize;
-  }
-  return all;
-}
-
 export function useContactsAndChannels({
   setActiveConversation,
   pendingDeleteFallbackRef,
@@ -49,20 +34,23 @@ export function useContactsAndChannels({
   removeConversationMessages,
 }: UseContactsAndChannelsArgs) {
   const queryClient = useQueryClient();
-  const [undecryptedCount, setUndecryptedCount] = useState(0);
-
   const contactsQuery = useQuery({
     queryKey: queryKeys.contacts(),
     queryFn: ({ signal }) => fetchAllContacts(signal),
   });
   const channelsQuery = useQuery({
     queryKey: queryKeys.channels(),
-    queryFn: ({ signal }) => takePrefetchOrFetch('channels', () => api.getChannels(signal)),
+    queryFn: ({ signal }) => api.getChannels(signal),
+  });
+  const undecryptedCountQuery = useQuery({
+    queryKey: queryKeys.undecryptedCount(),
+    queryFn: () => api.getUndecryptedPacketCount(),
   });
 
   const contacts = contactsQuery.data ?? [];
   const contactsLoaded = !contactsQuery.isPending;
   const channels = channelsQuery.data ?? [];
+  const undecryptedCount = undecryptedCountQuery.data?.count ?? 0;
 
   useEffect(() => {
     if (contactsQuery.error) {
@@ -107,13 +95,8 @@ export function useContactsAndChannels({
   );
 
   const fetchUndecryptedCountInternal = useCallback(async () => {
-    try {
-      const data = await takePrefetchOrFetch('undecryptedCount', api.getUndecryptedPacketCount);
-      setUndecryptedCount(data.count);
-    } catch (err) {
-      console.error('Failed to fetch undecrypted count:', err);
-    }
-  }, []);
+    await queryClient.invalidateQueries({ queryKey: queryKeys.undecryptedCount() });
+  }, [queryClient]);
 
   const handleCreateContact = useCallback(
     async (name: string, publicKey: string, tryHistorical: boolean, type?: number) => {

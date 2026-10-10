@@ -12,6 +12,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createElement, type ReactNode } from 'react';
 
 import { useUnreadCounts } from '../hooks/useUnreadCounts';
+import { queryKeys } from '../queryClient';
 import type { Channel, Contact, Conversation, Message, UnreadCounts } from '../types';
 import { getStateKey } from '../utils/conversationState';
 
@@ -134,10 +135,13 @@ describe('useUnreadCounts', () => {
     const queryClient = makeQueryClient();
     const wrapper = ({ children }: { children: ReactNode }) =>
       createElement(QueryClientProvider, { client: queryClient }, children);
-    return renderHook(
-      ({ channels: ch, contacts: ct, activeConversation: ac }) => useUnreadCounts(ch, ct, ac),
-      { initialProps: { channels, contacts, activeConversation }, wrapper }
-    );
+    return {
+      ...renderHook(
+        ({ channels: ch, contacts: ct, activeConversation: ac }) => useUnreadCounts(ch, ct, ac),
+        { initialProps: { channels, contacts, activeConversation }, wrapper }
+      ),
+      queryClient,
+    };
   }
 
   it('filters out active channel conversation from server unreads', async () => {
@@ -451,6 +455,29 @@ describe('useUnreadCounts', () => {
     expect(result.current.unreadCounts[getStateKey('channel', CHANNEL_KEY)]).toBe(1);
     expect(result.current.mentions[getStateKey('channel', CHANNEL_KEY)]).toBe(true);
     expect(result.current.lastMessageTimes[getStateKey('channel', CHANNEL_KEY)]).toBe(1700001234);
+  });
+
+  it('writes WebSocket unread changes into the Query cache', async () => {
+    const mocks = await getMockedApi();
+    const { result, queryClient } = renderWith({});
+    await act(async () => {
+      await vi.waitFor(() => expect(mocks.getUnreads).toHaveBeenCalled());
+    });
+
+    const stateKey = getStateKey('channel', CHANNEL_KEY);
+    act(() => {
+      result.current.recordMessageEvent({
+        msg: makeMessage({ id: 22, type: 'CHAN', conversation_key: CHANNEL_KEY }),
+        activeConversation: false,
+        isNewMessage: true,
+        hasMention: true,
+      });
+    });
+
+    const cached = queryClient.getQueryData<UnreadCounts>(queryKeys.unreads());
+    expect(cached?.counts[stateKey]).toBe(1);
+    expect(cached?.mentions[stateKey]).toBe(true);
+    expect(cached?.first_unread_ids[stateKey]).toBe(22);
   });
 
   it('does not let an older unread fetch overwrite a newer WebSocket message', async () => {

@@ -1,5 +1,6 @@
 import logging
 import time
+from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Query
 
@@ -28,7 +29,9 @@ router = APIRouter(prefix="/messages", tags=["messages"])
 @router.get("/around/{message_id}", response_model=MessagesAroundResponse)
 async def get_messages_around(
     message_id: int,
-    type: str | None = Query(default=None, description="Filter by type: PRIV or CHAN"),
+    type: Literal["PRIV", "CHAN"] | None = Query(
+        default=None, description="Filter by type: PRIV or CHAN"
+    ),
     conversation_key: str | None = Query(default=None, description="Filter by conversation key"),
     context: int = Query(default=100, ge=1, le=500, description="Number of messages before/after"),
 ) -> MessagesAroundResponse:
@@ -51,7 +54,9 @@ async def get_messages_around(
 async def list_messages(
     limit: int = Query(default=100, ge=1, le=1000),
     offset: int = Query(default=0, ge=0),
-    type: str | None = Query(default=None, description="Filter by type: PRIV or CHAN"),
+    type: Literal["PRIV", "CHAN"] | None = Query(
+        default=None, description="Filter by type: PRIV or CHAN"
+    ),
     conversation_key: str | None = Query(
         default=None, description="Filter by conversation key (channel key or contact pubkey)"
     ),

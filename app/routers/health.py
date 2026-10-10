@@ -61,7 +61,9 @@ class HealthResponse(BaseModel):
     status: str
     radio_connected: bool
     radio_initializing: bool = False
-    radio_state: str = "disconnected"
+    radio_state: Literal["connected", "initializing", "connecting", "disconnected", "paused"] = (
+        "disconnected"
+    )
     connection_info: str | None
     app_info: AppInfoResponse | None = None
     radio_device_info: RadioDeviceInfoResponse | None = None

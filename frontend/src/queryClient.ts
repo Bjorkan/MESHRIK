@@ -19,6 +19,8 @@ export const queryKeys = {
   contacts: () => ['contacts'] as const,
   channels: () => ['channels'] as const,
   settings: () => ['settings'] as const,
+  radioConfig: () => ['radio', 'config'] as const,
+  undecryptedCount: () => ['packets', 'undecrypted-count'] as const,
   unreads: () => ['unreads'] as const,
   conversation: (type: 'contact' | 'channel', id: string) =>
     ['messages', 'conversation', type, id] as const,

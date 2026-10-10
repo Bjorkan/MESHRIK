@@ -1896,6 +1896,17 @@ export interface components {
       /** Message */
       message: string;
     };
+    /** BulkDeleteContactsResponse */
+    BulkDeleteContactsResponse: {
+      /** Deleted */
+      deleted: number;
+      /** Radio Deleted */
+      radio_deleted: number;
+      /** Radio Failed */
+      radio_failed: number;
+      /** Radio Failures */
+      radio_failures: components['schemas']['RadioContactDeleteFailure'][];
+    };
     /** BulkDeleteRequest */
     BulkDeleteRequest: {
       /**
@@ -2300,6 +2311,20 @@ export interface components {
        */
       message_count: number;
     };
+    /** ContactDeleteResponse */
+    ContactDeleteResponse: {
+      /** Database Deleted */
+      database_deleted: boolean;
+      /** Radio Deleted */
+      radio_deleted: boolean | null;
+      /** Radio Error */
+      radio_error: string | null;
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: 'ok' | 'partial';
+    };
     /**
      * ContactNameHistory
      * @description A historical name used by a contact.
@@ -2343,6 +2368,13 @@ export interface components {
        * @description Blank clears the override, "-1" forces flood, "0" forces direct, and explicit routes are comma-separated 1/2/3-byte hop hex values
        */
       route: string;
+    };
+    /** ContactRoutingOverrideResponse */
+    ContactRoutingOverrideResponse: {
+      /** Public Key */
+      public_key: string;
+      /** Status */
+      status: string;
     };
     /**
      * ContactTelemetryResponse
@@ -2623,6 +2655,11 @@ export interface components {
       /** Total Packets */
       total_packets: number;
     };
+    /** DeleteChannelResponse */
+    DeleteChannelResponse: {
+      /** Status */
+      status: string;
+    };
     /** FanoutConfigCreate */
     FanoutConfigCreate: {
       /**
@@ -2789,8 +2826,9 @@ export interface components {
       /**
        * Radio State
        * @default disconnected
+       * @enum {string}
        */
-      radio_state: string;
+      radio_state: 'connected' | 'initializing' | 'connecting' | 'disconnected' | 'paused';
       radio_stats?: components['schemas']['RadioStatsSnapshot'] | null;
       /** Status */
       status: string;
@@ -2840,6 +2878,27 @@ export interface components {
       packets_deleted: number;
       /** Vacuumed */
       vacuumed: boolean;
+    };
+    /** MarkAllReadResponse */
+    MarkAllReadResponse: {
+      /** Status */
+      status: string;
+      /** Timestamp */
+      timestamp: number;
+    };
+    /** MarkChannelReadResponse */
+    MarkChannelReadResponse: {
+      /** Key */
+      key: string;
+      /** Status */
+      status: string;
+    };
+    /** MarkContactReadResponse */
+    MarkContactReadResponse: {
+      /** Public Key */
+      public_key: string;
+      /** Status */
+      status: string;
     };
     /** Message */
     Message: {
@@ -2908,8 +2967,9 @@ export interface components {
       /**
        * Type
        * @description PRIV or CHAN
+       * @enum {string}
        */
-      type: string;
+      type: 'PRIV' | 'CHAN';
     };
     /**
      * MessagePath
@@ -3303,6 +3363,13 @@ export interface components {
        * @description Transmit power in dBm
        */
       tx_power?: number | null;
+    };
+    /** RadioContactDeleteFailure */
+    RadioContactDeleteFailure: {
+      /** Error */
+      error: string;
+      /** Public Key */
+      public_key: string;
     };
     /** RadioDeviceInfoResponse */
     RadioDeviceInfoResponse: {
@@ -4863,9 +4930,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
-            [key: string]: unknown;
-          };
+          'application/json': components['schemas']['DeleteChannelResponse'];
         };
       };
       /** @description Bad request */
@@ -5372,9 +5437,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
-            [key: string]: unknown;
-          };
+          'application/json': components['schemas']['MarkChannelReadResponse'];
         };
       };
       /** @description Bad request */
@@ -6219,9 +6282,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
-            [key: string]: unknown;
-          };
+          'application/json': components['schemas']['BulkDeleteContactsResponse'];
         };
       };
       /** @description Bad request */
@@ -6555,9 +6616,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
-            [key: string]: unknown;
-          };
+          'application/json': components['schemas']['ContactDeleteResponse'];
         };
       };
       /** @description Bad request */
@@ -6897,9 +6956,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
-            [key: string]: unknown;
-          };
+          'application/json': components['schemas']['MarkContactReadResponse'];
         };
       };
       /** @description Bad request */
@@ -9750,9 +9807,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
-            [key: string]: unknown;
-          };
+          'application/json': components['schemas']['ContactRoutingOverrideResponse'];
         };
       };
       /** @description Bad request */
@@ -11612,7 +11667,7 @@ export interface operations {
         limit?: number;
         offset?: number;
         /** @description Filter by type: PRIV or CHAN */
-        type?: string | null;
+        type?: ('PRIV' | 'CHAN') | null;
         /** @description Filter by conversation key (channel key or contact pubkey) */
         conversation_key?: string | null;
         /** @description Cursor: received_at of last seen message */
@@ -11792,7 +11847,7 @@ export interface operations {
     parameters: {
       query?: {
         /** @description Filter by type: PRIV or CHAN */
-        type?: string | null;
+        type?: ('PRIV' | 'CHAN') | null;
         /** @description Filter by conversation key */
         conversation_key?: string | null;
         /** @description Number of messages before/after */
@@ -16602,9 +16657,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': {
-            [key: string]: unknown;
-          };
+          'application/json': components['schemas']['MarkAllReadResponse'];
         };
       };
       /** @description Bad request */

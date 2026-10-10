@@ -1,15 +1,22 @@
-import { act, renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook as baseRenderHook, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { createElement, type ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 
 import { api } from '../api';
-import {
-  conversationMessageCache,
-  useConversationMessages,
-} from '../hooks/useConversationMessages';
+import { useConversationMessages } from '../hooks/useConversationMessages';
+import { queryKeys } from '../queryClient';
 import type { Conversation, Message } from '../types';
 
 const mockGetMessages = vi.fn<typeof api.getMessages>();
 const mockGetMessagesAround = vi.fn();
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: false, gcTime: Infinity } },
+});
+const QueryWrapper = ({ children }: { children: ReactNode }) =>
+  createElement(QueryClientProvider, { client: queryClient }, children);
+const renderHook: typeof baseRenderHook = (render, options) =>
+  baseRenderHook(render, { ...options, wrapper: QueryWrapper });
 
 vi.mock('../api', () => ({
   api: {
@@ -64,7 +71,7 @@ function createDeferred<T>() {
 describe('useConversationMessages ACK ordering', () => {
   beforeEach(() => {
     mockGetMessages.mockReset();
-    conversationMessageCache.clear();
+    queryClient.clear();
     mockToastError.mockReset();
   });
 
@@ -177,7 +184,7 @@ describe('useConversationMessages ACK ordering', () => {
 describe('useConversationMessages conversation switch', () => {
   beforeEach(() => {
     mockGetMessages.mockReset();
-    conversationMessageCache.clear();
+    queryClient.clear();
   });
 
   it('resets loadingOlder when switching conversations mid-fetch', async () => {
@@ -305,7 +312,7 @@ describe('useConversationMessages conversation switch', () => {
 describe('useConversationMessages background reconcile ordering', () => {
   beforeEach(() => {
     mockGetMessages.mockReset();
-    conversationMessageCache.clear();
+    queryClient.clear();
   });
 
   it('ignores stale reconnect reconcile responses that finish after newer ones', async () => {
@@ -347,9 +354,9 @@ describe('useConversationMessages background reconcile ordering', () => {
     const conv = createConversation();
     const cachedMessage = createMessage({ id: 42, text: 'cached snapshot' });
 
-    conversationMessageCache.set(conv.id, {
-      messages: [cachedMessage],
-      hasOlderMessages: true,
+    queryClient.setQueryData(queryKeys.conversation('contact', conv.id), {
+      pages: [{ messages: [cachedMessage], hasOlder: true, hasNewer: false }],
+      pageParams: [{ direction: 'latest' }],
     });
 
     mockGetMessages.mockResolvedValueOnce([cachedMessage]);
@@ -367,7 +374,7 @@ describe('useConversationMessages background reconcile ordering', () => {
 describe('useConversationMessages older-page dedup and reentry', () => {
   beforeEach(() => {
     mockGetMessages.mockReset();
-    conversationMessageCache.clear();
+    queryClient.clear();
   });
 
   it('prevents duplicate overlapping older-page fetches in the same tick', async () => {
@@ -513,7 +520,7 @@ describe('useConversationMessages forward pagination', () => {
   beforeEach(() => {
     mockGetMessages.mockReset();
     mockGetMessagesAround.mockReset();
-    conversationMessageCache.clear();
+    queryClient.clear();
     mockToastError.mockReset();
   });
 

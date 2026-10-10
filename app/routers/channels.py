@@ -53,6 +53,15 @@ class BulkCreateHashtagChannelsResponse(BaseModel):
     message: str
 
 
+class MarkChannelReadResponse(BaseModel):
+    status: str
+    key: str
+
+
+class DeleteChannelResponse(BaseModel):
+    status: str
+
+
 class ChannelFloodScopeOverrideRequest(BaseModel):
     flood_scope_override: str = Field(
         description=(
@@ -331,8 +340,8 @@ async def bulk_create_hashtag_channels(
     )
 
 
-@router.post("/{key}/mark-read")
-async def mark_channel_read(key: str, message_id: int | None = None) -> dict:
+@router.post("/{key}/mark-read", response_model=MarkChannelReadResponse)
+async def mark_channel_read(key: str, message_id: int | None = None) -> MarkChannelReadResponse:
     """Mark a channel as read at its current timestamp/message-ID boundary."""
     channel = await ChannelRepository.get_by_key(key)
     if not channel:
@@ -342,7 +351,7 @@ async def mark_channel_read(key: str, message_id: int | None = None) -> dict:
     if not updated:
         raise HTTPException(status_code=400, detail="Invalid message read boundary")
 
-    return {"status": "ok", "key": channel.key}
+    return MarkChannelReadResponse(status="ok", key=channel.key)
 
 
 @router.post("/{key}/flood-scope-override", response_model=Channel)
@@ -402,8 +411,8 @@ async def set_channel_path_hash_mode_override(
     return refreshed
 
 
-@router.delete("/{key}")
-async def delete_channel(key: str) -> dict:
+@router.delete("/{key}", response_model=DeleteChannelResponse)
+async def delete_channel(key: str) -> DeleteChannelResponse:
     """Delete a channel from the database by key.
 
     Note: This does not clear the channel from the radio. The radio's channel
@@ -419,4 +428,4 @@ async def delete_channel(key: str) -> dict:
 
     broadcast_event("channel_deleted", {"key": key})
 
-    return {"status": "ok"}
+    return DeleteChannelResponse(status="ok")

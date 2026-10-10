@@ -415,7 +415,7 @@ class MessagePath(BaseModel):
 
 class Message(BaseModel):
     id: int
-    type: str = Field(description="PRIV or CHAN")
+    type: Literal["PRIV", "CHAN"] = Field(description="PRIV or CHAN")
     conversation_key: str = Field(description="User pubkey for PRIV, channel key for CHAN")
     text: str
     sender_timestamp: int | None = None

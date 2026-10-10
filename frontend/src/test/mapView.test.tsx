@@ -38,13 +38,28 @@ vi.mock('react-map-gl/maplibre', () => {
 });
 
 describe('MapView', () => {
-  it('uses an API-key-free OpenFreeMap vector style', () => {
+  it('follows the dark default app theme with the Dark style', () => {
     render(<MapView contacts={[]} />);
 
+    // Default theme is 'original' (dark), so the auto map style must be Dark —
+    // not a light style that would flash before the theme is applied.
     expect(screen.getByTestId('maplibre-map')).toHaveAttribute(
       'data-map-style',
-      'https://tiles.openfreemap.org/styles/liberty'
+      'https://tiles.openfreemap.org/styles/dark'
     );
+  });
+
+  it('uses a light OpenFreeMap style for light app themes', () => {
+    localStorage.setItem('meshrik-theme', 'light');
+    try {
+      render(<MapView contacts={[]} />);
+      expect(screen.getByTestId('maplibre-map')).toHaveAttribute(
+        'data-map-style',
+        'https://tiles.openfreemap.org/styles/liberty'
+      );
+    } finally {
+      localStorage.removeItem('meshrik-theme');
+    }
   });
 
   it('renders a never-heard fallback for a focused contact without last_seen', () => {

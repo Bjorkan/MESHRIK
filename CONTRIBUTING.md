@@ -86,6 +86,19 @@ Commit both `frontend/openapi/openapi.json` and
 checked-in artifacts are stale; CI runs that check on every push and pull request. WebSocket payloads
 remain governed separately by `app/events.py` and `frontend/src/wsEvents.ts`.
 
+### Schema-based API checks
+
+`tests/test_openapi_contract.py` runs a bounded Schemathesis profile in process. It uses the same
+generated OpenAPI document and production route objects. ASGI lifespan is disabled and repository
+and health probes are replaced with deterministic test doubles, so it never starts the database,
+radio, fanout integrations, Web Push, or other network effects. The allowlist contains only
+read-only health, contact, channel, message, unread, and settings operations. Add an endpoint only
+after all of its generated inputs are safe in this isolated app.
+
+```bash
+PYTHONPATH=. uv run python -m pytest tests/ -v -m contract -n 0
+```
+
 ## Quality + Publishing Scripts
 
 <details>

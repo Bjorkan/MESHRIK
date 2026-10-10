@@ -54,7 +54,10 @@ jobs:
         run: uv run pyright app/
 
       - name: Backend tests
-        run: PYTHONPATH=. uv run python -m pytest tests/ -v
+        run: PYTHONPATH=. uv run python -m pytest tests/ -v -m "not contract"
+
+      - name: OpenAPI contract tests
+        run: PYTHONPATH=. uv run python -m pytest tests/ -v -m contract -n 0
 
   frontend-checks:
     runs-on: ubuntu-latest

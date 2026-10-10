@@ -1,10 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import MapLibreMap, {
-  AttributionControl,
-  Marker,
-  Popup,
-  type MapRef,
-} from 'react-map-gl/maplibre';
+import MapLibreMap, { AttributionControl, Marker, Popup, type MapRef } from 'react-map-gl/maplibre';
 import { EMBEDDED_MAP_ATTRIBUTION } from '../utils/mapLibre';
 import { useMapStyle } from '../hooks/useMapStyle';
 import { isValidLocation } from '../utils/pathUtils';

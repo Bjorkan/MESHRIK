@@ -51,7 +51,10 @@ export function getMapAppearanceForTheme(themeId: string): MapAppearance {
 export function getSavedMapStyleId(): string {
   try {
     const stored = localStorage.getItem(MAP_STYLE_STORAGE_KEY);
-    if (stored && (stored === MAP_STYLE_AUTO_ID || MAP_STYLES.some((style) => style.id === stored))) {
+    if (
+      stored &&
+      (stored === MAP_STYLE_AUTO_ID || MAP_STYLES.some((style) => style.id === stored))
+    ) {
       return stored;
     }
   } catch {
@@ -60,10 +63,7 @@ export function getSavedMapStyleId(): string {
   return MAP_STYLE_AUTO_ID;
 }
 
-export function resolveMapStyle(
-  selectionId: string,
-  effectiveThemeId: string
-): MapStylePreset {
+export function resolveMapStyle(selectionId: string, effectiveThemeId: string): MapStylePreset {
   const manual = MAP_STYLES.find((style) => style.id === selectionId);
   if (manual) return manual;
   return getMapAppearanceForTheme(effectiveThemeId) === 'light'

@@ -95,8 +95,8 @@ describe('formatTime', () => {
 
     const result = formatTime(timestamp);
 
-    // Should contain month, day, and time
-    expect(result).toMatch(/\w+ \d{1,2}/); // e.g., "Nov 14"
+    // Should contain the day number and time (order/format varies by locale)
+    expect(result).toContain('14'); // e.g., "Nov 14" or "14 nov."
     expect(result).toMatch(/\d{1,2}:\d{2}/); // time portion
   });
 });

@@ -10,7 +10,8 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-import { fetchAllContacts, useContactsAndChannels } from '../hooks/useContactsAndChannels';
+import { useContactsAndChannels } from '../hooks/useContactsAndChannels';
+import { fetchAllContacts } from '../prefetch';
 import { api } from '../api';
 import { createAppQueryClient } from '../queryClient';
 import type { BulkCreateHashtagChannelsResult, Contact } from '../types';
@@ -31,7 +32,8 @@ vi.mock('../api', () => ({
 }));
 
 // Mock prefetch — takePrefetchOrFetch calls the fetcher directly
-vi.mock('../prefetch', () => ({
+vi.mock('../prefetch', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../prefetch')>()),
   takePrefetchOrFetch: vi.fn((_key: string, fetcher: () => Promise<unknown>) => fetcher()),
 }));
 
@@ -78,6 +80,7 @@ describe('useContactsAndChannels', () => {
     vi.clearAllMocks();
     vi.mocked(api.getContacts).mockResolvedValue([]);
     vi.mocked(api.getChannels).mockResolvedValue([]);
+    vi.mocked(api.getUndecryptedPacketCount).mockResolvedValue({ count: 0 });
     pendingDeleteFallbackRef.current = false;
     hasSetDefaultConversation.current = false;
   });

@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api';
 import {
   getLastMessageTimes,
@@ -9,7 +9,6 @@ import {
   type ConversationTimes,
 } from '../utils/conversationState';
 import type { Channel, Contact, Conversation, Message, UnreadCounts } from '../types';
-import { takePrefetchOrFetch } from '../prefetch';
 import { queryKeys } from '../queryClient';
 
 type UnreadTrackedConversation = Conversation & { type: 'channel' | 'contact' };
@@ -21,6 +20,7 @@ type PendingReadBoundary = {
 };
 
 const ACTIVE_READ_DEBOUNCE_MS = 250;
+const unreadSnapshotMutationVersions = new WeakMap<UnreadCounts, number>();
 
 function isUnreadTrackedConversation(
   conversation: Conversation | null
@@ -66,7 +66,6 @@ export function useUnreadCounts(
   const activeConvRef = useRef(activeConversation);
   activeConvRef.current = activeConversation;
   const unreadMutationVersionRef = useRef(0);
-  const unreadRequestVersionRef = useRef(0);
   const activeStateKeyRef = useRef(
     isUnreadTrackedConversation(activeConversation)
       ? getStateKey(activeConversation.type, activeConversation.id)
@@ -150,35 +149,38 @@ export function useUnreadCounts(
     }
   }, []);
 
-  // An unread fetch is a snapshot. Apply it only if it is still the newest
-  // request and no local WS/navigation mutation happened while it was in
-  // flight; otherwise it would erase newer live state.
-  const applyUnreadRequest = useCallback(
-    async (request: Promise<UnreadCounts>) => {
-      const requestVersion = ++unreadRequestVersionRef.current;
+  const {
+    data: unreadQueryData,
+    dataUpdatedAt: unreadDataUpdatedAt,
+    refetch: refetchUnreads,
+  } = useQuery({
+    queryKey: queryKeys.unreads(),
+    queryFn: async () => {
       const mutationVersion = unreadMutationVersionRef.current;
-      const data = await request;
-      if (
-        requestVersion === unreadRequestVersionRef.current &&
-        mutationVersion === unreadMutationVersionRef.current
-      ) {
+      const data = await api.getUnreads();
+      unreadSnapshotMutationVersions.set(data, mutationVersion);
+      if (mutationVersion === unreadMutationVersionRef.current) {
         applyUnreads(data);
       }
+      return data;
     },
-    [applyUnreads]
-  );
+  });
+
+  useEffect(() => {
+    const data = unreadQueryData;
+    if (!data) return;
+    const mutationVersion = unreadSnapshotMutationVersions.get(data) ?? 0;
+    if (mutationVersion === unreadMutationVersionRef.current) {
+      applyUnreads(data);
+    }
+  }, [applyUnreads, unreadDataUpdatedAt, unreadQueryData]);
 
   // Fetch unreads from the server-side endpoint through Query.
   // Also re-marks the active conversation as read so the server's last_read_at
   // stays current (otherwise subsequent fetches would re-report the same unreads).
   const fetchUnreads = useCallback(async () => {
     try {
-      await applyUnreadRequest(
-        queryClient.fetchQuery({
-          queryKey: queryKeys.unreads(),
-          queryFn: () => api.getUnreads(),
-        })
-      );
+      await refetchUnreads();
     } catch (err) {
       console.error('Failed to fetch unreads:', err);
     }
@@ -188,10 +190,8 @@ export function useUnreadCounts(
     } else if (ac?.type === 'contact') {
       api.markContactRead(ac.id).catch(() => {});
     }
-  }, [applyUnreadRequest, queryClient]);
+  }, [refetchUnreads]);
 
-  // On mount, consume the prefetched promise (started in index.html before
-  // React loaded) or fall back to a fresh fetch through Query.
   // Re-fetch when channel/contact count changes mid-session (new sync, cracker
   // channel created, etc.). Skip only the very first run of this effect; after
   // that, any count change should trigger a refresh, even if the other
@@ -199,16 +199,6 @@ export function useUnreadCounts(
   const channelsLen = channels.length;
   const contactsLen = contacts.length;
   const hasObservedCountsRef = useRef(false);
-  useEffect(() => {
-    applyUnreadRequest(
-      queryClient.fetchQuery({
-        queryKey: queryKeys.unreads(),
-        queryFn: () => takePrefetchOrFetch('unreads', () => api.getUnreads()),
-      })
-    ).catch((err) => {
-      console.error('Failed to fetch unreads:', err);
-    });
-  }, [applyUnreadRequest, queryClient]);
   useEffect(() => {
     if (!hasObservedCountsRef.current) {
       hasObservedCountsRef.current = true;
@@ -251,6 +241,20 @@ export function useUnreadCounts(
         return prev;
       });
 
+      const mutationVersion = unreadMutationVersionRef.current;
+      queryClient.setQueryData<UnreadCounts>(queryKeys.unreads(), (previous) => {
+        if (!previous) return previous;
+        const next: UnreadCounts = {
+          ...previous,
+          counts: { ...previous.counts },
+          mentions: { ...previous.mentions },
+        };
+        delete next.counts[key];
+        delete next.mentions[key];
+        unreadSnapshotMutationVersions.set(next, mutationVersion);
+        return next;
+      });
+
       // Persist to server (fire-and-forget, errors logged but not blocking)
       if (activeConversation.type === 'channel') {
         api.markChannelRead(activeConversation.id).catch((err) => {
@@ -267,7 +271,7 @@ export function useUnreadCounts(
     // advances monotonically through that message, so arrivals after the view
     // changed cannot be accidentally consumed by a delayed request.
     return flushPendingRead;
-  }, [activeConversation, flushPendingRead]);
+  }, [activeConversation, flushPendingRead, queryClient]);
 
   const incrementUnread = useCallback(
     (stateKey: string, messageId: number, hasMention?: boolean) => {
@@ -318,6 +322,28 @@ export function useUnreadCounts(
       }
 
       const timestamp = msg.received_at || Math.floor(Date.now() / 1000);
+      unreadMutationVersionRef.current += 1;
+      const mutationVersion = unreadMutationVersionRef.current;
+      queryClient.setQueryData<UnreadCounts>(queryKeys.unreads(), (previous) => {
+        if (!previous) return previous;
+        const next: UnreadCounts = {
+          ...previous,
+          counts: { ...previous.counts },
+          mentions: { ...previous.mentions },
+          last_message_times: { ...previous.last_message_times, [stateKey]: timestamp },
+          first_unread_ids: { ...previous.first_unread_ids },
+        };
+        if (isActiveConversation) {
+          delete next.counts[stateKey];
+          delete next.mentions[stateKey];
+        } else if (!msg.outgoing && isNewMessage) {
+          next.counts[stateKey] = (next.counts[stateKey] ?? 0) + 1;
+          next.first_unread_ids[stateKey] ??= msg.id;
+          if (hasMention) next.mentions[stateKey] = true;
+        }
+        unreadSnapshotMutationVersions.set(next, mutationVersion);
+        return next;
+      });
       const updated = setLastMessageTime(stateKey, timestamp);
       setLastMessageTimes(updated);
 
@@ -332,67 +358,114 @@ export function useUnreadCounts(
         incrementUnread(stateKey, msg.id, hasMention);
       }
     },
-    [incrementUnread, scheduleReadBoundary]
+    [incrementUnread, queryClient, scheduleReadBoundary]
   );
 
-  const renameConversationState = useCallback((oldStateKey: string, newStateKey: string) => {
-    if (oldStateKey === newStateKey) return;
-    unreadMutationVersionRef.current += 1;
+  const renameConversationState = useCallback(
+    (oldStateKey: string, newStateKey: string) => {
+      if (oldStateKey === newStateKey) return;
+      unreadMutationVersionRef.current += 1;
+      const mutationVersion = unreadMutationVersionRef.current;
 
-    setUnreadCounts((prev) => {
-      if (!(oldStateKey in prev)) return prev;
-      const next = { ...prev };
-      next[newStateKey] = (next[newStateKey] || 0) + next[oldStateKey];
-      delete next[oldStateKey];
-      return next;
-    });
+      setUnreadCounts((prev) => {
+        if (!(oldStateKey in prev)) return prev;
+        const next = { ...prev };
+        next[newStateKey] = (next[newStateKey] || 0) + next[oldStateKey];
+        delete next[oldStateKey];
+        return next;
+      });
 
-    setMentions((prev) => {
-      if (!(oldStateKey in prev)) return prev;
-      const next = { ...prev };
-      next[newStateKey] = next[newStateKey] || next[oldStateKey];
-      delete next[oldStateKey];
-      return next;
-    });
+      setMentions((prev) => {
+        if (!(oldStateKey in prev)) return prev;
+        const next = { ...prev };
+        next[newStateKey] = next[newStateKey] || next[oldStateKey];
+        delete next[oldStateKey];
+        return next;
+      });
 
-    setFirstUnreadIds((prev) => {
-      if (!(oldStateKey in prev)) return prev;
-      const next = { ...prev };
-      next[newStateKey] = next[newStateKey] ?? next[oldStateKey];
-      delete next[oldStateKey];
-      return next;
-    });
+      setFirstUnreadIds((prev) => {
+        if (!(oldStateKey in prev)) return prev;
+        const next = { ...prev };
+        next[newStateKey] = next[newStateKey] ?? next[oldStateKey];
+        delete next[oldStateKey];
+        return next;
+      });
 
-    setLastMessageTimes(renameConversationTimeKey(oldStateKey, newStateKey));
-  }, []);
+      setLastMessageTimes(renameConversationTimeKey(oldStateKey, newStateKey));
+      queryClient.setQueryData<UnreadCounts>(queryKeys.unreads(), (previous) => {
+        if (!previous) return previous;
+        const renameKey = <T>(values: Record<string, T>): Record<string, T> => {
+          if (!(oldStateKey in values)) return values;
+          const next = { ...values };
+          next[newStateKey] ??= next[oldStateKey];
+          delete next[oldStateKey];
+          return next;
+        };
+        const next: UnreadCounts = {
+          ...previous,
+          counts: renameKey(previous.counts),
+          mentions: renameKey(previous.mentions),
+          last_message_times: renameKey(previous.last_message_times),
+          last_read_ats: renameKey(previous.last_read_ats),
+          first_unread_ids: renameKey(previous.first_unread_ids),
+        };
+        unreadSnapshotMutationVersions.set(next, mutationVersion);
+        return next;
+      });
+    },
+    [queryClient]
+  );
 
-  const removeConversationState = useCallback((stateKey: string) => {
-    unreadMutationVersionRef.current += 1;
-    setUnreadCounts((prev) => {
-      if (!(stateKey in prev)) return prev;
-      const next = { ...prev };
-      delete next[stateKey];
-      return next;
-    });
-    setMentions((prev) => {
-      if (!(stateKey in prev)) return prev;
-      const next = { ...prev };
-      delete next[stateKey];
-      return next;
-    });
-    setFirstUnreadIds((prev) => {
-      if (!(stateKey in prev)) return prev;
-      const next = { ...prev };
-      delete next[stateKey];
-      return next;
-    });
-    setUnreadLastReadAts((prev) => {
-      if (!(stateKey in prev)) return prev;
-      const next = { ...prev };
-      delete next[stateKey];
-      return next;
-    });
-  }, []);
+  const removeConversationState = useCallback(
+    (stateKey: string) => {
+      unreadMutationVersionRef.current += 1;
+      const mutationVersion = unreadMutationVersionRef.current;
+      setUnreadCounts((prev) => {
+        if (!(stateKey in prev)) return prev;
+        const next = { ...prev };
+        delete next[stateKey];
+        return next;
+      });
+      setMentions((prev) => {
+        if (!(stateKey in prev)) return prev;
+        const next = { ...prev };
+        delete next[stateKey];
+        return next;
+      });
+      setFirstUnreadIds((prev) => {
+        if (!(stateKey in prev)) return prev;
+        const next = { ...prev };
+        delete next[stateKey];
+        return next;
+      });
+      setUnreadLastReadAts((prev) => {
+        if (!(stateKey in prev)) return prev;
+        const next = { ...prev };
+        delete next[stateKey];
+        return next;
+      });
+      queryClient.setQueryData<UnreadCounts>(queryKeys.unreads(), (previous) => {
+        if (!previous) return previous;
+        const removeKey = <T>(values: Record<string, T>): Record<string, T> => {
+          if (!(stateKey in values)) return values;
+          const next = { ...values };
+          delete next[stateKey];
+          return next;
+        };
+        const next: UnreadCounts = {
+          ...previous,
+          counts: removeKey(previous.counts),
+          mentions: removeKey(previous.mentions),
+          last_message_times: removeKey(previous.last_message_times),
+          last_read_ats: removeKey(previous.last_read_ats),
+          first_unread_ids: removeKey(previous.first_unread_ids),
+        };
+        unreadSnapshotMutationVersions.set(next, mutationVersion);
+        return next;
+      });
+    },
+    [queryClient]
+  );
 
   // Mark all conversations as read
   // Calls single bulk API endpoint to persist read state
@@ -403,12 +476,17 @@ export function useUnreadCounts(
     setMentions({});
     setUnreadLastReadAts({});
     setFirstUnreadIds({});
+    queryClient.setQueryData<UnreadCounts>(queryKeys.unreads(), (previous) =>
+      previous
+        ? { ...previous, counts: {}, mentions: {}, last_read_ats: {}, first_unread_ids: {} }
+        : previous
+    );
 
     // Persist to server with single bulk request
     api.markAllRead().catch((err) => {
       console.error('Failed to mark all as read on server:', err);
     });
-  }, []);
+  }, [queryClient]);
 
   return {
     unreadCounts,
@@ -424,7 +502,6 @@ export function useUnreadCounts(
   };
 
   async function refreshUnreads() {
-    await queryClient.invalidateQueries({ queryKey: queryKeys.unreads() });
     await fetchUnreads();
   }
 }

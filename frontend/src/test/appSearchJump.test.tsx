@@ -280,6 +280,11 @@ describe('App search jump target handling', () => {
       render(<App />);
     });
 
+    // ChatHeader (and its "Open Contact Info" button) only renders once a
+    // conversation is active, so open one first. The sidebar mock renders in
+    // both the desktop rail and the mobile drawer, so pick the first button.
+    fireEvent.click(screen.getAllByText('Open Public')[0]);
+
     fireEvent.click(screen.getByText('Open Contact Info'));
 
     await waitFor(() => {

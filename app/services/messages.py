@@ -56,7 +56,7 @@ def build_message_paths(
 def build_message_model(
     *,
     message_id: int,
-    msg_type: str,
+    msg_type: Literal["PRIV", "CHAN"],
     conversation_key: str,
     text: str,
     sender_timestamp: int | None,

@@ -424,6 +424,37 @@
         "title": "BulkCreateHashtagChannelsResponse",
         "type": "object"
       },
+      "BulkDeleteContactsResponse": {
+        "properties": {
+          "deleted": {
+            "title": "Deleted",
+            "type": "integer"
+          },
+          "radio_deleted": {
+            "title": "Radio Deleted",
+            "type": "integer"
+          },
+          "radio_failed": {
+            "title": "Radio Failed",
+            "type": "integer"
+          },
+          "radio_failures": {
+            "items": {
+              "$ref": "#/components/schemas/RadioContactDeleteFailure"
+            },
+            "title": "Radio Failures",
+            "type": "array"
+          }
+        },
+        "required": [
+          "deleted",
+          "radio_deleted",
+          "radio_failed",
+          "radio_failures"
+        ],
+        "title": "BulkDeleteContactsResponse",
+        "type": "object"
+      },
       "BulkDeleteRequest": {
         "properties": {
           "public_keys": {
@@ -1236,6 +1267,52 @@
         "title": "ContactAnalyticsWeeklyBucket",
         "type": "object"
       },
+      "ContactDeleteResponse": {
+        "properties": {
+          "database_deleted": {
+            "title": "Database Deleted",
+            "type": "boolean"
+          },
+          "radio_deleted": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Radio Deleted"
+          },
+          "radio_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Radio Error"
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "partial"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "database_deleted",
+          "radio_deleted",
+          "radio_error"
+        ],
+        "title": "ContactDeleteResponse",
+        "type": "object"
+      },
       "ContactNameHistory": {
         "description": "A historical name used by a contact.",
         "properties": {
@@ -1300,6 +1377,24 @@
           "route"
         ],
         "title": "ContactRoutingOverrideRequest",
+        "type": "object"
+      },
+      "ContactRoutingOverrideResponse": {
+        "properties": {
+          "public_key": {
+            "title": "Public Key",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "public_key"
+        ],
+        "title": "ContactRoutingOverrideResponse",
         "type": "object"
       },
       "ContactTelemetryResponse": {
@@ -2049,6 +2144,19 @@
         "title": "DecryptResult",
         "type": "object"
       },
+      "DeleteChannelResponse": {
+        "properties": {
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "DeleteChannelResponse",
+        "type": "object"
+      },
       "FanoutConfigCreate": {
         "properties": {
           "config": {
@@ -2386,6 +2494,13 @@
           },
           "radio_state": {
             "default": "disconnected",
+            "enum": [
+              "connected",
+              "initializing",
+              "connecting",
+              "disconnected",
+              "paused"
+            ],
             "title": "Radio State",
             "type": "string"
           },
@@ -2490,6 +2605,60 @@
           "vacuumed"
         ],
         "title": "MaintenanceResult",
+        "type": "object"
+      },
+      "MarkAllReadResponse": {
+        "properties": {
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "status",
+          "timestamp"
+        ],
+        "title": "MarkAllReadResponse",
+        "type": "object"
+      },
+      "MarkChannelReadResponse": {
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "key"
+        ],
+        "title": "MarkChannelReadResponse",
+        "type": "object"
+      },
+      "MarkContactReadResponse": {
+        "properties": {
+          "public_key": {
+            "title": "Public Key",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "public_key"
+        ],
+        "title": "MarkContactReadResponse",
         "type": "object"
       },
       "Message": {
@@ -2644,6 +2813,10 @@
           },
           "type": {
             "description": "PRIV or CHAN",
+            "enum": [
+              "PRIV",
+              "CHAN"
+            ],
             "title": "Type",
             "type": "string"
           }
@@ -3392,6 +3565,24 @@
           }
         },
         "title": "RadioConfigUpdate",
+        "type": "object"
+      },
+      "RadioContactDeleteFailure": {
+        "properties": {
+          "error": {
+            "title": "Error",
+            "type": "string"
+          },
+          "public_key": {
+            "title": "Public Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "public_key",
+          "error"
+        ],
+        "title": "RadioContactDeleteFailure",
         "type": "object"
       },
       "RadioDeviceInfoResponse": {
@@ -6159,9 +6350,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Delete Channel Api Channels  Key  Delete",
-                  "type": "object"
+                  "$ref": "#/components/schemas/DeleteChannelResponse"
                 }
               }
             },
@@ -6988,9 +7177,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Mark Channel Read Api Channels  Key  Mark Read Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/MarkChannelReadResponse"
                 }
               }
             },
@@ -8374,9 +8561,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Bulk Delete Contacts Api Contacts Bulk Delete Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/BulkDeleteContactsResponse"
                 }
               }
             },
@@ -8917,9 +9102,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Delete Contact Api Contacts  Public Key  Delete",
-                  "type": "object"
+                  "$ref": "#/components/schemas/ContactDeleteResponse"
                 }
               }
             },
@@ -9479,9 +9662,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Mark Contact Read Api Contacts  Public Key  Mark Read Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/MarkContactReadResponse"
                 }
               }
             },
@@ -14054,9 +14235,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Set Contact Routing Override Api Contacts  Public Key  Routing Override Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/ContactRoutingOverrideResponse"
                 }
               }
             },
@@ -17054,6 +17233,10 @@
             "schema": {
               "anyOf": [
                 {
+                  "enum": [
+                    "PRIV",
+                    "CHAN"
+                  ],
                   "type": "string"
                 },
                 {
@@ -17451,6 +17634,10 @@
             "schema": {
               "anyOf": [
                 {
+                  "enum": [
+                    "PRIV",
+                    "CHAN"
+                  ],
                   "type": "string"
                 },
                 {
@@ -25080,9 +25267,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Mark All Read Api Read State Mark All Read Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/MarkAllReadResponse"
                 }
               }
             },

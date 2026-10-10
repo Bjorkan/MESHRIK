@@ -43,6 +43,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
+from starlette.routing import Match
 
 from app.api_docs import API_DESCRIPTION, API_TAGS_METADATA, register_api_docs_routes
 from app.config import settings as server_settings
@@ -200,6 +201,16 @@ async def log_server_errors(request: Request, call_next):
         raise
     if response.status_code >= 500:
         logger.error("HTTP %d on %s %s", response.status_code, request.method, request.url.path)
+    elif response.status_code == 405:
+        # FastAPI registers same-path methods as separate routes and Starlette's
+        # first partial match may otherwise publish an incomplete Allow header.
+        allowed_methods: set[str] = set()
+        for route in request.app.routes:
+            match, _ = route.matches(request.scope)
+            if match in (Match.FULL, Match.PARTIAL):
+                allowed_methods.update(getattr(route, "methods", ()) or ())
+        if allowed_methods:
+            response.headers["Allow"] = ", ".join(sorted(allowed_methods))
     return response
 
 

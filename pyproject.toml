@@ -23,6 +23,7 @@ dependencies = [
 asyncio_mode = "auto"
 testpaths = ["tests"]
 addopts = "-n auto --dist worksteal"
+markers = ["contract: bounded Schemathesis checks against the in-process ASGI app"]
 
 [tool.ruff]
 target-version = "py311"
@@ -52,6 +53,8 @@ known-first-party = ["app"]
 [tool.pyright]
 pythonVersion = "3.11"
 typeCheckingMode = "basic"
+venvPath = "."
+venv = ".venv"
 include = ["app"]
 exclude = ["references", ".venv", "tests"]
 reportMissingImports = true
@@ -66,4 +69,5 @@ dev = [
     "pytest-xdist>=3.0",
     "ruff>=0.8.0",
     "pyright>=1.1.390",
+    "schemathesis>=4.8,<5",
 ]

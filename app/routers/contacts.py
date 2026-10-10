@@ -3,6 +3,7 @@ import logging
 import random
 import time
 from contextlib import suppress
+from typing import Literal
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from meshcore import EventType
@@ -46,6 +47,11 @@ router = APIRouter(prefix="/contacts", tags=["contacts"])
 
 TRACE_HASH_BYTES = 4
 TRACE_FLAGS_4BYTE = 2
+
+
+class MarkContactReadResponse(BaseModel):
+    status: str
+    public_key: str
 
 
 def _ambiguous_contact_detail(err: AmbiguousPublicKeyPrefixError) -> str:
@@ -347,8 +353,10 @@ async def create_contact(
     return stored
 
 
-@router.post("/{public_key}/mark-read")
-async def mark_contact_read(public_key: str, message_id: int | None = None) -> dict:
+@router.post("/{public_key}/mark-read", response_model=MarkContactReadResponse)
+async def mark_contact_read(
+    public_key: str, message_id: int | None = None
+) -> MarkContactReadResponse:
     """Mark a contact conversation as read at its current timestamp/message-ID boundary."""
     contact = await _resolve_contact_or_404(public_key)
 
@@ -356,11 +364,35 @@ async def mark_contact_read(public_key: str, message_id: int | None = None) -> d
     if not updated:
         raise HTTPException(status_code=400, detail="Invalid message read boundary")
 
-    return {"status": "ok", "public_key": contact.public_key}
+    return MarkContactReadResponse(status="ok", public_key=contact.public_key)
 
 
 class BulkDeleteRequest(BaseModel):
     public_keys: list[str] = Field(description="Public keys to delete")
+
+
+class RadioContactDeleteFailure(BaseModel):
+    public_key: str
+    error: str
+
+
+class BulkDeleteContactsResponse(BaseModel):
+    deleted: int
+    radio_deleted: int
+    radio_failed: int
+    radio_failures: list[RadioContactDeleteFailure]
+
+
+class ContactDeleteResponse(BaseModel):
+    status: Literal["ok", "partial"]
+    database_deleted: bool
+    radio_deleted: bool | None
+    radio_error: str | None
+
+
+class ContactRoutingOverrideResponse(BaseModel):
+    status: str
+    public_key: str
 
 
 def _radio_contact_removal_error(result) -> str | None:
@@ -371,8 +403,8 @@ def _radio_contact_removal_error(result) -> str | None:
     return None
 
 
-@router.post("/bulk-delete")
-async def bulk_delete_contacts(request: BulkDeleteRequest) -> dict:
+@router.post("/bulk-delete", response_model=BulkDeleteContactsResponse)
+async def bulk_delete_contacts(request: BulkDeleteRequest) -> BulkDeleteContactsResponse:
     """Delete multiple contacts from the database (and radio if present)."""
     from app.websocket import broadcast_event
 
@@ -429,16 +461,16 @@ async def bulk_delete_contacts(request: BulkDeleteRequest) -> dict:
         deleted += 1
 
     logger.info("Bulk deleted %d/%d unique contacts", deleted, len(normalized_keys))
-    return {
-        "deleted": deleted,
-        "radio_deleted": radio_deleted,
-        "radio_failed": len(radio_failures),
-        "radio_failures": radio_failures,
-    }
+    return BulkDeleteContactsResponse(
+        deleted=deleted,
+        radio_deleted=radio_deleted,
+        radio_failed=len(radio_failures),
+        radio_failures=[RadioContactDeleteFailure(**failure) for failure in radio_failures],
+    )
 
 
-@router.delete("/{public_key}")
-async def delete_contact(public_key: str) -> dict:
+@router.delete("/{public_key}", response_model=ContactDeleteResponse)
+async def delete_contact(public_key: str) -> ContactDeleteResponse:
     """Delete a contact from the database (and radio if present)."""
     contact = await _resolve_contact_or_404(public_key)
 
@@ -472,12 +504,12 @@ async def delete_contact(public_key: str) -> dict:
 
     broadcast_event("contact_deleted", {"public_key": contact.public_key})
 
-    return {
-        "status": "partial" if radio_error else "ok",
-        "database_deleted": True,
-        "radio_deleted": radio_deleted,
-        "radio_error": radio_error,
-    }
+    return ContactDeleteResponse(
+        status="partial" if radio_error else "ok",
+        database_deleted=True,
+        radio_deleted=radio_deleted,
+        radio_error=radio_error,
+    )
 
 
 @router.post("/{public_key}/trace", response_model=TraceResponse)
@@ -628,10 +660,10 @@ async def request_path_discovery(public_key: str) -> PathDiscoveryResponse:
     )
 
 
-@router.post("/{public_key}/routing-override")
+@router.post("/{public_key}/routing-override", response_model=ContactRoutingOverrideResponse)
 async def set_contact_routing_override(
     public_key: str, request: ContactRoutingOverrideRequest
-) -> dict:
+) -> ContactRoutingOverrideResponse:
     """Set, force, or clear an explicit routing override for a contact."""
     contact = await _resolve_contact_or_404(public_key)
 
@@ -672,7 +704,7 @@ async def set_contact_routing_override(
         await _best_effort_push_contact_to_radio(updated_contact, "set_routing_override_on_radio")
         await _broadcast_contact_update(updated_contact)
 
-    return {"status": "ok", "public_key": contact.public_key}
+    return ContactRoutingOverrideResponse(status="ok", public_key=contact.public_key)
 
 
 # ---------------------------------------------------------------------------

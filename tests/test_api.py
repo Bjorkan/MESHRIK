@@ -1342,8 +1342,8 @@ class TestReadStateEndpoints:
 
         result = await mark_all_read()
 
-        assert result["status"] == "ok"
-        assert result["timestamp"] >= before_time
+        assert result.status == "ok"
+        assert result.timestamp >= before_time
 
         # Verify all contacts updated
         for key in ["contact1", "contact2"]:

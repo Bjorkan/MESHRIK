@@ -49,3 +49,34 @@ def test_openapi_documents_common_error_responses():
     assert responses["400"]["description"] == "Bad request"
     assert responses["423"]["description"] == "Radio unavailable or locked"
     assert responses["500"]["description"] == "Server error"
+
+
+def test_core_openapi_success_responses_have_concrete_schemas():
+    """Keep generated frontend contracts free from object/any-shaped core responses."""
+    schema = app.openapi()
+    core_prefixes = (
+        "/api/contacts",
+        "/api/channels",
+        "/api/messages",
+        "/api/settings",
+        "/api/health",
+    )
+    untyped_operations: list[str] = []
+
+    for path, path_item in schema["paths"].items():
+        if not path.startswith(core_prefixes):
+            continue
+        for method in ("get", "post", "put", "patch", "delete"):
+            operation = path_item.get(method)
+            if operation is None:
+                continue
+            for status, response in operation["responses"].items():
+                if not str(status).startswith("2"):
+                    continue
+                response_schema = (
+                    response.get("content", {}).get("application/json", {}).get("schema")
+                )
+                if not response_schema or response_schema == {"type": "object"}:
+                    untyped_operations.append(f"{method.upper()} {path} ({status})")
+
+    assert untyped_operations == []

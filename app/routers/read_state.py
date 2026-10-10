@@ -4,6 +4,7 @@ import logging
 import time
 
 from fastapi import APIRouter
+from pydantic import BaseModel
 
 from app.models import UnreadCounts
 from app.repository import (
@@ -16,6 +17,11 @@ from app.services.radio_runtime import radio_runtime as radio_manager
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/read-state", tags=["read-state"])
+
+
+class MarkAllReadResponse(BaseModel):
+    status: str
+    timestamp: int
 
 
 @router.get("/unreads", response_model=UnreadCounts)
@@ -40,8 +46,8 @@ async def get_unreads() -> UnreadCounts:
     return UnreadCounts(**data)
 
 
-@router.post("/mark-all-read")
-async def mark_all_read() -> dict:
+@router.post("/mark-all-read", response_model=MarkAllReadResponse)
+async def mark_all_read() -> MarkAllReadResponse:
     """Mark all contacts and channels as read.
 
     Updates each conversation's timestamp/message-ID cursor using two repository
@@ -53,4 +59,4 @@ async def mark_all_read() -> dict:
     await ChannelRepository.mark_all_read(now)
 
     logger.info("Marked all contacts and channels as read at %d", now)
-    return {"status": "ok", "timestamp": now}
+    return MarkAllReadResponse(status="ok", timestamp=now)
