@@ -1,14 +1,14 @@
 # Radio scheduler: response tracking and activity API (#40 / #41)
 
-This continues the single-radio, in-memory scheduler introduced in #38/#39. **There is still one physical radio and one scheduled transport-command worker.** The existing `radio_operation()` lock remains the lower-level safety gate, including for unchanged legacy HTTP routes. This phase does **not** migrate message sending, login, settings, or periodic task producers (#42–#44); their existing HTTP responses and WebSocket events are preserved.
+This continues the single-radio, in-memory scheduler introduced in #38/#39. **There is still one physical radio and one scheduled transport-command worker.** The existing `radio_operation()` lock remains the lower-level safety gate, including for unchanged legacy HTTP routes. The #42–#44 compatibility bridge now admits the existing message, login, settings and periodic command sections through the one worker. Legacy HTTP responses remain synchronous for backward compatibility; some critical sections (notably CLI polling) still reserve the command slot until completion. The bridge does **not** mean all producers already expose `202 Accepted` or that all long RF waits are fully independent.
 
-## Response correlation (internal, for producer migrations)
+## Response correlation (used by selected producers)
 
 `app/services/radio_response_tracker.py` offers synchronous `reserve(job_id, kind=..., ...)`, a `PendingResponse.wait(timeout)` coroutine and `unsubscribe()` cleanup. Install a reservation **before** entering the transport command when the matching attributes are known; callers must not hold `radio_operation()` while waiting on RF. The worker returns `AWAITING_ACK` or `AWAITING_RESPONSE` after its short exclusive command. Multiple independent waits can coexist and a new command may start. Replies received before the worker switches to `awaiting_*` are buffered by the pending future and applied on the state transition. A terminal job cannot become successful again.
 
 - DM ACK: reserve by the **expected ACK code and existing SQLite message ID**. Only the established `dm_ack_tracker` plus successful `increment_ack_and_broadcast` path can notify the new tracker. An unmatched early ACK continues to be buffered in `dm_ack_tracker`; on subsequent association with a message, the shared ACK path notifies the new tracker. Raw events do not independently assert delivery. All ACK code/message ID matching data remains private in memory.
 - Repeater and room login: matching `LOGIN_SUCCESS` / `LOGIN_FAILED` subscriptions are scoped to the canonical target prefix, with exactly one target session at a time. The firmware lacks request identifiers. After a dispatched login (even one apparently successful), the same target is **fenced for the remainder of that radio generation**; this deliberately errs on the side of safety rather than misattributing a delayed or duplicate reply to a later login. Reconnect changes the generation and removes the fence. Before-dispatch cancellation does not fence the target. Other-target logins and ACK waits can coexist.
-- CLI: a scoped `CONTACT_MSG_RECV` subscription filters by target and `txt_type=1`. While a CLI response session is pending, the scheduler blocks dispatch of unrelated scheduled commands because these responses share an ambiguous polling/reader channel. It does not block incoming packet processing. This applies to scheduler jobs; legacy producers remain unmigrated until #43, so do not interleave new CLI jobs with legacy CLI command sessions.
+- CLI: a scoped `CONTACT_MSG_RECV` subscription filters by target and `txt_type=1`. While a CLI response session is pending, the scheduler blocks dispatch of unrelated scheduled commands because these responses share an ambiguous polling/reader channel. It does not block incoming packet processing. The legacy CLI response-polling section is now worker mediated; it must remain exclusive while the protocol does not provide an unambiguous reply ID.
 - Cancellation and deadlines: queued `unsubscribe()` cancels before dispatch; an `awaiting_*` unsubscribe stops waiting but **cannot retract radio traffic**. Timeout or disconnect after a possible send is `unknown`, not `failed` or `delivered`. Watchers and subscriptions are removed after terminal states, timeout, cancellation and reconnect. Maximum simultaneous response reservations: 128. Generation checks occur in incoming callbacks, not just during worker polling.
 
 Do not log or serialize full targets, payloads, passwords, raw commands, ACK codes or message bodies. Do not build a second MeshCore instance or an independent polling command worker.
@@ -42,3 +42,20 @@ Existing `/api/ws` now also broadcasts typed `radio_job` (sanitized `RadioJobSna
 - Follow repo `AGENTS.md` for the complete quality gate. API schema drift checks compare generated artifacts against **committed** files; while working with intentional, uncommitted API changes, verify generation determinism rather than requiring `git diff --exit-code` against the old commit.
 
 Hardware-only verification is still required for real repeater/room responses, CLI drain/poll behavior, BLE/TCP/serial reconnect timing and physical RF-state research (#47). No CI test should send real RF traffic.
+
+## Hardware preflight / known transitional limits
+
+Read `HARDWARE_SMOKE_TEST.md` before attempting a real Companion connection.
+`MESHCORE_PASSIVE_STARTUP=true` suppresses the startup mutations and scheduled
+maintenance; it is **not** a global API read-only switch. The unrelated
+`MESHCORE_SKIP_POST_CONNECT_SYNC` flag alone does *not* suppress clock/scope
+writes. Automatic radio reboot on failed clock sync now requires the explicit
+`MESHCORE_AUTO_REBOOT_ON_CLOCK_SKEW=true` opt-in. Login reply waits are
+independently configured with `MESHCORE_LOGIN_RESPONSE_TIMEOUT_SECONDS` (default
+5, supported 1–60 seconds); queued/transport deadlines are separate.
+
+The single worker remains fail-closed on uncertain transport timeouts; restart
+is an operator action, not an automatic replay. Periodic producers use
+`blocking=False` / fail-fast when the radio is busy instead of stacking work
+in the command queue. This is backpressure, not full scheduler coalescing,
+and should not be counted as completion of #44's complete policy.

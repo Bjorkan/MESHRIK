@@ -29,6 +29,13 @@ class Settings(BaseSettings):
     enable_local_private_key_export: bool = False
     load_with_autoevict: bool = False
     skip_post_connect_sync: bool = False
+    # Passive connection diagnostics: query radio metadata and receive events,
+    # but do not change device state or trigger startup RF traffic.
+    passive_startup: bool = False
+    # A failed clock adjustment alone must never reboot a live node by default.
+    auto_reboot_on_clock_skew: bool = False
+    # Bounded RF reply wait; transport and queue deadlines remain independent.
+    login_response_timeout_seconds: float = Field(default=5.0, ge=1.0, le=60.0)
     basic_auth_username: str = ""
     basic_auth_password: str = ""
     vapid_subject: str = "mailto:noreply@meshcore.local"

@@ -4,6 +4,7 @@ import time
 
 from fastapi import APIRouter, HTTPException
 
+from app.config import settings as radio_settings
 from app.models import (
     CONTACT_TYPE_REPEATER,
     AclEntry,
@@ -48,7 +49,7 @@ ACL_PERMISSION_NAMES = {
     3: "Admin",
 }
 router = APIRouter(prefix="/contacts", tags=["repeaters"])
-REPEATER_LOGIN_RESPONSE_TIMEOUT_SECONDS = 5.0
+REPEATER_LOGIN_RESPONSE_TIMEOUT_SECONDS = radio_settings.login_response_timeout_seconds
 
 
 async def prepare_repeater_connection(mc, contact: Contact, password: str) -> RepeaterLoginResponse:

@@ -233,3 +233,11 @@ If you enable Basic Auth, protect the app with HTTPS. HTTP Basic credentials are
 This is developed with very heavy agentic assistance -- there is no warranty of fitness for any purpose. It's been lovingly guided by an engineer with a passion for clean code and good tests, but it's still mostly LLM output, so you may find some bugs.
 
 If extending, have your LLM read the three `AGENTS.md` files: `./AGENTS.md`, `./frontend/AGENTS.md`, and `./app/AGENTS.md`.
+
+
+## Hardware smoke testing
+
+For a first controlled Companion connection and non-destructive startup, follow
+[`HARDWARE_SMOKE_TEST.md`](HARDWARE_SMOKE_TEST.md). This includes the
+`MESHCORE_PASSIVE_STARTUP` safeguard, the clock-reboot opt-in and explicit
+limits on what may be tested without sending RF.

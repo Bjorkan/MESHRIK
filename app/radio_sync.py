@@ -921,12 +921,10 @@ async def sync_radio_time(mc: MeshCore, *, warn_on_failure: bool = True) -> bool
     with an ERROR response.  We detect this by checking the response and,
     on failure, querying the radio's actual time so we can log the skew.
 
-    When significant forward skew is detected for the first time in a
-    session, the radio is rebooted so that boards with a volatile clock
-    (most companion radios) reset to their default epoch and accept the
-    correct time on the next connection setup.  The reboot is attempted
-    only once; if it doesn't help (hardware RTC persists the wrong time),
-    the skew is logged as a warning on subsequent syncs.
+    An automatic corrective reboot is disabled by default. Operators must
+    opt in with MESHCORE_AUTO_REBOOT_ON_CLOCK_SKEW=true to enable a single
+    reboot per process on significant or indeterminate clock skew. Reboot
+    always interrupts radio operation and is unsuitable for passive tests.
 
     ``warn_on_failure`` controls log severity for rejected/failed sync attempts.
     Startup and reconnect setup should leave this enabled so operators see the
@@ -998,7 +996,11 @@ async def sync_radio_time(mc: MeshCore, *, warn_on_failure: bool = True) -> bool
         # a corrective reboot this session, reboot the radio.  Boards with
         # a volatile RTC (most companion radios) will reset their clock on
         # reboot, allowing the next post-connect sync to succeed.
-        if not _clock_reboot_attempted and (delta is None or delta > 30):
+        if (
+            settings.auto_reboot_on_clock_skew
+            and not _clock_reboot_attempted
+            and (delta is None or delta > 30)
+        ):
             _clock_reboot_attempted = True
             log_failure(
                 "Rebooting radio to reset clock skew.  Boards with a "
@@ -1008,6 +1010,11 @@ async def sync_radio_time(mc: MeshCore, *, warn_on_failure: bool = True) -> bool
                 await mc.commands.reboot()
             except Exception:
                 log_failure("Reboot command failed", exc_info=True)
+        elif not settings.auto_reboot_on_clock_skew and (delta is None or delta > 30):
+            log_failure(
+                "Automatic clock-skew reboot disabled; check clock manually "
+                "or explicitly opt in to MESHCORE_AUTO_REBOOT_ON_CLOCK_SKEW."
+            )
         elif _clock_reboot_attempted:
             logger.debug(
                 "Clock skew persists after reboot (hardware RTC); ignoring until next session."

@@ -41,6 +41,15 @@ async def run_post_connect_setup(radio_manager) -> None:
     if not radio_manager.meshcore:
         return
 
+    from app.config import settings as app_settings_config
+
+    if app_settings_config.passive_startup:
+        logger.warning(
+            "PASSIVE STARTUP: skipping key export, clock changes, flood scope, "
+            "radio offload, advertisements and periodic maintenance. "
+            "This is NOT an API read-only authorization gate."
+        )
+
     if radio_manager._setup_lock is None:
         radio_manager._setup_lock = asyncio.Lock()
 
@@ -62,10 +71,10 @@ async def run_post_connect_setup(radio_manager) -> None:
                 # Register event handlers against the locked, current transport.
                 register_event_handlers(mc)
 
-                await export_and_store_private_key(mc)
-
-                # Sync radio clock with system time
-                await sync_radio_time(mc)
+                if not app_settings_config.passive_startup:
+                    await export_and_store_private_key(mc)
+                    # Normal startup may adjust the radio clock and reboot on skew.
+                    await sync_radio_time(mc)
 
                 # Query path hash mode support (best-effort; older firmware won't report it).
                 # If the library's parsed payload is missing path_hash_mode (e.g. stale
@@ -212,24 +221,26 @@ async def run_post_connect_setup(radio_manager) -> None:
                 # not support the mode-1 unscoped command). Done after the device
                 # query so radio_manager.firmware_ver_code is known and the unscoped
                 # path can pick the correct firmware command.
-                from app.region_scope import normalize_region_scope
-                from app.repository import AppSettingsRepository
-                from app.services.flood_scope import set_radio_flood_scope
+                if not app_settings_config.passive_startup:
+                    from app.region_scope import normalize_region_scope
+                    from app.repository import AppSettingsRepository
+                    from app.services.flood_scope import set_radio_flood_scope
 
-                app_settings = await AppSettingsRepository.get()
-                scope = normalize_region_scope(app_settings.flood_scope)
-                try:
-                    await set_radio_flood_scope(mc, scope, fw_ver=radio_manager.firmware_ver_code)
-                    logger.info("Applied flood_scope=%r", scope or "(disabled)")
-                except Exception as exc:
-                    logger.warning("Failed to apply configured flood scope to radio: %s", exc)
+                    app_settings = await AppSettingsRepository.get()
+                    scope = normalize_region_scope(app_settings.flood_scope)
+                    try:
+                        await set_radio_flood_scope(
+                            mc, scope, fw_ver=radio_manager.firmware_ver_code
+                        )
+                        logger.info("Applied flood_scope=%r", scope or "(disabled)")
+                    except Exception as exc:
+                        logger.warning("Failed to apply configured flood scope to radio: %s", exc)
 
-                from app.config import settings as app_settings_config
-
-                if app_settings_config.skip_post_connect_sync:
-                    logger.info(
-                        "Skipping sync/offload/advert/drain (MESHCORE_SKIP_POST_CONNECT_SYNC)"
-                    )
+                if (
+                    app_settings_config.skip_post_connect_sync
+                    or app_settings_config.passive_startup
+                ):
+                    logger.info("Skipping sync/offload/advert/drain (passive startup or skip sync)")
                 else:
                     # Sync contacts/channels from radio to DB and clear radio
                     logger.info("Syncing and offloading radio data...")
@@ -262,7 +273,9 @@ async def run_post_connect_setup(radio_manager) -> None:
             finally:
                 radio_manager._release_operation_lock("post_connect_setup")
 
-            if not app_settings_config.skip_post_connect_sync:
+            if not (
+                app_settings_config.skip_post_connect_sync or app_settings_config.passive_startup
+            ):
                 # Start background tasks AFTER releasing the operation lock.
                 # These tasks acquire their own locks when they need radio access.
                 start_periodic_sync()

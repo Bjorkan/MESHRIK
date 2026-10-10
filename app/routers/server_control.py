@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any
 from fastapi import HTTPException
 from meshcore import EventType
 
+from app.config import settings
 from app.models import (
     CONTACT_TYPE_REPEATER,
     CONTACT_TYPE_ROOM,
@@ -27,7 +28,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-SERVER_LOGIN_RESPONSE_TIMEOUT_SECONDS = 5.0
+SERVER_LOGIN_RESPONSE_TIMEOUT_SECONDS = settings.login_response_timeout_seconds
 
 
 def _monotonic() -> float:
@@ -706,6 +707,9 @@ async def scheduled_authenticated_contact_login(
             transport_failed.set_result(None)
 
     unlisten = radio_job_scheduler.subscribe(on_job)
+    retry_job = None
+    retry_unlisten = None
+    retry_dispatched = False
     try:
         done, _ = await asyncio.wait({sent, transport_failed}, return_when=asyncio.FIRST_COMPLETED)
         if sent not in done:
@@ -730,32 +734,89 @@ async def scheduled_authenticated_contact_login(
         except TimeoutError:
             outcome = None
 
-        if outcome is None and contact.effective_route_source != "flood":
-            # The SAME waiter handles either reply. A delayed first reply is
-            # legitimate for the same target/password, not a new login attempt.
+        if outcome is None and pending.future.done():
+            outcome = pending.future.result()
+
+        if (
+            outcome is None
+            and not pending.future.done()
+            and contact.effective_route_source != "flood"
+        ):
+            # No response to the direct attempt. The pending reservation is
+            # shared by both sends, but a late reply may arrive *while the
+            # fallback is queued*. In that case, never transmit the fallback.
+            retry_terminal: asyncio.Future[None] = loop.create_future()
+
             async def flood_attempt(mc):
+                nonlocal retry_dispatched
+                if pending.future.done():
+                    return RadioCommandOutcome.FINISHED
                 reset_result = await mc.commands.reset_path(contact.public_key)
                 if reset_result is None or reset_result.type == EventType.ERROR:
                     return RadioCommandOutcome.UNCERTAIN
+                # A direct-route answer may arrive during reset_path. It
+                # authorizes NO second send, even though this job dispatched.
+                if pending.future.done():
+                    return RadioCommandOutcome.FINISHED
+                retry_dispatched = True
                 second_result = await mc.commands.send_login(contact.public_key, password)
                 if second_result is None or second_result.type == EventType.ERROR:
                     return RadioCommandOutcome.UNCERTAIN
-                return RadioCommandOutcome.UNCERTAIN  # send != authenticated
+                return RadioCommandOutcome.UNCERTAIN  # local send != authenticated
 
             try:
-                radio_job_worker.submit(
-                    kind,
-                    flood_attempt,
-                    priority=RadioJobPriority.NORMAL,
-                    command_timeout_seconds=20,
-                    queue_timeout_seconds=20,
-                )
+                if not pending.future.done():
+                    retry_job = radio_job_worker.submit(
+                        kind,
+                        flood_attempt,
+                        priority=RadioJobPriority.NORMAL,
+                        command_timeout_seconds=20,
+                        queue_timeout_seconds=20,
+                    )
+
+                    def on_retry(snapshot):
+                        if (
+                            snapshot.id == retry_job.id
+                            and snapshot.state in TERMINAL_STATES
+                            and not retry_terminal.done()
+                        ):
+                            retry_terminal.set_result(None)
+
+                    retry_unlisten = radio_job_scheduler.subscribe(on_retry)
             except RadioAdmissionError:
-                pass
-            try:
-                outcome = await asyncio.wait_for(asyncio.shield(pending.future), response_timeout)
-            except TimeoutError:
-                outcome = None
+                logger.warning("Login flood retry not admitted by radio scheduler")
+
+            if retry_job is not None:
+                # Never return from a timed-out HTTP request with an unseen
+                # queued retry left to transmit later. Wait for dispatch/finish
+                # or for the first response to arrive, whichever happens first.
+                done, _ = await asyncio.wait(
+                    {pending.future, retry_terminal},
+                    timeout=40,  # queue (20) + command (20); not an RF reply deadline
+                    return_when=asyncio.FIRST_COMPLETED,
+                )
+                if pending.future in done:
+                    outcome = pending.future.result()
+                    radio_job_worker.cancel(retry_job.id)  # queued => guaranteed no TX
+                    current_retry = radio_job_scheduler.get(retry_job.id)
+                    if current_retry is not None and current_retry.state == RadioJobState.EXECUTING:
+                        # A started radio operation cannot be retracted. Keep
+                        # the HTTP result synchronized with its bounded phase.
+                        await asyncio.wait({retry_terminal}, timeout=20)
+                elif retry_terminal in done:
+                    # The command phase finished (or was fenced/expired). Only
+                    # now start the *separate* RF confirmation deadline.
+                    try:
+                        outcome = await asyncio.wait_for(
+                            asyncio.shield(pending.future), response_timeout
+                        )
+                    except TimeoutError:
+                        outcome = None
+                else:
+                    logger.warning("Login flood retry did not settle within its command budget")
+                    radio_job_worker.cancel(retry_job.id)
+            elif pending.future.done():
+                outcome = pending.future.result()
 
         if outcome == RadioJobResult.RESPONSE_RECEIVED:
             return RepeaterLoginResponse(status="ok", authenticated=True)
@@ -768,10 +829,16 @@ async def scheduled_authenticated_contact_login(
             authenticated=False,
             message=(
                 _login_flood_retry_timeout_message(label)
-                if contact.effective_route_source != "flood"
+                if retry_dispatched
                 else _login_timeout_message(label)
             ),
         )
     finally:
+        # On HTTP cancellation or a timeout, queued retries MUST NOT survive
+        # beyond their owner. Executing commands remain cooperative/uncertain.
+        if retry_job is not None:
+            radio_job_worker.cancel(retry_job.id)
+        if retry_unlisten is not None:
+            retry_unlisten()
         unlisten()
         pending.unsubscribe()

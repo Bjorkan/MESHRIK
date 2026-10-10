@@ -179,10 +179,13 @@ class TestSyncRadioTime:
 
         _mod._clock_reboot_attempted = False
         prev_wrap = _mod.settings.clowntown_do_clock_wraparound
+        prev_reboot = _mod.settings.auto_reboot_on_clock_skew
         _mod.settings.clowntown_do_clock_wraparound = False
+        _mod.settings.auto_reboot_on_clock_skew = True
         yield
         _mod._clock_reboot_attempted = False
         _mod.settings.clowntown_do_clock_wraparound = prev_wrap
+        _mod.settings.auto_reboot_on_clock_skew = prev_reboot
 
     @pytest.mark.asyncio
     async def test_returns_true_on_success(self):
@@ -334,6 +337,19 @@ class TestSyncRadioTime:
 
         assert result is False
         mock_mc.commands.reboot.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_no_automatic_reboot_without_explicit_opt_in(self):
+        """Failed clock adjustment must not silently reboot a real Companion."""
+        import app.radio_sync as _mod
+
+        _mod.settings.auto_reboot_on_clock_skew = False
+        mc = MagicMock()
+        mc.commands.set_time = AsyncMock(return_value=Event(EventType.ERROR, {}))
+        mc.commands.get_time = AsyncMock(side_effect=TimeoutError("radio is slow"))
+        mc.commands.reboot = AsyncMock()
+        assert await sync_radio_time(mc) is False
+        mc.commands.reboot.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_no_reboot_for_small_skew(self):
