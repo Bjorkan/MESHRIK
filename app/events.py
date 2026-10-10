@@ -9,6 +9,7 @@ from typing_extensions import TypedDict
 
 from app.models import Channel, Contact, Message, MessagePath, RawPacketBroadcast
 from app.routers.health import HealthResponse
+from app.services.radio_jobs import RadioActivityRecord, RadioJobSnapshot
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +25,8 @@ WsEventType = Literal[
     "message_acked",
     "error",
     "success",
+    "radio_job",
+    "radio_activity",
 ]
 
 
@@ -64,6 +67,8 @@ _PAYLOAD_ADAPTERS: dict[WsEventType, TypeAdapter[Any]] = {
     "message_acked": TypeAdapter(MessageAckedPayload),
     "error": TypeAdapter(ToastPayload),
     "success": TypeAdapter(ToastPayload),
+    "radio_job": TypeAdapter(RadioJobSnapshot),
+    "radio_activity": TypeAdapter(RadioActivityRecord),
 }
 
 
@@ -78,6 +83,8 @@ def dump_ws_event(event_type: str, data: Any) -> str:
         payload = adapter.dump_python(validated, mode="json")
         return json.dumps({"type": event_type, "data": payload})
     except Exception:
+        if event_type in ("radio_job", "radio_activity"):
+            raise ValueError("Invalid sanitized radio event") from None
         logger.exception(
             "Failed to validate WebSocket payload for event %s; falling back to raw JSON envelope",
             event_type,

@@ -149,4 +149,8 @@ def broadcast_health(radio_connected: bool, connection_info: str | None = None) 
         data = await build_health_data(radio_connected, connection_info)
         await ws_manager.broadcast("health", data)
 
+    from app.services.radio_job_worker import radio_job_scheduler
+    from app.services.radio_jobs import RadioActivityKind
+
+    radio_job_scheduler.record_activity(RadioActivityKind.CONNECTION_CHANGED)
     asyncio.create_task(_broadcast())

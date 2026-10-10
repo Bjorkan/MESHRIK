@@ -476,10 +476,16 @@ async def _apply_direct_message_ack_tracking(
     logger.debug("Tracking ACK %s for message %d", ack_code, message_id)
     if matched_immediately:
         dm_ack_tracker.clear_pending_acks_for_message(message_id)
-        return await increment_ack_and_broadcast(
+        count = await increment_ack_and_broadcast(
             message_id=message_id,
             broadcast_fn=broadcast_fn,
         )
+        # A buffered early ACK has now been durably associated with this
+        # message; only now may an optional scheduler waiter complete.
+        from app.services.radio_response_tracker import radio_response_tracker
+
+        radio_response_tracker.notify_ack(ack_code, message_id)
+        return count
     return 0
 
 

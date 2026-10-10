@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import type { Channel, HealthStatus, Contact, Message, MessagePath, RawPacket } from './types';
-import { parseWsEvent } from './wsEvents';
+import { parseWsEvent, type RadioJobDelta, type RadioActivityDelta } from './wsEvents';
 
 interface ErrorEvent {
   message: string;
@@ -14,6 +14,8 @@ interface SuccessEvent {
 
 export interface UseWebSocketOptions {
   onHealth?: (health: HealthStatus) => void;
+  onRadioJob?: (job: RadioJobDelta) => void;
+  onRadioActivity?: (activity: RadioActivityDelta) => void;
   onMessage?: (message: Message) => void;
   onContact?: (contact: Contact) => void;
   onContactResolved?: (previousPublicKey: string, contact: Contact) => void;
@@ -129,6 +131,12 @@ export function useWebSocket(options: UseWebSocketOptions) {
             break;
           case 'raw_packet':
             handlers.onRawPacket?.(msg.data as RawPacket);
+            break;
+          case 'radio_job':
+            handlers.onRadioJob?.(msg.data);
+            break;
+          case 'radio_activity':
+            handlers.onRadioActivity?.(msg.data);
             break;
           case 'message_acked': {
             const ackData = msg.data as {

@@ -554,3 +554,15 @@ When changing backend behavior:
 2. Confirm WS event contracts when payload shape changes.
 3. Run `PYTHONPATH=. uv run pytest tests/ -v`.
 4. If API contract changed, update frontend types and AGENTS docs.
+
+### Radio job scheduler (#38–#41)
+
+`services/radio_jobs.py` defines the public payload-free lifecycle and event types;
+`radio_job_scheduler.py` bounds and orders command admissions and activity history;
+`radio_job_worker.py` owns the one transport command permit. `radio_response_tracker.py`
+correlates independent replies/ACKs with a register-before-send API and scopes
+ambiguous login/CLI responses. `routers/radio_jobs.py` exposes REST jobs, cancel and
+inbound activity; `events.py` exports two additional typed WS events. Existing
+producers still use the legacy radio lock until the follow-up migration issues.
+See `RADIO_JOB_SCHEDULER.md` for correlation, cancellation, reconnect and API
+contracts; in particular `executing` does *not* assert physical RF transmission.

@@ -18,4 +18,9 @@ async def apply_dm_ack_code(ack_code: str, *, broadcast_fn: BroadcastFn) -> bool
 
     dm_ack_tracker.clear_pending_acks_for_message(message_id)
     await increment_ack_and_broadcast(message_id=message_id, broadcast_fn=broadcast_fn)
+    # Only report a scheduler ACK after the existing DM tracker and durable
+    # message update have accepted it. Never consume the ACK a second time.
+    from app.services.radio_response_tracker import radio_response_tracker
+
+    radio_response_tracker.notify_ack(ack_code, message_id)
     return True

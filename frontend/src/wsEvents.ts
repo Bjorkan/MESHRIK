@@ -1,4 +1,8 @@
 import type { Channel, Contact, HealthStatus, Message, MessagePath, RawPacket } from './types';
+import type { components } from './generated/api-schema';
+
+export type RadioJobDelta = components['schemas']['RadioJobSnapshot'];
+export type RadioActivityDelta = components['schemas']['RadioActivityRecord'];
 
 export interface MessageAckedPayload {
   message_id: number;
@@ -35,6 +39,8 @@ export type KnownWsEvent =
   | { type: 'channel_deleted'; data: ChannelDeletedPayload }
   | { type: 'raw_packet'; data: RawPacket }
   | { type: 'message_acked'; data: MessageAckedPayload }
+  | { type: 'radio_job'; data: RadioJobDelta }
+  | { type: 'radio_activity'; data: RadioActivityDelta }
   | { type: 'error'; data: ToastPayload }
   | { type: 'success'; data: ToastPayload }
   | { type: 'pong'; data?: null };
@@ -68,6 +74,8 @@ export function parseWsEvent(raw: string): ParsedWsEvent {
     case 'channel_deleted':
     case 'raw_packet':
     case 'message_acked':
+    case 'radio_job':
+    case 'radio_activity':
     case 'error':
     case 'success':
       return {

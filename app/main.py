@@ -71,6 +71,7 @@ from app.routers import (
     packets,
     push,
     radio,
+    radio_jobs,
     read_state,
     repeaters,
     rooms,
@@ -79,7 +80,7 @@ from app.routers import (
     ws,
 )
 from app.security import add_optional_basic_auth_middleware
-from app.services.radio_job_worker import RadioProcessLease, radio_job_worker
+from app.services.radio_job_worker import RadioProcessLease, radio_job_scheduler, radio_job_worker
 from app.services.radio_runtime import radio_runtime as radio_manager
 from app.services.radio_stats import start_radio_stats_sampling, stop_radio_stats_sampling
 from app.version_info import get_app_build_info
@@ -109,11 +110,21 @@ async def lifespan(app: FastAPI):
     radio_owner.acquire()
     database_open = False
     startup_radio_task = None
+    unsubscribe_job = None
+    unsubscribe_activity = None
     try:
         await db.connect()
         database_open = True
         logger.info("Database connected")
         radio_job_worker.start()
+        from app.websocket import broadcast_event
+
+        unsubscribe_job = radio_job_scheduler.subscribe(
+            lambda job: broadcast_event("radio_job", job.model_dump(mode="json"))
+        )
+        unsubscribe_activity = radio_job_scheduler.subscribe_activity(
+            lambda event: broadcast_event("radio_activity", event.model_dump(mode="json"))
+        )
 
         # Initialize VAPID keys for Web Push (generates on first run).
         from app.push.vapid import ensure_vapid_keys
@@ -150,6 +161,13 @@ async def lifespan(app: FastAPI):
                 except asyncio.CancelledError:
                     pass
             await radio_job_worker.stop()
+            if unsubscribe_job is not None:
+                unsubscribe_job()
+            if unsubscribe_activity is not None:
+                unsubscribe_activity()
+            from app.services.radio_response_tracker import radio_response_tracker
+
+            radio_response_tracker.shutdown()
             # Keep existing background teardown ordering. Never attempt to
             # acquire the radio lock if an uncooperative transport still owns it.
             from app.fanout.manager import fanout_manager
@@ -240,6 +258,7 @@ app.include_router(health.router, prefix="/api")
 app.include_router(debug.router, prefix="/api")
 app.include_router(fanout.router, prefix="/api")
 app.include_router(radio.router, prefix="/api")
+app.include_router(radio_jobs.router, prefix="/api")
 app.include_router(contacts.router, prefix="/api")
 app.include_router(repeaters.router, prefix="/api")
 app.include_router(rooms.router, prefix="/api")

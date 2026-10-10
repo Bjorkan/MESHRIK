@@ -21,11 +21,15 @@ from app.services.radio_jobs import (
     ALLOWED_TRANSITIONS,
     TERMINAL_STATES,
     InvalidJobTransition,
+    RadioActivityKind,
+    RadioActivityRecord,
+    RadioActivitySource,
     RadioJobEvent,
     RadioJobKind,
     RadioJobPriority,
     RadioJobResult,
     RadioJobSnapshot,
+    RadioJobStage,
     RadioJobState,
     require_utc,
     utc_now,
@@ -81,10 +85,14 @@ class RadioJobScheduler:
         self._records: dict[UUID, _Record] = {}
         self._sequence = 0
         self._events: deque[RadioJobEvent] = deque(maxlen=event_limit)
+        self._activities: deque[RadioActivityRecord] = deque(maxlen=event_limit)
+        self._activity_listeners: list[Callable[[RadioActivityRecord], None]] = []
+        self._activity_dropped_through = 0
         self._changed = asyncio.Event()
         self._accepting = True
         self._generation = 0
         self._worker_owner: object | None = None
+        self._listeners: list[Callable[[RadioJobSnapshot], None]] = []
 
     def _now(self) -> datetime:
         return require_utc(self._clock())
@@ -121,9 +129,69 @@ class RadioJobScheduler:
     def events_since(self, sequence: int = 0) -> list[RadioJobEvent]:
         return [event for event in self._events if event.sequence > sequence]
 
+    @property
+    def sequence(self) -> int:
+        return self._sequence
+
+    def activities_since(self, sequence: int = 0) -> tuple[list[RadioActivityRecord], bool]:
+        """Ordered retained inbound history and explicit replay-gap indication."""
+        gap = sequence < self._activity_dropped_through
+        return [event for event in self._activities if event.sequence > sequence], gap
+
+    def subscribe_activity(
+        self, listener: Callable[[RadioActivityRecord], None]
+    ) -> Callable[[], None]:
+        self._activity_listeners.append(listener)
+
+        def unsubscribe() -> None:
+            if listener in self._activity_listeners:
+                self._activity_listeners.remove(listener)
+
+        return unsubscribe
+
+    def record_activity(
+        self, kind: RadioActivityKind, *, job_id: UUID | None = None
+    ) -> RadioActivityRecord:
+        """Public activity is an allowlisted classification, never a raw event."""
+        if not isinstance(kind, RadioActivityKind):
+            raise ValueError("Only predefined sanitized radio activity kinds are allowed")
+        if job_id is not None and self.get(job_id) is None:
+            raise ValueError("Activity correlation requires a known local job")
+        self._sequence += 1
+        activity = RadioActivityRecord(
+            sequence=self._sequence,
+            at=self._now(),
+            kind=kind,
+            source=(
+                RadioActivitySource.RAW_RF_LOG
+                if kind == RadioActivityKind.PACKET_RECEIVED
+                else RadioActivitySource.RADIO_LIFECYCLE
+                if kind == RadioActivityKind.CONNECTION_CHANGED
+                else RadioActivitySource.MESHCORE_EVENT
+            ),
+            job_id=job_id,
+            radio_generation=self._generation,
+        )
+        if self._activities.maxlen and len(self._activities) == self._activities.maxlen:
+            self._activity_dropped_through = self._activities[0].sequence
+        self._activities.append(activity)
+        for listener in tuple(self._activity_listeners):
+            listener(activity)
+        return activity
+
     def get(self, job_id: UUID) -> RadioJobSnapshot | None:
         record = self._records.get(job_id)
         return record.snapshot if record is not None else None
+
+    def subscribe(self, listener: Callable[[RadioJobSnapshot], None]) -> Callable[[], None]:
+        """Observe sanitized state deltas; callbacks must not await or block."""
+        self._listeners.append(listener)
+
+        def unsubscribe() -> None:
+            if listener in self._listeners:
+                self._listeners.remove(listener)
+
+        return unsubscribe
 
     def _publish(self, snapshot: RadioJobSnapshot) -> None:
         self._events.append(
@@ -136,6 +204,8 @@ class RadioJobScheduler:
             )
         )
         self._changed.set()
+        for listener in tuple(self._listeners):
+            listener(snapshot)
 
     def _prune(self) -> None:
         terminal = sorted(
@@ -263,8 +333,20 @@ class RadioJobScheduler:
             raise InvalidJobTransition("Single radio command permit is occupied")
         now = self._now()
         self._sequence += 1
+        stage_for_state = {
+            RadioJobState.QUEUED: RadioJobStage.WAITING_TURN,
+            RadioJobState.EXECUTING: RadioJobStage.TRANSPORT_COMMAND,
+            RadioJobState.AWAITING_RESPONSE: RadioJobStage.WAITING_FOR_RESPONSE,
+            RadioJobState.AWAITING_ACK: RadioJobStage.WAITING_FOR_ACK,
+            RadioJobState.RETRYING: RadioJobStage.RETRY_PENDING,
+            RadioJobState.COMPLETED: RadioJobStage.FINISHED,
+            RadioJobState.FAILED: RadioJobStage.FAILED,
+            RadioJobState.CANCELLED: RadioJobStage.CANCELLED,
+            RadioJobState.UNKNOWN: RadioJobStage.UNCERTAIN,
+        }
         changes: dict = {
             "state": new_state,
+            "stage": stage_for_state[new_state],
             "version": old.version + 1,
             "sequence": self._sequence,
             "updated_at": now,
@@ -332,7 +414,9 @@ class RadioJobScheduler:
                     snap.id, RadioJobState.UNKNOWN, result=RadioJobResult.RESPONSE_EXPIRED
                 )
 
-    def take_next(self) -> RadioJobSnapshot | None:
+    def take_next(
+        self, eligible: Callable[[RadioJobSnapshot], bool] | None = None
+    ) -> RadioJobSnapshot | None:
         """Synchronous/atomic selection. Only the worker is allowed to call it."""
         self.sweep()
         if not self._accepting or any(
@@ -341,7 +425,10 @@ class RadioJobScheduler:
             return None
         now = self._now()
         queued = (
-            r.snapshot for r in self._records.values() if r.snapshot.state == RadioJobState.QUEUED
+            r.snapshot
+            for r in self._records.values()
+            if r.snapshot.state == RadioJobState.QUEUED
+            and (eligible is None or eligible(r.snapshot))
         )
         candidates = sorted(
             queued,

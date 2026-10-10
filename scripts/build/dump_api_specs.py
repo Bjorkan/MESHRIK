@@ -55,8 +55,8 @@ def dump_ws_events(output_dir: Path) -> None:
     wrapper = {
         "$comment": (
             "Auto-generated from app/events.py. "
-            "Each WebSocket message is a JSON object: {\"type\": \"<event_type>\", \"data\": <payload>}. "
-            "The client also sends \"ping\" as plain text; the server replies {\"type\": \"pong\"}."
+            'Each WebSocket message is a JSON object: {"type": "<event_type>", "data": <payload>}. '
+            'The client also sends "ping" as plain text; the server replies {"type": "pong"}.'
         ),
         "events": events,
     }
@@ -79,6 +79,8 @@ def _event_descriptions() -> dict[str, str]:
         "message_acked": "An existing message received an ACK or echo/repeat update.",
         "error": "Toast-level error notification (e.g., radio setup failure, missing private key).",
         "success": "Toast-level success notification (e.g., historical decrypt complete).",
+        "radio_job": "Sanitized job snapshot delta. Merge by ID/version; refetch jobs after WebSocket reconnect.",
+        "radio_activity": "Sanitized inbound radio observation, deduplicate by sequence; refetch activity after reconnect.",
     }
 
 

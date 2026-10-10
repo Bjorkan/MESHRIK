@@ -187,6 +187,34 @@ export const api = {
   // Health
   getHealth: () => fetchApiView<'/api/health', 'get', HealthStatus>('/health'),
 
+  // Scheduler snapshots (#41): read-only until operation-specific producers migrate.
+  getRadioJobs: (
+    params: {
+      status?: ApiQuery<'/api/radio/jobs', 'get'>['status'];
+      limit?: number;
+      cursor?: number;
+    } = {}
+  ) => {
+    const query = new URLSearchParams();
+    if (params.status) query.set('status', params.status);
+    if (params.limit !== undefined) query.set('limit', String(params.limit));
+    if (params.cursor !== undefined) query.set('cursor', String(params.cursor));
+    return fetchApi<'/api/radio/jobs', 'get'>(`/radio/jobs?${query}`);
+  },
+  getRadioJob: (jobId: string) =>
+    fetchApi<'/api/radio/jobs/{job_id}', 'get'>(`/radio/jobs/${encodeURIComponent(jobId)}`),
+  cancelRadioJob: (jobId: string) =>
+    fetchApi<'/api/radio/jobs/{job_id}/cancel', 'post'>(
+      `/radio/jobs/${encodeURIComponent(jobId)}/cancel`,
+      { method: 'POST' }
+    ),
+  getRadioActivity: (params: { cursor?: number; limit?: number } = {}) => {
+    const query = new URLSearchParams();
+    if (params.limit !== undefined) query.set('limit', String(params.limit));
+    if (params.cursor !== undefined) query.set('cursor', String(params.cursor));
+    return fetchApi<'/api/radio/activity', 'get'>(`/radio/activity?${query}`);
+  },
+
   // Radio config
   getRadioConfig: () => fetchApiView<'/api/radio/config', 'get', RadioConfig>('/radio/config'),
   updateRadioConfig: (config: RadioConfigUpdate & ApiRequestBody<'/api/radio/config', 'patch'>) =>

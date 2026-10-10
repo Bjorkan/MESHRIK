@@ -1187,6 +1187,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/radio/activity': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List Radio Activity
+     * @description Ascending event-sequence replay. No RF payload, text or private addresses.
+     */
+    get: operations['list_radio_activity_api_radio_activity_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/radio/advertise': {
     parameters: {
       query?: never;
@@ -1299,6 +1319,60 @@ export interface paths {
      *     admin regions pane (issue #309).
      */
     post: operations['discover_regions_api_radio_discover_regions_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/radio/jobs': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List Radio Jobs
+     * @description Newest-updated-first; cursor is exclusive update sequence, not a row ID.
+     */
+    get: operations['list_radio_jobs_api_radio_jobs_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/radio/jobs/{job_id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get Radio Job */
+    get: operations['get_radio_job_api_radio_jobs__job_id__get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/radio/jobs/{job_id}/cancel': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Cancel Radio Job */
+    post: operations['cancel_radio_job_api_radio_jobs__job_id__cancel_post'];
     delete?: never;
     options?: never;
     head?: never;
@@ -3225,6 +3299,64 @@ export interface components {
       /** Label */
       label?: string | null;
     };
+    /**
+     * RadioActivityKind
+     * @description Allowlisted, non-payload inbound/connection observations.
+     * @enum {string}
+     */
+    RadioActivityKind:
+      | 'packet_received'
+      | 'ack_observed'
+      | 'contact_message_observed'
+      | 'path_update'
+      | 'contact_observed'
+      | 'login_response'
+      | 'cli_response'
+      | 'connection_changed';
+    /** RadioActivityPage */
+    RadioActivityPage: {
+      /**
+       * Gap
+       * @default false
+       */
+      gap: boolean;
+      /**
+       * Has More
+       * @default false
+       */
+      has_more: boolean;
+      /** Items */
+      items: components['schemas']['RadioActivityRecord'][];
+      /** Next Cursor */
+      next_cursor?: number | null;
+      radio: components['schemas']['RadioStatusSnapshot'];
+      /** Snapshot Sequence */
+      snapshot_sequence: number;
+    };
+    /**
+     * RadioActivityRecord
+     * @description Only classification and opaque reliable job correlation; no RF payloads.
+     */
+    RadioActivityRecord: {
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      /** Job Id */
+      job_id?: string | null;
+      kind: components['schemas']['RadioActivityKind'];
+      /** Radio Generation */
+      radio_generation: number;
+      /** Sequence */
+      sequence: number;
+      source: components['schemas']['RadioActivitySource'];
+    };
+    /**
+     * RadioActivitySource
+     * @enum {string}
+     */
+    RadioActivitySource: 'raw_rf_log' | 'meshcore_event' | 'radio_lifecycle';
     /** RadioAdvertiseRequest */
     RadioAdvertiseRequest: {
       /**
@@ -3235,6 +3367,11 @@ export interface components {
        */
       mode: 'flood' | 'zero_hop';
     };
+    /**
+     * RadioCommandStatus
+     * @enum {string}
+     */
+    RadioCommandStatus: 'idle' | 'executing' | 'legacy_busy';
     /** RadioConfigResponse */
     RadioConfigResponse: {
       /**
@@ -3364,6 +3501,11 @@ export interface components {
        */
       tx_power?: number | null;
     };
+    /**
+     * RadioConnectionStatus
+     * @enum {string}
+     */
+    RadioConnectionStatus: 'connected' | 'connecting' | 'disconnected';
     /** RadioContactDeleteFailure */
     RadioContactDeleteFailure: {
       /** Error */
@@ -3461,6 +3603,162 @@ export interface components {
        * @description SNR reported by the remote node while hearing our discovery request (dB)
        */
       remote_snr?: number | null;
+    };
+    /** RadioJobCancelResponse */
+    RadioJobCancelResponse: {
+      /**
+       * Action
+       * @enum {string}
+       */
+      action: 'cancelled_before_dispatch' | 'stop_waiting' | 'requested' | 'unchanged';
+      job: components['schemas']['RadioJobSnapshot'];
+    };
+    /**
+     * RadioJobKind
+     * @description Safe, fixed identifiers; never use arbitrary command or target strings.
+     * @enum {string}
+     */
+    RadioJobKind:
+      | 'direct_message'
+      | 'channel_message'
+      | 'repeater_login'
+      | 'room_login'
+      | 'radio_settings'
+      | 'advertisement'
+      | 'discovery'
+      | 'radio_query'
+      | 'periodic_sync'
+      | 'periodic_advertisement';
+    /**
+     * RadioJobPriority
+     * @enum {integer}
+     */
+    RadioJobPriority: 0 | 10 | 20;
+    /**
+     * RadioJobResult
+     * @description Outcome codes only, not arbitrary exception messages or radio payloads.
+     * @enum {string}
+     */
+    RadioJobResult:
+      | 'command_finished'
+      | 'response_received'
+      | 'ack_received'
+      | 'rejected'
+      | 'queue_expired'
+      | 'response_expired'
+      | 'command_error'
+      | 'command_timeout'
+      | 'radio_changed'
+      | 'shutdown'
+      | 'cancelled_before_send'
+      | 'stopped_waiting'
+      | 'transmission_uncertain';
+    /**
+     * RadioJobSnapshot
+     * @description Frozen JSON-safe view. No command inputs or untrusted free-text fields.
+     */
+    RadioJobSnapshot: {
+      /**
+       * Attempt
+       * @default 1
+       */
+      attempt: number;
+      /**
+       * Cancellation Requested
+       * @default false
+       */
+      cancellation_requested: boolean;
+      /** Command Deadline */
+      command_deadline?: string | null;
+      /** Completed At */
+      completed_at?: string | null;
+      /**
+       * Correlation Scope
+       * Format: uuid
+       */
+      correlation_scope: string;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      kind: components['schemas']['RadioJobKind'];
+      priority: components['schemas']['RadioJobPriority'];
+      /** Queue Deadline */
+      queue_deadline?: string | null;
+      /**
+       * Queue Entered At
+       * Format: date-time
+       */
+      queue_entered_at: string;
+      /** Radio Generation */
+      radio_generation: number;
+      /** Response Deadline */
+      response_deadline?: string | null;
+      result?: components['schemas']['RadioJobResult'] | null;
+      /** Sequence */
+      sequence: number;
+      /** @default waiting_turn */
+      stage: components['schemas']['RadioJobStage'];
+      /** Started At */
+      started_at?: string | null;
+      state: components['schemas']['RadioJobState'];
+      /**
+       * Updated At
+       * Format: date-time
+       */
+      updated_at: string;
+      /** Version */
+      version: number;
+    };
+    /**
+     * RadioJobStage
+     * @description Predefined user-facing phase labels; never arbitrary transport text.
+     * @enum {string}
+     */
+    RadioJobStage:
+      | 'waiting_turn'
+      | 'transport_command'
+      | 'waiting_for_response'
+      | 'waiting_for_ack'
+      | 'retry_pending'
+      | 'finished'
+      | 'failed'
+      | 'cancelled'
+      | 'uncertain';
+    /**
+     * RadioJobState
+     * @enum {string}
+     */
+    RadioJobState:
+      | 'queued'
+      | 'executing'
+      | 'awaiting_response'
+      | 'awaiting_ack'
+      | 'retrying'
+      | 'completed'
+      | 'failed'
+      | 'cancelled'
+      | 'unknown';
+    /** RadioJobsPage */
+    RadioJobsPage: {
+      /**
+       * Has More
+       * @default false
+       */
+      has_more: boolean;
+      /** Items */
+      items: components['schemas']['RadioJobSnapshot'][];
+      /** Next Cursor */
+      next_cursor?: number | null;
+      radio: components['schemas']['RadioStatusSnapshot'];
+      /** Snapshot Sequence */
+      snapshot_sequence: number;
     };
     /**
      * RadioRegionDiscoveryRepeater
@@ -3601,6 +3899,21 @@ export interface components {
       tx_air_secs?: number | null;
       /** Uptime Secs */
       uptime_secs?: number | null;
+    };
+    /** RadioStatusSnapshot */
+    RadioStatusSnapshot: {
+      command_status: components['schemas']['RadioCommandStatus'];
+      /**
+       * Physical Rf State
+       * @default unavailable
+       * @constant
+       */
+      physical_rf_state: 'unavailable';
+      /** Radio Generation */
+      radio_generation: number;
+      radio_status: components['schemas']['RadioConnectionStatus'];
+      /** Sequence */
+      sequence: number;
     };
     /**
      * RadioTraceHopRequest
@@ -14751,6 +15064,174 @@ export interface operations {
       };
     };
   };
+  list_radio_activity_api_radio_activity_get: {
+    parameters: {
+      query?: {
+        cursor?: number | null;
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['RadioActivityPage'];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Authentication required */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Request timed out */
+      408: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+      /** @description Radio unavailable or locked */
+      423: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Server error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+    };
+  };
   send_advertisement_api_radio_advertise_post: {
     parameters: {
       query?: never;
@@ -15628,6 +16109,509 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['RadioRegionDiscoveryResponse'];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Authentication required */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Request timed out */
+      408: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+      /** @description Radio unavailable or locked */
+      423: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Server error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+    };
+  };
+  list_radio_jobs_api_radio_jobs_get: {
+    parameters: {
+      query?: {
+        status?: components['schemas']['RadioJobState'] | null;
+        limit?: number;
+        cursor?: number | null;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['RadioJobsPage'];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Authentication required */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Request timed out */
+      408: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+      /** @description Radio unavailable or locked */
+      423: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Server error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+    };
+  };
+  get_radio_job_api_radio_jobs__job_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        job_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['RadioJobSnapshot'];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Authentication required */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Request timed out */
+      408: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+      /** @description Radio unavailable or locked */
+      423: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Server error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+    };
+  };
+  cancel_radio_job_api_radio_jobs__job_id__cancel_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        job_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['RadioJobCancelResponse'];
         };
       };
       /** @description Bad request */

@@ -57,6 +57,10 @@ async def on_contact_message(event: "Event") -> None:
     """
     payload = event.payload
 
+    from app.services.radio_job_worker import radio_job_scheduler
+    from app.services.radio_jobs import RadioActivityKind
+
+    radio_job_scheduler.record_activity(RadioActivityKind.CONTACT_MESSAGE_OBSERVED)
     # Skip CLI command responses (txt_type=1) - these are handled by the command endpoint
     txt_type = payload.get("txt_type", 0)
     if txt_type == 1:
@@ -147,6 +151,10 @@ async def on_rx_log_data(event: "Event") -> None:
 
     raw_hex = payload["payload"]
     raw_bytes = bytes.fromhex(raw_hex)
+    from app.services.radio_job_worker import radio_job_scheduler
+    from app.services.radio_jobs import RadioActivityKind
+
+    radio_job_scheduler.record_activity(RadioActivityKind.PACKET_RECEIVED)
 
     await process_raw_packet(
         raw_bytes=raw_bytes,
@@ -157,6 +165,10 @@ async def on_rx_log_data(event: "Event") -> None:
 
 async def on_path_update(event: "Event") -> None:
     """Handle path update events."""
+    from app.services.radio_job_worker import radio_job_scheduler
+    from app.services.radio_jobs import RadioActivityKind
+
+    radio_job_scheduler.record_activity(RadioActivityKind.PATH_UPDATE)
     payload = event.payload
     public_key = str(payload.get("public_key", "")).lower()
     pubkey_prefix = str(payload.get("pubkey_prefix", "")).lower()
@@ -227,6 +239,10 @@ async def on_new_contact(event: "Event") -> None:
     This is different from RF advertisements - these are contacts synced
     from the radio's stored contact list.
     """
+    from app.services.radio_job_worker import radio_job_scheduler
+    from app.services.radio_jobs import RadioActivityKind
+
+    radio_job_scheduler.record_activity(RadioActivityKind.CONTACT_OBSERVED)
     payload = event.payload
     public_key = payload.get("public_key", "")
 
@@ -307,6 +323,10 @@ async def on_ack(event: "Event") -> None:
         logger.debug("Received ACK with no code")
         return
 
+    from app.services.radio_job_worker import radio_job_scheduler
+    from app.services.radio_jobs import RadioActivityKind
+
+    radio_job_scheduler.record_activity(RadioActivityKind.ACK_OBSERVED)
     logger.debug("Received ACK with code %s", ack_code)
     matched = await apply_dm_ack_code(ack_code, broadcast_fn=broadcast_event)
     if matched:

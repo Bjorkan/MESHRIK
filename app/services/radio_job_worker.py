@@ -3,7 +3,7 @@
 Producer migration is deliberately NOT part of #38/#39. Existing radio_operation
 callers retain the same lower-level lock and do not pass through this worker.
 A command callback executes only during the short transport stage; separate
-response/ACK waiters (future #40) call scheduler.transition afterwards.
+response/ACK waiters (response tracker #40) call scheduler.transition afterwards.
 
 A command timeout is *not* proof that firmware did not transmit. Cancellation
 of the Python task is cooperative. If it refuses cancellation, the worker is
@@ -179,6 +179,10 @@ class RadioJobWorker:
         Awaiting: stop observing replies, NOT an RF packet retraction.
         """
         snapshot = self.scheduler.request_cancellation(job_id)
+        if snapshot.state in TERMINAL_STATES and self.scheduler is radio_job_scheduler:
+            from app.services.radio_response_tracker import radio_response_tracker
+
+            radio_response_tracker.release(job_id)
         if snapshot.state in TERMINAL_STATES:
             self._commands.pop(job_id, None)
         return snapshot
@@ -307,7 +311,17 @@ class RadioJobWorker:
                 self.scheduler.sweep()
                 self._discard_completed_commands()
                 if self._connected():
-                    snapshot = self.scheduler.take_next()
+                    # A scoped CLI response/polling session must not be disrupted by
+                    # another scheduled command. Import lazily (tracker owns
+                    # reservations; the worker owns the command permit).
+                    from app.services.radio_response_tracker import radio_response_tracker
+
+                    eligible = (
+                        radio_response_tracker.can_dispatch
+                        if self.scheduler is radio_job_scheduler
+                        else None
+                    )
+                    snapshot = self.scheduler.take_next(eligible=eligible)
                     if snapshot is not None:
                         command = self._commands.get(snapshot.id)
                         if command is None:
