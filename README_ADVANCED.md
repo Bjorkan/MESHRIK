@@ -123,3 +123,44 @@ You can also navigate to `/api/debug` (or go to Settings -> About -> "Open debug
 For day-to-day development, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Windows note: I've seen an intermittent startup issue like `"Received empty packet: index out of range"` with failed contact sync. I can't figure out why this happens. The issue typically resolves on restart. If you can figure out why this happens, I will buy you a virtual or iRL six pack if you're in the PNW. As a former always-windows-girlie before embracing WSL2, I despise second-classing M$FT users, but I'm just stuck with this one.
+
+## Radio job scheduler foundation (issues #38 and #39)
+
+The backend contains a typed, bounded **in-memory** radio job scheduler and a
+single async command executor. This is infrastructure for a later staged
+migration: the existing message, settings and synchronization endpoints have
+**not** switched to it yet. There is no new scheduling REST API in these two
+issues. Radio behavior and existing SQLite message persistence remain unchanged.
+
+The scheduler's default pending queue limit is **64 jobs**. New submissions when
+full are rejected with a service-unavailable/retry-after contract; the later
+API layer will map that contract to HTTP 503. Within a priority work is FIFO;
+older waiting jobs gain a fairness boost every 30 seconds. Queue wait,
+transport-command execution and awaited RF responses have *separate* deadlines.
+Waiting for an ACK or reply does not reserve the command execution slot.
+Background producers may coalesce the same pending periodic task. Idempotency is
+scoped to a validated operation and SHA-256 request fingerprint; matching text
+alone never deduplicates transmissions.
+
+**Cancellation and uncertain delivery:** Cancelling a queued job guarantees its
+command will not be dispatched. Cancelling an already executing command merely
+requests cooperative cancellation; it cannot retract a transmitted packet.
+Stopping an ACK/reply wait stops tracking only. A local transport command
+finishing is **not** evidence of RF delivery. A timed-out radio command may
+have transmitted, and therefore becomes `unknown`; it is never automatically
+resent after an ambiguous outcome. If command cancellation cannot establish a
+safe transport state, the worker is quarantined, rejects further work and
+requires a **process restart**. Inspect the persisted outgoing message record
+before manually retrying to avoid duplicate RF sends.
+
+**Process ownership and recovery:** Run a single uvicorn worker (`--workers 1`).
+A process-local OS file lease beside the configured database ensures that a
+second process sharing the database fails at startup rather than attaching an
+additional radio owner. The lease is automatically released on orderly
+shutdown; if a transport remains stuck, restart/terminate the process to release
+it. Reconnects increment a radio generation and invalidate stale queued or
+pending work. Queued jobs are intentionally **not persisted** and are not
+replayed on restart. The existing SQLite message rows remain authoritative.
+Rollback for these foundational changes is to stop the process and restore the
+previous backend version; no database migrations or wire protocol changes are
+involved. The scheduler is not yet the source of truth for any existing send.

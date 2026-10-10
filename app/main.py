@@ -79,6 +79,7 @@ from app.routers import (
     ws,
 )
 from app.security import add_optional_basic_auth_middleware
+from app.services.radio_job_worker import RadioProcessLease, radio_job_worker
 from app.services.radio_runtime import radio_runtime as radio_manager
 from app.services.radio_stats import start_radio_stats_sampling, stop_radio_stats_sampling
 from app.version_info import get_app_build_info
@@ -101,61 +102,81 @@ async def _startup_radio_connect_and_setup() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Manage database and radio connection lifecycle."""
-    await db.connect()
-    logger.info("Database connected")
-
-    # Initialize VAPID keys for Web Push (generates on first run)
-    from app.push.vapid import ensure_vapid_keys
-
+    """Manage one process-owned transport, worker and database lifecycle."""
+    # This lock protects *all* legacy radio flows, not just new scheduler jobs.
+    # If uvicorn --workers > 1, only one process can enter the lifespan.
+    radio_owner = RadioProcessLease()
+    radio_owner.acquire()
+    database_open = False
+    startup_radio_task = None
     try:
-        await ensure_vapid_keys()
-    except Exception:
-        logger.warning("Failed to initialize VAPID keys for Web Push", exc_info=True)
+        await db.connect()
+        database_open = True
+        logger.info("Database connected")
+        radio_job_worker.start()
 
-    # Ensure default channels exist in the database even before the radio
-    # connects. Without this, a fresh or disconnected instance would return
-    # zero channels from GET /channels until the first successful radio sync.
-    from app.radio_sync import ensure_default_channels
+        # Initialize VAPID keys for Web Push (generates on first run).
+        from app.push.vapid import ensure_vapid_keys
 
-    await ensure_default_channels()
-    await start_radio_stats_sampling()
-
-    # Always start connection monitor (even if initial connection failed)
-    await radio_manager.start_connection_monitor()
-
-    # Start fanout modules (MQTT, etc.) from database configs
-    from app.fanout.manager import fanout_manager
-
-    try:
-        await fanout_manager.load_from_db()
-    except Exception:
-        logger.exception("Failed to start fanout modules")
-
-    startup_radio_task = asyncio.create_task(_startup_radio_connect_and_setup())
-    app.state.startup_radio_task = startup_radio_task
-
-    yield
-
-    logger.info("Shutting down")
-    if startup_radio_task and not startup_radio_task.done():
-        startup_radio_task.cancel()
         try:
-            await startup_radio_task
-        except asyncio.CancelledError:
-            pass
-    await fanout_manager.stop_all()
-    await radio_manager.stop_connection_monitor()
-    await stop_background_contact_reconciliation()
-    await stop_message_polling()
-    await stop_radio_stats_sampling()
-    await stop_periodic_advert()
-    await stop_periodic_sync()
-    await stop_telemetry_collect()
-    if radio_manager.meshcore:
-        await radio_manager.meshcore.stop_auto_message_fetching()
-    await radio_manager.disconnect()
-    await db.disconnect()
+            await ensure_vapid_keys()
+        except Exception:
+            logger.warning("Failed to initialize VAPID keys for Web Push", exc_info=True)
+
+        # Seed default channels before radio initial setup has finished.
+        from app.radio_sync import ensure_default_channels
+
+        await ensure_default_channels()
+        await start_radio_stats_sampling()
+        await radio_manager.start_connection_monitor()
+
+        from app.fanout.manager import fanout_manager
+
+        try:
+            await fanout_manager.load_from_db()
+        except Exception:
+            logger.exception("Failed to start fanout modules")
+
+        startup_radio_task = asyncio.create_task(_startup_radio_connect_and_setup())
+        app.state.startup_radio_task = startup_radio_task
+        yield
+    finally:
+        logger.info("Shutting down")
+        try:
+            if startup_radio_task and not startup_radio_task.done():
+                startup_radio_task.cancel()
+                try:
+                    await startup_radio_task
+                except asyncio.CancelledError:
+                    pass
+            await radio_job_worker.stop()
+            # Keep existing background teardown ordering. Never attempt to
+            # acquire the radio lock if an uncooperative transport still owns it.
+            from app.fanout.manager import fanout_manager
+
+            await fanout_manager.stop_all()
+            await radio_manager.stop_connection_monitor()
+            await stop_background_contact_reconciliation()
+            await stop_message_polling()
+            await stop_radio_stats_sampling()
+            await stop_periodic_advert()
+            await stop_periodic_sync()
+            await stop_telemetry_collect()
+            if not radio_job_worker.quarantined:
+                if radio_manager.meshcore:
+                    await radio_manager.meshcore.stop_auto_message_fetching()
+                await radio_manager.disconnect()
+            else:
+                logger.critical("Radio worker quarantined: process restart required")
+        finally:
+            try:
+                if database_open:
+                    await db.disconnect()
+            finally:
+                # If a non-cooperative MeshCore task survived shutdown, retain
+                # OS ownership until the OS terminates this process.
+                if not radio_job_worker.quarantined:
+                    radio_owner.release()
 
 
 app = FastAPI(

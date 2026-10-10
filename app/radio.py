@@ -158,6 +158,8 @@ class RadioManager:
         self._meshcore: MeshCore | None = None
         self._connection_info: str | None = None
         self._connection_desired: bool = True
+        # Fence scheduler completions across a transport replacement/teardown.
+        self.radio_generation: int = 0
         self._reconnect_task: asyncio.Task | None = None
         self._last_connected: bool = False
         self._reconnect_lock: asyncio.Lock | None = None
@@ -485,6 +487,7 @@ class RadioManager:
 
     async def connect(self) -> None:
         """Connect to the radio using the configured transport."""
+        self.radio_generation += 1
         if self._meshcore is not None:
             await self.disconnect()
 
@@ -559,6 +562,7 @@ class RadioManager:
 
     async def disconnect(self) -> None:
         """Disconnect from the radio."""
+        self.radio_generation += 1
         from app.radio_sync import stop_background_contact_reconciliation
 
         clear_keys()

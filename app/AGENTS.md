@@ -487,6 +487,42 @@ tests/
 └── test_websocket_route.py     # WS endpoint lifecycle
 ```
 
+## Radio Job Scheduler Foundation (Issues #38 and #39)
+
+`services/radio_jobs.py` defines the payload-free, immutable Pydantic job/event contract
+with typed kinds, priorities, states, result codes, UTC timestamps, monotonic
+version/sequence, opaque correlation scope, and independent queue/command/response
+deadlines. It never serializes credentials, raw commands, message bodies or radio
+addresses. `services/radio_job_scheduler.py` provides an in-memory (not SQLite)
+bounded queue, FIFO within priority, deterministic 30-second aging (10 priority
+points per interval), explicit capacity rejection (503/retry-after semantics),
+optional SHA-256 request-fingerprint-gated idempotency, background coalescing,
+validated state transitions and bounded event history. There is one executing
+permit. `awaiting_ack`/`awaiting_response` jobs do not occupy it.
+
+`services/radio_job_worker.py` is started/stopped from the FastAPI lifespan.
+Command callbacks run under `radio_runtime.radio_operation()`, therefore sharing
+the **existing** `RadioManager` lock with every legacy producer. The worker
+must not create a separate MeshCore or perform long RF confirmation waits under
+the lock. A typed command outcome distinguishes a completed *local* command from
+ACK/response waiting. Neither local completion nor a command timeout implies
+successful RF delivery. Queued cancellation guarantees no dispatch; executing
+cancellation only records a request; stopping a waiter never retracts RF.
+
+`RadioManager.radio_generation` increments before transport connect/disconnect,
+and the worker fences stale jobs and replies when the generation changes or the
+radio drops. Timed-out in-flight commands quarantine the worker instead of
+risking overlapping sends (operator restart required); no automatic replay of
+uncertain transmissions. One OS file lease beside the DB prevents another
+uvicorn process using the same DB/radio. Use one uvicorn worker only.
+
+This is a **foundation, not a producer migration**: existing radio, message,
+settings and sync endpoints still use their original `radio_operation()` paths.
+Do not route them through the scheduler until the follow-up issues implement
+response correlation, REST/WS contracts and safe staged migration. Queue contents
+are volatile on process restart; durable outgoing-message truth stays in SQLite.
+Tests: `tests/test_radio_job_scheduler.py` (hardware-free fake clock/transport).
+
 ## Errata & Known Non-Issues
 
 ### Sender timestamps are 1-second resolution (protocol constraint)
