@@ -32,6 +32,7 @@ import { shouldAutoFocusInput } from './utils/autoFocusInput';
 import { createAppQueryClient } from './queryClient';
 import { queryKeys } from './queryClient';
 import { primePrefetchCache } from './prefetch';
+import { useRadioJobFeed } from './hooks/useRadioJobFeed';
 
 interface ChannelUnreadMarker {
   channelId: string;
@@ -101,6 +102,9 @@ function AppContent() {
   const [bulkAddResult, setBulkAddResult] = useState<BulkCreateHashtagChannelsResult | null>(null);
   const [repeaterAutoLoginKey, setRepeaterAutoLoginKey] = useState<string | null>(null);
   const [visibilityVersion, setVisibilityVersion] = useState(0);
+  const [radioSocketConnection, setRadioSocketConnection] = useState<
+    'connecting' | 'live' | 'offline'
+  >('connecting');
   const {
     notificationsSupported,
     notificationsPermission,
@@ -275,6 +279,9 @@ function AppContent() {
     pendingDeleteFallbackRef,
     hasSetDefaultConversation,
   });
+
+  // One Query snapshot cache and the existing single WebSocket connection.
+  const radioJobFeed = useRadioJobFeed(activeConversation?.type === 'radio-activity');
 
   // Wire up the ref bridge so useContactsAndChannels handlers reach the real setter
   setActiveConversationRef.current = setActiveConversation;
@@ -577,6 +584,8 @@ function AppContent() {
     channels,
     config,
     health,
+    radioJobFeed,
+    radioSocketConnection,
     messages: sortedMessages,
     preSorted: activeContactIsRoom,
     messagesLoading,
@@ -752,7 +761,16 @@ function AppContent() {
   };
 
   // Connect to WebSocket
-  useWebSocket(wsHandlers);
+  useWebSocket({
+    ...wsHandlers,
+    onRadioJob: radioJobFeed.onRadioJob,
+    onRadioActivity: radioJobFeed.onRadioActivity,
+    onConnectionChange: setRadioSocketConnection,
+    onReconnect: () => {
+      wsHandlers.onReconnect?.();
+      radioJobFeed.onReconnect();
+    },
+  });
 
   return (
     <DistanceUnitProvider distanceUnit={distanceUnit} setDistanceUnit={setDistanceUnit}>

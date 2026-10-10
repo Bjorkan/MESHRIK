@@ -351,6 +351,18 @@ describe('Sidebar section summaries', () => {
     expect(bell.compareDocumentPosition(unread) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
+  it('opens Radio Activity from the Tools sidebar with a keyboard-accessible row', () => {
+    const { onSelectConversation } = renderSidebar();
+    const row = screen.getByText('Radio Activity').closest('[role="button"]');
+    expect(row).not.toBeNull();
+    fireEvent.keyDown(row!, { key: 'Enter' });
+    expect(onSelectConversation).toHaveBeenCalledWith({
+      type: 'radio-activity',
+      id: 'radio-activity',
+      name: 'Radio Activity',
+    });
+  });
+
   it('shows the trace tool row and selects it', () => {
     const { onSelectConversation } = renderSidebar();
 

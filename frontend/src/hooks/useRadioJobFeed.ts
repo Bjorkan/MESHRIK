@@ -40,15 +40,17 @@ export function mergeRadioActivity(
   };
 }
 
-export function useRadioJobFeed() {
+export function useRadioJobFeed(enabled = true) {
   const queryClient = useQueryClient();
   const jobs = useQuery({
     queryKey: queryKeys.radioJobs(),
     queryFn: () => api.getRadioJobs({ limit: 100 }),
+    enabled,
   });
   const activity = useQuery({
     queryKey: queryKeys.radioActivity(),
     queryFn: () => api.getRadioActivity({ limit: 100 }),
+    enabled,
   });
 
   const onRadioJob = useCallback(
@@ -85,6 +87,7 @@ export function useRadioJobFeed() {
     // events. Never pretend local WS deltas alone are authoritative.
     void queryClient.invalidateQueries({ queryKey: queryKeys.radioJobs() });
     void queryClient.invalidateQueries({ queryKey: queryKeys.radioActivity() });
+    void queryClient.invalidateQueries({ queryKey: [...queryKeys.radioJobs(), 'history'] });
   }, [queryClient]);
 
   return { jobs, activity, onRadioJob, onRadioActivity, onReconnect };

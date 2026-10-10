@@ -9,6 +9,7 @@ import {
   ChevronRight,
   LockOpen,
   Logs,
+  RadioTower,
   Map,
   Search as SearchIcon,
   SquarePen,
@@ -227,7 +228,15 @@ export function Sidebar({
   };
 
   const isActive = (
-    type: 'contact' | 'channel' | 'raw' | 'map' | 'visualizer' | 'search' | 'trace',
+    type:
+      | 'contact'
+      | 'channel'
+      | 'raw'
+      | 'map'
+      | 'visualizer'
+      | 'search'
+      | 'trace'
+      | 'radio-activity',
     id: string
   ) => activeConversation?.type === type && activeConversation?.id === id;
 
@@ -782,6 +791,18 @@ export function Sidebar({
               type: 'visualizer',
               id: 'visualizer',
               name: 'Mesh Visualizer',
+            }),
+        }),
+        renderSidebarActionRow({
+          key: 'tool-radio-activity',
+          active: isActive('radio-activity', 'radio-activity'),
+          icon: <RadioTower className="h-4 w-4" />,
+          label: 'Radio Activity',
+          onClick: () =>
+            handleSelectConversation({
+              type: 'radio-activity',
+              id: 'radio-activity',
+              name: 'Radio Activity',
             }),
         }),
         renderSidebarActionRow({

@@ -11,6 +11,7 @@ import {
   parseHashSettingsSection,
   getSettingsHash,
   getMapFocusHash,
+  getConversationHash,
   resolveChannelFromHashToken,
   resolveContactFromHashToken,
 } from '../utils/urlHash';
@@ -34,6 +35,14 @@ describe('parseHashConversation', () => {
     const result = parseHashConversation();
 
     expect(result).toBeNull();
+  });
+
+  it('supports the Radio Activity deep link and round trip', () => {
+    window.location.hash = '#radio-activity';
+    expect(parseHashConversation()).toEqual({ type: 'radio-activity', name: 'radio-activity' });
+    expect(
+      getConversationHash({ type: 'radio-activity', id: 'radio-activity', name: 'Radio Activity' })
+    ).toBe('#radio-activity');
   });
 
   it('parses #raw as raw type', () => {

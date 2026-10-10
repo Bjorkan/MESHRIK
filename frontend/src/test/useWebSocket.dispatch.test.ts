@@ -61,6 +61,23 @@ describe('useWebSocket dispatch', () => {
     vi.useRealTimers();
   });
 
+  it('reports offline/live state and refetch trigger on reconnect using one socket at a time', () => {
+    const onConnectionChange = vi.fn();
+    const onReconnect = vi.fn();
+    renderHook(() => useWebSocket({ onConnectionChange, onReconnect }));
+    const first = MockWebSocket.instances[0];
+    act(() => first.onopen?.());
+    expect(onConnectionChange).toHaveBeenLastCalledWith('live');
+    expect(onReconnect).not.toHaveBeenCalled();
+    act(() => first.close());
+    expect(onConnectionChange).toHaveBeenLastCalledWith('offline');
+    act(() => vi.advanceTimersByTime(3000));
+    expect(MockWebSocket.instances).toHaveLength(2);
+    act(() => MockWebSocket.instances[1].onopen?.());
+    expect(onConnectionChange).toHaveBeenLastCalledWith('live');
+    expect(onReconnect).toHaveBeenCalledOnce();
+  });
+
   it('routes health message to onHealth', () => {
     const onHealth = vi.fn();
     renderHook(() => useWebSocket({ onHealth }));

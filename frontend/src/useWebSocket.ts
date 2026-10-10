@@ -32,6 +32,7 @@ export interface UseWebSocketOptions {
   onError?: (error: ErrorEvent) => void;
   onSuccess?: (success: SuccessEvent) => void;
   onReconnect?: () => void;
+  onConnectionChange?: (state: 'live' | 'offline') => void;
 }
 
 export function useWebSocket(options: UseWebSocketOptions) {
@@ -63,6 +64,7 @@ export function useWebSocket(options: UseWebSocketOptions) {
     const ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
+      optionsRef.current.onConnectionChange?.('live');
       // Connection established (or re-established after disconnect)
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
@@ -75,6 +77,7 @@ export function useWebSocket(options: UseWebSocketOptions) {
     };
 
     ws.onclose = () => {
+      optionsRef.current.onConnectionChange?.('offline');
       // Connection lost — will auto-reconnect after delay
       wsRef.current = null;
 

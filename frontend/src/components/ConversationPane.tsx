@@ -5,6 +5,7 @@ import { MessageInput, type MessageInputHandle } from './MessageInput';
 import { MessageList } from './MessageList';
 import { RoomServerPanel } from './RoomServerPanel';
 import { TracePane } from './TracePane';
+import type { RadioJobFeed } from '../hooks/useRadioActivity';
 import type {
   Channel,
   Contact,
@@ -30,6 +31,9 @@ const MapView = lazy(() => import('./MapView').then((m) => ({ default: m.MapView
 const VisualizerView = lazy(() =>
   import('./VisualizerView').then((m) => ({ default: m.VisualizerView }))
 );
+const RadioActivityPage = lazy(() =>
+  import('./RadioActivityPage').then((m) => ({ default: m.RadioActivityPage }))
+);
 const RawPacketFeedView = lazy(() =>
   import('./RawPacketFeedView').then((m) => ({ default: m.RawPacketFeedView }))
 );
@@ -40,6 +44,8 @@ interface ConversationPaneProps {
   channels: Channel[];
   config: RadioConfig | null;
   health: HealthStatus | null;
+  radioJobFeed: RadioJobFeed;
+  radioSocketConnection: 'connecting' | 'live' | 'offline';
   notificationsSupported: boolean;
   notificationsEnabled: boolean;
   notificationsPermission: NotificationPermission | 'unsupported';
@@ -126,6 +132,8 @@ export function ConversationPane({
   channels,
   config,
   health,
+  radioJobFeed,
+  radioSocketConnection,
   notificationsSupported,
   notificationsEnabled,
   notificationsPermission,
@@ -254,6 +262,14 @@ export function ConversationPane({
 
   if (activeConversation.type === 'search') {
     return null;
+  }
+
+  if (activeConversation.type === 'radio-activity') {
+    return (
+      <Suspense fallback={<LoadingPane label="Loading Radio Activity..." />}>
+        <RadioActivityPage feed={radioJobFeed} connection={radioSocketConnection} health={health} />
+      </Suspense>
+    );
   }
 
   if (activeConversation.type === 'trace') {

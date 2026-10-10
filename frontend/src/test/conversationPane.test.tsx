@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ConversationPane } from '../components/ConversationPane';
 import type { Channel, Contact, Conversation, HealthStatus, Message, RadioConfig } from '../types';
 import type { RawPacketStatsSessionState } from '../utils/rawPacketStats';
+import type { RadioJobFeed } from '../hooks/useRadioActivity';
 
 const mocks = vi.hoisted(() => ({
   messageList: vi.fn(() => <div data-testid="message-list" />),
@@ -133,6 +134,8 @@ function createProps(overrides: Partial<React.ComponentProps<typeof Conversation
     rawPacketStatsSession,
     config,
     health,
+    radioJobFeed: {} as RadioJobFeed,
+    radioSocketConnection: 'live' as const,
     notificationsSupported: true,
     notificationsEnabled: false,
     notificationsPermission: 'granted' as const,

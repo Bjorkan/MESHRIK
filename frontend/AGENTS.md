@@ -572,3 +572,7 @@ This is intentional. In the sidebar, unread direct messages for actual contact c
 2. If URL/hash behavior changes, update `utils/urlHash.ts` tests.
 3. If read/unread semantics change, update `useUnreadCounts` tests.
 4. Keep this file concise; prefer source links over speculative detail.
+
+## Radio Activity dashboard (#45)
+
+`#radio-activity` opens `RadioActivityPage` through the existing sidebar/conversation navigation. `useRadioJobFeed` in `App.tsx` merges typed `radio_job` and `radio_activity` deltas into Query snapshots; the *existing* `useWebSocket` connection owns reconnects and refetches those snapshots. `useRadioActivity` owns cursor-paginated history and non-retried cancellation. The command-slot label is **not** physical TX/RX; firmware RF activity is marked unavailable. Queued cancellation prevents dispatch, whereas post-send **Stop waiting** only stops RF response tracking. Until #42–#44 migrate producers, legacy direct radio commands are not visible as scheduler jobs.

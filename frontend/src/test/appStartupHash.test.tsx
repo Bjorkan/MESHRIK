@@ -5,6 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   api: {
     getRadioConfig: vi.fn(),
+    getRadioJobs: vi.fn(),
+    getRadioActivity: vi.fn(),
     getSettings: vi.fn(),
     getUndecryptedPacketCount: vi.fn(),
     getChannels: vi.fn(),
@@ -196,6 +198,26 @@ describe('App startup hash resolution', () => {
     mocks.api.getUndecryptedPacketCount.mockResolvedValue({ count: 0 });
     mocks.api.getChannels.mockResolvedValue([publicChannel]);
     mocks.api.getContacts.mockResolvedValue([]);
+    const radio = {
+      radio_status: 'disconnected',
+      command_status: 'idle',
+      radio_generation: 0,
+      sequence: 0,
+      physical_rf_state: 'unavailable',
+    };
+    mocks.api.getRadioJobs.mockResolvedValue({
+      items: [],
+      has_more: false,
+      snapshot_sequence: 0,
+      radio,
+    });
+    mocks.api.getRadioActivity.mockResolvedValue({
+      items: [],
+      has_more: false,
+      gap: false,
+      snapshot_sequence: 0,
+      radio,
+    });
   });
 
   afterEach(() => {
@@ -211,6 +233,17 @@ describe('App startup hash resolution', () => {
     await waitFor(() => {
       for (const node of screen.getAllByTestId('active-conversation')) {
         expect(node).toHaveTextContent(`channel:${publicChannel.key}:Public`);
+      }
+    });
+  });
+
+  it('resolves Radio Activity from a direct hash even when channels have not loaded', async () => {
+    setHash('#radio-activity');
+    mocks.api.getChannels.mockResolvedValue([]);
+    render(<App />);
+    await waitFor(() => {
+      for (const node of screen.getAllByTestId('active-conversation')) {
+        expect(node).toHaveTextContent('radio-activity:radio-activity:Radio Activity');
       }
     });
   });

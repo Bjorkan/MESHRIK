@@ -40,6 +40,8 @@ function resolveConversationFromHash(
       return { type: 'visualizer', id: 'visualizer', name: 'Mesh Visualizer' };
     case 'search':
       return { type: 'search', id: 'search', name: 'Message Search' };
+    case 'radio-activity':
+      return { type: 'radio-activity', id: 'radio-activity', name: 'Radio Activity' };
     case 'trace':
       return { type: 'trace', id: 'trace', name: 'Trace' };
     case 'channel': {
@@ -143,6 +145,15 @@ export function useConversationRouter({
       hasSetDefaultConversation.current = true;
       return;
     }
+    if (hashConv?.type === 'radio-activity') {
+      setActiveConversationState({
+        type: 'radio-activity',
+        id: 'radio-activity',
+        name: 'Radio Activity',
+      });
+      hasSetDefaultConversation.current = true;
+      return;
+    }
     if (hashConv?.type === 'trace') {
       setActiveConversationState({ type: 'trace', id: 'trace', name: 'Trace' });
       hasSetDefaultConversation.current = true;
@@ -157,7 +168,8 @@ export function useConversationRouter({
         (lastViewed.type === 'raw' ||
           lastViewed.type === 'map' ||
           lastViewed.type === 'visualizer' ||
-          lastViewed.type === 'trace')
+          lastViewed.type === 'trace' ||
+          lastViewed.type === 'radio-activity')
       ) {
         setActiveConversationState(lastViewed);
         hasSetDefaultConversation.current = true;

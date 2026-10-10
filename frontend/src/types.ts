@@ -310,7 +310,15 @@ export type ResendChannelMessageResponse = Omit<
   message?: Message | null;
 };
 
-type ConversationType = 'contact' | 'channel' | 'raw' | 'map' | 'visualizer' | 'search' | 'trace';
+type ConversationType =
+  | 'contact'
+  | 'channel'
+  | 'raw'
+  | 'map'
+  | 'visualizer'
+  | 'search'
+  | 'trace'
+  | 'radio-activity';
 
 export interface Conversation {
   type: ConversationType;

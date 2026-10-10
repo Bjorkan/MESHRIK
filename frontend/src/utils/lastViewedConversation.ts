@@ -11,6 +11,7 @@ const SUPPORTED_TYPES: Conversation['type'][] = [
   'map',
   'visualizer',
   'trace',
+  'radio-activity',
 ];
 
 function isSupportedType(value: unknown): value is Conversation['type'] {
@@ -94,6 +95,14 @@ export function captureLastViewedConversationFromHash(): void {
       id: 'map',
       name: 'Node Map',
       ...(hashConversation.mapFocusKey && { mapFocusKey: hashConversation.mapFocusKey }),
+    });
+    return;
+  }
+  if (hashConversation.type === 'radio-activity') {
+    saveLastViewedConversation({
+      type: 'radio-activity',
+      id: 'radio-activity',
+      name: 'Radio Activity',
     });
     return;
   }
