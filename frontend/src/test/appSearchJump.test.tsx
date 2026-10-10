@@ -285,7 +285,9 @@ describe('App search jump target handling', () => {
     // both the desktop rail and the mobile drawer, so pick the first button.
     fireEvent.click(screen.getAllByText('Open Public')[0]);
 
-    fireEvent.click(screen.getByText('Open Contact Info'));
+    // The active conversation is applied asynchronously via TanStack Query, so
+    // ChatHeader may not have rendered yet — wait for the button to appear.
+    fireEvent.click(await screen.findByText('Open Contact Info'));
 
     await waitFor(() => {
       expect(screen.getByText('Search Contact By Key')).toBeInTheDocument();
