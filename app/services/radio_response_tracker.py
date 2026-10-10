@@ -52,6 +52,7 @@ class PendingResponse:
     message_id: int | None
     future: asyncio.Future[RadioJobResult | None]
     subscriptions: list[Any] = field(default_factory=list)
+    extra_ack_codes: set[str] = field(default_factory=set)
     closed: bool = False
 
     async def wait(self, timeout: float | None = None) -> RadioJobResult | None:
@@ -218,6 +219,23 @@ class RadioResponseTracker:
             p.kind == ResponseKind.CLI and p.job_id != job.id for p in self._pending.values()
         )
 
+    def associate_message_ack(self, ack_code: str, message_id: int) -> None:
+        """Associate a retry's new expected ACK with the existing DM waiter.
+
+        Only the durable ACK pipeline may call notify_ack; this just extends
+        correlation after firmware returns another code for the SAME row.
+        """
+        if not self._sync_generation():
+            return
+        if any(
+            p.message_id != message_id and (p.ack_code == ack_code or ack_code in p.extra_ack_codes)
+            for p in self._pending.values()
+        ):
+            return  # never cross-link two messages
+        for pending in self._pending.values():
+            if pending.kind == ResponseKind.DM_ACK and pending.message_id == message_id:
+                pending.extra_ack_codes.add(ack_code)
+
     def notify_ack(self, ack_code: str, message_id: int) -> None:
         """Called *after* durable dm_ack_tracker successfully applied the ACK."""
         if not self._sync_generation():
@@ -225,7 +243,7 @@ class RadioResponseTracker:
         for pending in list(self._pending.values()):
             if (
                 pending.kind == ResponseKind.DM_ACK
-                and pending.ack_code == ack_code
+                and (pending.ack_code == ack_code or ack_code in pending.extra_ack_codes)
                 and pending.message_id == message_id
             ):
                 self._settle(pending, RadioJobResult.ACK_RECEIVED)

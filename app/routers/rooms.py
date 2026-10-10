@@ -14,6 +14,7 @@ from app.routers.contacts import _ensure_on_radio, _resolve_contact_or_404
 from app.routers.server_control import (
     prepare_authenticated_contact_connection,
     require_server_capable_contact,
+    scheduled_authenticated_contact_login,
 )
 from app.services.radio_runtime import radio_runtime as radio_manager
 
@@ -30,6 +31,13 @@ async def room_login(public_key: str, request: RepeaterLoginRequest) -> Repeater
     radio_manager.require_connected()
     contact = await _resolve_contact_or_404(public_key)
     _require_room(contact)
+
+    from app.services.radio_job_worker import radio_job_worker
+
+    if radio_job_worker.running:
+        return await scheduled_authenticated_contact_login(
+            contact, request.password, label="room server"
+        )
 
     async with radio_manager.radio_operation(
         "room_login",

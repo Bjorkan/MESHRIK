@@ -33,6 +33,7 @@ from app.routers.server_control import (
     fetch_repeater_owner_info_binary,
     prepare_authenticated_contact_connection,
     require_server_capable_contact,
+    scheduled_authenticated_contact_login,
     send_contact_cli_command,
 )
 from app.services.radio_runtime import radio_runtime as radio_manager
@@ -81,6 +82,16 @@ async def repeater_login(public_key: str, request: RepeaterLoginRequest) -> Repe
     radio_manager.require_connected()
     contact = await _resolve_contact_or_404(public_key)
     _require_repeater(contact)
+
+    from app.services.radio_job_worker import radio_job_worker
+
+    if radio_job_worker.running:
+        return await scheduled_authenticated_contact_login(
+            contact,
+            request.password,
+            label="repeater",
+            response_timeout=REPEATER_LOGIN_RESPONSE_TIMEOUT_SECONDS,
+        )
 
     async with radio_manager.radio_operation(
         "repeater_login",

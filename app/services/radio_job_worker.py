@@ -123,7 +123,7 @@ class RadioJobWorker:
         self.runtime = runtime
         self.cancellation_grace_seconds = cancellation_grace_seconds
         self.poll_interval_seconds = poll_interval_seconds
-        self._commands: dict[UUID, Command] = {}
+        self._commands: dict[UUID, tuple[Command, dict[str, bool]]] = {}
         self._runner: asyncio.Task | None = None
         self._active: asyncio.Task | None = None
         self._active_id: UUID | None = None
@@ -163,6 +163,7 @@ class RadioJobWorker:
         command: Command,
         *,
         priority: RadioJobPriority = RadioJobPriority.NORMAL,
+        radio_options: dict[str, bool] | None = None,
         **options: Any,
     ) -> RadioJobSnapshot:
         """Commands are transient Python callbacks, never public job fields."""
@@ -170,7 +171,9 @@ class RadioJobWorker:
             raise RadioQueueUnavailableError("Radio not available for queued commands")
         self._sync_generation()
         snapshot = self.scheduler.submit(kind, priority=priority, **options)
-        self._commands.setdefault(snapshot.id, command)  # replay/coalesce keeps original command
+        self._commands.setdefault(
+            snapshot.id, (command, radio_options or {})
+        )  # keep original closure
         return snapshot
 
     def cancel(self, job_id: UUID) -> RadioJobSnapshot:
@@ -208,17 +211,26 @@ class RadioJobWorker:
                 # Never log exception contents; transport errors may contain credentials.
                 logger.error("Late radio command completed with an error")
 
-    async def _execute(self, snapshot: RadioJobSnapshot, command: Command) -> RadioCommandOutcome:
+    async def _execute(
+        self, snapshot: RadioJobSnapshot, command: Command, radio_options: dict[str, bool]
+    ) -> RadioCommandOutcome:
         # This is the same lock used by all legacy producers, post-connect setup
         # and disconnect. Never retain the lock while awaiting RF confirmations.
-        async with self.runtime.radio_operation(f"job_{snapshot.kind.value}") as mc:
+        operation = getattr(self.runtime, "raw_radio_operation", None)
+        if operation is None:
+            operation = self.runtime.radio_operation
+        async with operation(f"job_{snapshot.kind.value}", **radio_options) as mc:
             if self._runtime_generation() != snapshot.radio_generation or not self._connected():
                 raise _StaleTransport()
             self._command_started = True
             return await command(mc)
 
-    async def _dispatch(self, snapshot: RadioJobSnapshot, command: Command) -> None:
-        task = asyncio.create_task(self._execute(snapshot, command), name="radio-job-command")
+    async def _dispatch(
+        self, snapshot: RadioJobSnapshot, command: Command, radio_options: dict[str, bool]
+    ) -> None:
+        task = asyncio.create_task(
+            self._execute(snapshot, command, radio_options), name="radio-job-command"
+        )
         self._active, self._active_id = task, snapshot.id
         self._command_started = False
         try:
@@ -323,13 +335,13 @@ class RadioJobWorker:
                     )
                     snapshot = self.scheduler.take_next(eligible=eligible)
                     if snapshot is not None:
-                        command = self._commands.get(snapshot.id)
-                        if command is None:
+                        command_entry = self._commands.get(snapshot.id)
+                        if command_entry is None:
                             self._finish_if_current(
                                 snapshot, RadioJobState.FAILED, RadioJobResult.REJECTED
                             )
                         else:
-                            await self._dispatch(snapshot, command)
+                            await self._dispatch(snapshot, *command_entry)
                         continue
                 else:
                     self.scheduler.fence_disconnect()

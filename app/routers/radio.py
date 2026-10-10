@@ -37,8 +37,9 @@ from app.services.radio_commands import (
     KeystoreRefreshError,
     PathHashModeUnsupportedError,
     RadioCommandRejectedError,
+    RadioConfigRollbackError,
     RepeatModeUnsupportedError,
-    apply_radio_config_update,
+    apply_radio_config_transaction,
     import_private_key_and_refresh_keystore,
 )
 from app.services.radio_runtime import radio_runtime as radio_manager
@@ -414,10 +415,11 @@ async def update_radio_config(update: RadioConfigUpdate) -> RadioConfigResponse:
 
     async with radio_manager.radio_operation("update_radio_config") as mc:
         try:
-            await apply_radio_config_update(
+            await apply_radio_config_transaction(
                 mc,
                 update,
                 path_hash_mode_supported=radio_manager.path_hash_mode_supported,
+                current_path_hash_mode=radio_manager.path_hash_mode,
                 set_path_hash_mode=lambda mode: setattr(radio_manager, "path_hash_mode", mode),
                 sync_radio_time_fn=sync_radio_time,
                 repeat_enabled_supported=radio_manager.repeat_enabled_supported,
@@ -430,6 +432,8 @@ async def update_radio_config(update: RadioConfigUpdate) -> RadioConfigResponse:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         except RadioCommandRejectedError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
+        except RadioConfigRollbackError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     return await get_radio_config()
 

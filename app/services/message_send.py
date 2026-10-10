@@ -606,6 +606,9 @@ async def _retry_direct_message_until_acked(
             continue
 
         next_wait_timeout_ms = _get_direct_message_retry_timeout_ms(result)
+        from app.services.radio_response_tracker import radio_response_tracker
+
+        radio_response_tracker.associate_message_ack(ack_code, message_id)
 
         ack_count = await _apply_direct_message_ack_tracking(
             result=result,
@@ -643,6 +646,7 @@ async def send_direct_message_to_contact(
     sender_timestamp: int | None = None
     message = None
     result = None
+    ack_count = 0
     try:
         async with radio_manager.radio_operation("send_direct_message") as mc:
             logger.debug("Ensuring contact %s is on radio before sending", contact.public_key[:12])
@@ -668,6 +672,42 @@ async def send_direct_message_to_contact(
                 msg=text,
                 timestamp=sender_timestamp,
             )
+
+            if result is not None and result.type != EventType.ERROR:
+                # Persist before binding any ACK. The radio-response tracker is
+                # observational: only the existing durable DM ACK pipeline
+                # can assert delivery. Keep this short section atomic with the
+                # send result so the worker may then release the command slot.
+                message = await create_outgoing_direct_message(
+                    conversation_key=contact.public_key.lower(),
+                    text=text,
+                    sender_timestamp=sender_timestamp,
+                    received_at=sent_at,
+                    broadcast_fn=broadcast_fn,
+                    message_repository=message_repository,
+                )
+                if message is None:
+                    raise HTTPException(
+                        status_code=422,
+                        detail="Failed to store outgoing message - unexpected duplicate",
+                    )
+                ack_code = _extract_expected_ack_code(result)
+                if ack_code:
+                    from app.services.radio_producers import reserve_direct_message_ack
+                    from app.services.radio_response_tracker import ResponseReservationConflict
+
+                    try:
+                        reserve_direct_message_ack(ack_code, message.id)
+                    except ResponseReservationConflict:
+                        # Preserve durable send/ACK behavior if the public job
+                        # tracker is at capacity; never replay a sent packet.
+                        logger.warning("Radio job ACK reservation unavailable")
+                ack_count = await _apply_direct_message_ack_tracking(
+                    result=result,
+                    message_id=message.id,
+                    track_pending_ack_fn=track_pending_ack_fn,
+                    broadcast_fn=broadcast_fn,
+                )
 
         if result is None:
             logger.warning(
@@ -700,19 +740,6 @@ async def send_direct_message_to_contact(
             result.payload,
         )
 
-        message = await create_outgoing_direct_message(
-            conversation_key=contact.public_key.lower(),
-            text=text,
-            sender_timestamp=sender_timestamp,
-            received_at=sent_at,
-            broadcast_fn=broadcast_fn,
-            message_repository=message_repository,
-        )
-        if message is None:
-            raise HTTPException(
-                status_code=422,
-                detail="Failed to store outgoing message - unexpected duplicate",
-            )
     finally:
         if sender_timestamp is not None:
             await release_outgoing_sender_timestamp(
@@ -729,12 +756,6 @@ async def send_direct_message_to_contact(
 
     ack_code = _extract_expected_ack_code(result)
     retry_timeout_ms = _get_direct_message_retry_timeout_ms(result)
-    ack_count = await _apply_direct_message_ack_tracking(
-        result=result,
-        message_id=message.id,
-        track_pending_ack_fn=track_pending_ack_fn,
-        broadcast_fn=broadcast_fn,
-    )
     if ack_count > 0:
         message.acked = ack_count
         return message
