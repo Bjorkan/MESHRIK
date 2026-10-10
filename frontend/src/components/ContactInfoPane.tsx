@@ -12,10 +12,11 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts';
-import MapLibreMap, { Marker, Popup } from 'react-map-gl/maplibre';
+import MapLibreMap, { AttributionControl, Marker, Popup } from 'react-map-gl/maplibre';
 import { api, isAbortError } from '../api';
 import { formatTime } from '../utils/messageParser';
-import { DEFAULT_MAP_STYLE } from '../utils/mapLibre';
+import { EMBEDDED_MAP_ATTRIBUTION } from '../utils/mapLibre';
+import { useMapStyle } from '../hooks/useMapStyle';
 import {
   getContactDisplayName,
   isPrefixOnlyContact,
@@ -1009,6 +1010,7 @@ function ContactTelemetrySection({
   isTracked: boolean;
   onToggleTracked?: (publicKey: string) => Promise<void>;
 }) {
+  const { mapStyle } = useMapStyle();
   const { distanceUnit } = useDistanceUnit();
   const [expanded, setExpanded] = useState(true);
   const [mapExpanded, setMapExpanded] = useState(false);
@@ -1159,13 +1161,15 @@ function ContactTelemetrySection({
                           latitude: gpsValue!.latitude,
                           zoom: 13,
                         }}
-                        mapStyle={DEFAULT_MAP_STYLE.url}
+                        mapStyle={mapStyle.url}
+                        attributionControl={false}
                         style={{
                           width: '100%',
                           height: '100%',
-                          background: DEFAULT_MAP_STYLE.background,
+                          background: mapStyle.background,
                         }}
                       >
+                        <AttributionControl {...EMBEDDED_MAP_ATTRIBUTION} />
                         <Marker
                           longitude={gpsValue!.longitude}
                           latitude={gpsValue!.latitude}

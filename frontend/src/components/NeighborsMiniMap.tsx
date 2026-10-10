@@ -1,7 +1,14 @@
 import { useMemo, useState } from 'react';
-import MapLibreMap, { Layer, Marker, Popup, Source } from 'react-map-gl/maplibre';
+import MapLibreMap, {
+  AttributionControl,
+  Layer,
+  Marker,
+  Popup,
+  Source,
+} from 'react-map-gl/maplibre';
 import type { FeatureCollection, LineString } from 'geojson';
-import { DEFAULT_MAP_STYLE } from '../utils/mapLibre';
+import { EMBEDDED_MAP_ATTRIBUTION } from '../utils/mapLibre';
+import { useMapStyle } from '../hooks/useMapStyle';
 
 interface Neighbor {
   lat: number | null;
@@ -29,6 +36,7 @@ interface MiniMapPoint {
 }
 
 export function NeighborsMiniMap({ neighbors, radioLat, radioLon, radioName }: Props) {
+  const { mapStyle } = useMapStyle();
   const [openPointId, setOpenPointId] = useState<string | null>(null);
   const valid = neighbors.filter(
     (neighbor): neighbor is Neighbor & { lat: number; lon: number } =>
@@ -93,9 +101,11 @@ export function NeighborsMiniMap({ neighbors, radioLat, radioLon, radioName }: P
     >
       <MapLibreMap
         initialViewState={{ longitude: center[0], latitude: center[1], zoom: 10 }}
-        mapStyle={DEFAULT_MAP_STYLE.url}
-        style={{ width: '100%', height: '100%', background: DEFAULT_MAP_STYLE.background }}
+        mapStyle={mapStyle.url}
+        attributionControl={false}
+        style={{ width: '100%', height: '100%', background: mapStyle.background }}
       >
+        <AttributionControl {...EMBEDDED_MAP_ATTRIBUTION} />
         {lines.features.length > 0 && (
           <Source id="neighbor-links" type="geojson" data={lines}>
             <Layer

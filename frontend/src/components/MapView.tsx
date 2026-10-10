@@ -11,7 +11,8 @@ import type { FeatureCollection, LineString } from 'geojson';
 import type { Contact, RadioConfig } from '../types';
 import { formatTime } from '../utils/messageParser';
 import { isValidLocation } from '../utils/pathUtils';
-import { DEFAULT_MAP_STYLE, MAP_STYLES } from '../utils/mapLibre';
+import { MAP_STYLE_AUTO_ID, MAP_STYLES } from '../utils/mapLibre';
+import { useMapStyle } from '../hooks/useMapStyle';
 import { CONTACT_TYPE_REPEATER } from '../types';
 import {
   parsePacket,
@@ -37,19 +38,6 @@ interface MapViewProps {
 
 const MAP_MIN_ZOOM = 2;
 const MAP_MAX_ZOOM = 19;
-
-const MAP_LAYER_STORAGE_KEY = 'meshrik-map-layer';
-const LEGACY_DARK_MAP_STORAGE_KEY = 'meshrik-dark-map';
-
-function getSavedLayerId(): string {
-  try {
-    const stored = localStorage.getItem(MAP_LAYER_STORAGE_KEY);
-    if (stored && MAP_STYLES.some((style) => style.id === stored)) return stored;
-    return DEFAULT_MAP_STYLE.id;
-  } catch {
-    return DEFAULT_MAP_STYLE.id;
-  }
-}
 
 const MAP_RECENCY_COLORS = {
   recent: '#06b6d4',
@@ -450,34 +438,7 @@ export function MapView({
   const [sinceId, setSinceId] = useState<MapSinceId>(getSavedSinceId);
   const [customSince, setCustomSince] = useState('');
   const [nowSec, setNowSec] = useState(() => Date.now() / 1000);
-  const [selectedLayerId, setSelectedLayerId] = useState<string>(getSavedLayerId);
-  const activeLayer = MAP_STYLES.find((style) => style.id === selectedLayerId) ?? DEFAULT_MAP_STYLE;
-
-  // Sync layer selection across tabs and windows.
-  useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key !== MAP_LAYER_STORAGE_KEY) return;
-      const next = e.newValue ?? '';
-      if (MAP_STYLES.some((style) => style.id === next)) {
-        setSelectedLayerId(next);
-      }
-    };
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
-  }, []);
-
-  const handleLayerChange = useCallback((layerId: string) => {
-    const match = MAP_STYLES.find((style) => style.id === layerId);
-    if (!match) return;
-    setSelectedLayerId(match.id);
-    try {
-      localStorage.setItem(MAP_LAYER_STORAGE_KEY, match.id);
-      // Clear the legacy key so a future downgrade-rollback doesn't revert us.
-      localStorage.removeItem(LEGACY_DARK_MAP_STORAGE_KEY);
-    } catch {
-      // localStorage may be disabled; selection stays in memory only.
-    }
-  }, []);
+  const { selectionId: selectedLayerId, mapStyle: activeLayer, setMapStyle } = useMapStyle();
 
   const [showPackets, setShowPackets] = useState(false);
   const [discoveryMode, setDiscoveryMode] = useState(false);
@@ -1099,9 +1060,10 @@ export function MapView({
           <select
             aria-label="Map style"
             value={selectedLayerId}
-            onChange={(event) => handleLayerChange(event.target.value)}
+            onChange={(event) => setMapStyle(event.target.value)}
             className="bg-transparent text-foreground outline-none"
           >
+            <option value={MAP_STYLE_AUTO_ID}>Auto (app theme)</option>
             {MAP_STYLES.map((style) => (
               <option key={style.id} value={style.id}>
                 {style.label}

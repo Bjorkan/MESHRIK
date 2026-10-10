@@ -1,6 +1,12 @@
 import { useCallback, useRef, useState } from 'react';
-import MapLibreMap, { Marker, Popup, type MapRef } from 'react-map-gl/maplibre';
-import { DEFAULT_MAP_STYLE } from '../utils/mapLibre';
+import MapLibreMap, {
+  AttributionControl,
+  Marker,
+  Popup,
+  type MapRef,
+} from 'react-map-gl/maplibre';
+import { EMBEDDED_MAP_ATTRIBUTION } from '../utils/mapLibre';
+import { useMapStyle } from '../hooks/useMapStyle';
 import { isValidLocation } from '../utils/pathUtils';
 import type { ResolvedPath, SenderInfo } from '../utils/pathUtils';
 
@@ -87,6 +93,7 @@ function NumberedMarker({
 }
 
 export function PathRouteMap({ resolved, senderInfo, height = 220 }: PathRouteMapProps) {
+  const { mapStyle } = useMapStyle();
   const mapRef = useRef<MapRef>(null);
   const points = collectPoints(resolved);
   const hasAnyGps = points.length > 0;
@@ -143,10 +150,12 @@ export function PathRouteMap({ resolved, senderInfo, height = 220 }: PathRouteMa
         <MapLibreMap
           ref={mapRef}
           initialViewState={{ longitude: center[1], latitude: center[0], zoom: 10 }}
-          mapStyle={DEFAULT_MAP_STYLE.url}
+          mapStyle={mapStyle.url}
+          attributionControl={false}
           onLoad={fitRoute}
-          style={{ width: '100%', height: '100%', background: DEFAULT_MAP_STYLE.background }}
+          style={{ width: '100%', height: '100%', background: mapStyle.background }}
         >
+          <AttributionControl {...EMBEDDED_MAP_ATTRIBUTION} />
           {isValidLocation(resolved.sender.lat, resolved.sender.lon) && (
             <NumberedMarker
               label="S"
