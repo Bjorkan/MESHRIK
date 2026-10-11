@@ -127,3 +127,15 @@ class TestExperimentalAliases:
         monkeypatch.setenv("__CLOWNTOWN_DO_CLOCK_WRAPAROUND", "true")
         s = Settings(serial_port="", tcp_host="", ble_address="")
         assert s.clowntown_do_clock_wraparound is True
+
+
+class TestRadioTimeoutConfiguration:
+    def test_operation_lock_timeout_is_bounded(self):
+        settings = Settings(radio_operation_lock_timeout_seconds=7.5)
+        assert settings.radio_operation_lock_timeout_seconds == 7.5
+
+        with pytest.raises(ValidationError):
+            Settings(radio_operation_lock_timeout_seconds=0)
+
+        with pytest.raises(ValidationError):
+            Settings(radio_operation_lock_timeout_seconds=121)

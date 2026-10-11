@@ -162,6 +162,7 @@ class TestRadioManagerConnect:
             mock_settings.connection_type = "tcp"
             mock_settings.tcp_host = "10.0.0.1"
             mock_settings.tcp_port = 4000
+            mock_settings.radio_operation_lock_timeout_seconds = 15.0
             mock_meshcore.create_tcp = AsyncMock(return_value=new_mc)
 
             rm = RadioManager()

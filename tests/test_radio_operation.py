@@ -85,6 +85,58 @@ class TestRadioOperationLock:
         assert order == ["holder_enter", "holder_exit", "contender_enter"]
 
     @pytest.mark.asyncio
+    async def test_blocking_wait_is_bounded_without_releasing_holder(self):
+        holder_entered = asyncio.Event()
+        holder_release = asyncio.Event()
+
+        async def holder():
+            async with radio_manager.radio_operation("holder"):
+                holder_entered.set()
+                await holder_release.wait()
+
+        holder_task = asyncio.create_task(holder())
+        await holder_entered.wait()
+
+        with pytest.raises(RadioOperationBusyError, match="did not start within"):
+            async with radio_manager.radio_operation("contender", lock_timeout_seconds=0.01):
+                pass
+
+        assert radio_manager._operation_lock is not None
+        assert radio_manager._operation_lock.locked()
+        holder_release.set()
+        await holder_task
+
+        async with radio_manager.radio_operation("recovered", lock_timeout_seconds=0.01):
+            pass
+
+    @pytest.mark.asyncio
+    async def test_cancelled_lock_waiter_does_not_release_holder(self):
+        holder_entered = asyncio.Event()
+        holder_release = asyncio.Event()
+
+        async def holder():
+            async with radio_manager.radio_operation("holder"):
+                holder_entered.set()
+                await holder_release.wait()
+
+        holder_task = asyncio.create_task(holder())
+        await holder_entered.wait()
+        waiter = asyncio.create_task(
+            radio_manager._acquire_operation_lock(
+                "cancelled_waiter", blocking=True, timeout_seconds=1
+            )
+        )
+        await asyncio.sleep(0)
+        waiter.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await waiter
+
+        assert radio_manager._operation_lock is not None
+        assert radio_manager._operation_lock.locked()
+        holder_release.set()
+        await holder_task
+
+    @pytest.mark.asyncio
     async def test_suspend_auto_fetch_stops_and_restarts(self):
         mc = MagicMock()
         mc.stop_auto_message_fetching = AsyncMock()

@@ -198,8 +198,9 @@ class RadioManager:
         name: str,
         *,
         blocking: bool,
+        timeout_seconds: float | None = None,
     ) -> None:
-        """Acquire the shared radio operation lock."""
+        """Acquire the shared radio operation lock without an unbounded wait."""
 
         if self._operation_lock is None:
             self._operation_lock = asyncio.Lock()
@@ -212,7 +213,27 @@ class RadioManager:
             # yield). The await returns immediately for an uncontested lock.
             await self._operation_lock.acquire()
         else:
-            await self._operation_lock.acquire()
+            timeout = (
+                settings.radio_operation_lock_timeout_seconds
+                if timeout_seconds is None
+                else timeout_seconds
+            )
+            if timeout <= 0:
+                raise ValueError("Radio operation lock timeout must be positive")
+            started = asyncio.get_running_loop().time()
+            try:
+                await asyncio.wait_for(self._operation_lock.acquire(), timeout=timeout)
+            except TimeoutError as exc:
+                waited = asyncio.get_running_loop().time() - started
+                logger.warning(
+                    "Radio operation lock timed out (%s, waited %.2fs, limit %.2fs)",
+                    name,
+                    waited,
+                    timeout,
+                )
+                raise RadioOperationBusyError(
+                    f"Radio is busy; operation did not start within {timeout:g} seconds"
+                ) from exc
 
         logger.debug("Acquired radio operation lock (%s)", name)
 
@@ -254,6 +275,7 @@ class RadioManager:
         suspend_auto_fetch: bool = False,
         blocking: bool = True,
         defer_when_busy: bool = False,
+        lock_timeout_seconds: float | None = None,
     ):
         """Acquire shared radio lock and optionally pause polling / auto-fetch.
 
@@ -270,12 +292,17 @@ class RadioManager:
             defer_when_busy: Scheduler-only hint; ignored by the raw lock.
                 This argument is accepted for mock/isolated compatibility.
                 Live producers defer through RadioRuntime, not RadioManager.
+            lock_timeout_seconds: Optional override for legacy/lifecycle lock wait.
 
         Raises:
             RadioDisconnectedError: If the radio disconnected before the lock
                 was acquired (``_meshcore`` is ``None``).
         """
-        await self._acquire_operation_lock(name, blocking=blocking)
+        await self._acquire_operation_lock(
+            name,
+            blocking=blocking,
+            timeout_seconds=lock_timeout_seconds,
+        )
 
         mc = self._meshcore
         if mc is None:

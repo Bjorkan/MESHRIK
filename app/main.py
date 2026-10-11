@@ -53,7 +53,7 @@ from app.frontend_static import (
     register_first_available_frontend_static_routes,
     register_frontend_missing_fallback,
 )
-from app.radio import RadioDisconnectedError
+from app.radio import RadioDisconnectedError, RadioOperationBusyError
 from app.radio_sync import (
     stop_background_contact_reconciliation,
     stop_message_polling,
@@ -225,6 +225,16 @@ app.add_middleware(
 async def radio_disconnected_handler(request: Request, exc: RadioDisconnectedError):
     """Return 423 when a radio disconnect race occurs during an operation."""
     return JSONResponse(status_code=423, content={"detail": "Radio not connected"})
+
+
+@app.exception_handler(RadioOperationBusyError)
+async def radio_operation_busy_handler(request: Request, exc: RadioOperationBusyError):
+    """Return a bounded, retryable response when the legacy radio lock is occupied."""
+    return JSONResponse(
+        status_code=503,
+        content={"detail": str(exc)},
+        headers={"Retry-After": "5"},
+    )
 
 
 @app.middleware("http")
