@@ -684,10 +684,8 @@ class TestTracePath:
             patch(
                 "app.routers.radio.ContactRepository.get_by_key", new_callable=AsyncMock
             ) as mock_get,
-            patch("app.routers.radio.radio_manager") as mock_rm,
         ):
             mock_get.side_effect = [repeater_a, repeater_b]
-            mock_rm.radio_operation = _noop_radio_operation(mc)
             response = await trace_path(
                 RadioTraceRequest(
                     hop_hash_bytes=4,
@@ -784,10 +782,8 @@ class TestTracePath:
             patch(
                 "app.routers.radio.ContactRepository.get_by_key", new_callable=AsyncMock
             ) as mock_get,
-            patch("app.routers.radio.radio_manager") as mock_rm,
         ):
             mock_get.return_value = repeater
-            mock_rm.radio_operation = _noop_radio_operation(mc)
             with pytest.raises(HTTPException) as exc:
                 await trace_path(
                     RadioTraceRequest(
@@ -821,9 +817,7 @@ class TestTracePath:
         with (
             patch("app.routers.radio.radio_manager.require_connected", return_value=mc),
             patch.object(radio_manager, "_meshcore", mc),
-            patch("app.routers.radio.radio_manager") as mock_rm,
         ):
-            mock_rm.radio_operation = _noop_radio_operation(mc)
             response = await trace_path(
                 RadioTraceRequest(
                     hop_hash_bytes=1,

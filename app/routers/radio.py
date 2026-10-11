@@ -416,27 +416,27 @@ async def update_radio_config(update: RadioConfigUpdate) -> RadioConfigResponse:
     """Update radio configuration. Only provided fields will be updated."""
     radio_manager.require_connected()
 
-    async with radio_manager.radio_operation("update_radio_config") as mc:
-        try:
-            await apply_radio_config_transaction(
-                mc,
-                update,
-                path_hash_mode_supported=radio_manager.path_hash_mode_supported,
-                current_path_hash_mode=radio_manager.path_hash_mode,
-                set_path_hash_mode=lambda mode: setattr(radio_manager, "path_hash_mode", mode),
-                sync_radio_time_fn=sync_radio_time,
-                repeat_enabled_supported=radio_manager.repeat_enabled_supported,
-                current_repeat_enabled=radio_manager.repeat_enabled,
-                set_repeat_enabled=lambda enabled: setattr(
-                    radio_manager, "repeat_enabled", enabled
-                ),
-            )
-        except (PathHashModeUnsupportedError, RepeatModeUnsupportedError) as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
-        except RadioCommandRejectedError as exc:
-            raise HTTPException(status_code=422, detail=str(exc)) from exc
-        except RadioConfigRollbackError as exc:
-            raise HTTPException(status_code=503, detail=str(exc)) from exc
+    async def apply_config(mc) -> None:
+        await apply_radio_config_transaction(
+            mc,
+            update,
+            path_hash_mode_supported=radio_manager.path_hash_mode_supported,
+            current_path_hash_mode=radio_manager.path_hash_mode,
+            set_path_hash_mode=lambda mode: setattr(radio_manager, "path_hash_mode", mode),
+            sync_radio_time_fn=sync_radio_time,
+            repeat_enabled_supported=radio_manager.repeat_enabled_supported,
+            current_repeat_enabled=radio_manager.repeat_enabled,
+            set_repeat_enabled=lambda enabled: setattr(radio_manager, "repeat_enabled", enabled),
+        )
+
+    try:
+        await radio_manager.run_radio_command("update_radio_config", apply_config)
+    except (PathHashModeUnsupportedError, RepeatModeUnsupportedError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except RadioCommandRejectedError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except RadioConfigRollbackError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     return await get_radio_config()
 
@@ -476,17 +476,20 @@ async def set_private_key(update: PrivateKeyUpdate) -> dict:
         raise HTTPException(status_code=400, detail="Invalid hex string for private key") from None
 
     logger.info("Importing private key")
-    async with radio_manager.radio_operation("import_private_key") as mc:
+
+    async def import_key(mc) -> None:
         from app.keystore import export_and_store_private_key
 
-        try:
-            await import_private_key_and_refresh_keystore(
-                mc,
-                key_bytes,
-                export_and_store_private_key_fn=export_and_store_private_key,
-            )
-        except (RadioCommandRejectedError, KeystoreRefreshError) as exc:
-            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        await import_private_key_and_refresh_keystore(
+            mc,
+            key_bytes,
+            export_and_store_private_key_fn=export_and_store_private_key,
+        )
+
+    try:
+        await radio_manager.run_radio_command("import_private_key", import_key)
+    except (RadioCommandRejectedError, KeystoreRefreshError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     return {"status": "ok"}
 
@@ -506,8 +509,11 @@ async def send_advertisement(request: RadioAdvertiseRequest | None = None) -> di
     mode: RadioAdvertMode = request.mode if request is not None else "flood"
 
     logger.info("Sending %s advertisement", mode.replace("_", "-"))
-    async with radio_manager.radio_operation("manual_advertisement") as mc:
-        success = await do_send_advertisement(mc, force=True, mode=mode)
+
+    async def advertise(mc) -> bool:
+        return await do_send_advertisement(mc, force=True, mode=mode)
+
+    success = await radio_manager.run_radio_command("manual_advertisement", advertise)
 
     if not success:
         raise HTTPException(status_code=422, detail=f"Failed to send {mode} advertisement")
@@ -525,11 +531,7 @@ async def discover_mesh(request: RadioDiscoveryRequest) -> RadioDiscoveryRespons
     tag_hex = tag.to_bytes(4, "little", signed=False).hex()
     events: asyncio.Queue = asyncio.Queue()
 
-    async with radio_manager.radio_operation(
-        "discover_mesh",
-        pause_polling=True,
-        suspend_auto_fetch=True,
-    ) as mc:
+    async def discover(mc) -> dict[str, RadioDiscoveryResult]:
         subscription = mc.subscribe(
             EventType.DISCOVER_RESPONSE,
             lambda event: events.put_nowait(event),
@@ -564,6 +566,15 @@ async def discover_mesh(request: RadioDiscoveryRequest) -> RadioDiscoveryRespons
                     results_by_key[merged.public_key] = merged
         finally:
             subscription.unsubscribe()
+
+        return results_by_key
+
+    results_by_key = await radio_manager.run_radio_command(
+        "discover_mesh",
+        discover,
+        pause_polling=True,
+        suspend_auto_fetch=True,
+    )
 
     results = sorted(
         results_by_key.values(),
@@ -645,12 +656,8 @@ async def discover_regions(
             repeaters_queried=0, repeaters_answered=0, regions=[], results=[]
         )
 
-    results: list[RadioRegionDiscoveryRepeater] = []
-    # One radio_operation for the whole sweep: keeps polling paused once and
-    # runs the per-repeater anon requests serially behind the single radio lock.
-    async with radio_manager.radio_operation(
-        "discover_regions", pause_polling=True, suspend_auto_fetch=True
-    ) as mc:
+    async def discover_from_repeaters(mc) -> list[RadioRegionDiscoveryRepeater]:
+        results: list[RadioRegionDiscoveryRepeater] = []
         for contact in targets:
             names = await request_anon_region_names(mc, contact)
             results.append(
@@ -661,6 +668,16 @@ async def discover_regions(
                     regions=_dedupe_region_names(names or []),
                 )
             )
+        return results
+
+    # Keep polling paused once and run the per-repeater requests serially in
+    # the worker-owned command task.
+    results = await radio_manager.run_radio_command(
+        "discover_regions",
+        discover_from_repeaters,
+        pause_polling=True,
+        suspend_auto_fetch=True,
+    )
 
     union = _dedupe_region_names([name for result in results for name in result.regions])
     return RadioRegionDiscoveryResponse(
@@ -680,7 +697,7 @@ async def trace_path(request: RadioTraceRequest) -> RadioTraceResponse:
     tag = random.randint(1, 0xFFFFFFFF)
     trace_flags = TRACE_HASH_FLAGS[request.hop_hash_bytes]
 
-    async with radio_manager.radio_operation("radio_trace", pause_polling=True) as mc:
+    async def trace(mc):
         local_public_key = str((mc.self_info or {}).get("public_key") or "").lower()
         if len(local_public_key) != 64:
             raise HTTPException(status_code=423, detail="Local radio public key is unavailable")
@@ -712,6 +729,12 @@ async def trace_path(request: RadioTraceRequest) -> RadioTraceResponse:
                 response_task.cancel()
             with suppress(asyncio.CancelledError):
                 await response_task
+
+        return event, local_public_key, local_name, timeout_seconds
+
+    event, local_public_key, local_name, timeout_seconds = await radio_manager.run_radio_command(
+        "radio_trace", trace, pause_polling=True
+    )
 
     if event is None:
         raise HTTPException(status_code=408, detail="No trace response heard")
@@ -821,8 +844,11 @@ async def reboot_radio() -> dict:
     """
     if radio_manager.is_connected:
         logger.info("Rebooting radio")
-        async with radio_manager.radio_operation("reboot_radio") as mc:
+
+        async def reboot(mc) -> None:
             await mc.commands.reboot()
+
+        await radio_manager.run_radio_command("reboot_radio", reboot)
         return {
             "status": "ok",
             "message": "Reboot command sent. Radio will reconnect automatically.",

@@ -1641,7 +1641,20 @@ def _make_connected_manager() -> tuple[RadioManager, MagicMock]:
     mock_mc.stop_auto_message_fetching = AsyncMock()
     mock_mc.start_auto_message_fetching = AsyncMock()
     rm._meshcore = mock_mc
+
+    async def run_radio_command(name, command, **kwargs):
+        async with rm.radio_operation(name, **kwargs) as scoped_mc:
+            return await command(scoped_mc)
+
+    rm.run_radio_command = run_radio_command
     return rm, mock_mc
+
+
+def _run_command_with(mc):
+    async def run(_name, command, **_kwargs):
+        return await command(mc)
+
+    return run
 
 
 def _disconnect_on_acquire(rm: RadioManager):
@@ -2321,6 +2334,7 @@ class TestRunTelemetryCycleRoutedOnly:
                 pass
 
         fake_radio_manager.radio_operation.return_value = FakeRadioOp()
+        fake_radio_manager.run_radio_command = _run_command_with(fake_mc)
 
         with (
             patch(
@@ -2405,6 +2419,7 @@ class TestRunTelemetryCycleRoutedOnly:
                 pass
 
         fake_radio_manager.radio_operation.return_value = FakeRadioOp()
+        fake_radio_manager.run_radio_command = _run_command_with(fake_mc)
 
         with (
             patch(
@@ -2480,6 +2495,7 @@ class TestRunTelemetryCycleRoutedOnly:
                 pass
 
         fake_radio_manager.radio_operation.return_value = FakeRadioOp()
+        fake_radio_manager.run_radio_command = _run_command_with(fake_mc)
 
         with (
             patch(

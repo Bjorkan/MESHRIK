@@ -14,11 +14,11 @@ they can safely overlap. It is not permission to schedule arbitrary RF commands.
 
 import asyncio
 import os
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager, contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, TypeVar, cast
 from uuid import UUID
 
 from fastapi import HTTPException
@@ -34,6 +34,7 @@ from app.services.radio_jobs import (
     TERMINAL_STATES,
     RadioJobKind,
     RadioJobPriority,
+    RadioJobResult,
     RadioJobSnapshot,
     RadioJobState,
 )
@@ -163,6 +164,17 @@ _worker_transport: ContextVar[_WorkerTransportScope | None] = ContextVar(
     "radio_worker_transport", default=None
 )
 
+_ResultT = TypeVar("_ResultT")
+_MISSING = object()
+
+
+def _fence_lifecycle_mutation(runtime: Any, name: str) -> None:
+    if name not in {"reboot_radio", "import_private_key"}:
+        return
+    runtime.radio_generation = int(runtime.radio_generation) + 1
+    runtime.reset_channel_send_cache()
+    runtime.clear_pending_message_channel_slots()
+
 
 @contextmanager
 def active_worker_transport(mc: Any, job_id: UUID):
@@ -199,6 +211,135 @@ def reserve_direct_message_ack(ack_code: str, message_id: int) -> None:
         message_id=message_id,
     )
     session.await_ack = True
+
+
+async def run_scheduled_radio_command(
+    runtime: Any,
+    name: str,
+    command: Callable[[Any], Awaitable[_ResultT]],
+    *,
+    pause_polling: bool = False,
+    suspend_auto_fetch: bool = False,
+    blocking: bool = True,
+    defer_when_busy: bool = False,
+) -> _ResultT:
+    """Run a complete radio command callback in the single worker task.
+
+    Unlike :func:`scheduled_radio_operation`, this is not a compatibility
+    permit handed back to the producer task. The callback itself executes in
+    ``radio-job-command``, so its deadline can cancel the actual command phase
+    and no HTTP/background task can keep using the transport after the worker
+    has declared the job terminal.
+    """
+    existing = _worker_transport.get()
+    if existing is not None and existing.owner is asyncio.current_task():
+        if defer_when_busy:
+            raise ValueError("A worker command cannot defer its own command permit")
+        return await command(existing.meshcore)
+
+    if defer_when_busy and (blocking or name not in _SINGLETON_PERIODIC):
+        raise ValueError("Deferred admission is reserved for fail-fast background producers")
+    operation_options = {
+        **({"pause_polling": True} if pause_polling else {}),
+        **({"suspend_auto_fetch": True} if suspend_auto_fetch else {}),
+        **({"blocking": False} if not blocking else {}),
+    }
+    if not radio_job_worker.running:
+        # Hardware-free unit tests intentionally run without the application
+        # lifespan. A previously attached or quarantined production worker
+        # must never fall back to the raw manager path.
+        if (
+            "PYTEST_CURRENT_TEST" not in os.environ
+            or radio_job_scheduler._worker_owner is not None
+            or radio_job_worker.quarantined
+        ):
+            raise HTTPException(status_code=503, detail="Radio command worker unavailable")
+        async with runtime.raw_radio_operation(name, **operation_options) as mc:
+            result = await command(mc)
+            _fence_lifecycle_mutation(runtime, name)
+            return result
+
+    if (
+        not blocking
+        and not defer_when_busy
+        and (
+            radio_job_scheduler.queue_size > 0
+            or any(j.state == RadioJobState.EXECUTING for j in radio_job_scheduler.list_jobs())
+        )
+    ):
+        raise RadioOperationBusyError("Radio command queue busy")
+
+    kind, priority = classify_operation(name)
+    coalesce_key = f"periodic:{name}" if name in _SINGLETON_PERIODIC else None
+    coalesce_scope = "radio-background"
+    if coalesce_key is not None and radio_job_scheduler.has_inflight_coalesced_job(
+        kind=kind, scope=coalesce_scope, coalesce_key=coalesce_key
+    ):
+        raise RadioOperationBusyError("Periodic command already pending")
+
+    result: object = _MISSING
+    command_error: BaseException | None = None
+
+    async def worker_command(mc: Any) -> RadioCommandOutcome:
+        nonlocal result, command_error
+        try:
+            result = await command(mc)
+            _fence_lifecycle_mutation(runtime, name)
+        except BaseException as exc:
+            command_error = exc
+            raise
+        return RadioCommandOutcome.FINISHED
+
+    try:
+        job = radio_job_worker.submit(
+            kind,
+            worker_command,
+            priority=priority,
+            radio_options=operation_options,
+            command_timeout_seconds=command_timeout_for_operation(name),
+            queue_timeout_seconds=180 if defer_when_busy else (5 if not blocking else 60),
+            scope=coalesce_scope if coalesce_key else "global",
+            coalesce_key=coalesce_key,
+        )
+    except RadioAdmissionError as exc:
+        if not blocking:
+            raise RadioOperationBusyError("Radio command queue busy") from exc
+        raise HTTPException(
+            status_code=503,
+            detail="Radio command queue unavailable; retry after a short delay",
+            headers={"Retry-After": "5"},
+        ) from exc
+
+    loop = asyncio.get_running_loop()
+    terminal: asyncio.Future[RadioJobSnapshot] = loop.create_future()
+
+    def on_change(snapshot: RadioJobSnapshot) -> None:
+        if snapshot.id == job.id and snapshot.state in TERMINAL_STATES and not terminal.done():
+            terminal.set_result(snapshot)
+
+    unsubscribe = radio_job_scheduler.subscribe(on_change)
+    current = radio_job_scheduler.get(job.id)
+    if current is not None and current.state in TERMINAL_STATES:
+        terminal.set_result(current)
+    try:
+        final = await terminal
+    except asyncio.CancelledError:
+        current = radio_job_scheduler.get(job.id)
+        if current is not None and current.state in {RadioJobState.QUEUED, RadioJobState.RETRYING}:
+            radio_job_worker.cancel(job.id)
+        raise
+    finally:
+        unsubscribe()
+
+    if final.state == RadioJobState.COMPLETED and result is not _MISSING:
+        return cast(_ResultT, result)
+    if isinstance(command_error, Exception):
+        raise command_error
+    if final.result == RadioJobResult.COMMAND_TIMEOUT:
+        raise HTTPException(status_code=504, detail="Radio command timed out")
+    if final.result == RadioJobResult.RADIO_CHANGED:
+        raise HTTPException(status_code=423, detail="Radio changed while command was running")
+    raise HTTPException(status_code=503, detail="Radio command did not complete")
 
 
 @asynccontextmanager
@@ -284,14 +425,10 @@ async def scheduled_radio_operation(
                 # Leave the physical lock owned by this command until the
                 # producer's finally/restore section has actually returned.
                 continue
-        if name in {"reboot_radio", "import_private_key"}:
-            # A reboot/identity mutation is a lifecycle barrier. Fence all
-            # pending jobs BEFORE releasing the worker's command permit;
-            # otherwise another queued command could dispatch under stale
-            # channel-slot/contact assumptions in the same event-loop turn.
-            runtime.radio_generation = int(runtime.radio_generation) + 1
-            runtime.reset_channel_send_cache()
-            runtime.clear_pending_message_channel_slots()
+        # A reboot/identity mutation is a lifecycle barrier. Fence all pending
+        # jobs BEFORE releasing the worker's command permit; otherwise another
+        # queued command could dispatch under stale radio assumptions.
+        _fence_lifecycle_mutation(runtime, name)
         if not session.successful:
             return RadioCommandOutcome.UNCERTAIN
         if session.await_ack:

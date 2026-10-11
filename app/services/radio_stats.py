@@ -47,11 +47,17 @@ async def _sample_all_stats() -> dict[str, Any]:
     if not radio_manager.is_connected:
         return {}
 
+    async def fetch_stats(mc):
+        return (
+            await mc.commands.get_stats_core(),
+            await mc.commands.get_stats_radio(),
+            await mc.commands.get_stats_packets(),
+        )
+
     try:
-        async with radio_manager.radio_operation("radio_stats_sample", blocking=False) as mc:
-            core_event = await mc.commands.get_stats_core()
-            radio_event = await mc.commands.get_stats_radio()
-            packet_event = await mc.commands.get_stats_packets()
+        core_event, radio_event, packet_event = await radio_manager.run_radio_command(
+            "radio_stats_sample", fetch_stats, blocking=False
+        )
     except (RadioDisconnectedError, RadioOperationBusyError):
         return {}
     except Exception as exc:

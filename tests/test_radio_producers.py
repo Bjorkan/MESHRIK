@@ -80,6 +80,66 @@ async def test_producers_share_one_worker_command_slot(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_command_callback_executes_in_worker_task_and_returns_result(monkeypatch):
+    rt = FakeRuntime()
+    scheduler = RadioJobScheduler()
+    worker = RadioJobWorker(scheduler, runtime=rt, poll_interval_seconds=0.005)
+    monkeypatch.setattr(producers, "radio_job_worker", worker)
+    monkeypatch.setattr(producers, "radio_job_scheduler", scheduler)
+    caller = asyncio.current_task()
+    callback_task = None
+
+    async def command(mc):
+        nonlocal callback_task
+        callback_task = asyncio.current_task()
+        assert mc is rt
+        return {"value": 42}
+
+    worker.start()
+    try:
+        result = await producers.run_scheduled_radio_command(rt, "radio_query", command)
+        assert result == {"value": 42}
+        assert callback_task is not caller
+        assert callback_task is not None
+        assert callback_task.get_name() == "radio-job-command"
+        assert scheduler.list_jobs()[0].state == RadioJobState.COMPLETED
+    finally:
+        await worker.stop()
+
+
+@pytest.mark.asyncio
+async def test_worker_executed_callback_is_bounded_by_command_deadline(monkeypatch):
+    rt = FakeRuntime()
+    scheduler = RadioJobScheduler()
+    worker = RadioJobWorker(
+        scheduler,
+        runtime=rt,
+        cancellation_grace_seconds=0.05,
+        poll_interval_seconds=0.001,
+    )
+    monkeypatch.setattr(producers, "radio_job_worker", worker)
+    monkeypatch.setattr(producers, "radio_job_scheduler", scheduler)
+    monkeypatch.setattr(producers, "command_timeout_for_operation", lambda _name: 0.01)
+    cancelled = asyncio.Event()
+
+    async def command(_mc):
+        try:
+            await asyncio.Event().wait()
+        finally:
+            cancelled.set()
+
+    worker.start()
+    try:
+        with pytest.raises(Exception) as exc:
+            await producers.run_scheduled_radio_command(rt, "radio_query", command)
+        assert getattr(exc.value, "status_code", None) == 504
+        assert cancelled.is_set()
+        assert scheduler.list_jobs()[0].state == RadioJobState.UNKNOWN
+    finally:
+        await worker.stop()
+
+
+@pytest.mark.asyncio
 async def test_low_priority_periodic_work_skips_busy_command(monkeypatch):
     rt = FakeRuntime()
     scheduler = RadioJobScheduler()
@@ -284,6 +344,27 @@ def test_migrated_producer_modules_do_not_import_direct_radio_manager():
         source = path.read_text(encoding="utf-8")
         assert "from app.radio import radio_manager" not in source, path.name
         assert "from app.radio import RadioManager" not in source, path.name
+
+
+def test_legacy_radio_operation_bridge_has_a_closed_migration_allowlist():
+    """New producers must execute callbacks in the worker, not borrow its lock."""
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    allowed = {
+        "app/radio_sync.py",  # bounded background contact-reconcile batches
+        "app/routers/repeaters.py",  # issue #43 server response sessions
+        "app/routers/rooms.py",  # issue #43 server response sessions
+        "app/routers/server_control.py",  # issue #43 CLI response sessions
+        "app/services/message_send.py",  # issue #42 send/restore transactions
+        "app/services/radio_runtime.py",  # transport seam implementation
+    }
+    found: set[str] = set()
+    for path in (root / "app").rglob("*.py"):
+        if ".radio_operation(" in path.read_text(encoding="utf-8"):
+            found.add(path.relative_to(root).as_posix())
+
+    assert found == allowed
 
 
 def test_radio_stats_samples_have_distinct_low_priority_job_kind():

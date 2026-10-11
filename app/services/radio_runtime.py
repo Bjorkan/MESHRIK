@@ -5,13 +5,15 @@ to reduce direct `app.radio.radio_manager` imports across routers and helpers
 without changing radio lifecycle, lock, or connection semantics.
 """
 
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager
-from typing import Any
+from typing import Any, TypeVar
 
 from fastapi import HTTPException
 
 import app.radio as radio_module
+
+_ResultT = TypeVar("_ResultT")
 
 
 class RadioRuntime:
@@ -89,6 +91,17 @@ class RadioRuntime:
             self.radio_generation = int(self.radio_generation) + 1
             self.reset_channel_send_cache()
             self.clear_pending_message_channel_slots()
+
+    async def run_radio_command(
+        self,
+        name: str,
+        command: Callable[[Any], Awaitable[_ResultT]],
+        **kwargs: Any,
+    ) -> _ResultT:
+        """Execute the callback inside the scheduler's single worker task."""
+        from app.services.radio_producers import run_scheduled_radio_command
+
+        return await run_scheduled_radio_command(self, name, command, **kwargs)
 
     @staticmethod
     def _worker_running() -> bool:

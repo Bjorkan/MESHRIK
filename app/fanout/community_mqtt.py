@@ -366,31 +366,34 @@ class CommunityMqttPublisher(BaseMqttPublisher):
         from app.services.radio_runtime import radio_runtime as radio_manager
 
         fallback = {"model": "unknown", "firmware_version": "unknown"}
-        try:
-            async with radio_manager.radio_operation(
-                "community_stats_device_info", blocking=False
-            ) as mc:
-                event = await mc.commands.send_device_query()
-                from meshcore.events import EventType
 
-                if event.type == EventType.DEVICE_INFO:
-                    fw_ver = event.payload.get("fw ver", 0)
-                    if fw_ver >= 3:
-                        model = event.payload.get("model", "unknown") or "unknown"
-                        ver = event.payload.get("ver", "unknown") or "unknown"
-                        fw_build = event.payload.get("fw_build", "") or ""
-                        fw_str = f"v{ver} (Build: {fw_build})" if fw_build else f"v{ver}"
-                        self._cached_device_info = {
-                            "model": model,
-                            "firmware_version": fw_str,
-                        }
-                    else:
-                        # Old firmware — cache what we can
-                        self._cached_device_info = {
-                            "model": "unknown",
-                            "firmware_version": f"v{fw_ver}" if fw_ver else "unknown",
-                        }
-                    return self._cached_device_info
+        async def fetch_device_info(mc):
+            return await mc.commands.send_device_query()
+
+        try:
+            event = await radio_manager.run_radio_command(
+                "community_stats_device_info", fetch_device_info, blocking=False
+            )
+            from meshcore.events import EventType
+
+            if event.type == EventType.DEVICE_INFO:
+                fw_ver = event.payload.get("fw ver", 0)
+                if fw_ver >= 3:
+                    model = event.payload.get("model", "unknown") or "unknown"
+                    ver = event.payload.get("ver", "unknown") or "unknown"
+                    fw_build = event.payload.get("fw_build", "") or ""
+                    fw_str = f"v{ver} (Build: {fw_build})" if fw_build else f"v{ver}"
+                    self._cached_device_info = {
+                        "model": model,
+                        "firmware_version": fw_str,
+                    }
+                else:
+                    # Old firmware — cache what we can
+                    self._cached_device_info = {
+                        "model": "unknown",
+                        "firmware_version": f"v{fw_ver}" if fw_ver else "unknown",
+                    }
+                return self._cached_device_info
         except (RadioOperationBusyError, RadioDisconnectedError):
             pass
         except Exception as e:
@@ -413,32 +416,35 @@ class CommunityMqttPublisher(BaseMqttPublisher):
         from app.radio import RadioDisconnectedError, RadioOperationBusyError
         from app.services.radio_runtime import radio_runtime as radio_manager
 
+        async def fetch_stats(mc):
+            from meshcore.events import EventType
+
+            result: dict[str, Any] = {}
+            core_event = await mc.commands.get_stats_core()
+            if core_event.type == EventType.ERROR:
+                return None
+            if core_event.type == EventType.STATS_CORE:
+                result.update(core_event.payload)
+
+            radio_event = await mc.commands.get_stats_radio()
+            if radio_event.type == EventType.ERROR:
+                return None
+            if radio_event.type == EventType.STATS_RADIO:
+                result.update(radio_event.payload)
+            return result
+
         try:
-            async with radio_manager.radio_operation("community_stats_fetch", blocking=False) as mc:
-                from meshcore.events import EventType
-
-                result: dict[str, Any] = {}
-
-                core_event = await mc.commands.get_stats_core()
-                if core_event.type == EventType.ERROR:
-                    logger.info("Community MQTT: firmware does not support stats commands")
-                    self._stats_supported = False
-                    return self._cached_stats
-                if core_event.type == EventType.STATS_CORE:
-                    result.update(core_event.payload)
-
-                radio_event = await mc.commands.get_stats_radio()
-                if radio_event.type == EventType.ERROR:
-                    logger.info("Community MQTT: firmware does not support stats commands")
-                    self._stats_supported = False
-                    return self._cached_stats
-                if radio_event.type == EventType.STATS_RADIO:
-                    result.update(radio_event.payload)
-
-                if result:
-                    self._cached_stats = result
-                    self._last_stats_fetch = now
-                    return self._cached_stats
+            result = await radio_manager.run_radio_command(
+                "community_stats_fetch", fetch_stats, blocking=False
+            )
+            if result is None:
+                logger.info("Community MQTT: firmware does not support stats commands")
+                self._stats_supported = False
+                return self._cached_stats
+            if result:
+                self._cached_stats = result
+                self._last_stats_fetch = now
+                return self._cached_stats
 
         except (RadioOperationBusyError, RadioDisconnectedError):
             pass

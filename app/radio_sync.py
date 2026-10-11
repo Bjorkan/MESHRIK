@@ -680,34 +680,39 @@ async def _message_poll_loop():
             )
 
             if radio_manager.is_connected and not is_polling_paused():
+
+                async def poll_and_audit(mc) -> int:
+                    count = await poll_for_messages(mc)
+                    await audit_channel_send_cache(mc)
+                    return count
+
                 try:
-                    async with radio_manager.radio_operation(
+                    count = await radio_manager.run_radio_command(
                         "message_poll_loop",
+                        poll_and_audit,
                         blocking=False,
                         defer_when_busy=True,
                         suspend_auto_fetch=True,
-                    ) as mc:
-                        count = await poll_for_messages(mc)
-                        await audit_channel_send_cache(mc)
-                        if count > 0:
-                            if aggressive_fallback:
-                                logger.warning(
-                                    "Poll loop caught %d message(s) missed by auto-fetch",
-                                    count,
-                                )
-                            else:
-                                logger.error(
-                                    "[RADIO SYNC ERROR] Periodic radio audit caught %d message(s) that were not "
-                                    "surfaced via event subscription. This means that the method of event (new contacts, messages, etc.) awareness we want isn't giving us everything. There is a fallback method available; see README.md and consider "
-                                    "setting MESHCORE_ENABLE_MESSAGE_POLL_FALLBACK=true to "
-                                    "enable active radio polling every few seconds.",
-                                    count,
-                                )
-                                broadcast_error(
-                                    "A periodic poll task has discovered radio inconsistencies.",
-                                    "Please check the logs for recommendations (search "
-                                    "'MESHCORE_ENABLE_MESSAGE_POLL_FALLBACK').",
-                                )
+                    )
+                    if count > 0:
+                        if aggressive_fallback:
+                            logger.warning(
+                                "Poll loop caught %d message(s) missed by auto-fetch",
+                                count,
+                            )
+                        else:
+                            logger.error(
+                                "[RADIO SYNC ERROR] Periodic radio audit caught %d message(s) that were not "
+                                "surfaced via event subscription. This means that the method of event (new contacts, messages, etc.) awareness we want isn't giving us everything. There is a fallback method available; see README.md and consider "
+                                "setting MESHCORE_ENABLE_MESSAGE_POLL_FALLBACK=true to "
+                                "enable active radio polling every few seconds.",
+                                count,
+                            )
+                            broadcast_error(
+                                "A periodic poll task has discovered radio inconsistencies.",
+                                "Please check the logs for recommendations (search "
+                                "'MESHCORE_ENABLE_MESSAGE_POLL_FALLBACK').",
+                            )
                 except RadioOperationBusyError:
                     logger.debug("Skipping message poll: radio busy")
 
@@ -826,13 +831,17 @@ async def _periodic_advert_loop():
             # Try to send - send_advertisement() handles all checks
             # (disabled, throttled, not connected)
             if radio_manager.is_connected:
+
+                async def advertise(mc) -> None:
+                    await send_advertisement(mc)
+
                 try:
-                    async with radio_manager.radio_operation(
+                    await radio_manager.run_radio_command(
                         "periodic_advertisement",
+                        advertise,
                         blocking=False,
                         defer_when_busy=True,
-                    ) as mc:
-                        await send_advertisement(mc)
+                    )
                 except RadioOperationBusyError:
                     logger.debug("Skipping periodic advertisement: radio busy")
 
@@ -1063,26 +1072,24 @@ async def _periodic_sync_loop():
             cleanup_expired_acks()
             if not radio_manager.is_connected:
                 continue
+            if settings.effective_startup_policy.value != "full":
+                continue
+
+            async def run_periodic_sync(mc) -> None:
+                if settings.startup_allow_periodic_offload and await should_run_full_periodic_sync(
+                    mc
+                ):
+                    await sync_and_offload_all(mc)
+                if settings.startup_sync_clock:
+                    await sync_radio_time(mc, warn_on_failure=False)
 
             try:
-                async with radio_manager.radio_operation(
+                await radio_manager.run_radio_command(
                     "periodic_sync",
+                    run_periodic_sync,
                     blocking=False,
                     defer_when_busy=True,
-                ) as mc:
-                    # The periodic scheduler is not blanket permission to
-                    # offload/delete device-resident data. An explicit full
-                    # policy opt-in is required for *both* contact and channel
-                    # destructive maintenance; clock updates are independent.
-                    if settings.effective_startup_policy.value != "full":
-                        continue
-                    if (
-                        settings.startup_allow_periodic_offload
-                        and await should_run_full_periodic_sync(mc)
-                    ):
-                        await sync_and_offload_all(mc)
-                    if settings.startup_sync_clock:
-                        await sync_radio_time(mc, warn_on_failure=False)
+                )
             except RadioOperationBusyError:
                 logger.debug("Skipping periodic sync: radio busy")
         except asyncio.CancelledError:
@@ -1691,14 +1698,17 @@ async def ensure_contact_on_radio(
         logger.debug("Cannot sync favorite contact to radio: not connected")
         return {"loaded": 0, "error": "Radio not connected"}
 
+    async def load_contact(connected_mc) -> dict:
+        global _last_contact_sync
+        _last_contact_sync = now
+        return await _load_contacts_to_radio(connected_mc, [contact])
+
     try:
-        async with radio_manager.radio_operation(
+        return await radio_manager.run_radio_command(
             "ensure_contact_on_radio",
+            load_contact,
             blocking=False,
-        ) as mc:
-            _last_contact_sync = now
-            assert mc is not None
-            return await _load_contacts_to_radio(mc, [contact])
+        )
     except RadioOperationBusyError:
         logger.debug("Skipping favorite contact sync: radio busy")
         return {"loaded": 0, "busy": True}
@@ -1808,14 +1818,17 @@ async def sync_recent_contacts_to_radio(force: bool = False, mc: MeshCore | None
         logger.debug("Cannot sync contacts to radio: not connected")
         return {"loaded": 0, "error": "Radio not connected"}
 
+    async def sync_contacts(connected_mc) -> dict:
+        global _last_contact_sync
+        _last_contact_sync = now
+        return await _sync_contacts_to_radio_inner(connected_mc)
+
     try:
-        async with radio_manager.radio_operation(
+        return await radio_manager.run_radio_command(
             "sync_recent_contacts_to_radio",
+            sync_contacts,
             blocking=False,
-        ) as mc:
-            _last_contact_sync = now
-            assert mc is not None
-            return await _sync_contacts_to_radio_inner(mc)
+        )
     except RadioOperationBusyError:
         logger.debug("Skipping contact sync to radio: radio busy")
         return {"loaded": 0, "busy": True}
@@ -2081,18 +2094,21 @@ async def _run_telemetry_cycle(
     collected = 0
 
     for _pub_key, contact, is_repeater in candidates:
+
+        async def collect(mc, contact=contact, is_repeater=is_repeater) -> bool:
+            if is_repeater:
+                return await _collect_repeater_telemetry(mc, contact)
+            return await _collect_contact_telemetry(mc, contact)
+
         try:
-            async with radio_manager.radio_operation(
+            success = await radio_manager.run_radio_command(
                 "telemetry_collect",
+                collect,
                 blocking=False,
                 suspend_auto_fetch=True,
-            ) as mc:
-                if is_repeater:
-                    success = await _collect_repeater_telemetry(mc, contact)
-                else:
-                    success = await _collect_contact_telemetry(mc, contact)
-                if success:
-                    collected += 1
+            )
+            if success:
+                collected += 1
         except RadioOperationBusyError:
             logger.debug(
                 "Telemetry collect: radio busy, skipping %s",

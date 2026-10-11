@@ -119,9 +119,11 @@ async def _best_effort_push_contact_to_radio(contact: Contact, operation_name: s
     if not radio_manager.is_connected:
         return
 
+    async def push_contact(mc):
+        return await mc.commands.add_contact(contact.to_radio_dict())
+
     try:
-        async with radio_manager.radio_operation(operation_name) as mc:
-            result = await mc.commands.add_contact(contact.to_radio_dict())
+        result = await radio_manager.run_radio_command(operation_name, push_contact)
         if result is not None and result.type == EventType.ERROR:
             logger.warning(
                 "Failed to push updated routing to radio for %s: %s",
@@ -454,30 +456,34 @@ async def bulk_delete_contacts(request: BulkDeleteRequest) -> BulkDeleteContacts
 
     # Remove from radio in a single locked operation (blocks until radio is free)
     if radio_manager.is_connected and contacts_to_delete:
+
+        async def remove_contacts(mc) -> None:
+            nonlocal radio_deleted
+            for contact in contacts_to_delete:
+                try:
+                    radio_contact = mc.get_contact_by_key_prefix(contact.public_key[:12])
+                    if not radio_contact:
+                        continue
+                    result = await mc.commands.remove_contact(radio_contact)
+                    error = _radio_contact_removal_error(result)
+                    if error:
+                        radio_failures.append({"public_key": contact.public_key, "error": error})
+                    else:
+                        radio_deleted += 1
+                except Exception as exc:
+                    logger.warning(
+                        "Radio removal failed for contact %s",
+                        contact.public_key[:12],
+                        exc_info=True,
+                    )
+                    radio_failures.append({"public_key": contact.public_key, "error": str(exc)})
+                finally:
+                    radio_processed.add(contact.public_key)
+
         try:
-            async with radio_manager.radio_operation("bulk_delete_contacts_from_radio") as mc:
-                for contact in contacts_to_delete:
-                    try:
-                        radio_contact = mc.get_contact_by_key_prefix(contact.public_key[:12])
-                        if not radio_contact:
-                            continue
-                        result = await mc.commands.remove_contact(radio_contact)
-                        error = _radio_contact_removal_error(result)
-                        if error:
-                            radio_failures.append(
-                                {"public_key": contact.public_key, "error": error}
-                            )
-                        else:
-                            radio_deleted += 1
-                    except Exception as exc:
-                        logger.warning(
-                            "Radio removal failed for contact %s",
-                            contact.public_key[:12],
-                            exc_info=True,
-                        )
-                        radio_failures.append({"public_key": contact.public_key, "error": str(exc)})
-                    finally:
-                        radio_processed.add(contact.public_key)
+            await radio_manager.run_radio_command(
+                "bulk_delete_contacts_from_radio", remove_contacts
+            )
         except Exception as e:
             logger.warning("Radio removal during bulk delete failed: %s", e)
             for contact in contacts_to_delete:
@@ -510,16 +516,20 @@ async def delete_contact(public_key: str) -> ContactDeleteResponse:
 
     # Remove from radio if connected and contact is on radio
     if radio_manager.is_connected:
+
+        async def remove_contact(mc) -> tuple[bool | None, str | None]:
+            radio_contact = mc.get_contact_by_key_prefix(contact.public_key[:12])
+            if not radio_contact:
+                return None, None
+            logger.info("Removing contact %s from radio before deletion", contact.public_key[:12])
+            result = await mc.commands.remove_contact(radio_contact)
+            error = _radio_contact_removal_error(result)
+            return error is None, error
+
         try:
-            async with radio_manager.radio_operation("delete_contact_from_radio") as mc:
-                radio_contact = mc.get_contact_by_key_prefix(contact.public_key[:12])
-                if radio_contact:
-                    logger.info(
-                        "Removing contact %s from radio before deletion", contact.public_key[:12]
-                    )
-                    result = await mc.commands.remove_contact(radio_contact)
-                    radio_error = _radio_contact_removal_error(result)
-                    radio_deleted = radio_error is None
+            radio_deleted, radio_error = await radio_manager.run_radio_command(
+                "delete_contact_from_radio", remove_contact
+            )
         except Exception as exc:
             logger.warning(
                 "Radio removal failed for contact %s", contact.public_key[:12], exc_info=True
@@ -561,7 +571,7 @@ async def request_trace(public_key: str) -> TraceResponse:
 
     # Trace does not need auto-fetch suspension: response arrives as TRACE_DATA
     # from the reader loop, not via get_msg().
-    async with radio_manager.radio_operation("request_trace", pause_polling=True) as mc:
+    async def trace(mc):
         # Ensure contact is on radio so the trace can reach them
         await _ensure_on_radio(mc, contact)
 
@@ -583,6 +593,10 @@ async def request_trace(public_key: str) -> TraceResponse:
             attribute_filters={"tag": tag},
             timeout=15,
         )
+
+        return event
+
+    event = await radio_manager.run_radio_command("request_trace", trace, pause_polling=True)
 
     if event is None:
         raise HTTPException(status_code=408, detail="No trace response heard")
@@ -615,7 +629,7 @@ async def request_path_discovery(public_key: str) -> PathDiscoveryResponse:
     contact = await _resolve_contact_or_404(public_key)
     pubkey_prefix = contact.public_key[:12]
 
-    async with radio_manager.radio_operation("request_path_discovery", pause_polling=True) as mc:
+    async def discover_path(mc):
         await _ensure_on_radio(mc, contact)
 
         response_task = asyncio.create_task(
@@ -673,6 +687,28 @@ async def request_path_discovery(public_key: str) -> PathDiscoveryResponse:
                 refreshed_contact.public_key[:12],
                 exc_info=True,
             )
+
+        return (
+            refreshed_contact,
+            forward_path,
+            forward_len,
+            forward_mode,
+            return_path,
+            return_len,
+            return_mode,
+        )
+
+    (
+        refreshed_contact,
+        forward_path,
+        forward_len,
+        forward_mode,
+        return_path,
+        return_len,
+        return_mode,
+    ) = await radio_manager.run_radio_command(
+        "request_path_discovery", discover_path, pause_polling=True
+    )
 
     await _broadcast_contact_update(refreshed_contact)
 
@@ -755,13 +791,16 @@ async def request_contact_telemetry(public_key: str) -> ContactTelemetryResponse
     radio_manager.require_connected()
     contact = await _resolve_contact_or_404(public_key)
 
-    async with radio_manager.radio_operation(
-        "contact_telemetry", pause_polling=True, suspend_auto_fetch=True
-    ) as mc:
+    async def fetch_telemetry(mc):
         await _ensure_on_radio(mc, contact)
-        telemetry = await mc.commands.req_telemetry_sync(
-            contact.public_key, timeout=10, min_timeout=5
-        )
+        return await mc.commands.req_telemetry_sync(contact.public_key, timeout=10, min_timeout=5)
+
+    telemetry = await radio_manager.run_radio_command(
+        "contact_telemetry",
+        fetch_telemetry,
+        pause_polling=True,
+        suspend_auto_fetch=True,
+    )
 
     if telemetry is None:
         raise HTTPException(status_code=504, detail="No telemetry response from contact")

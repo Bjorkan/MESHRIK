@@ -344,53 +344,57 @@ async def _probe_radio() -> DebugRadioProbe:
         return DebugRadioProbe(performed=False, errors=["Radio not connected"])
 
     errors: list[str] = []
+
+    async def probe(mc) -> DebugRadioProbe:
+        device_info = None
+        stats_core = None
+        stats_radio = None
+
+        device_event = await mc.commands.send_device_query()
+        if getattr(device_event, "type", None) == EventType.DEVICE_INFO:
+            device_info = device_event.payload
+        else:
+            errors.append(f"send_device_query returned {_event_type_name(device_event)}")
+
+        core_event = await mc.commands.get_stats_core()
+        if getattr(core_event, "type", None) == EventType.STATS_CORE:
+            stats_core = core_event.payload
+        else:
+            errors.append(f"get_stats_core returned {_event_type_name(core_event)}")
+
+        radio_event = await mc.commands.get_stats_radio()
+        if getattr(radio_event, "type", None) == EventType.STATS_RADIO:
+            stats_radio = radio_event.payload
+        else:
+            errors.append(f"get_stats_radio returned {_event_type_name(radio_event)}")
+
+        contacts_event = await mc.commands.get_contacts()
+        observed_contacts_payload: dict[str, dict[str, Any]] = {}
+        if getattr(contacts_event, "type", None) != EventType.ERROR:
+            observed_contacts_payload = contacts_event.payload or {}
+        else:
+            errors.append(f"get_contacts returned {_event_type_name(contacts_event)}")
+
+        return DebugRadioProbe(
+            performed=True,
+            errors=errors,
+            self_info=_sanitize_radio_probe_self_info(mc.self_info),
+            device_info=device_info,
+            stats_core=stats_core,
+            stats_radio=stats_radio,
+            contacts=await _build_contact_audit(observed_contacts_payload),
+            channels=await _build_channel_audit(
+                mc,
+                max_channels=_coerce_live_max_channels(device_info),
+            ),
+        )
+
     try:
-        async with radio_runtime.radio_operation(
+        return await radio_runtime.run_radio_command(
             "debug_support_snapshot",
+            probe,
             suspend_auto_fetch=True,
-        ) as mc:
-            device_info = None
-            stats_core = None
-            stats_radio = None
-
-            device_event = await mc.commands.send_device_query()
-            if getattr(device_event, "type", None) == EventType.DEVICE_INFO:
-                device_info = device_event.payload
-            else:
-                errors.append(f"send_device_query returned {_event_type_name(device_event)}")
-
-            core_event = await mc.commands.get_stats_core()
-            if getattr(core_event, "type", None) == EventType.STATS_CORE:
-                stats_core = core_event.payload
-            else:
-                errors.append(f"get_stats_core returned {_event_type_name(core_event)}")
-
-            radio_event = await mc.commands.get_stats_radio()
-            if getattr(radio_event, "type", None) == EventType.STATS_RADIO:
-                stats_radio = radio_event.payload
-            else:
-                errors.append(f"get_stats_radio returned {_event_type_name(radio_event)}")
-
-            contacts_event = await mc.commands.get_contacts()
-            observed_contacts_payload: dict[str, dict[str, Any]] = {}
-            if getattr(contacts_event, "type", None) != EventType.ERROR:
-                observed_contacts_payload = contacts_event.payload or {}
-            else:
-                errors.append(f"get_contacts returned {_event_type_name(contacts_event)}")
-
-            return DebugRadioProbe(
-                performed=True,
-                errors=errors,
-                self_info=_sanitize_radio_probe_self_info(mc.self_info),
-                device_info=device_info,
-                stats_core=stats_core,
-                stats_radio=stats_radio,
-                contacts=await _build_contact_audit(observed_contacts_payload),
-                channels=await _build_channel_audit(
-                    mc,
-                    max_channels=_coerce_live_max_channels(device_info),
-                ),
-            )
+        )
     except Exception as exc:
         logger.warning("Debug support snapshot radio probe failed: %s", exc, exc_info=True)
         errors.append(str(exc))

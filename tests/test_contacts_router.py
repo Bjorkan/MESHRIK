@@ -41,6 +41,13 @@ def _noop_radio_operation(mc=None):
     return _ctx
 
 
+def _run_radio_command(mc=None):
+    async def _run(_name, command, **_kwargs):
+        return await command(mc)
+
+    return _run
+
+
 async def _insert_contact(public_key=KEY_A, name="Alice", on_radio=False, **overrides):
     """Insert a contact into the test database."""
     data = {
@@ -354,6 +361,7 @@ class TestPathDiscovery:
             patch("app.websocket.broadcast_event") as mock_broadcast,
         ):
             mock_rm.radio_operation = _noop_radio_operation(mc)
+            mock_rm.run_radio_command = _run_radio_command(mc)
             response = await client.post(f"/api/contacts/{KEY_A}/path-discovery")
 
         assert response.status_code == 200
@@ -391,6 +399,7 @@ class TestPathDiscovery:
             patch("app.routers.contacts.radio_manager") as mock_rm,
         ):
             mock_rm.radio_operation = _noop_radio_operation(mc)
+            mock_rm.run_radio_command = _run_radio_command(mc)
             response = await client.post(f"/api/contacts/{KEY_A}/path-discovery")
 
         assert response.status_code == 408
@@ -417,6 +426,7 @@ class TestDeleteContactCascade:
             mock_rm.is_connected = False
             mock_rm.meshcore = None
             mock_rm.radio_operation = _noop_radio_operation()
+            mock_rm.run_radio_command = _run_radio_command()
 
             response = await client.delete(f"/api/contacts/{KEY_A}")
 
@@ -447,6 +457,7 @@ class TestDeleteContactCascade:
             mock_rm.is_connected = False
             mock_rm.meshcore = None
             mock_rm.radio_operation = _noop_radio_operation()
+            mock_rm.run_radio_command = _run_radio_command()
 
             response = await client.delete(f"/api/contacts/{KEY_A}")
         assert response.status_code == 200
@@ -503,6 +514,7 @@ class TestDeleteContact:
             mock_rm.is_connected = False
             mock_rm.meshcore = None
             mock_rm.radio_operation = _noop_radio_operation()
+            mock_rm.run_radio_command = _run_radio_command()
 
             response = await client.delete(f"/api/contacts/{KEY_A}")
 
@@ -533,6 +545,7 @@ class TestDeleteContact:
             mock_rm.is_connected = True
             mock_rm.meshcore = mock_mc
             mock_rm.radio_operation = _noop_radio_operation(mock_mc)
+            mock_rm.run_radio_command = _run_radio_command(mock_mc)
 
             response = await client.delete(f"/api/contacts/{KEY_A}")
 
@@ -553,6 +566,7 @@ class TestDeleteContact:
         with patch("app.routers.contacts.radio_manager") as mock_rm:
             mock_rm.is_connected = True
             mock_rm.radio_operation = _noop_radio_operation(mock_mc)
+            mock_rm.run_radio_command = _run_radio_command(mock_mc)
             response = await client.delete(f"/api/contacts/{KEY_A}")
 
         assert response.status_code == 200
@@ -577,6 +591,7 @@ class TestBulkDeleteContacts:
         with patch("app.routers.contacts.radio_manager") as mock_rm:
             mock_rm.is_connected = True
             mock_rm.radio_operation = _noop_radio_operation(mock_mc)
+            mock_rm.run_radio_command = _run_radio_command(mock_mc)
             response = await client.post(
                 "/api/contacts/bulk-delete",
                 json={"public_keys": [KEY_A.upper(), KEY_A, KEY_A.upper()]},
@@ -610,6 +625,7 @@ class TestBulkDeleteContacts:
         with patch("app.routers.contacts.radio_manager") as mock_rm:
             mock_rm.is_connected = True
             mock_rm.radio_operation = _noop_radio_operation(mock_mc)
+            mock_rm.run_radio_command = _run_radio_command(mock_mc)
             response = await client.post(
                 "/api/contacts/bulk-delete",
                 json={"public_keys": [KEY_A, KEY_B]},
@@ -764,6 +780,7 @@ class TestRoutingOverride:
         ):
             mock_rm.is_connected = True
             mock_rm.radio_operation = _noop_radio_operation(mock_mc)
+            mock_rm.run_radio_command = _run_radio_command(mock_mc)
             response = await client.post(
                 f"/api/contacts/{KEY_A}/routing-override",
                 json={"route": "-1"},
@@ -850,6 +867,7 @@ class TestContactTelemetry:
             mock_rm.is_connected = True
             mock_rm.require_connected = MagicMock()
             mock_rm.radio_operation = _noop_radio_operation(mock_mc)
+            mock_rm.run_radio_command = _run_radio_command(mock_mc)
 
             response = await client.post(f"/api/contacts/{KEY_A}/telemetry")
 
@@ -876,6 +894,7 @@ class TestContactTelemetry:
             mock_rm.is_connected = True
             mock_rm.require_connected = MagicMock()
             mock_rm.radio_operation = _noop_radio_operation(mock_mc)
+            mock_rm.run_radio_command = _run_radio_command(mock_mc)
 
             response = await client.post(f"/api/contacts/{KEY_A}/telemetry")
 

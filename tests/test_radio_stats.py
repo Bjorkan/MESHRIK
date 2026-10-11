@@ -179,6 +179,11 @@ class TestSampleAllStats:
         with patch.object(radio_stats, "radio_manager") as mock_rm:
             mock_rm.is_connected = True
             mock_rm.radio_operation = MagicMock(return_value=mock_ctx)
+
+            async def run_command(_name, command, **_kwargs):
+                return await command(mock_mc)
+
+            mock_rm.run_radio_command = run_command
             snapshot = await radio_stats._sample_all_stats()
 
         # Core fields missing (ERROR), but radio + packet fields present
@@ -233,6 +238,11 @@ class TestSampleAllStats:
         with patch.object(radio_stats, "radio_manager") as mock_rm:
             mock_rm.is_connected = True
             mock_rm.radio_operation = MagicMock(return_value=mock_ctx)
+
+            async def run_command(_name, command, **_kwargs):
+                return await command(mock_mc)
+
+            mock_rm.run_radio_command = run_command
             snapshot = await radio_stats._sample_all_stats()
 
         assert snapshot["battery_mv"] == 4100
@@ -259,6 +269,11 @@ class TestSampleAllStats:
         with patch.object(radio_stats, "radio_manager") as mock_rm:
             mock_rm.is_connected = True
             mock_rm.radio_operation = MagicMock(return_value=mock_ctx)
+
+            async def run_command(_name, command, **_kwargs):
+                return await command(mock_mc)
+
+            mock_rm.run_radio_command = run_command
             snapshot = await radio_stats._sample_all_stats()
 
         assert snapshot == {}
