@@ -1,21 +1,16 @@
-"""Queue-backed compatibility bridge for the existing radio-operation producers.
+"""Worker-executed adapters for synchronous radio producer APIs.
 
-The public HTTP handlers retain their original synchronous results while radio
-command sections are admitted by the one worker. Only the *existing* worker
-enters the RadioManager lock; callbacks and private request contents never
-enter RadioJobSnapshot. During isolated unit tests (without a started lifespan)
-the original context manager is used, allowing the legacy mocked transport to
-remain testable. In an initialized application, loss of the worker fails closed.
-
-This bridge deliberately holds the command slot for the full legacy context:
-response-dependent handlers must be split into send and reply phases before
-they can safely overlap. It is not permission to schedule arbitrary RF commands.
+HTTP handlers and background producers submit private callbacks and await their
+typed result while the callback itself runs in the one worker task. Command
+inputs never enter the public RadioJobSnapshot. Hardware-free unit tests may
+use the raw lock only when no application worker has ever been attached; an
+initialized application fails closed if its worker is unavailable.
 """
 
 import asyncio
 import os
-from collections.abc import AsyncIterator, Awaitable, Callable
-from contextlib import asynccontextmanager, contextmanager
+from collections.abc import Awaitable, Callable
+from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
 from typing import Any, TypeVar, cast
@@ -144,7 +139,6 @@ class _ProducerSession:
     job_id: UUID
     owner: asyncio.Task[Any] | None = None
     await_ack: bool = False
-    successful: bool = False
 
 
 _current_session: ContextVar[_ProducerSession | None] = ContextVar(
@@ -225,8 +219,7 @@ async def run_scheduled_radio_command(
 ) -> _ResultT:
     """Run a complete radio command callback in the single worker task.
 
-    Unlike :func:`scheduled_radio_operation`, this is not a compatibility
-    permit handed back to the producer task. The callback itself executes in
+    The callback itself executes in
     ``radio-job-command``, so its deadline can cancel the actual command phase
     and no HTTP/background task can keep using the transport after the worker
     has declared the job terminal.
@@ -356,157 +349,3 @@ async def run_scheduled_radio_command(
     if final.result == RadioJobResult.RADIO_CHANGED:
         raise HTTPException(status_code=423, detail="Radio changed while command was running")
     raise HTTPException(status_code=503, detail="Radio command did not complete")
-
-
-@asynccontextmanager
-async def scheduled_radio_operation(
-    runtime: Any,
-    name: str,
-    *,
-    pause_polling: bool = False,
-    suspend_auto_fetch: bool = False,
-    blocking: bool = True,
-    defer_when_busy: bool = False,
-) -> AsyncIterator[Any]:
-    """Enter the single worker command permit for a transport-critical section.
-
-    An operation already running *inside the worker task* may call a domain
-    service that uses this context manager. It reuses that same command permit,
-    not a second queued job. No separate asyncio task may inherit that permit.
-    Outside the worker, the producer owns a shielded release handshake so
-    scoped configuration restoration is atomic until its `async with` exits.
-    """
-    existing = _worker_transport.get()
-    if existing is not None and existing.owner is asyncio.current_task():
-        if defer_when_busy:
-            raise ValueError("A worker command cannot defer its own command permit")
-        yield existing.meshcore
-        return
-    if defer_when_busy and (blocking or name not in _SINGLETON_PERIODIC):
-        raise ValueError("Deferred admission is reserved for fail-fast background producers")
-    operation_options = {
-        **({"pause_polling": True} if pause_polling else {}),
-        **({"suspend_auto_fetch": True} if suspend_auto_fetch else {}),
-        **({"blocking": False} if not blocking else {}),
-    }
-    if not radio_job_worker.running:
-        # No lifespan: standalone service functions and unit-test doubles.
-        # If startup ever attached a worker and it stopped/quarantined, fail
-        # closed instead of bypassing the scheduler on a live application.
-        if (
-            "PYTEST_CURRENT_TEST" not in os.environ
-            or radio_job_scheduler._worker_owner is not None
-            or radio_job_worker.quarantined
-        ):
-            raise HTTPException(status_code=503, detail="Radio command worker unavailable")
-        async with runtime.raw_radio_operation(name, **operation_options) as mc:
-            yield mc
-        return
-
-    # Previously "blocking=False" was a best-effort one-shot attempt. It
-    # must not add a backlog while a user command is executing or queued.
-    if (
-        not blocking
-        and not defer_when_busy
-        and (
-            radio_job_scheduler.queue_size > 0
-            or any(j.state == RadioJobState.EXECUTING for j in radio_job_scheduler.list_jobs())
-        )
-    ):
-        raise RadioOperationBusyError("Radio command queue busy")
-
-    kind, priority = classify_operation(name)
-    # A background source may have at most one pending or executing copy.
-    # Even the deferred path cannot accumulate missed polling intervals.
-    coalesce_key = f"periodic:{name}" if name in _SINGLETON_PERIODIC else None
-    coalesce_scope = "radio-background"
-    if coalesce_key is not None and radio_job_scheduler.has_inflight_coalesced_job(
-        kind=kind, scope=coalesce_scope, coalesce_key=coalesce_key
-    ):
-        raise RadioOperationBusyError("Periodic command already pending")
-    loop = asyncio.get_running_loop()
-    entered: asyncio.Future[Any] = loop.create_future()
-    released: asyncio.Future[None] = loop.create_future()
-    failed: asyncio.Future[None] = loop.create_future()
-
-    async def critical_section(mc: Any) -> RadioCommandOutcome:
-        if not entered.done():
-            entered.set_result(mc)
-        # Shield ensures that an uncooperative producer still owns the lower-
-        # level radio lock. The worker quarantines rather than double-issues.
-        while not released.done():
-            try:
-                await asyncio.shield(released)
-            except asyncio.CancelledError:
-                # Leave the physical lock owned by this command until the
-                # producer's finally/restore section has actually returned.
-                continue
-        # A reboot/identity mutation is a lifecycle barrier. Fence all pending
-        # jobs BEFORE releasing the worker's command permit; otherwise another
-        # queued command could dispatch under stale radio assumptions.
-        _fence_lifecycle_mutation(runtime, name)
-        if not session.successful:
-            return RadioCommandOutcome.UNCERTAIN
-        if session.await_ack:
-            return RadioCommandOutcome.AWAITING_ACK
-        return (
-            RadioCommandOutcome.UNCERTAIN
-            if kind in (RadioJobKind.DIRECT_MESSAGE, RadioJobKind.CHANNEL_MESSAGE)
-            else RadioCommandOutcome.FINISHED
-        )
-
-    session = _ProducerSession(job_id=UUID(int=0), owner=asyncio.current_task())
-    try:
-        job = radio_job_worker.submit(
-            kind,
-            critical_section,
-            priority=priority,
-            radio_options=operation_options,
-            command_timeout_seconds=command_timeout_for_operation(name),
-            response_timeout_seconds=180 if kind == RadioJobKind.DIRECT_MESSAGE else 30,
-            queue_timeout_seconds=180 if defer_when_busy else (5 if not blocking else 60),
-            scope=coalesce_scope if coalesce_key else "global",
-            coalesce_key=coalesce_key,
-        )
-    except RadioAdmissionError as exc:
-        if not blocking:
-            raise RadioOperationBusyError("Radio command queue busy") from exc
-        raise HTTPException(
-            status_code=503,
-            detail="Radio command queue unavailable; retry after a short delay",
-            headers={"Retry-After": "5"},
-        ) from exc
-
-    session.job_id = job.id
-
-    def on_change(snapshot: RadioJobSnapshot) -> None:
-        if (
-            snapshot.id == job.id
-            and snapshot.state in TERMINAL_STATES
-            and not entered.done()
-            and not failed.done()
-        ):
-            failed.set_result(None)
-
-    unsubscribe = radio_job_scheduler.subscribe(on_change)
-    started = False
-    token = None
-    try:
-        done, _ = await asyncio.wait({entered, failed}, return_when=asyncio.FIRST_COMPLETED)
-        if entered not in done:
-            if not blocking:
-                raise RadioOperationBusyError("Radio command not available")
-            raise HTTPException(status_code=503, detail="Radio command was not dispatched")
-        started = True
-        token = _current_session.set(session)
-        yield entered.result()
-        session.successful = True
-    finally:
-        # No producer may keep the lock after its own critical section exits.
-        if token is not None:
-            _current_session.reset(token)
-        if not released.done():
-            released.set_result(None)
-        if not started:
-            radio_job_worker.cancel(job.id)
-        unsubscribe()

@@ -1281,192 +1281,184 @@ async def _reconcile_radio_contacts_in_background(
             progressed = False
             autoevict_pass_complete = False
             autoevict_pass_failed = False
-            try:
-                async with radio_manager.radio_operation(
-                    "background_contact_reconcile",
-                    blocking=False,
-                ) as mc:
-                    if mc is not expected_mc:
-                        logger.info(
-                            "Stopping background contact reconcile: radio transport changed"
+
+            async def reconcile_batch(mc) -> bool:
+                nonlocal failed, removed, loaded, progressed, table_full
+                nonlocal autoevict_next_index, autoevict_pass_complete
+                nonlocal autoevict_pass_failed, desired_fill_contacts
+
+                if mc is not expected_mc:
+                    logger.info("Stopping background contact reconcile: radio transport changed")
+                    return True
+
+                budget = CONTACT_RECONCILE_BATCH_SIZE
+                selected = await get_contacts_selected_for_radio_sync()
+                desired_fill_contacts = [
+                    contact for contact in selected if len(contact.public_key) >= 64
+                ]
+                if autoevict and autoevict_next_index >= len(desired_fill_contacts):
+                    autoevict_next_index = 0
+                desired = {contact.public_key.lower(): contact for contact in desired_fill_contacts}
+
+                if not autoevict:
+                    for public_key in list(radio_contacts):
+                        if budget <= 0:
+                            break
+                        if public_key in desired:
+                            continue
+                        remove_payload = (
+                            mc.get_contact_by_key_prefix(public_key[:12])
+                            or radio_contacts.get(public_key)
+                            or {"public_key": public_key}
                         )
-                        break
-
-                    budget = CONTACT_RECONCILE_BATCH_SIZE
-                    selected_contacts = await get_contacts_selected_for_radio_sync()
-                    desired_fill_contacts = [
-                        contact for contact in selected_contacts if len(contact.public_key) >= 64
-                    ]
-                    if autoevict and autoevict_next_index >= len(desired_fill_contacts):
-                        autoevict_next_index = 0
-                    desired_contacts = {
-                        contact.public_key.lower(): contact for contact in desired_fill_contacts
-                    }
-
-                    if not autoevict:
-                        for public_key in list(radio_contacts):
-                            if budget <= 0:
-                                break
-                            if public_key in desired_contacts:
-                                continue
-
-                            remove_payload = (
-                                mc.get_contact_by_key_prefix(public_key[:12])
-                                or radio_contacts.get(public_key)
-                                or {"public_key": public_key}
-                            )
-                            try:
-                                remove_result = await mc.commands.remove_contact(remove_payload)
-                            except Exception as exc:
-                                failed += 1
-                                budget -= 1
-                                logger.warning(
-                                    "Error removing contact %s during background reconcile: %s",
-                                    public_key[:12],
-                                    exc,
-                                )
-                                continue
-
+                        try:
+                            remove_result = await mc.commands.remove_contact(remove_payload)
+                        except Exception as exc:
+                            failed += 1
                             budget -= 1
-                            not_found = (
-                                remove_result.type != EventType.OK
-                                and isinstance(remove_result.payload, dict)
-                                and remove_result.payload.get("error_code") == 2
+                            logger.warning(
+                                "Error removing contact %s during background reconcile: %s",
+                                public_key[:12],
+                                exc,
                             )
-                            if remove_result.type == EventType.OK or not_found:
-                                radio_contacts.pop(public_key, None)
-                                _evict_removed_contact_from_library_cache(mc, public_key)
-                                removed += 1
-                                progressed = True
-                            else:
-                                failed += 1
-                                logger.warning(
-                                    "Failed to remove contact %s during background reconcile: %s",
-                                    public_key[:12],
-                                    remove_result.payload,
-                                )
-
-                    if budget > 0:
-                        if autoevict:
-                            # Budget is consumed by the slice bound rather than
-                            # per-operation decrement — autoevict skips the
-                            # removal phase so the full budget is always available.
-                            batch_contacts = desired_fill_contacts[
-                                autoevict_next_index : autoevict_next_index + budget
-                            ]
-                            processed_contacts = 0
-                            for contact in batch_contacts:
-                                public_key = contact.public_key.lower()
-                                try:
-                                    add_payload = contact.to_radio_dict()
-                                    # In autoevict mode, app-loaded contacts should
-                                    # remain evictable by the radio even if the
-                                    # stored contact record carries the favorite bit.
-                                    add_payload["flags"] = (
-                                        int(add_payload.get("flags", 0)) & ~_RADIO_CONTACT_FAVORITE
-                                    )
-                                    add_result = await mc.commands.add_contact(add_payload)
-                                except Exception as exc:
-                                    failed += 1
-                                    logger.warning(
-                                        "Error blind-filling contact %s during background reconcile: %s",
-                                        public_key[:12],
-                                        exc,
-                                        exc_info=True,
-                                    )
-                                    autoevict_pass_failed = True
-                                    processed_contacts += 1
-                                    continue
-
-                                if add_result.type == EventType.OK:
-                                    radio_contacts[public_key] = add_payload
-                                    loaded += 1
-                                    progressed = True
-                                else:
-                                    failed += 1
-                                    autoevict_pass_failed = True
-                                    reason = add_result.payload
-                                    if isinstance(reason, dict) and reason.get("error_code") == 3:
-                                        logger.warning(
-                                            "Radio contact table full — stopping "
-                                            "contact reconcile (loaded %d this cycle)",
-                                            loaded,
-                                        )
-                                        table_full = True
-                                        break
-                                    hint = ""
-                                    if reason is None:
-                                        hint = (
-                                            " (no response from radio — if this repeats, check for "
-                                            "serial port contention from another process or try a "
-                                            "power cycle)"
-                                        )
-                                    logger.warning(
-                                        "Failed to blind-fill contact %s during background reconcile: %s%s",
-                                        public_key[:12],
-                                        reason,
-                                        hint,
-                                    )
-                                processed_contacts += 1
-
-                            autoevict_next_index += processed_contacts
-                            autoevict_pass_complete = autoevict_next_index >= len(
-                                desired_fill_contacts
-                            )
+                            continue
+                        budget -= 1
+                        not_found = (
+                            remove_result.type != EventType.OK
+                            and isinstance(remove_result.payload, dict)
+                            and remove_result.payload.get("error_code") == 2
+                        )
+                        if remove_result.type == EventType.OK or not_found:
+                            radio_contacts.pop(public_key, None)
+                            _evict_removed_contact_from_library_cache(mc, public_key)
+                            removed += 1
+                            progressed = True
                         else:
-                            for public_key, contact in desired_contacts.items():
-                                if budget <= 0:
-                                    break
-                                if public_key in radio_contacts:
-                                    continue
+                            failed += 1
+                            logger.warning(
+                                "Failed to remove contact %s during background reconcile: %s",
+                                public_key[:12],
+                                remove_result.payload,
+                            )
 
-                                if mc.get_contact_by_key_prefix(public_key[:12]):
-                                    radio_contacts[public_key] = {"public_key": public_key}
-                                    continue
+                if budget <= 0:
+                    return False
+                if autoevict:
+                    batch_contacts = desired_fill_contacts[
+                        autoevict_next_index : autoevict_next_index + budget
+                    ]
+                    processed_contacts = 0
+                    for contact in batch_contacts:
+                        public_key = contact.public_key.lower()
+                        try:
+                            add_payload = contact.to_radio_dict()
+                            add_payload["flags"] = (
+                                int(add_payload.get("flags", 0)) & ~_RADIO_CONTACT_FAVORITE
+                            )
+                            add_result = await mc.commands.add_contact(add_payload)
+                        except Exception as exc:
+                            failed += 1
+                            autoevict_pass_failed = True
+                            processed_contacts += 1
+                            logger.warning(
+                                "Error blind-filling contact %s during background reconcile: %s",
+                                public_key[:12],
+                                exc,
+                                exc_info=True,
+                            )
+                            continue
+                        if add_result.type == EventType.OK:
+                            radio_contacts[public_key] = add_payload
+                            loaded += 1
+                            progressed = True
+                        else:
+                            failed += 1
+                            autoevict_pass_failed = True
+                            reason = add_result.payload
+                            if isinstance(reason, dict) and reason.get("error_code") == 3:
+                                logger.warning(
+                                    "Radio contact table full — stopping contact reconcile "
+                                    "(loaded %d this cycle)",
+                                    loaded,
+                                )
+                                table_full = True
+                                break
+                            hint = (
+                                " (no response from radio — if this repeats, check for serial port "
+                                "contention from another process or try a power cycle)"
+                                if reason is None
+                                else ""
+                            )
+                            logger.warning(
+                                "Failed to blind-fill contact %s during background reconcile: %s%s",
+                                public_key[:12],
+                                reason,
+                                hint,
+                            )
+                        processed_contacts += 1
+                    autoevict_next_index += processed_contacts
+                    autoevict_pass_complete = autoevict_next_index >= len(desired_fill_contacts)
+                    return False
 
-                                try:
-                                    add_payload = contact.to_radio_dict()
-                                    add_result = await mc.commands.add_contact(add_payload)
-                                except Exception as exc:
-                                    failed += 1
-                                    budget -= 1
-                                    logger.warning(
-                                        "Error adding contact %s during background reconcile: %s",
-                                        public_key[:12],
-                                        exc,
-                                        exc_info=True,
-                                    )
-                                    continue
+                for public_key, contact in desired.items():
+                    if budget <= 0:
+                        break
+                    if public_key in radio_contacts:
+                        continue
+                    if mc.get_contact_by_key_prefix(public_key[:12]):
+                        radio_contacts[public_key] = {"public_key": public_key}
+                        continue
+                    try:
+                        add_payload = contact.to_radio_dict()
+                        add_result = await mc.commands.add_contact(add_payload)
+                    except Exception as exc:
+                        failed += 1
+                        budget -= 1
+                        logger.warning(
+                            "Error adding contact %s during background reconcile: %s",
+                            public_key[:12],
+                            exc,
+                            exc_info=True,
+                        )
+                        continue
+                    budget -= 1
+                    if add_result.type == EventType.OK:
+                        radio_contacts[public_key] = add_payload
+                        loaded += 1
+                        progressed = True
+                    else:
+                        failed += 1
+                        reason = add_result.payload
+                        if isinstance(reason, dict) and reason.get("error_code") == 3:
+                            logger.warning(
+                                "Radio contact table full — stopping contact reconcile "
+                                "(loaded %d this cycle)",
+                                loaded,
+                            )
+                            table_full = True
+                            break
+                        hint = (
+                            " (no response from radio — if this repeats, check for serial port "
+                            "contention from another process or try a power cycle)"
+                            if reason is None
+                            else ""
+                        )
+                        logger.warning(
+                            "Failed to add contact %s during background reconcile: %s%s",
+                            public_key[:12],
+                            reason,
+                            hint,
+                        )
+                return False
 
-                                budget -= 1
-                                if add_result.type == EventType.OK:
-                                    radio_contacts[public_key] = add_payload
-                                    loaded += 1
-                                    progressed = True
-                                else:
-                                    failed += 1
-                                    reason = add_result.payload
-                                    if isinstance(reason, dict) and reason.get("error_code") == 3:
-                                        logger.warning(
-                                            "Radio contact table full — stopping "
-                                            "contact reconcile (loaded %d this cycle)",
-                                            loaded,
-                                        )
-                                        table_full = True
-                                        break
-                                    hint = ""
-                                    if reason is None:
-                                        hint = (
-                                            " (no response from radio — if this repeats, check for "
-                                            "serial port contention from another process or try a "
-                                            "power cycle)"
-                                        )
-                                    logger.warning(
-                                        "Failed to add contact %s during background reconcile: %s%s",
-                                        public_key[:12],
-                                        reason,
-                                        hint,
-                                    )
+            try:
+                transport_changed = await radio_manager.run_radio_command(
+                    "background_contact_reconcile",
+                    reconcile_batch,
+                    blocking=False,
+                )
+                if transport_changed:
+                    break
             except RadioOperationBusyError:
                 logger.debug("Background contact reconcile yielding: radio busy")
                 await asyncio.sleep(CONTACT_RECONCILE_BUSY_BACKOFF_SECONDS)

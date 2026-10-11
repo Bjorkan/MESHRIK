@@ -76,22 +76,6 @@ class RadioRuntime:
         async with self.manager.radio_operation(name, **kwargs) as mc:
             yield mc
 
-    @asynccontextmanager
-    async def radio_operation(self, name: str, **kwargs):
-        """Admit producer critical sections through the one scheduler worker."""
-        from app.services.radio_producers import scheduled_radio_operation
-
-        async with scheduled_radio_operation(self, name, **kwargs) as mc:
-            yield mc
-        if name in {"reboot_radio", "import_private_key"} and not self._worker_running():
-            # A device identity/reboot barrier invalidates all queued radio
-            # assumptions (including loaded contact/channel slot caches).
-            # The worker detects this generation change and fences old jobs;
-            # no second radio owner is ever constructed.
-            self.radio_generation = int(self.radio_generation) + 1
-            self.reset_channel_send_cache()
-            self.clear_pending_message_channel_slots()
-
     async def run_radio_command(
         self,
         name: str,
@@ -102,12 +86,6 @@ class RadioRuntime:
         from app.services.radio_producers import run_scheduled_radio_command
 
         return await run_scheduled_radio_command(self, name, command, **kwargs)
-
-    @staticmethod
-    def _worker_running() -> bool:
-        from app.services.radio_job_worker import radio_job_worker
-
-        return radio_job_worker.running
 
     async def start_connection_monitor(self) -> None:
         await self.manager.start_connection_monitor()

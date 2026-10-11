@@ -52,10 +52,12 @@ async def test_producers_share_one_worker_command_slot(monkeypatch):
     visited = []
 
     async def producer(name):
-        async with producers.scheduled_radio_operation(rt, name, pause_polling=True):
+        async def command(_mc):
             visited.append(f"{name}:enter")
             await asyncio.sleep(0.01)
             visited.append(f"{name}:exit")
+
+        await producers.run_scheduled_radio_command(rt, name, command, pause_polling=True)
 
     try:
         await asyncio.gather(
@@ -151,18 +153,22 @@ async def test_low_priority_periodic_work_skips_busy_command(monkeypatch):
     release = asyncio.Event()
 
     async def active():
-        async with producers.scheduled_radio_operation(rt, "send_channel_message"):
+        async def command(_mc):
             entered.set()
             await release.wait()
+
+        await producers.run_scheduled_radio_command(rt, "send_channel_message", command)
 
     task = asyncio.create_task(active())
     try:
         await asyncio.wait_for(entered.wait(), 1)
         with pytest.raises(RadioOperationBusyError):
-            async with producers.scheduled_radio_operation(
-                rt, "periodic_advertisement", blocking=False
-            ):
-                pytest.fail("Periodic advertising should not dispatch while busy")
+            await producers.run_scheduled_radio_command(
+                rt,
+                "periodic_advertisement",
+                AsyncMock(),
+                blocking=False,
+            )
         assert scheduler.queue_size == 0
         assert producers.classify_operation("periodic_advertisement") == (
             RadioJobKind.PERIODIC_ADVERTISEMENT,
@@ -183,9 +189,12 @@ async def test_aborted_producer_marks_result_uncertain_and_releases_lock(monkeyp
     monkeypatch.setattr(producers, "radio_job_scheduler", scheduler)
     worker.start()
     try:
+
+        async def fail(_mc):
+            raise ValueError("producer failed")
+
         with pytest.raises(ValueError, match="producer failed"):
-            async with producers.scheduled_radio_operation(rt, "send_direct_message"):
-                raise ValueError("producer failed")
+            await producers.run_scheduled_radio_command(rt, "send_direct_message", fail)
 
         async def settled():
             while any(job.state == RadioJobState.EXECUTING for job in scheduler.list_jobs()):
@@ -352,7 +361,6 @@ def test_legacy_radio_operation_bridge_has_a_closed_migration_allowlist():
 
     root = Path(__file__).resolve().parents[1]
     allowed = {
-        "app/radio_sync.py",  # bounded background contact-reconcile batches
         "app/services/radio_runtime.py",  # transport seam implementation
     }
     found: set[str] = set()

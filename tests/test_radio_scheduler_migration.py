@@ -50,20 +50,30 @@ async def test_deferred_background_coalesces_and_ages_ahead_of_new_high(monkeypa
     order = []
 
     async def first_high():
-        async with radio_producers.scheduled_radio_operation(runtime, "send_channel_message"):
+        async def command(_mc):
             entered.set()
             await release.wait()
             order.append("high-1")
 
+        await radio_producers.run_scheduled_radio_command(runtime, "send_channel_message", command)
+
     async def periodic():
-        async with radio_producers.scheduled_radio_operation(
-            runtime, "periodic_advertisement", blocking=False, defer_when_busy=True
-        ):
+        async def command(_mc):
             order.append("low")
 
+        await radio_producers.run_scheduled_radio_command(
+            runtime,
+            "periodic_advertisement",
+            command,
+            blocking=False,
+            defer_when_busy=True,
+        )
+
     async def second_high():
-        async with radio_producers.scheduled_radio_operation(runtime, "send_direct_message"):
+        async def command(_mc):
             order.append("high-2")
+
+        await radio_producers.run_scheduled_radio_command(runtime, "send_direct_message", command)
 
     high = asyncio.create_task(first_high())
     low = None
@@ -73,10 +83,13 @@ async def test_deferred_background_coalesces_and_ages_ahead_of_new_high(monkeypa
         low = asyncio.create_task(periodic())
         await _wait_until(lambda: scheduler.queue_size == 1)
         with pytest.raises(RadioOperationBusyError):
-            async with radio_producers.scheduled_radio_operation(
-                runtime, "periodic_advertisement", blocking=False, defer_when_busy=True
-            ):
-                pytest.fail("A second background operation must not share a command closure")
+            await radio_producers.run_scheduled_radio_command(
+                runtime,
+                "periodic_advertisement",
+                AsyncMock(),
+                blocking=False,
+                defer_when_busy=True,
+            )
         later = asyncio.create_task(second_high())
         await _wait_until(lambda: scheduler.queue_size == 2)
         await asyncio.sleep(0.07)
@@ -105,14 +118,20 @@ async def test_reboot_barrier_fences_next_queued_command_before_dispatch(monkeyp
     other_ran = False
 
     async def reboot():
-        async with radio_producers.scheduled_radio_operation(runtime, "reboot_radio"):
+        async def command(_mc):
             entered.set()
             await release.wait()
 
+        await radio_producers.run_scheduled_radio_command(runtime, "reboot_radio", command)
+
     async def next_command():
         nonlocal other_ran
-        async with radio_producers.scheduled_radio_operation(runtime, "send_direct_message"):
+
+        async def command(_mc):
+            nonlocal other_ran
             other_ran = True
+
+        await radio_producers.run_scheduled_radio_command(runtime, "send_direct_message", command)
 
     first = asyncio.create_task(reboot())
     other = None
@@ -193,8 +212,10 @@ async def test_worker_nested_domain_operation_reuses_only_owner_permit():
 
     # Calling a nested service is allowed only from the worker's owner task.
     async def wrapped(mc):
-        async with radio_producers.scheduled_radio_operation(runtime, "send_direct_message"):
+        async def nested(_mc):
             seen.append("worker")
+
+        await radio_producers.run_scheduled_radio_command(runtime, "send_direct_message", nested)
         return RadioCommandOutcome.UNCERTAIN
 
     # The worker automatically installs the scoped transport for its callback.

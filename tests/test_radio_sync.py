@@ -1009,7 +1009,7 @@ class TestBackgroundContactReconcile:
         with (
             patch.object(
                 radio_sync.radio_manager,
-                "radio_operation",
+                "raw_radio_operation",
                 side_effect=lambda *args, **kwargs: _radio_operation(*args, **kwargs),
             ),
             patch(
@@ -1052,7 +1052,7 @@ class TestBackgroundContactReconcile:
         with (
             patch.object(
                 radio_sync.radio_manager,
-                "radio_operation",
+                "raw_radio_operation",
                 side_effect=lambda *args, **kwargs: _radio_operation(*args, **kwargs),
             ),
             patch("app.radio_sync.CONTACT_RECONCILE_BATCH_SIZE", 10),
@@ -1101,7 +1101,7 @@ class TestBackgroundContactReconcile:
         with (
             patch.object(
                 radio_sync.radio_manager,
-                "radio_operation",
+                "raw_radio_operation",
                 side_effect=lambda *args, **kwargs: _radio_operation(*args, **kwargs),
             ),
             patch("app.radio_sync.CONTACT_RECONCILE_BATCH_SIZE", 10),
@@ -1151,7 +1151,7 @@ class TestBackgroundContactReconcile:
         with (
             patch.object(
                 radio_sync.radio_manager,
-                "radio_operation",
+                "raw_radio_operation",
                 side_effect=lambda *args, **kwargs: _radio_operation(*args, **kwargs),
             ),
             patch("app.radio_sync.CONTACT_RECONCILE_BATCH_SIZE", 10),
@@ -1199,7 +1199,7 @@ class TestBackgroundContactReconcile:
         with (
             patch.object(
                 radio_sync.radio_manager,
-                "radio_operation",
+                "raw_radio_operation",
                 side_effect=lambda *args, **kwargs: _radio_operation(*args, **kwargs),
             ),
             patch("app.radio_sync.get_contacts_selected_for_radio_sync", return_value=[]),
