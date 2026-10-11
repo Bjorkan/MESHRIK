@@ -32,6 +32,17 @@ from app.services.messages import (
 logger = logging.getLogger(__name__)
 
 
+async def _run_radio_command(runtime, name: str, command, **options):
+    """Accept the runtime seam or wrap an injected raw manager without bypassing the worker."""
+    runner = getattr(runtime, "run_radio_command", None)
+    if runner is not None:
+        return await runner(name, command, **options)
+
+    from app.services.radio_runtime import RadioRuntime
+
+    return await RadioRuntime(runtime).run_radio_command(name, command, **options)
+
+
 class _ScopeUnset:
     """Sentinel for "no per-send flood-scope override supplied".
 
@@ -514,43 +525,45 @@ async def _retry_direct_message_until_acked(
         if await _is_message_acked(message_id=message_id, message_repository=message_repository):
             return
 
-        try:
-            async with radio_manager.radio_operation("retry_direct_message") as mc:
-                contact_data = contact.to_radio_dict()
-                add_result = await mc.commands.add_contact(contact_data)
-                if add_result.type == EventType.ERROR:
-                    logger.warning(
-                        "Failed to reload contact %s on radio before DM retry: %s",
-                        contact.public_key[:12],
-                        add_result.payload,
-                    )
-                cached_contact = mc.get_contact_by_key_prefix(contact.public_key[:12])
-                if not cached_contact:
-                    cached_contact = contact_data
-
-                if attempt == DM_SEND_MAX_ATTEMPTS - 1:
-                    reset_result = await mc.commands.reset_path(contact.public_key)
-                    if reset_result is None:
-                        logger.warning(
-                            "No response from radio for reset_path to %s before final DM retry",
-                            contact.public_key[:12],
-                        )
-                    elif reset_result.type == EventType.ERROR:
-                        logger.warning(
-                            "Failed to reset path before final DM retry to %s: %s",
-                            contact.public_key[:12],
-                            reset_result.payload,
-                        )
-                    refreshed_contact = mc.get_contact_by_key_prefix(contact.public_key[:12])
-                    if refreshed_contact:
-                        cached_contact = refreshed_contact
-
-                result = await mc.commands.send_msg(
-                    dst=cached_contact,
-                    msg=text,
-                    timestamp=sender_timestamp,
-                    attempt=attempt,
+        async def retry_send(mc, attempt=attempt):
+            contact_data = contact.to_radio_dict()
+            add_result = await mc.commands.add_contact(contact_data)
+            if add_result.type == EventType.ERROR:
+                logger.warning(
+                    "Failed to reload contact %s on radio before DM retry: %s",
+                    contact.public_key[:12],
+                    add_result.payload,
                 )
+            cached_contact = mc.get_contact_by_key_prefix(contact.public_key[:12])
+            if not cached_contact:
+                cached_contact = contact_data
+
+            if attempt == DM_SEND_MAX_ATTEMPTS - 1:
+                reset_result = await mc.commands.reset_path(contact.public_key)
+                if reset_result is None:
+                    logger.warning(
+                        "No response from radio for reset_path to %s before final DM retry",
+                        contact.public_key[:12],
+                    )
+                elif reset_result.type == EventType.ERROR:
+                    logger.warning(
+                        "Failed to reset path before final DM retry to %s: %s",
+                        contact.public_key[:12],
+                        reset_result.payload,
+                    )
+                refreshed_contact = mc.get_contact_by_key_prefix(contact.public_key[:12])
+                if refreshed_contact:
+                    cached_contact = refreshed_contact
+
+            return await mc.commands.send_msg(
+                dst=cached_contact,
+                msg=text,
+                timestamp=sender_timestamp,
+                attempt=attempt,
+            )
+
+        try:
+            result = await _run_radio_command(radio_manager, "retry_direct_message", retry_send)
         except RadioOperationBusyError:
             logger.debug(
                 "Radio busy during DM retry attempt %d/%d for %s, will retry without consuming attempt",
@@ -647,73 +660,73 @@ async def send_direct_message_to_contact(
     message = None
     result = None
     ack_count = 0
-    try:
-        async with radio_manager.radio_operation("send_direct_message") as mc:
-            logger.debug("Ensuring contact %s is on radio before sending", contact.public_key[:12])
-            add_result = await mc.commands.add_contact(contact_data)
-            if add_result.type == EventType.ERROR:
-                logger.warning("Failed to add contact to radio: %s", add_result.payload)
 
-            cached_contact = mc.get_contact_by_key_prefix(contact.public_key[:12])
-            if not cached_contact:
-                cached_contact = contact_data
+    async def send_direct(mc) -> None:
+        nonlocal sent_at, sender_timestamp, message, result, ack_count
+        logger.debug("Ensuring contact %s is on radio before sending", contact.public_key[:12])
+        add_result = await mc.commands.add_contact(contact_data)
+        if add_result.type == EventType.ERROR:
+            logger.warning("Failed to add contact to radio: %s", add_result.payload)
 
-            logger.info("Sending direct message to %s", contact.public_key[:12])
-            sent_at = int(now_fn())
-            sender_timestamp = await allocate_outgoing_sender_timestamp(
-                message_repository=message_repository,
-                msg_type="PRIV",
+        cached_contact = mc.get_contact_by_key_prefix(contact.public_key[:12])
+        if not cached_contact:
+            cached_contact = contact_data
+
+        logger.info("Sending direct message to %s", contact.public_key[:12])
+        sent_at = int(now_fn())
+        sender_timestamp = await allocate_outgoing_sender_timestamp(
+            message_repository=message_repository,
+            msg_type="PRIV",
+            conversation_key=contact.public_key.lower(),
+            text=text,
+            requested_timestamp=sent_at,
+        )
+        result = await mc.commands.send_msg(
+            dst=cached_contact,
+            msg=text,
+            timestamp=sender_timestamp,
+        )
+
+        if result is not None and result.type != EventType.ERROR:
+            message = await create_outgoing_direct_message(
                 conversation_key=contact.public_key.lower(),
                 text=text,
-                requested_timestamp=sent_at,
+                sender_timestamp=sender_timestamp,
+                received_at=sent_at,
+                broadcast_fn=broadcast_fn,
+                message_repository=message_repository,
             )
-            result = await mc.commands.send_msg(
-                dst=cached_contact,
-                msg=text,
-                timestamp=sender_timestamp,
+            if message is None:
+                raise HTTPException(
+                    status_code=422,
+                    detail="Failed to store outgoing message - unexpected duplicate",
+                )
+            ack_code = _extract_expected_ack_code(result)
+            if ack_code:
+                from app.services.radio_producers import reserve_direct_message_ack
+                from app.services.radio_response_tracker import ResponseReservationConflict
+
+                try:
+                    reserve_direct_message_ack(ack_code, message.id)
+                except ResponseReservationConflict:
+                    logger.warning("Radio job ACK reservation unavailable")
+            ack_count = await _apply_direct_message_ack_tracking(
+                result=result,
+                message_id=message.id,
+                track_pending_ack_fn=track_pending_ack_fn,
+                broadcast_fn=broadcast_fn,
             )
 
-            if result is not None and result.type != EventType.ERROR:
-                # Persist before binding any ACK. The radio-response tracker is
-                # observational: only the existing durable DM ACK pipeline
-                # can assert delivery. Keep this short section atomic with the
-                # send result so the worker may then release the command slot.
-                message = await create_outgoing_direct_message(
-                    conversation_key=contact.public_key.lower(),
-                    text=text,
-                    sender_timestamp=sender_timestamp,
-                    received_at=sent_at,
-                    broadcast_fn=broadcast_fn,
-                    message_repository=message_repository,
-                )
-                if message is None:
-                    raise HTTPException(
-                        status_code=422,
-                        detail="Failed to store outgoing message - unexpected duplicate",
-                    )
-                ack_code = _extract_expected_ack_code(result)
-                if ack_code:
-                    from app.services.radio_producers import reserve_direct_message_ack
-                    from app.services.radio_response_tracker import ResponseReservationConflict
-
-                    try:
-                        reserve_direct_message_ack(ack_code, message.id)
-                    except ResponseReservationConflict:
-                        # Preserve durable send/ACK behavior if the public job
-                        # tracker is at capacity; never replay a sent packet.
-                        logger.warning("Radio job ACK reservation unavailable")
-                ack_count = await _apply_direct_message_ack_tracking(
-                    result=result,
-                    message_id=message.id,
-                    track_pending_ack_fn=track_pending_ack_fn,
-                    broadcast_fn=broadcast_fn,
-                )
+    try:
+        await _run_radio_command(radio_manager, "send_direct_message", send_direct)
 
         if result is None:
             logger.warning(
                 "No response from radio after direct send to %s; send outcome is unknown",
                 contact.public_key[:12],
             )
+            assert sent_at is not None
+            assert sender_timestamp is not None
             message = await create_outgoing_direct_message(
                 conversation_key=contact.public_key.lower(),
                 text=text,
@@ -830,7 +843,7 @@ async def _channel_echo_watchdog(
 
         # Strip the historical sender prefix. The radio may have been renamed
         # since the original send and will add its current name itself.
-        async with radio_manager.radio_operation("echo_watchdog_resend", blocking=False) as mc:
+        async def resend(mc):
             radio_name = mc.self_info.get("name", "") if mc.self_info else ""
             text_to_send = _channel_message_body(
                 text=msg.text,
@@ -854,6 +867,8 @@ async def _channel_echo_watchdog(
                 logger.info("Echo watchdog: resent message %d successfully", message_id)
             else:
                 logger.debug("Echo watchdog: resend got no/error result for message %d", message_id)
+
+        await _run_radio_command(radio_manager, "echo_watchdog_resend", resend, blocking=False)
 
     except RadioOperationBusyError:
         logger.debug("Echo watchdog: radio busy, skipping resend for message %d", message_id)
@@ -888,67 +903,69 @@ async def send_channel_message_to_channel(
     text_with_sender = text
     outgoing_message = None
 
+    async def send_channel(mc) -> None:
+        nonlocal sent_at, sender_timestamp, radio_name
+        nonlocal our_public_key, text_with_sender, outgoing_message
+        radio_name = mc.self_info.get("name", "") if mc.self_info else ""
+        our_public_key = (mc.self_info.get("public_key") or None) if mc.self_info else None
+        text_with_sender = f"{radio_name}: {text}" if radio_name else text
+        logger.info("Sending channel message to %s: %s", channel.name, text[:50])
+
+        sent_at = int(now_fn())
+        sender_timestamp = await allocate_outgoing_sender_timestamp(
+            message_repository=message_repository,
+            msg_type="CHAN",
+            conversation_key=channel_key_upper,
+            text=text_with_sender,
+            requested_timestamp=sent_at,
+        )
+        timestamp_bytes = sender_timestamp.to_bytes(4, "little")
+        outgoing_message = await create_outgoing_channel_message(
+            conversation_key=channel_key_upper,
+            text=text_with_sender,
+            sender_timestamp=sender_timestamp,
+            received_at=sent_at,
+            sender_name=radio_name or None,
+            sender_key=our_public_key,
+            channel_name=channel.name,
+            broadcast_fn=broadcast_fn,
+            broadcast=False,
+            send_status="pending",
+            message_repository=message_repository,
+        )
+        if outgoing_message is None:
+            raise HTTPException(
+                status_code=422,
+                detail="Failed to store outgoing message - unexpected duplicate",
+            )
+
+        result = await send_channel_message_with_effective_scope(
+            mc=mc,
+            channel=channel,
+            channel_key=channel_key_upper,
+            key_bytes=key_bytes,
+            text=text,
+            timestamp_bytes=timestamp_bytes,
+            action_label="sending message",
+            radio_manager=radio_manager,
+            temp_radio_slot=temp_radio_slot,
+            error_broadcast_fn=error_broadcast_fn,
+            flood_scope_override=flood_scope_override,
+        )
+
+        if result is None:
+            logger.warning(
+                "No response from radio after channel send to %s; send outcome is unknown",
+                channel.name,
+            )
+            raise HTTPException(status_code=408, detail=NO_RADIO_RESPONSE_AFTER_SEND_DETAIL)
+
+        if result.type == EventType.ERROR:
+            raise HTTPException(status_code=422, detail=f"Failed to send message: {result.payload}")
+        await message_repository.update_send_status(outgoing_message.id, "confirmed")
+
     try:
-        async with radio_manager.radio_operation("send_channel_message") as mc:
-            radio_name = mc.self_info.get("name", "") if mc.self_info else ""
-            our_public_key = (mc.self_info.get("public_key") or None) if mc.self_info else None
-            text_with_sender = f"{radio_name}: {text}" if radio_name else text
-            logger.info("Sending channel message to %s: %s", channel.name, text[:50])
-
-            sent_at = int(now_fn())
-            sender_timestamp = await allocate_outgoing_sender_timestamp(
-                message_repository=message_repository,
-                msg_type="CHAN",
-                conversation_key=channel_key_upper,
-                text=text_with_sender,
-                requested_timestamp=sent_at,
-            )
-            timestamp_bytes = sender_timestamp.to_bytes(4, "little")
-            outgoing_message = await create_outgoing_channel_message(
-                conversation_key=channel_key_upper,
-                text=text_with_sender,
-                sender_timestamp=sender_timestamp,
-                received_at=sent_at,
-                sender_name=radio_name or None,
-                sender_key=our_public_key,
-                channel_name=channel.name,
-                broadcast_fn=broadcast_fn,
-                broadcast=False,
-                send_status="pending",
-                message_repository=message_repository,
-            )
-            if outgoing_message is None:
-                raise HTTPException(
-                    status_code=422,
-                    detail="Failed to store outgoing message - unexpected duplicate",
-                )
-
-            result = await send_channel_message_with_effective_scope(
-                mc=mc,
-                channel=channel,
-                channel_key=channel_key_upper,
-                key_bytes=key_bytes,
-                text=text,
-                timestamp_bytes=timestamp_bytes,
-                action_label="sending message",
-                radio_manager=radio_manager,
-                temp_radio_slot=temp_radio_slot,
-                error_broadcast_fn=error_broadcast_fn,
-                flood_scope_override=flood_scope_override,
-            )
-
-            if result is None:
-                logger.warning(
-                    "No response from radio after channel send to %s; send outcome is unknown",
-                    channel.name,
-                )
-                raise HTTPException(status_code=408, detail=NO_RADIO_RESPONSE_AFTER_SEND_DETAIL)
-
-            if result.type == EventType.ERROR:
-                raise HTTPException(
-                    status_code=422, detail=f"Failed to send message: {result.payload}"
-                )
-            await message_repository.update_send_status(outgoing_message.id, "confirmed")
+        await _run_radio_command(radio_manager, "send_channel_message", send_channel)
     except HTTPException as exc:
         if outgoing_message is not None and exc.status_code == 408:
             assert sender_timestamp is not None
@@ -1049,70 +1066,74 @@ async def resend_channel_message_record(
     new_message = None
     stored_text = message.text
 
-    try:
-        async with radio_manager.radio_operation("resend_channel_message") as mc:
-            radio_name = mc.self_info.get("name", "") if mc.self_info else ""
-            resend_public_key = (mc.self_info.get("public_key") or None) if mc.self_info else None
-            text_to_send = _channel_message_body(
-                text=message.text,
-                sender_name=message.sender_name,
-                radio_name=radio_name,
+    async def resend_channel(mc) -> None:
+        nonlocal sent_at, sender_timestamp, timestamp_bytes
+        nonlocal resend_public_key, radio_name, new_message, stored_text
+        radio_name = mc.self_info.get("name", "") if mc.self_info else ""
+        resend_public_key = (mc.self_info.get("public_key") or None) if mc.self_info else None
+        text_to_send = _channel_message_body(
+            text=message.text,
+            sender_name=message.sender_name,
+            radio_name=radio_name,
+        )
+        if new_timestamp:
+            sent_at = int(now_fn())
+            stored_text = f"{radio_name}: {text_to_send}" if radio_name else text_to_send
+            sender_timestamp = await allocate_outgoing_sender_timestamp(
+                message_repository=message_repository,
+                msg_type="CHAN",
+                conversation_key=message.conversation_key,
+                text=stored_text,
+                requested_timestamp=sent_at,
             )
-            if new_timestamp:
-                sent_at = int(now_fn())
-                stored_text = f"{radio_name}: {text_to_send}" if radio_name else text_to_send
-                sender_timestamp = await allocate_outgoing_sender_timestamp(
-                    message_repository=message_repository,
-                    msg_type="CHAN",
-                    conversation_key=message.conversation_key,
-                    text=stored_text,
-                    requested_timestamp=sent_at,
-                )
-                timestamp_bytes = sender_timestamp.to_bytes(4, "little")
-                new_message = await create_outgoing_channel_message(
-                    conversation_key=message.conversation_key,
-                    text=stored_text,
-                    sender_timestamp=sender_timestamp,
-                    received_at=sent_at,
-                    sender_name=radio_name or None,
-                    sender_key=resend_public_key,
-                    channel_name=channel.name,
-                    broadcast_fn=broadcast_fn,
-                    broadcast=False,
-                    send_status="pending",
-                    message_repository=message_repository,
-                )
-                if new_message is None:
-                    raise HTTPException(
-                        status_code=422,
-                        detail="Failed to store resent message - unexpected duplicate",
-                    )
-
-            result = await send_channel_message_with_effective_scope(
-                mc=mc,
-                channel=channel,
-                channel_key=message.conversation_key,
-                key_bytes=key_bytes,
-                text=text_to_send,
-                timestamp_bytes=timestamp_bytes,
-                action_label="resending message",
-                radio_manager=radio_manager,
-                temp_radio_slot=temp_radio_slot,
-                error_broadcast_fn=error_broadcast_fn,
+            timestamp_bytes = sender_timestamp.to_bytes(4, "little")
+            new_message = await create_outgoing_channel_message(
+                conversation_key=message.conversation_key,
+                text=stored_text,
+                sender_timestamp=sender_timestamp,
+                received_at=sent_at,
+                sender_name=radio_name or None,
+                sender_key=resend_public_key,
+                channel_name=channel.name,
+                broadcast_fn=broadcast_fn,
+                broadcast=False,
+                send_status="pending",
+                message_repository=message_repository,
             )
-            if result is None:
-                logger.warning(
-                    "No response from radio after channel resend to %s; send outcome is unknown",
-                    channel.name,
-                )
-                raise HTTPException(status_code=408, detail=NO_RADIO_RESPONSE_AFTER_SEND_DETAIL)
-            if result.type == EventType.ERROR:
+            if new_message is None:
                 raise HTTPException(
                     status_code=422,
-                    detail=f"Failed to resend message: {result.payload}",
+                    detail="Failed to store resent message - unexpected duplicate",
                 )
-            if new_message is not None:
-                await message_repository.update_send_status(new_message.id, "confirmed")
+
+        result = await send_channel_message_with_effective_scope(
+            mc=mc,
+            channel=channel,
+            channel_key=message.conversation_key,
+            key_bytes=key_bytes,
+            text=text_to_send,
+            timestamp_bytes=timestamp_bytes,
+            action_label="resending message",
+            radio_manager=radio_manager,
+            temp_radio_slot=temp_radio_slot,
+            error_broadcast_fn=error_broadcast_fn,
+        )
+        if result is None:
+            logger.warning(
+                "No response from radio after channel resend to %s; send outcome is unknown",
+                channel.name,
+            )
+            raise HTTPException(status_code=408, detail=NO_RADIO_RESPONSE_AFTER_SEND_DETAIL)
+        if result.type == EventType.ERROR:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Failed to resend message: {result.payload}",
+            )
+        if new_message is not None:
+            await message_repository.update_send_status(new_message.id, "confirmed")
+
+    try:
+        await _run_radio_command(radio_manager, "resend_channel_message", resend_channel)
     except HTTPException as exc:
         if new_message is not None and exc.status_code == 408:
             assert sent_at is not None

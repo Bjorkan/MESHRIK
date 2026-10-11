@@ -288,7 +288,11 @@ async def run_scheduled_radio_command(
         except BaseException as exc:
             command_error = exc
             raise
-        return RadioCommandOutcome.FINISHED
+        return (
+            RadioCommandOutcome.UNCERTAIN
+            if kind in (RadioJobKind.DIRECT_MESSAGE, RadioJobKind.CHANNEL_MESSAGE)
+            else RadioCommandOutcome.FINISHED
+        )
 
     try:
         job = radio_job_worker.submit(
@@ -311,18 +315,25 @@ async def run_scheduled_radio_command(
         ) from exc
 
     loop = asyncio.get_running_loop()
-    terminal: asyncio.Future[RadioJobSnapshot] = loop.create_future()
+    settled: asyncio.Future[RadioJobSnapshot] = loop.create_future()
 
     def on_change(snapshot: RadioJobSnapshot) -> None:
-        if snapshot.id == job.id and snapshot.state in TERMINAL_STATES and not terminal.done():
-            terminal.set_result(snapshot)
+        command_released = snapshot.state in TERMINAL_STATES or snapshot.state in {
+            RadioJobState.AWAITING_ACK,
+            RadioJobState.AWAITING_RESPONSE,
+        }
+        if snapshot.id == job.id and command_released and not settled.done():
+            settled.set_result(snapshot)
 
     unsubscribe = radio_job_scheduler.subscribe(on_change)
     current = radio_job_scheduler.get(job.id)
-    if current is not None and current.state in TERMINAL_STATES:
-        terminal.set_result(current)
+    if current is not None and (
+        current.state in TERMINAL_STATES
+        or current.state in {RadioJobState.AWAITING_ACK, RadioJobState.AWAITING_RESPONSE}
+    ):
+        settled.set_result(current)
     try:
-        final = await terminal
+        final = await settled
     except asyncio.CancelledError:
         current = radio_job_scheduler.get(job.id)
         if current is not None and current.state in {RadioJobState.QUEUED, RadioJobState.RETRYING}:
@@ -331,7 +342,12 @@ async def run_scheduled_radio_command(
     finally:
         unsubscribe()
 
-    if final.state == RadioJobState.COMPLETED and result is not _MISSING:
+    if result is not _MISSING and final.state in {
+        RadioJobState.COMPLETED,
+        RadioJobState.UNKNOWN,
+        RadioJobState.AWAITING_ACK,
+        RadioJobState.AWAITING_RESPONSE,
+    }:
         return cast(_ResultT, result)
     if isinstance(command_error, Exception):
         raise command_error
