@@ -138,7 +138,7 @@ export function NeighborsMiniMap({ neighbors, radioLat, radioLon, radioName }: P
             latitude={openPoint.lat}
             anchor="bottom"
             offset={12}
-            closeOnClick={false}
+            closeOnClick
             onClose={() => setOpenPointId(null)}
           >
             <span className="text-sm font-medium">{openPoint.label}</span>

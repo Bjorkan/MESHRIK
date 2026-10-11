@@ -1181,7 +1181,7 @@ function ContactTelemetrySection({
                             latitude={gpsValue!.latitude}
                             anchor="bottom"
                             offset={10}
-                            closeOnClick={false}
+                            closeOnClick
                             onClose={() => setMapPopupOpen(false)}
                           >
                             <span className="text-sm">

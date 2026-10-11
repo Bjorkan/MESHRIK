@@ -77,7 +77,7 @@ function NumberedMarker({
           latitude={latitude}
           anchor="bottom"
           offset={16}
-          closeOnClick={false}
+          closeOnClick
           onClose={() => setOpen(false)}
         >
           <div className="text-xs">{description}</div>

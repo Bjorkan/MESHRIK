@@ -30,7 +30,11 @@ vi.mock('react-map-gl/maplibre', () => {
     default: MapMock,
     Map: MapMock,
     Marker: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-    Popup: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    Popup: ({ children, closeOnClick }: { children: React.ReactNode; closeOnClick?: boolean }) => (
+      <div data-testid="map-popup" data-close-on-click={String(closeOnClick)}>
+        {children}
+      </div>
+    ),
     Source: ({ children }: { children: React.ReactNode }) => <>{children}</>,
     Layer: () => null,
     NavigationControl: () => null,
@@ -120,6 +124,7 @@ describe('MapView', () => {
     render(<MapView contacts={[contact]} onSelectContact={onSelectContact} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Show Clickable on map' }));
+    expect(screen.getByTestId('map-popup')).toHaveAttribute('data-close-on-click', 'true');
     const link = screen.getByRole('button', { name: 'Clickable' });
     expect(link).toHaveAttribute('title', 'Open conversation with Clickable');
     fireEvent.click(link);

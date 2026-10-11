@@ -1016,7 +1016,7 @@ export function MapView({
                     latitude={contact.lat!}
                     anchor="bottom"
                     offset={radius + 4}
-                    closeOnClick={false}
+                    closeOnClick
                     onClose={() => setOpenPopupKey(null)}
                   >
                     <div className="text-sm">
