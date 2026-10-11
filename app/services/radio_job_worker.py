@@ -1,9 +1,8 @@
 """Exactly one command executor over the existing RadioRuntime/RadioManager lock.
 
-Producer migration is deliberately NOT part of #38/#39. Existing radio_operation
-callers retain the same lower-level lock and do not pass through this worker.
-A command callback executes only during the short transport stage; separate
-response/ACK waiters (response tracker #40) call scheduler.transition afterwards.
+The producer command boundary owns the transport lock; HTTP domain services
+may run nested within an accepted typed job in the same task and reuse that
+permit. Separate response/ACK waiters do not hold the command permit.
 
 A command timeout is *not* proof that firmware did not transmit. Cancellation
 of the Python task is cooperative. If it refuses cancellation, the worker is
@@ -223,7 +222,15 @@ class RadioJobWorker:
             if self._runtime_generation() != snapshot.radio_generation or not self._connected():
                 raise _StaleTransport()
             self._command_started = True
-            return await command(mc)
+            from app.services.radio_producers import active_worker_transport
+
+            with active_worker_transport(mc, snapshot.id) as session:
+                outcome = await command(mc)
+                # Durable ACK registration occurred inside the domain service;
+                # the existing ACK/SQLite path alone can finish this job.
+                if session.await_ack and outcome == RadioCommandOutcome.UNCERTAIN:
+                    return RadioCommandOutcome.AWAITING_ACK
+                return outcome
 
     async def _dispatch(
         self, snapshot: RadioJobSnapshot, command: Command, radio_options: dict[str, bool]

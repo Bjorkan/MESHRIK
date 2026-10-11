@@ -2,8 +2,9 @@
 
 All mutations are synchronous (no await between checks and writes) and thus
 atomic on the owning asyncio event loop. A single worker may call take_next().
-Priority aging: every ``aging_seconds`` queued, effective priority improves by
-10 points. A waiting LOW job eventually overtakes newly arriving HIGH work;
+Priority aging: every ``aging_seconds`` queued, NORMAL/LOW priority improves
+by 10 points while HIGH stays at 0. This prevents continuous HIGH arrivals
+from aging in lockstep with an older LOW job and starving it;
 within one priority FIFO is maintained. In-flight/awaiting jobs do not count
 against queued capacity. This queue is intentionally NOT durable: callers must
 persist message send state separately in the existing SQLite message tables.
@@ -214,6 +215,23 @@ class RadioJobScheduler:
         )
         for old in terminal[: max(0, len(terminal) - self.history_limit)]:
             self._records.pop(old.snapshot.id, None)
+
+    def has_inflight_coalesced_job(
+        self, *, kind: RadioJobKind, scope: str, coalesce_key: str
+    ) -> bool:
+        """Check for an already admitted, not-yet-terminal periodic command.
+
+        The caller must check and submit without awaiting between operations.
+        This avoids ever attaching a second producer coroutine to a first
+        job's transport closure when the scheduler coalesces descriptors.
+        """
+        return any(
+            record.snapshot.kind == kind
+            and record.scope == scope
+            and record.coalesce_key == coalesce_key
+            and record.snapshot.state not in TERMINAL_STATES
+            for record in self._records.values()
+        )
 
     def submit(
         self,
@@ -434,7 +452,11 @@ class RadioJobScheduler:
             queued,
             key=lambda snap: (
                 int(snap.priority)
-                - 10 * int((now - snap.queue_entered_at).total_seconds() // self.aging_seconds),
+                - (
+                    10 * int((now - snap.queue_entered_at).total_seconds() // self.aging_seconds)
+                    if snap.priority != RadioJobPriority.HIGH
+                    else 0
+                ),
                 snap.priority,
                 snap.sequence,
             ),

@@ -1345,6 +1345,70 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/radio/jobs/advertise': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Enqueue Advertisement
+     * @description Opt-in enqueue, while the original /radio/advertise API stays synchronous.
+     *
+     *     The response confirms admission only, not RF transmission or a remote echo.
+     *     Reusing the same idempotency key + request returns the original job, including
+     *     after it has finished. A different payload with the same key returns 409.
+     */
+    post: operations['enqueue_advertisement_api_radio_jobs_advertise_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/radio/jobs/send/channel': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Enqueue Channel Message
+     * @description Opt-in async channel send; a 202 is NOT an echo or delivery receipt.
+     */
+    post: operations['enqueue_channel_message_api_radio_jobs_send_channel_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/radio/jobs/send/direct': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Enqueue Direct Message
+     * @description Opt-in asynchronous DM without changing POST /messages/direct.
+     */
+    post: operations['enqueue_direct_message_api_radio_jobs_send_direct_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/radio/jobs/{job_id}': {
     parameters: {
       query?: never;
@@ -2734,6 +2798,18 @@ export interface components {
       /** Status */
       status: string;
     };
+    /**
+     * EnqueueAdvertisement
+     * @description One explicit, validated manual advertisement; never raw MeshCore commands.
+     */
+    EnqueueAdvertisement: {
+      /**
+       * Mode
+       * @default flood
+       * @enum {string}
+       */
+      mode: 'flood' | 'zero_hop';
+    };
     /** FanoutConfigCreate */
     FanoutConfigCreate: {
       /**
@@ -3603,6 +3679,18 @@ export interface components {
        * @description SNR reported by the remote node while hearing our discovery request (dB)
        */
       remote_snr?: number | null;
+    };
+    /**
+     * RadioJobAccepted
+     * @description Future operation-specific 202 enqueue responses (#42-44).
+     */
+    RadioJobAccepted: {
+      /**
+       * Job Id
+       * Format: uuid
+       */
+      job_id: string;
+      state: components['schemas']['RadioJobState'];
     };
     /** RadioJobCancelResponse */
     RadioJobCancelResponse: {
@@ -16278,6 +16366,519 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['RadioJobsPage'];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Authentication required */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Request timed out */
+      408: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+      /** @description Radio unavailable or locked */
+      423: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Server error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+    };
+  };
+  enqueue_advertisement_api_radio_jobs_advertise_post: {
+    parameters: {
+      query?: never;
+      header: {
+        'Idempotency-Key': string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['EnqueueAdvertisement'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['RadioJobAccepted'];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Authentication required */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Request timed out */
+      408: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+      /** @description Radio unavailable or locked */
+      423: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Server error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+    };
+  };
+  enqueue_channel_message_api_radio_jobs_send_channel_post: {
+    parameters: {
+      query?: never;
+      header: {
+        'Idempotency-Key': string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['SendChannelMessageRequest'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['RadioJobAccepted'];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Authentication required */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Request timed out */
+      408: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+      /** @description Radio unavailable or locked */
+      423: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Server error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+    };
+  };
+  enqueue_direct_message_api_radio_jobs_send_direct_post: {
+    parameters: {
+      query?: never;
+      header: {
+        'Idempotency-Key': string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['SendDirectMessageRequest'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['RadioJobAccepted'];
         };
       };
       /** @description Bad request */

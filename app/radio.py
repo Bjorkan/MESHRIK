@@ -241,6 +241,7 @@ class RadioManager:
         pause_polling: bool = False,
         suspend_auto_fetch: bool = False,
         blocking: bool = True,
+        defer_when_busy: bool = False,
     ):
         """Acquire shared radio lock and optionally pause polling / auto-fetch.
 
@@ -254,6 +255,9 @@ class RadioManager:
             pause_polling: Pause fallback message polling while held.
             suspend_auto_fetch: Stop MeshCore auto message fetching while held.
             blocking: If False, fail immediately when lock is held.
+            defer_when_busy: Scheduler-only hint; ignored by the raw lock.
+                This argument is accepted for mock/isolated compatibility.
+                Live producers defer through RadioRuntime, not RadioManager.
 
         Raises:
             RadioDisconnectedError: If the radio disconnected before the lock

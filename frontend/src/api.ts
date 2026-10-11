@@ -86,6 +86,8 @@ type CreateContactBody = ApiRequestBody<'/api/contacts', 'post'>;
 type CreateChannelBody = ApiRequestBody<'/api/channels', 'post'>;
 type SendDirectMessageBody = ApiRequestBody<'/api/messages/direct', 'post'>;
 type SendChannelMessageBody = ApiRequestBody<'/api/messages/channel', 'post'>;
+type RadioJobAccepted =
+  paths['/api/radio/jobs/send/direct']['post']['responses'][202]['content']['application/json'];
 type UpdateSettingsBody = ApiRequestBody<'/api/settings', 'patch'>;
 type RestContact = Contact & Required<Pick<ContactsResponse[number], 'effective_route_source'>>;
 type RestMessage = Message & Required<Pick<MessagesResponse[number], 'send_status'>>;
@@ -214,6 +216,36 @@ export const api = {
     if (params.cursor !== undefined) query.set('cursor', String(params.cursor));
     return fetchApi<'/api/radio/activity', 'get'>(`/radio/activity?${query}`);
   },
+
+  // Opt-in 202 radio commands. The caller owns a stable idempotency key;
+  // never retry ambiguous RF sends with a newly generated key.
+  enqueueDirectMessage: (
+    request: ApiRequestBody<'/api/radio/jobs/send/direct', 'post'>,
+    idempotencyKey: string
+  ): Promise<RadioJobAccepted> =>
+    fetchJson<RadioJobAccepted>('/radio/jobs/send/direct', {
+      method: 'POST',
+      headers: { 'Idempotency-Key': idempotencyKey },
+      body: apiBody<'/api/radio/jobs/send/direct', 'post'>(request),
+    }),
+  enqueueChannelMessage: (
+    request: ApiRequestBody<'/api/radio/jobs/send/channel', 'post'>,
+    idempotencyKey: string
+  ): Promise<RadioJobAccepted> =>
+    fetchJson<RadioJobAccepted>('/radio/jobs/send/channel', {
+      method: 'POST',
+      headers: { 'Idempotency-Key': idempotencyKey },
+      body: apiBody<'/api/radio/jobs/send/channel', 'post'>(request),
+    }),
+  enqueueAdvertisement: (
+    request: ApiRequestBody<'/api/radio/jobs/advertise', 'post'>,
+    idempotencyKey: string
+  ): Promise<RadioJobAccepted> =>
+    fetchJson<RadioJobAccepted>('/radio/jobs/advertise', {
+      method: 'POST',
+      headers: { 'Idempotency-Key': idempotencyKey },
+      body: apiBody<'/api/radio/jobs/advertise', 'post'>(request),
+    }),
 
   // Radio config
   getRadioConfig: () => fetchApiView<'/api/radio/config', 'get', RadioConfig>('/radio/config'),

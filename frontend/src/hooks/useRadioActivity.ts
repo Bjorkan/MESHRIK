@@ -45,7 +45,10 @@ export function partitionRadioJobs(jobs: readonly Job[], now = Date.now()) {
   // Mirror the scheduler's 30-second aging policy (#38). This is an estimated
   // selection order; protocol-specific exclusive sessions may delay dispatch.
   const rank = (job: Job) =>
-    job.priority - 10 * Math.max(0, Math.floor((now - Date.parse(job.queue_entered_at)) / 30_000));
+    job.priority === 0
+      ? 0
+      : job.priority -
+        10 * Math.max(0, Math.floor((now - Date.parse(job.queue_entered_at)) / 30_000));
   const queued = jobs
     .filter((job) => job.state === 'queued')
     .sort((a, b) => rank(a) - rank(b) || a.priority - b.priority || a.sequence - b.sequence);

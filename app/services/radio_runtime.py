@@ -73,7 +73,7 @@ class RadioRuntime:
 
         async with scheduled_radio_operation(self, name, **kwargs) as mc:
             yield mc
-        if name in {"reboot_radio", "import_private_key"}:
+        if name in {"reboot_radio", "import_private_key"} and not self._worker_running():
             # A device identity/reboot barrier invalidates all queued radio
             # assumptions (including loaded contact/channel slot caches).
             # The worker detects this generation change and fences old jobs;
@@ -81,6 +81,12 @@ class RadioRuntime:
             self.radio_generation = int(self.radio_generation) + 1
             self.reset_channel_send_cache()
             self.clear_pending_message_channel_slots()
+
+    @staticmethod
+    def _worker_running() -> bool:
+        from app.services.radio_job_worker import radio_job_worker
+
+        return radio_job_worker.running
 
     async def start_connection_monitor(self) -> None:
         await self.manager.start_connection_monitor()

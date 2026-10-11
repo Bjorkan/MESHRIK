@@ -657,6 +657,7 @@ async def _message_poll_loop():
                     async with radio_manager.radio_operation(
                         "message_poll_loop",
                         blocking=False,
+                        defer_when_busy=True,
                         suspend_auto_fetch=True,
                     ) as mc:
                         count = await poll_for_messages(mc)
@@ -802,6 +803,7 @@ async def _periodic_advert_loop():
                     async with radio_manager.radio_operation(
                         "periodic_advertisement",
                         blocking=False,
+                        defer_when_busy=True,
                     ) as mc:
                         await send_advertisement(mc)
                 except RadioOperationBusyError:
@@ -1039,6 +1041,7 @@ async def _periodic_sync_loop():
                 async with radio_manager.radio_operation(
                     "periodic_sync",
                     blocking=False,
+                    defer_when_busy=True,
                 ) as mc:
                     if await should_run_full_periodic_sync(mc):
                         await sync_and_offload_all(mc)

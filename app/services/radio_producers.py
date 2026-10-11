@@ -15,7 +15,7 @@ they can safely overlap. It is not permission to schedule arbitrary RF commands.
 import asyncio
 import os
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
 from typing import Any
@@ -49,6 +49,17 @@ _HIGH = {
     "resend_channel_message",
     "echo_watchdog_resend",
 }
+# Only these three loops represent a *singleton* periodic maintenance task.
+# Target-specific operations in _LOW must NEVER coalesce by operation name:
+# two different contacts/repeaters would otherwise lose one command.
+_SINGLETON_PERIODIC = frozenset(
+    {
+        "message_poll_loop",
+        "periodic_advertisement",
+        "periodic_sync",
+    }
+)
+
 _LOW = {
     "message_poll_loop",
     "periodic_advertisement",
@@ -94,6 +105,7 @@ def classify_operation(name: str) -> tuple[RadioJobKind, RadioJobPriority]:
 @dataclass
 class _ProducerSession:
     job_id: UUID
+    owner: asyncio.Task[Any] | None = None
     await_ack: bool = False
     successful: bool = False
 
@@ -103,6 +115,38 @@ _current_session: ContextVar[_ProducerSession | None] = ContextVar(
 )
 
 
+@dataclass
+class _WorkerTransportScope:
+    """Task-owned lock context; never inherited by fire-and-forget child tasks."""
+
+    owner: asyncio.Task[Any]
+    meshcore: Any
+
+
+_worker_transport: ContextVar[_WorkerTransportScope | None] = ContextVar(
+    "radio_worker_transport", default=None
+)
+
+
+@contextmanager
+def active_worker_transport(mc: Any, job_id: UUID):
+    """Permit one *worker task* to call existing domain services without a nested job.
+
+    A child task may inherit ContextVars, but is NEVER allowed to reuse the
+    parent's transport permit. It must submit its own scheduled operation.
+    """
+    owner = asyncio.current_task()
+    assert owner is not None
+    scope_token = _worker_transport.set(_WorkerTransportScope(owner, mc))
+    session = _ProducerSession(job_id, owner=owner)
+    session_token = _current_session.set(session)
+    try:
+        yield session
+    finally:
+        _current_session.reset(session_token)
+        _worker_transport.reset(scope_token)
+
+
 def reserve_direct_message_ack(ack_code: str, message_id: int) -> None:
     """Correlate a *durably persisted* DM with its firmware ACK code.
 
@@ -110,8 +154,8 @@ def reserve_direct_message_ack(ack_code: str, message_id: int) -> None:
     by dm_ack_tracker + SQLite, never by unsolicited tracker events.
     """
     session = _current_session.get()
-    if session is None:
-        return  # Isolated service tests / no started worker.
+    if session is None or session.owner is not asyncio.current_task():
+        return  # Untracked task or inherited ContextVar must not reserve ACKs.
     radio_response_tracker.reserve(
         session.job_id,
         kind=ResponseKind.DM_ACK,
@@ -129,14 +173,24 @@ async def scheduled_radio_operation(
     pause_polling: bool = False,
     suspend_auto_fetch: bool = False,
     blocking: bool = True,
+    defer_when_busy: bool = False,
 ) -> AsyncIterator[Any]:
-    """Run a legacy critical section via the single worker without changing its API.
+    """Enter the single worker command permit for a transport-critical section.
 
-    The producer receives the transport only after dispatch; a shielded release
-    future keeps the *lower-level* radio lock held until its `async with` exits,
-    even if the worker is cancelled or its command deadline expires. This is
-    essential for atomic channel flood/path-scope restoration.
+    An operation already running *inside the worker task* may call a domain
+    service that uses this context manager. It reuses that same command permit,
+    not a second queued job. No separate asyncio task may inherit that permit.
+    Outside the worker, the producer owns a shielded release handshake so
+    scoped configuration restoration is atomic until its `async with` exits.
     """
+    existing = _worker_transport.get()
+    if existing is not None and existing.owner is asyncio.current_task():
+        if defer_when_busy:
+            raise ValueError("A worker command cannot defer its own command permit")
+        yield existing.meshcore
+        return
+    if defer_when_busy and (blocking or name not in _SINGLETON_PERIODIC):
+        raise ValueError("Deferred admission is reserved for fail-fast background producers")
     operation_options = {
         **({"pause_polling": True} if pause_polling else {}),
         **({"suspend_auto_fetch": True} if suspend_auto_fetch else {}),
@@ -158,13 +212,25 @@ async def scheduled_radio_operation(
 
     # Previously "blocking=False" was a best-effort one-shot attempt. It
     # must not add a backlog while a user command is executing or queued.
-    if not blocking and (
-        radio_job_scheduler.queue_size > 0
-        or any(j.state == RadioJobState.EXECUTING for j in radio_job_scheduler.list_jobs())
+    if (
+        not blocking
+        and not defer_when_busy
+        and (
+            radio_job_scheduler.queue_size > 0
+            or any(j.state == RadioJobState.EXECUTING for j in radio_job_scheduler.list_jobs())
+        )
     ):
         raise RadioOperationBusyError("Radio command queue busy")
 
     kind, priority = classify_operation(name)
+    # A background source may have at most one pending or executing copy.
+    # Even the deferred path cannot accumulate missed polling intervals.
+    coalesce_key = f"periodic:{name}" if name in _SINGLETON_PERIODIC else None
+    coalesce_scope = "radio-background"
+    if coalesce_key is not None and radio_job_scheduler.has_inflight_coalesced_job(
+        kind=kind, scope=coalesce_scope, coalesce_key=coalesce_key
+    ):
+        raise RadioOperationBusyError("Periodic command already pending")
     loop = asyncio.get_running_loop()
     entered: asyncio.Future[Any] = loop.create_future()
     released: asyncio.Future[None] = loop.create_future()
@@ -182,6 +248,14 @@ async def scheduled_radio_operation(
                 # Leave the physical lock owned by this command until the
                 # producer's finally/restore section has actually returned.
                 continue
+        if name in {"reboot_radio", "import_private_key"}:
+            # A reboot/identity mutation is a lifecycle barrier. Fence all
+            # pending jobs BEFORE releasing the worker's command permit;
+            # otherwise another queued command could dispatch under stale
+            # channel-slot/contact assumptions in the same event-loop turn.
+            runtime.radio_generation = int(runtime.radio_generation) + 1
+            runtime.reset_channel_send_cache()
+            runtime.clear_pending_message_channel_slots()
         if not session.successful:
             return RadioCommandOutcome.UNCERTAIN
         if session.await_ack:
@@ -192,7 +266,7 @@ async def scheduled_radio_operation(
             else RadioCommandOutcome.FINISHED
         )
 
-    session = _ProducerSession(job_id=UUID(int=0))
+    session = _ProducerSession(job_id=UUID(int=0), owner=asyncio.current_task())
     try:
         job = radio_job_worker.submit(
             kind,
@@ -201,7 +275,9 @@ async def scheduled_radio_operation(
             radio_options=operation_options,
             command_timeout_seconds=120,
             response_timeout_seconds=180 if kind == RadioJobKind.DIRECT_MESSAGE else 30,
-            queue_timeout_seconds=5 if not blocking else 60,
+            queue_timeout_seconds=180 if defer_when_busy else (5 if not blocking else 60),
+            scope=coalesce_scope if coalesce_key else "global",
+            coalesce_key=coalesce_key,
         )
     except RadioAdmissionError as exc:
         if not blocking:

@@ -59,3 +59,83 @@ is an operator action, not an automatic replay. Periodic producers use
 `blocking=False` / fail-fast when the radio is busy instead of stacking work
 in the command queue. This is backpressure, not full scheduler coalescing,
 and should not be counted as completion of #44's complete policy.
+
+## Producer migration hardening (review required before release)
+
+The production command entry point is `radio_runtime.radio_operation()`, which
+admits ordinary request, retry, and maintenance critical sections into the
+**one** in-process worker. `RadioRuntime.raw_radio_operation()` is reserved for
+the worker and lifecycle setup. The manager's original `_operation_lock`
+remains as a lower-level fail-safe; it is not an alternate public command
+scheduler. Tests with no started lifespan can exercise isolated manager mocks
+without starting real RF hardware; production must fail closed without a worker.
+
+### Optional asynchronous HTTP send API
+
+The original `POST /api/messages/direct`, `POST /api/messages/channel`, and
+`POST /api/radio/advertise` are retained with unchanged synchronous response
+contracts. New explicit opt-in operations use the same radio/SQLite/ACK domain
+services without a nested worker admission:
+
+| Method and endpoint | Payload | Result |
+| --- | --- | --- |
+| `POST /api/radio/jobs/send/direct` | `SendDirectMessageRequest` | `202 RadioJobAccepted` |
+| `POST /api/radio/jobs/send/channel` | `SendChannelMessageRequest` | `202 RadioJobAccepted` |
+| `POST /api/radio/jobs/advertise` | `{ "mode": "flood" | "zero_hop" }` | `202 RadioJobAccepted` |
+
+All three require an `Idempotency-Key` header (8–128 characters). A repeated
+key for the **same operation and exact validated request** returns the same job;
+using it for another payload within that operation returns HTTP 409. The
+scheduler keeps only a SHA-256 fingerprint of the validated request, never the
+message text, destination, or channel key. Queue pressure returns 503 with
+`Retry-After: 5`, and malformed input returns 422. `202` means **accepted to
+the volatile in-memory queue**, not sent, echoed, or delivered. `GET
+/api/radio/jobs/{job_id}` and the existing Radio Activity view observe the job.
+Queue cancellation prevents transmission; cancellation after dispatch cannot
+retract a frame. The existing SQLite outgoing-message table remains the durable
+source of message/ACK/echo truth. Job deduplication is **not persistent across
+process restarts or pruning**; never blindly resubmit an ambiguous RF operation
+after restarting the server. The legacy synchronous endpoints remain supported
+until frontend and downstream consumers intentionally opt in; these are
+compatibility contracts, **not a second RF command execution path**.
+
+### Backpressure and lifecycle barriers
+
+Only the singleton maintenance loops (`message_poll_loop`, `periodic_sync`,
+`periodic_advertisement`) use deferred low-priority admission. There is at most
+one pending/executing copy per source. Low jobs may age ahead of sustained
+higher-priority arrivals because HIGH priority does not itself age. The queued
+job expires after 180 seconds if no command slot becomes available. Other
+background/target-specific queries retain fail-fast admission, deliberately
+**never coalescing different contacts or repeaters**. If disconnected, all
+pending jobs are fenced rather than replayed on reconnect.
+
+`reboot_radio` and `import_private_key` are generation barriers inside the
+worker command before releasing its permit, fencing commands queued using the
+previous device state and clearing channel-slot cache assumptions. An
+uncertain transport outcome requires operator recovery and cannot trigger an
+automatic replay.
+
+The worker's task-local transport scope allows the new typed enqueue endpoints
+to call the existing message-domain functions without recursively acquiring
+another worker permit. It validates the current asyncio task identity so a
+spawned retry/watchdog task cannot inherit the transport lock by context
+propagation. Those child tasks enter as separate, scheduled producers.
+
+### Intentional limitations / release blockers
+
+- Existing frontend submit methods still use their synchronous compatibility
+  endpoints; migrating the UX to `202` requires separate reconciliation of
+  message IDs and unknown outcomes. Do not remove those routes prematurely.
+- MeshCore CLI reply channels lack wire-level request identifiers. CLI sessions
+  intentionally reserve the one command slot while draining/polling ambiguous
+  responses. Treat this as a hardware/protocol constraint, not an accidental
+  duplicate executor.
+- The physical RF TX/RX/listening state is still **unavailable**. Neither a
+  submitted command nor an ACK/echo implies measured instantaneous RF TX.
+- Serial/BLE/TCP transport recovery, uncertain sends, repeater/room login
+  correlation, flood/path restoration, and queue-latency tracing still require
+  manual hardware checks for the firmware/transport combinations in use.
+- Before closing parent #37 or #46/#47, perform the full required release test
+  matrix and document measured hardware evidence. Automated tests alone cannot
+  establish the exact RF-on-air state.

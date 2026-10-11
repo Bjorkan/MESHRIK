@@ -1,28 +1,214 @@
-"""Read-only radio job/activity snapshots and safe cancellation for #41.
+"""Sanitized radio job/activity API and allowlisted asynchronous operations.
 
-No generic command execution endpoint exists. #42-44 will add individually
-validated enqueue routes and may opt into 202 + RadioJobAccepted. Existing
-synchronous send endpoints and the WebSocket protocol remain unchanged.
+No generic command executor is exposed. Existing message and radio endpoints
+keep their synchronous responses; opt-in typed enqueue routes return 202.
 """
 
+from hashlib import sha256
+from time import time
+from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Header, HTTPException, Query
+from pydantic import BaseModel, ConfigDict
 
-from app.services.radio_job_worker import radio_job_scheduler, radio_job_worker
+from app.event_handlers import track_pending_ack
+from app.models import SendChannelMessageRequest, SendDirectMessageRequest
+from app.radio_sync import send_advertisement
+from app.repository import (
+    AmbiguousPublicKeyPrefixError,
+    ChannelRepository,
+    ContactRepository,
+    MessageRepository,
+)
+from app.services.message_send import (
+    SCOPE_UNSET,
+    send_channel_message_to_channel,
+    send_direct_message_to_contact,
+)
+from app.services.radio_job_scheduler import (
+    RadioAdmissionError,
+    RadioIdempotencyConflict,
+)
+from app.services.radio_job_worker import (
+    RadioCommandOutcome,
+    radio_job_scheduler,
+    radio_job_worker,
+)
 from app.services.radio_jobs import (
     RadioActivityPage,
     RadioCommandStatus,
     RadioConnectionStatus,
+    RadioJobAccepted,
     RadioJobCancelResponse,
+    RadioJobKind,
+    RadioJobPriority,
     RadioJobSnapshot,
     RadioJobsPage,
     RadioJobState,
     RadioStatusSnapshot,
 )
 from app.services.radio_runtime import radio_runtime
+from app.websocket import broadcast_error, broadcast_event
 
 router = APIRouter(prefix="/radio", tags=["radio-jobs"])
+
+
+class EnqueueAdvertisement(BaseModel):
+    """One explicit, validated manual advertisement; never raw MeshCore commands."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    mode: Literal["flood", "zero_hop"] = "flood"
+
+
+def _admit_command(kind, command, request, idempotency_key: str) -> RadioJobAccepted:
+    """One durable-request fingerprint per accepted *in-memory* radio operation.
+
+    The full request (including private message text and destination) is only
+    hashed for idempotency, never copied into a public job/event snapshot.
+    """
+    fingerprint = sha256(request.model_dump_json().encode()).hexdigest()
+    try:
+        job = radio_job_worker.submit(
+            kind,
+            command,
+            priority=RadioJobPriority.HIGH,
+            scope=f"async-{kind.value}",
+            idempotency_key=idempotency_key,
+            request_fingerprint=fingerprint,
+            queue_timeout_seconds=60,
+            command_timeout_seconds=120,
+            response_timeout_seconds=180,
+        )
+    except RadioIdempotencyConflict as exc:
+        raise HTTPException(status_code=409, detail="Idempotency key already used") from exc
+    except RadioAdmissionError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Radio command queue unavailable; retry later",
+            headers={"Retry-After": "5"},
+        ) from exc
+    return RadioJobAccepted(job_id=job.id, state=job.state)
+
+
+@router.post("/jobs/send/direct", status_code=202, response_model=RadioJobAccepted)
+async def enqueue_direct_message(
+    request: SendDirectMessageRequest,
+    idempotency_key: str = Header(min_length=8, max_length=128, alias="Idempotency-Key"),
+) -> RadioJobAccepted:
+    """Opt-in asynchronous DM without changing POST /messages/direct."""
+    radio_runtime.require_connected()
+    try:
+        contact = await ContactRepository.get_by_key_or_prefix(request.destination)
+    except AmbiguousPublicKeyPrefixError as exc:
+        raise HTTPException(
+            status_code=409, detail="Ambiguous destination; use a full key"
+        ) from exc
+    if contact is None:
+        raise HTTPException(status_code=404, detail="Contact not found")
+    if len(contact.public_key) < 64:
+        raise HTTPException(status_code=409, detail="Contact key is unresolved")
+
+    async def command(_mc):
+        # The service's radio_operation is reentrant ONLY on the owning worker
+        # task and reuses its lower-level radio lock. SQLite/ACK behavior is
+        # identical to the original synchronous endpoint.
+        await send_direct_message_to_contact(
+            contact=contact,
+            text=request.text,
+            radio_manager=radio_runtime,
+            broadcast_fn=broadcast_event,
+            track_pending_ack_fn=track_pending_ack,
+            now_fn=time,
+            message_repository=MessageRepository,
+            contact_repository=ContactRepository,
+        )
+        return RadioCommandOutcome.UNCERTAIN  # await ACK via the durable DM tracker
+
+    return _admit_command(RadioJobKind.DIRECT_MESSAGE, command, request, idempotency_key)
+
+
+@router.post("/jobs/send/channel", status_code=202, response_model=RadioJobAccepted)
+async def enqueue_channel_message(
+    request: SendChannelMessageRequest,
+    idempotency_key: str = Header(min_length=8, max_length=128, alias="Idempotency-Key"),
+) -> RadioJobAccepted:
+    """Opt-in async channel send; a 202 is NOT an echo or delivery receipt."""
+    radio_runtime.require_connected()
+    channel = await ChannelRepository.get_by_key(request.channel_key)
+    if channel is None:
+        raise HTTPException(status_code=404, detail="Channel not found")
+    try:
+        key_bytes = bytes.fromhex(request.channel_key)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Invalid channel key") from exc
+
+    async def command(_mc):
+        await send_channel_message_to_channel(
+            channel=channel,
+            channel_key_upper=request.channel_key.upper(),
+            key_bytes=key_bytes,
+            text=request.text,
+            radio_manager=radio_runtime,
+            broadcast_fn=broadcast_event,
+            error_broadcast_fn=broadcast_error,
+            now_fn=time,
+            temp_radio_slot=0,
+            flood_scope_override=(
+                SCOPE_UNSET
+                if request.flood_scope_override is None
+                else request.flood_scope_override
+            ),
+            message_repository=MessageRepository,
+        )
+        # No correlated RF echo is guaranteed. Durable Message.send_status is
+        # updated by the existing sender/echo path independently of job state.
+        return RadioCommandOutcome.UNCERTAIN
+
+    return _admit_command(RadioJobKind.CHANNEL_MESSAGE, command, request, idempotency_key)
+
+
+@router.post("/jobs/advertise", status_code=202, response_model=RadioJobAccepted)
+async def enqueue_advertisement(
+    request: EnqueueAdvertisement,
+    idempotency_key: str = Header(min_length=8, max_length=128, alias="Idempotency-Key"),
+) -> RadioJobAccepted:
+    """Opt-in enqueue, while the original /radio/advertise API stays synchronous.
+
+    The response confirms admission only, not RF transmission or a remote echo.
+    Reusing the same idempotency key + request returns the original job, including
+    after it has finished. A different payload with the same key returns 409.
+    """
+    radio_runtime.require_connected()
+    fingerprint = sha256(f"manual_advertisement:{request.mode}".encode()).hexdigest()
+
+    async def command(mc):
+        # This is the ONLY transport command callback for this accepted job.
+        # The existing send helper records the shared flood-advert throttle.
+        success = await send_advertisement(mc, force=True, mode=request.mode)
+        return RadioCommandOutcome.UNCERTAIN if not success else RadioCommandOutcome.FINISHED
+
+    try:
+        job = radio_job_worker.submit(
+            RadioJobKind.ADVERTISEMENT,
+            command,
+            priority=RadioJobPriority.NORMAL,
+            scope="manual-advertisement",
+            idempotency_key=idempotency_key,
+            request_fingerprint=fingerprint,
+            queue_timeout_seconds=60,
+            command_timeout_seconds=20,
+        )
+    except RadioIdempotencyConflict as exc:
+        raise HTTPException(status_code=409, detail="Idempotency key already used") from exc
+    except RadioAdmissionError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Radio command queue unavailable; retry later",
+            headers={"Retry-After": "5"},
+        ) from exc
+    return RadioJobAccepted(job_id=job.id, state=job.state)
 
 
 def radio_status_snapshot() -> RadioStatusSnapshot:
