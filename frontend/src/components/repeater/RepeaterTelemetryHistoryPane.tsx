@@ -590,7 +590,7 @@ export function TelemetryHistoryPane({
             ), or when the repeater is opted into interval telemetry polling, in which case the
             repeater will be polled for metrics automatically. Fetch frequency can be configured in{' '}
             <a
-              href="#settings/radio-app"
+              href="/settings/radio-app"
               className="underline text-primary hover:text-primary/80 transition-colors"
             >
               Settings &rarr; Radio-App Management

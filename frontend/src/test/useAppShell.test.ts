@@ -1,19 +1,9 @@
-import { act, renderHook, waitFor } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { act, renderHook } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 
 import { useAppShell } from '../hooks/useAppShell';
 
 describe('useAppShell', () => {
-  let originalHash: string;
-
-  beforeEach(() => {
-    originalHash = window.location.hash;
-  });
-
-  afterEach(() => {
-    window.location.hash = originalHash;
-  });
-
   it('opens new-message modal and closes the sidebar', () => {
     const { result } = renderHook(() => useAppShell());
 
@@ -44,87 +34,77 @@ describe('useAppShell', () => {
     expect(result.current.showSettings).toBe(false);
   });
 
-  it('initializes settings mode from the URL hash', () => {
-    window.location.hash = '#settings/database';
-
-    const { result } = renderHook(() => useAppShell());
+  it('initializes settings mode from the route section', () => {
+    const { result } = renderHook(() => useAppShell({ routeSettingsSection: 'database' }));
 
     expect(result.current.showSettings).toBe(true);
     expect(result.current.settingsSection).toBe('database');
   });
 
-  it('syncs the selected settings section into the URL hash', async () => {
-    const { result } = renderHook(() => useAppShell());
-
-    act(() => {
-      result.current.handleToggleSettingsView();
-    });
-
-    await waitFor(() => {
-      expect(window.location.hash).toBe('#settings/radio');
-    });
+  it('navigates when a settings section is selected', () => {
+    const onNavigateSettings = vi.fn();
+    const { result } = renderHook(() =>
+      useAppShell({ routeSettingsSection: 'radio', onNavigateSettings })
+    );
 
     act(() => {
       result.current.setSettingsSection('fanout');
     });
 
-    await waitFor(() => {
-      expect(window.location.hash).toBe('#settings/fanout');
-    });
+    expect(onNavigateSettings).toHaveBeenCalledWith('fanout');
   });
 
-  it('restores the previous hash when settings close', async () => {
-    window.location.hash = '#channel/test/Public';
-
-    const { result } = renderHook(() => useAppShell());
+  it('opens the requested settings section through the router callback', () => {
+    const onNavigateSettings = vi.fn();
+    const { result } = renderHook(() =>
+      useAppShell({ routeSettingsSection: null, onNavigateSettings })
+    );
 
     act(() => {
-      result.current.handleToggleSettingsView();
+      result.current.handleOpenSettingsSection('database');
     });
 
-    await waitFor(() => {
-      expect(window.location.hash).toBe('#settings/radio');
-    });
+    expect(onNavigateSettings).toHaveBeenCalledWith('database');
+    expect(result.current.sidebarOpen).toBe(false);
+  });
+
+  it('delegates settings close to the router', () => {
+    const onCloseSettingsRoute = vi.fn();
+    const { result } = renderHook(() =>
+      useAppShell({ routeSettingsSection: 'radio', onCloseSettingsRoute })
+    );
 
     act(() => {
       result.current.handleCloseSettingsView();
     });
 
-    await waitFor(() => {
-      expect(window.location.hash).toBe('#channel/test/Public');
-    });
+    expect(onCloseSettingsRoute).toHaveBeenCalledOnce();
   });
 
-  it('pushes a new history entry when opening settings', async () => {
-    const { result } = renderHook(() => useAppShell());
-    const lengthBefore = window.history.length;
+  it('follows route changes into, across and out of settings', () => {
+    const { result, rerender } = renderHook(
+      ({ section }: { section: 'radio' | 'database' | null }) =>
+        useAppShell({ routeSettingsSection: section }),
+      { initialProps: { section: null as 'radio' | 'database' | null } }
+    );
+
+    expect(result.current.showSettings).toBe(false);
 
     act(() => {
-      result.current.handleToggleSettingsView();
+      rerender({ section: 'radio' });
     });
-
-    await waitFor(() => {
-      expect(window.location.hash).toBe('#settings/radio');
-    });
-
-    expect(window.history.length).toBe(lengthBefore + 1);
-  });
-
-  it('closes settings when popstate fires with a non-settings hash', async () => {
-    window.location.hash = '#settings/radio';
-
-    const { result } = renderHook(() => useAppShell());
-
     expect(result.current.showSettings).toBe(true);
+    expect(result.current.settingsSection).toBe('radio');
 
     act(() => {
-      window.location.hash = '#channel/abc/Public';
-      window.dispatchEvent(new PopStateEvent('popstate', { state: null }));
+      rerender({ section: 'database' });
     });
+    expect(result.current.settingsSection).toBe('database');
 
-    await waitFor(() => {
-      expect(result.current.showSettings).toBe(false);
+    act(() => {
+      rerender({ section: null });
     });
+    expect(result.current.showSettings).toBe(false);
   });
 
   it('toggles the cracker shell without affecting sidebar state', () => {

@@ -64,6 +64,7 @@ interface AppShellProps {
   showCracker: boolean;
   disabledSettingsSections?: SettingsSection[];
   onSettingsSectionChange: (section: SettingsSection) => void;
+  onOpenSettingsSection: (section: SettingsSection) => void;
   onSidebarOpenChange: (open: boolean) => void;
   onCrackerRunningChange: (running: boolean) => void;
   onToggleSettingsView: () => void;
@@ -97,6 +98,7 @@ export function AppShell({
   showCracker,
   disabledSettingsSections = [],
   onSettingsSectionChange,
+  onOpenSettingsSection,
   onSidebarOpenChange,
   onCrackerRunningChange,
   onToggleSettingsView,
@@ -136,10 +138,9 @@ export function AppShell({
 
   const handleOpenSettings = useCallback(
     (section: SettingsSection) => {
-      onSettingsSectionChange(section);
-      if (!showSettings) onToggleSettingsView();
+      onOpenSettingsSection(section);
     },
-    [onSettingsSectionChange, onToggleSettingsView, showSettings]
+    [onOpenSettingsSection]
   );
 
   const searchMounted = useRef(false);

@@ -1,7 +1,6 @@
 import type { Channel, Contact, Conversation } from '../types';
 import { findPublicChannel, PUBLIC_CHANNEL_NAME } from './publicChannel';
 import { getContactDisplayName } from './pubkey';
-import type { SettingsSection } from '../components/settings/settingsConstants';
 
 interface ParsedHashConversation {
   type:
@@ -13,16 +12,6 @@ interface ParsedHashConversation {
   /** For map view: public key prefix to focus on */
   mapFocusKey?: string;
 }
-
-const SETTINGS_SECTIONS: SettingsSection[] = [
-  'radio',
-  'local',
-  'radio-app',
-  'fanout',
-  'database',
-  'statistics',
-  'about',
-];
 
 // Parse URL hash to get conversation
 // (e.g., #channel/ABCDEF0123456789ABCDEF0123456789 or #contact/<64-char-pubkey>).
@@ -79,20 +68,6 @@ export function parseHashConversation(): ParsedHashConversation | null {
     name: token,
     ...(labelRaw ? { label: decodeURIComponent(labelRaw) } : {}),
   };
-}
-
-export function parseHashSettingsSection(): SettingsSection | null {
-  const hash = window.location.hash.slice(1);
-  if (!hash.startsWith('settings/')) {
-    return null;
-  }
-
-  const section = decodeURIComponent(hash.slice('settings/'.length)) as SettingsSection;
-  return SETTINGS_SECTIONS.includes(section) ? section : null;
-}
-
-export function getSettingsHash(section: SettingsSection): string {
-  return `#settings/${encodeURIComponent(section)}`;
 }
 
 export function resolveChannelFromHashToken(token: string, channels: Channel[]): Channel | null {
@@ -166,20 +141,5 @@ export function pushUrlHash(conv: Conversation | null): void {
   const newHash = getConversationHash(conv);
   if (newHash !== window.location.hash) {
     window.history.pushState(null, '', newHash || window.location.pathname);
-  }
-}
-
-export function updateSettingsHash(section: SettingsSection): void {
-  const newHash = getSettingsHash(section);
-  if (newHash !== window.location.hash) {
-    window.history.replaceState(null, '', newHash);
-  }
-}
-
-// Push a settings hash as a new browser history entry
-export function pushSettingsHash(section: SettingsSection): void {
-  const newHash = getSettingsHash(section);
-  if (newHash !== window.location.hash) {
-    window.history.pushState(null, '', newHash);
   }
 }

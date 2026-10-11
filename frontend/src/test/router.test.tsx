@@ -44,6 +44,49 @@ describe('application router', () => {
     expect(router.state.location.pathname).toBe('/map');
   });
 
+  it.each([
+    ['/settings/radio', '/_app/settings/radio'],
+    ['/settings/local', '/_app/settings/local'],
+    ['/settings/radio-app', '/_app/settings/radio-app'],
+    ['/settings/fanout', '/_app/settings/fanout'],
+    ['/settings/database', '/_app/settings/database'],
+    ['/settings/statistics', '/_app/settings/statistics'],
+    ['/settings/about', '/_app/settings/about'],
+  ])('matches the %s settings route directly', async (pathname, routeId) => {
+    const router = createAppRouter(createMemoryHistory({ initialEntries: [pathname] }));
+
+    await router.load();
+
+    expect(router.state.matches[router.state.matches.length - 1]?.routeId).toBe(routeId);
+  });
+
+  it('redirects /settings to the default radio section', async () => {
+    const router = createAppRouter(createMemoryHistory({ initialEntries: ['/settings'] }));
+
+    await router.load();
+
+    expect(router.state.location.pathname).toBe('/settings/radio');
+  });
+
+  it('uses native router history across settings and the previous app route', async () => {
+    const router = createAppRouter(createMemoryHistory({ initialEntries: ['/raw'] }));
+    await router.load();
+    await router.navigate({ to: '/settings/radio' });
+    await router.navigate({ to: '/settings/database' });
+
+    router.history.back();
+    await router.load();
+    expect(router.state.location.pathname).toBe('/settings/radio');
+
+    router.history.back();
+    await router.load();
+    expect(router.state.location.pathname).toBe('/raw');
+
+    router.history.forward();
+    await router.load();
+    expect(router.state.location.pathname).toBe('/settings/radio');
+  });
+
   it('renders the application not-found UI for an unknown pathname', async () => {
     const router = createAppRouter(createMemoryHistory({ initialEntries: ['/does-not-exist'] }));
 
@@ -55,5 +98,15 @@ describe('application router', () => {
 
     expect(await screen.findByRole('heading', { name: 'Page not found' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Return to MESHRIK' })).toHaveAttribute('href', '/');
+  });
+
+  it('renders not-found for an unknown settings section', async () => {
+    const router = createAppRouter(
+      createMemoryHistory({ initialEntries: ['/settings/not-a-section'] })
+    );
+
+    render(<RouterProvider router={router} />);
+
+    expect(await screen.findByRole('heading', { name: 'Page not found' })).toBeInTheDocument();
   });
 });

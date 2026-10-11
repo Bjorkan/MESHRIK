@@ -1,7 +1,6 @@
 import { useState, useCallback, useEffect, useRef, type MutableRefObject } from 'react';
 import {
   parseHashConversation,
-  parseHashSettingsSection,
   updateUrlHash,
   pushUrlHash,
   resolveChannelFromHashToken,
@@ -79,9 +78,7 @@ export function useConversationRouter({
   );
   const activeConversationRef = useRef<Conversation | null>(null);
   const hashSyncEnabledRef = useRef(
-    typeof window !== 'undefined'
-      ? window.location.hash.length > 0 && parseHashSettingsSection() === null
-      : false
+    typeof window !== 'undefined' ? window.location.hash.length > 0 : false
   );
   const shouldPushHistoryRef = useRef(false);
   const isHandlingPopstateRef = useRef(false);
@@ -149,7 +146,7 @@ export function useConversationRouter({
     if (hasSetDefaultConversation.current || activeConversation) return;
     if (routeConversation) return;
 
-    const hashConv = parseHashSettingsSection() ? null : parseHashConversation();
+    const hashConv = parseHashConversation();
 
     // No hash: optionally restore last-viewed non-data conversation if enabled on this device.
     if (!hashConv && getReopenLastConversationEnabled()) {
@@ -233,7 +230,7 @@ export function useConversationRouter({
     if (hasSetDefaultConversation.current || activeConversation) return;
     if (routeConversation) return;
 
-    const hashConv = parseHashSettingsSection() ? null : parseHashConversation();
+    const hashConv = parseHashConversation();
     if (hashConv?.type === 'contact') {
       if (!contactsLoaded) return;
 
@@ -319,9 +316,6 @@ export function useConversationRouter({
   // Respond to browser back/forward by updating the active conversation
   useEffect(() => {
     const handlePopstate = () => {
-      // Settings hash transitions are handled by useAppShell
-      if (parseHashSettingsSection() !== null) return;
-
       // Resolve the target from the hash. When the hash is empty or doesn't
       // resolve (e.g. back/forward to the bare URL), fall back to the Public
       // channel rather than clearing to null: the initial-load phases are gated

@@ -33,6 +33,7 @@ import { createAppQueryClient } from './queryClient';
 import { queryKeys } from './queryClient';
 import { primePrefetchCache } from './prefetch';
 import { useRadioJobFeed } from './hooks/useRadioJobFeed';
+import type { SettingsSection } from './components/settings/settingsConstants';
 
 interface ChannelUnreadMarker {
   channelId: string;
@@ -77,9 +78,12 @@ export function resolveUnreadMarkerId(
 interface AppProps {
   routeConversation?: Conversation | null;
   onNavigateConversation?: (conversation: Conversation) => void;
+  routeSettingsSection?: SettingsSection | null;
+  onNavigateSettings?: (section: SettingsSection) => void;
+  onCloseSettingsRoute?: () => void;
 }
 
-export function App({ routeConversation, onNavigateConversation }: AppProps = {}) {
+export function App(props: AppProps = {}) {
   const [queryClient] = useState(() => {
     const client = createAppQueryClient();
     primePrefetchCache(client);
@@ -88,15 +92,18 @@ export function App({ routeConversation, onNavigateConversation }: AppProps = {}
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AppContent
-        routeConversation={routeConversation}
-        onNavigateConversation={onNavigateConversation}
-      />
+      <AppContent {...props} />
     </QueryClientProvider>
   );
 }
 
-function AppContent({ routeConversation, onNavigateConversation }: AppProps) {
+function AppContent({
+  routeConversation,
+  onNavigateConversation,
+  routeSettingsSection,
+  onNavigateSettings,
+  onCloseSettingsRoute,
+}: AppProps) {
   const queryClient = useQueryClient();
   const quoteSearchOperatorValue = useCallback((value: string) => {
     return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
@@ -141,10 +148,11 @@ function AppContent({ routeConversation, onNavigateConversation }: AppProps) {
     setShowPathHopWidth,
     handleCloseSettingsView,
     handleToggleSettingsView,
+    handleOpenSettingsSection,
     handleOpenNewMessage: openNewMessageModal,
     handleCloseNewMessage: closeNewMessageModal,
     handleToggleCracker,
-  } = useAppShell();
+  } = useAppShell({ routeSettingsSection, onNavigateSettings, onCloseSettingsRoute });
 
   // Shared refs between useConversationRouter and useContactsAndChannels
   const pendingDeleteFallbackRef = useRef(false);
@@ -678,8 +686,7 @@ function AppContent({ routeConversation, onNavigateConversation }: AppProps) {
       await pushSubscription.toggleConversation(key);
     },
     onOpenPushSettings: () => {
-      setSettingsSection('local');
-      if (!showSettings) handleToggleSettingsView();
+      handleOpenSettingsSection('local');
     },
     trackedTelemetryRepeaters: appSettings?.tracked_telemetry_repeaters ?? [],
     onToggleTrackedTelemetry: handleToggleTrackedTelemetry,
@@ -801,6 +808,7 @@ function AppContent({ routeConversation, onNavigateConversation }: AppProps) {
             sidebarOpen={sidebarOpen}
             showCracker={showCracker}
             onSettingsSectionChange={setSettingsSection}
+            onOpenSettingsSection={handleOpenSettingsSection}
             onSidebarOpenChange={setSidebarOpen}
             onCrackerRunningChange={setCrackerRunning}
             onToggleSettingsView={handleToggleSettingsView}

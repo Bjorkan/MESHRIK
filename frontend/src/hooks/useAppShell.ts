@@ -1,11 +1,16 @@
-import { startTransition, useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { getLocalLabel, type LocalLabel } from '../utils/localLabel';
 import { getSavedDistanceUnit, type DistanceUnit } from '../utils/distanceUnits';
 import { getSavedRenderRichPayloads } from '../utils/richPayloadPreference';
 import { getSavedShowPathHopWidth } from '../utils/pathHopWidthPreference';
 import type { SettingsSection } from '../components/settings/settingsConstants';
-import { parseHashSettingsSection, updateSettingsHash, pushSettingsHash } from '../utils/urlHash';
+
+interface UseAppShellOptions {
+  routeSettingsSection?: SettingsSection | null;
+  onNavigateSettings?: (section: SettingsSection) => void;
+  onCloseSettingsRoute?: () => void;
+}
 
 interface UseAppShellResult {
   showNewMessage: boolean;
@@ -27,18 +32,23 @@ interface UseAppShellResult {
   setShowPathHopWidth: (enabled: boolean) => void;
   handleCloseSettingsView: () => void;
   handleToggleSettingsView: () => void;
+  handleOpenSettingsSection: (section: SettingsSection) => void;
   handleOpenNewMessage: () => void;
   handleCloseNewMessage: () => void;
   handleToggleCracker: () => void;
 }
 
-export function useAppShell(): UseAppShellResult {
-  const initialSettingsSection = typeof window === 'undefined' ? null : parseHashSettingsSection();
+export function useAppShell({
+  routeSettingsSection,
+  onNavigateSettings,
+  onCloseSettingsRoute,
+}: UseAppShellOptions = {}): UseAppShellResult {
+  const routeControlled = routeSettingsSection !== undefined;
   const [showNewMessage, setShowNewMessage] = useState(false);
-  const [showSettings, setShowSettings] = useState(() => initialSettingsSection !== null);
-  const [settingsSection, setSettingsSection] = useState<SettingsSection>(
-    () => initialSettingsSection ?? 'radio'
-  );
+  const [localShowSettings, setLocalShowSettings] = useState(false);
+  const [localSettingsSection, setLocalSettingsSection] = useState<SettingsSection>('radio');
+  const showSettings = routeControlled ? routeSettingsSection !== null : localShowSettings;
+  const settingsSection = routeSettingsSection ?? localSettingsSection;
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showCracker, setShowCracker] = useState(false);
   const [crackerRunning, setCrackerRunning] = useState(false);
@@ -46,33 +56,39 @@ export function useAppShell(): UseAppShellResult {
   const [distanceUnit, setDistanceUnit] = useState(getSavedDistanceUnit);
   const [renderRichPayloads, setRenderRichPayloads] = useState(getSavedRenderRichPayloads);
   const [showPathHopWidth, setShowPathHopWidth] = useState(getSavedShowPathHopWidth);
-  const previousHashRef = useRef('');
-  const isOpeningSettingsRef = useRef(false);
-  const pushedSettingsEntryRef = useRef(false);
-
   useEffect(() => {
-    if (showSettings) {
-      if (isOpeningSettingsRef.current) {
-        pushSettingsHash(settingsSection);
-        isOpeningSettingsRef.current = false;
-      } else {
-        updateSettingsHash(settingsSection);
-      }
-    }
-  }, [settingsSection, showSettings]);
+    if (routeSettingsSection) setLocalSettingsSection(routeSettingsSection);
+  }, [routeSettingsSection]);
+
+  const setSettingsSection = useCallback(
+    (section: SettingsSection) => {
+      setLocalSettingsSection(section);
+      onNavigateSettings?.(section);
+    },
+    [onNavigateSettings]
+  );
 
   const handleCloseSettingsView = useCallback(() => {
-    startTransition(() => setShowSettings(false));
-    setSidebarOpen(false);
-    if (typeof window !== 'undefined') {
-      if (pushedSettingsEntryRef.current) {
-        pushedSettingsEntryRef.current = false;
-        window.history.back();
-      } else if (parseHashSettingsSection() !== null) {
-        window.history.replaceState(null, '', previousHashRef.current || window.location.pathname);
-      }
+    if (onCloseSettingsRoute) {
+      onCloseSettingsRoute();
+    } else {
+      setLocalShowSettings(false);
     }
-  }, []);
+    setSidebarOpen(false);
+  }, [onCloseSettingsRoute]);
+
+  const handleOpenSettingsSection = useCallback(
+    (section: SettingsSection) => {
+      setLocalSettingsSection(section);
+      if (onNavigateSettings) {
+        onNavigateSettings(section);
+      } else {
+        setLocalShowSettings(true);
+      }
+      setSidebarOpen(false);
+    },
+    [onNavigateSettings]
+  );
 
   const handleToggleSettingsView = useCallback(() => {
     if (showSettings) {
@@ -80,38 +96,8 @@ export function useAppShell(): UseAppShellResult {
       return;
     }
 
-    if (typeof window !== 'undefined') {
-      previousHashRef.current =
-        parseHashSettingsSection() === null ? window.location.hash : previousHashRef.current;
-    }
-    isOpeningSettingsRef.current = true;
-    pushedSettingsEntryRef.current = true;
-    startTransition(() => {
-      setShowSettings(true);
-    });
-    setSidebarOpen(false);
-  }, [handleCloseSettingsView, showSettings]);
-
-  // Respond to browser back/forward navigating into or out of settings
-  useEffect(() => {
-    const handlePopstate = () => {
-      const section = parseHashSettingsSection();
-      if (section !== null) {
-        // Don't set pushedSettingsEntryRef here — the user arrived via
-        // back/forward, not by opening settings.  Closing settings should
-        // replaceState, not history.back(), to avoid popping an unrelated entry.
-        startTransition(() => {
-          setShowSettings(true);
-          setSettingsSection(section);
-        });
-      } else {
-        startTransition(() => setShowSettings(false));
-      }
-    };
-
-    window.addEventListener('popstate', handlePopstate);
-    return () => window.removeEventListener('popstate', handlePopstate);
-  }, []);
+    handleOpenSettingsSection(settingsSection);
+  }, [handleCloseSettingsView, handleOpenSettingsSection, settingsSection, showSettings]);
 
   const handleOpenNewMessage = useCallback(() => {
     setShowNewMessage(true);
@@ -146,6 +132,7 @@ export function useAppShell(): UseAppShellResult {
     setShowPathHopWidth,
     handleCloseSettingsView,
     handleToggleSettingsView,
+    handleOpenSettingsSection,
     handleOpenNewMessage,
     handleCloseNewMessage,
     handleToggleCracker,
