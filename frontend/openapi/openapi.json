@@ -2512,7 +2512,10 @@
           "radio_state": {
             "default": "disconnected",
             "enum": [
+              "ready",
               "connected",
+              "degraded",
+              "failed",
               "initializing",
               "connecting",
               "disconnected",
@@ -2530,6 +2533,45 @@
                 "type": "null"
               }
             ]
+          },
+          "startup_error_stage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Startup Error Stage"
+          },
+          "startup_policy": {
+            "default": "sync",
+            "enum": [
+              "passive",
+              "sync",
+              "full"
+            ],
+            "title": "Startup Policy",
+            "type": "string"
+          },
+          "startup_skipped_stages": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Startup Skipped Stages",
+            "type": "array"
+          },
+          "startup_stage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Startup Stage"
           },
           "status": {
             "title": "Status",
@@ -3715,6 +3757,10 @@
       "RadioConnectionStatus": {
         "enum": [
           "connected",
+          "ready",
+          "degraded",
+          "failed",
+          "initializing",
           "connecting",
           "disconnected"
         ],
@@ -3985,7 +4031,18 @@
           "discovery",
           "radio_query",
           "periodic_sync",
-          "periodic_advertisement"
+          "radio_stats_sample",
+          "periodic_advertisement",
+          "lifecycle_device_info",
+          "lifecycle_key_export",
+          "lifecycle_clock_sync",
+          "lifecycle_flood_scope",
+          "lifecycle_contact_sync",
+          "lifecycle_channel_sync",
+          "lifecycle_channel_clear",
+          "lifecycle_advertisement",
+          "lifecycle_message_drain",
+          "lifecycle_auto_fetch"
         ],
         "title": "RadioJobKind",
         "type": "string"
@@ -4388,6 +4445,25 @@
         "title": "RadioSettings",
         "type": "object"
       },
+      "RadioStartupStage": {
+        "enum": [
+          "transport",
+          "device_info",
+          "key_export",
+          "clock_sync",
+          "flood_scope",
+          "contact_sync",
+          "channel_sync",
+          "channel_clear",
+          "advertisement",
+          "message_drain",
+          "auto_fetch",
+          "complete",
+          "recovery_required"
+        ],
+        "title": "RadioStartupStage",
+        "type": "string"
+      },
       "RadioStatsSnapshot": {
         "description": "Latest cached stats from the local radio's periodic 60s poll.",
         "properties": {
@@ -4595,6 +4671,26 @@
             "minimum": 0.0,
             "title": "Sequence",
             "type": "integer"
+          },
+          "startup_policy": {
+            "default": "sync",
+            "enum": [
+              "passive",
+              "sync",
+              "full"
+            ],
+            "title": "Startup Policy",
+            "type": "string"
+          },
+          "startup_stage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RadioStartupStage"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [

@@ -237,6 +237,13 @@ If extending, have your LLM read the three `AGENTS.md` files: `./AGENTS.md`, `./
 
 ## Hardware smoke testing
 
+Startup and reconnect now run as bounded, visible single-worker lifecycle jobs.
+`MESHCORE_STARTUP_POLICY=passive` performs a receive-only bootstrap; the default
+`sync` safely reads contacts/channels, while `full` requires individual opt-ins
+for any settings change, RF advertisement, drain or slot clearing. See
+[`RADIO_STARTUP_LIFECYCLE.md`](RADIO_STARTUP_LIFECYCLE.md) for the policy
+matrix, legacy flag compatibility, readiness and rollback.
+
 For a first controlled Companion connection and non-destructive startup, follow
 [`HARDWARE_SMOKE_TEST.md`](HARDWARE_SMOKE_TEST.md). This includes the
 `MESHCORE_PASSIVE_STARTUP` safeguard, the clock-reboot opt-in and explicit

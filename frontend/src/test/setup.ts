@@ -1,4 +1,4 @@
-import '@testing-library/jest-dom';
+import '@testing-library/jest-dom/vitest';
 
 // Node 26 exposes an experimental global `localStorage` that evaluates to
 // undefined unless the process is started with --localstorage-file. Define a

@@ -167,6 +167,14 @@ class RadioManager:
         self._setup_lock: asyncio.Lock | None = None
         self._setup_in_progress: bool = False
         self._setup_complete: bool = False
+        self._setup_generation: int | None = None
+        self._setup_task: asyncio.Task | None = None
+        self._setup_task_generation: int | None = None
+        self.readiness_state: str = "disconnected"
+        self.startup_policy: str = settings.effective_startup_policy.value
+        self.startup_stage: str | None = None
+        self.startup_error_stage: str | None = None
+        self.startup_skipped_stages: list[str] = []
         self._frontend_reconnect_error_broadcasts: int = 0
         self.device_info_loaded: bool = False
         self.max_contacts: int | None = None
@@ -219,6 +227,10 @@ class RadioManager:
     def _reset_connected_runtime_state(self) -> None:
         """Clear cached runtime state after a transport teardown completes."""
         self._setup_complete = False
+        self._setup_generation = None
+        self.readiness_state = "disconnected"
+        self.startup_stage = None
+        self.startup_error_stage = None
         self.device_info_loaded = False
         self.max_contacts = None
         self.device_model = None
@@ -294,11 +306,11 @@ class RadioManager:
             finally:
                 self._release_operation_lock(name)
 
-    async def post_connect_setup(self) -> None:
+    async def post_connect_setup(self, *, force: bool = False) -> None:
         """Run shared post-connection orchestration after transport setup succeeds."""
         from app.services.radio_lifecycle import run_post_connect_setup
 
-        await run_post_connect_setup(self)
+        await run_post_connect_setup(self, force=force)
 
     def reset_channel_send_cache(self) -> None:
         """Forget any session-local channel-slot reuse state."""
@@ -491,9 +503,11 @@ class RadioManager:
 
     async def connect(self) -> None:
         """Connect to the radio using the configured transport."""
-        self.radio_generation += 1
         if self._meshcore is not None:
             await self.disconnect()
+        self.radio_generation += 1
+        self.readiness_state = "connecting"
+        self.startup_stage = "transport"
 
         connection_type = settings.connection_type
         if connection_type == "tcp":
@@ -565,18 +579,27 @@ class RadioManager:
         logger.debug("BLE connection established")
 
     async def disconnect(self) -> None:
-        """Disconnect from the radio."""
-        self.radio_generation += 1
+        """Fence initialization and disconnect after the active command leaves the slot."""
         from app.radio_sync import stop_background_contact_reconciliation
+        from app.services.radio_lifecycle import cancel_radio_lifecycle
 
+        # Stop new user admission while an in-flight setup command drains.
+        self.readiness_state = "connecting"
+        await cancel_radio_lifecycle(self)
         clear_keys()
         self._reset_reconnect_error_broadcasts()
         if self._meshcore is None:
+            self.radio_generation += 1
+            self._reset_connected_runtime_state()
             return
 
         await stop_background_contact_reconciliation()
         await self._acquire_operation_lock("disconnect", blocking=True)
         try:
+            # Advance the fence only after any in-flight command has left the
+            # shared permit, so a stale lifecycle callback cannot keep writing
+            # while teardown is already considered a new generation.
+            self.radio_generation += 1
             mc = self._meshcore
             if mc is None:
                 return
@@ -647,6 +670,8 @@ class RadioManager:
                     return False
 
             except Exception as e:
+                self.readiness_state = "disconnected"
+                self.startup_stage = None
                 log_message, frontend_detail, include_traceback = _format_reconnect_failure(e)
                 logger.warning(log_message, exc_info=include_traceback)
                 self._broadcast_reconnect_error_if_needed(frontend_detail)

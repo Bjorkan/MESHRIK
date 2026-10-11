@@ -43,22 +43,27 @@ Existing `/api/ws` now also broadcasts typed `radio_job` (sanitized `RadioJobSna
 
 Hardware-only verification is still required for real repeater/room responses, CLI drain/poll behavior, BLE/TCP/serial reconnect timing and physical RF-state research (#47). No CI test should send real RF traffic.
 
-## Hardware preflight / known transitional limits
+## Worker-owned startup and hardware preflight
 
-Read `HARDWARE_SMOKE_TEST.md` before attempting a real Companion connection.
-`MESHCORE_PASSIVE_STARTUP=true` suppresses the startup mutations and scheduled
-maintenance; it is **not** a global API read-only switch. The unrelated
-`MESHCORE_SKIP_POST_CONNECT_SYNC` flag alone does *not* suppress clock/scope
-writes. Automatic radio reboot on failed clock sync now requires the explicit
-`MESHCORE_AUTO_REBOOT_ON_CLOCK_SKEW=true` opt-in. Login reply waits are
-independently configured with `MESHCORE_LOGIN_RESPONSE_TIMEOUT_SECONDS` (default
-5, supported 1–60 seconds); queued/transport deadlines are separate.
+See `RADIO_STARTUP_LIFECYCLE.md` for the lifecycle stages, readiness barrier,
+reconnect fencing, policy matrix, all explicit maintenance permissions and
+rollback. `MESHCORE_STARTUP_POLICY=sync` (default) reads radio/device data
+without device writes or startup RF. `passive` reads device status only; `full`
+merely permits **individually opted-in** maintenance actions. Both deprecated
+flags `MESHCORE_PASSIVE_STARTUP=true` and
+`MESHCORE_SKIP_POST_CONNECT_SYNC=true` map to passive (they cannot enable
+clock/flood writes). Startup stages are visible single-worker lifecycle jobs;
+ordinary user commands are gated until initialization settles. The underlying
+lock is still the final transport guard, not a bypass.
 
-The single worker remains fail-closed on uncertain transport timeouts; restart
-is an operator action, not an automatic replay. Periodic producers use
-`blocking=False` / fail-fast when the radio is busy instead of stacking work
-in the command queue. This is backpressure, not full scheduler coalescing,
-and should not be counted as completion of #44's complete policy.
+Read `HARDWARE_SMOKE_TEST.md` before connecting a real device. Automatic reboot
+on failed clock sync requires `MESHCORE_AUTO_REBOOT_ON_CLOCK_SKEW=true`.
+Login reply deadlines are independent from worker command/queue deadlines;
+`MESHCORE_LOGIN_RESPONSE_TIMEOUT_SECONDS` defaults to 5 seconds (range 1–60).
+The worker fails closed on uncertain outcomes: do not automatically retransmit.
+Periodic producers have bounded admission/coalescing; destructive periodic
+contact/channel offload also requires `full` policy and
+`MESHCORE_STARTUP_ALLOW_PERIODIC_OFFLOAD=true`.
 
 ## Producer migration hardening (review required before release)
 

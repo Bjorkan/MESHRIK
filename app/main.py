@@ -160,6 +160,10 @@ async def lifespan(app: FastAPI):
                     await startup_radio_task
                 except asyncio.CancelledError:
                     pass
+            await radio_manager.stop_connection_monitor()
+            from app.services.radio_lifecycle import cancel_radio_lifecycle
+
+            await cancel_radio_lifecycle(radio_manager.manager)
             await radio_job_worker.stop()
             if unsubscribe_job is not None:
                 unsubscribe_job()
@@ -173,7 +177,6 @@ async def lifespan(app: FastAPI):
             from app.fanout.manager import fanout_manager
 
             await fanout_manager.stop_all()
-            await radio_manager.stop_connection_monitor()
             await stop_background_contact_reconciliation()
             await stop_message_polling()
             await stop_radio_stats_sampling()

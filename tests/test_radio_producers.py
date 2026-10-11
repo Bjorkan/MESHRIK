@@ -284,3 +284,15 @@ def test_migrated_producer_modules_do_not_import_direct_radio_manager():
         source = path.read_text(encoding="utf-8")
         assert "from app.radio import radio_manager" not in source, path.name
         assert "from app.radio import RadioManager" not in source, path.name
+
+
+def test_radio_stats_samples_have_distinct_low_priority_job_kind():
+    """Read-only health polling must never appear as destructive periodic sync."""
+    assert producers.classify_operation("radio_stats_sample") == (
+        RadioJobKind.RADIO_STATS_SAMPLE,
+        RadioJobPriority.LOW,
+    )
+    assert producers.classify_operation("periodic_sync") == (
+        RadioJobKind.PERIODIC_SYNC,
+        RadioJobPriority.LOW,
+    )

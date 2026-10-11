@@ -226,8 +226,8 @@ class TestConnectionMonitor:
         assert rm._last_connected is False
 
     @pytest.mark.asyncio
-    async def test_monitor_retries_setup_when_connected_but_incomplete(self):
-        """Monitor retries setup when transport is connected but setup previously failed."""
+    async def test_monitor_does_not_replay_failed_setup_for_same_generation(self):
+        """Failed initialization needs explicit manual retry, never automatic replay."""
         from app.radio import RadioManager
 
         rm = RadioManager()
@@ -240,6 +240,7 @@ class TestConnectionMonitor:
         rm._meshcore = mock_mc
         rm._last_connected = True
         rm._setup_complete = False
+        rm.readiness_state = "connecting"
 
         setup_calls = 0
 
@@ -271,11 +272,11 @@ class TestConnectionMonitor:
             finally:
                 await rm.stop_connection_monitor()
 
-        # Setup should have been retried and eventually succeeded
-        assert setup_calls >= 2
-        # Should broadcast healthy after setup succeeds
-        mock_broadcast.assert_any_call(True, "TCP: test:4000")
-        assert rm._setup_complete is True
+        # A failed generation must NOT be retried automatically.
+        assert setup_calls == 1
+        assert rm.readiness_state == "failed"
+        assert not any(c.args[0] is True for c in mock_broadcast.call_args_list)
+        assert rm._setup_complete is False
 
     @pytest.mark.asyncio
     async def test_monitor_does_not_retry_while_setup_already_running(self):
@@ -777,6 +778,19 @@ class TestSerialDeviceProbe:
 class TestPostConnectSetupOrdering:
     """Tests for post_connect_setup() — verifies drain-before-auto-fetch ordering."""
 
+    @pytest.fixture(autouse=True)
+    def _explicit_full_startup_permissions(self, monkeypatch):
+        """Legacy maintenance expectations require explicit full-policy consent."""
+        from app.config import StartupPolicy, settings
+
+        monkeypatch.setattr(settings, "startup_policy", StartupPolicy.FULL)
+        monkeypatch.setattr(settings, "startup_export_private_key", True)
+        monkeypatch.setattr(settings, "startup_sync_clock", True)
+        monkeypatch.setattr(settings, "startup_apply_flood_scope", True)
+        monkeypatch.setattr(settings, "startup_send_advertisement", True)
+        monkeypatch.setattr(settings, "startup_drain_messages", True)
+        monkeypatch.setattr(settings, "startup_sync_clock", True)
+
     @pytest.mark.asyncio
     async def test_drain_runs_before_auto_fetch(self):
         """drain_pending_messages must be called BEFORE start_auto_message_fetching."""
@@ -785,6 +799,9 @@ class TestPostConnectSetupOrdering:
 
         rm = RadioManager()
         mock_mc = MagicMock()
+        mock_mc.commands.send_device_query = AsyncMock(
+            return_value=MagicMock(payload={"fw ver": 13, "max_channels": 40})
+        )
         mock_mc.start_auto_message_fetching = AsyncMock()
         mock_mc.commands.set_flood_scope = AsyncMock()
         rm._meshcore = mock_mc
@@ -834,6 +851,9 @@ class TestPostConnectSetupOrdering:
 
         rm = RadioManager()
         mock_mc = MagicMock()
+        mock_mc.commands.send_device_query = AsyncMock(
+            return_value=MagicMock(payload={"fw ver": 13, "max_channels": 40})
+        )
         mock_mc.start_auto_message_fetching = AsyncMock()
         mock_mc.commands.set_flood_scope = AsyncMock()
         rm._meshcore = mock_mc
@@ -877,19 +897,21 @@ class TestPostConnectSetupOrdering:
 
         rm = RadioManager()
         mock_mc = MagicMock()
-        mock_mc.start_auto_message_fetching = AsyncMock()
+        mock_mc.commands.send_device_query = AsyncMock(
+            return_value=MagicMock(payload={"fw ver": 13, "max_channels": 40})
+        )
+        mock_mc.start_auto_message_fetching = AsyncMock(side_effect=RuntimeError("fetch failed"))
         rm._meshcore = mock_mc
 
+        from app.config import StartupPolicy, settings
+
         with (
+            patch.object(settings, "startup_policy", StartupPolicy.PASSIVE),
             patch("app.event_handlers.register_event_handlers"),
             patch("app.keystore.export_and_store_private_key", new_callable=AsyncMock),
-            patch(
-                "app.radio_sync.sync_radio_time",
-                new_callable=AsyncMock,
-                side_effect=RuntimeError("clock failed"),
-            ),
+            patch("app.radio_sync.sync_radio_time", new_callable=AsyncMock, return_value=True),
         ):
-            with pytest.raises(RuntimeError, match="clock failed"):
+            with pytest.raises(RuntimeError, match="fetch failed"):
                 await rm.post_connect_setup()
 
         assert rm.is_setup_in_progress is False
@@ -914,6 +936,9 @@ class TestPostConnectSetupOrdering:
 
         rm = RadioManager()
         mock_mc = MagicMock()
+        mock_mc.commands.send_device_query = AsyncMock(
+            return_value=MagicMock(payload={"fw ver": 13, "max_channels": 40})
+        )
         mock_mc.start_auto_message_fetching = AsyncMock()
         mock_mc.commands.set_flood_scope = AsyncMock()
         rm._meshcore = mock_mc
@@ -948,6 +973,9 @@ class TestPostConnectSetupOrdering:
 
         rm = RadioManager()
         mock_mc = MagicMock()
+        mock_mc.commands.send_device_query = AsyncMock(
+            return_value=MagicMock(payload={"fw ver": 13, "max_channels": 40})
+        )
         mock_mc.start_auto_message_fetching = AsyncMock()
         mock_mc.commands.set_flood_scope = AsyncMock()
         rm._meshcore = mock_mc
@@ -982,6 +1010,9 @@ class TestPostConnectSetupOrdering:
 
         rm = RadioManager()
         mock_mc = MagicMock()
+        mock_mc.commands.send_device_query = AsyncMock(
+            return_value=MagicMock(payload={"fw ver": 13, "max_channels": 40})
+        )
         mock_mc.start_auto_message_fetching = AsyncMock()
         mock_mc.commands.set_flood_scope = AsyncMock()
         mock_mc.commands.send = AsyncMock()
@@ -1025,6 +1056,9 @@ class TestPostConnectSetupOrdering:
 
         rm = RadioManager()
         mock_mc = MagicMock()
+        mock_mc.commands.send_device_query = AsyncMock(
+            return_value=MagicMock(payload={"fw ver": 13, "max_channels": 40})
+        )
         mock_mc.start_auto_message_fetching = AsyncMock()
         mock_mc.commands.set_flood_scope = AsyncMock()
         rm._meshcore = mock_mc
@@ -1057,6 +1091,9 @@ class TestPostConnectSetupOrdering:
 
         rm = RadioManager()
         mock_mc = MagicMock()
+        mock_mc.commands.send_device_query = AsyncMock(
+            return_value=MagicMock(payload={"fw ver": 13, "max_channels": 40})
+        )
         mock_mc.start_auto_message_fetching = AsyncMock()
         mock_mc.commands.set_flood_scope = AsyncMock()
         rm._meshcore = mock_mc
@@ -1082,8 +1119,8 @@ class TestPostConnectSetupOrdering:
         mock_start_message_polling.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_prepare_connected_radio_retries_timeout_once_before_failing(self):
-        """Hung post-connect setup gets one retry before surfacing an operator error."""
+    async def test_prepare_connected_radio_does_not_retry_timeout(self):
+        """A timed-out generation is not replayed automatically."""
         from app.radio import RadioManager
         from app.services.radio_lifecycle import prepare_connected_radio
 
@@ -1095,19 +1132,17 @@ class TestPostConnectSetupOrdering:
             patch("app.websocket.broadcast_error") as mock_broadcast_error,
             patch("app.websocket.broadcast_health") as mock_broadcast_health,
         ):
-            with pytest.raises(RuntimeError, match="Post-connect setup timed out"):
+            with pytest.raises(TimeoutError):
                 await prepare_connected_radio(rm, broadcast_on_success=True)
 
-        assert rm.post_connect_setup.await_count == 2
-        mock_broadcast_error.assert_called_once_with(
-            "Radio startup appears stuck",
-            "Initial radio offload took too long. Reboot the radio and restart the server.",
-        )
+        assert rm.post_connect_setup.await_count == 1
+        assert rm.readiness_state == "failed"
+        mock_broadcast_error.assert_not_called()
         mock_broadcast_health.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_prepare_connected_radio_succeeds_on_retry_after_timeout(self):
-        """A slow first attempt can time out once without failing the reconnect flow."""
+    async def test_prepare_connected_radio_manual_retry_is_explicit(self):
+        """A second attempt only occurs when recovery is explicitly requested."""
         from app.radio import RadioManager
         from app.services.radio_lifecycle import prepare_connected_radio
 
@@ -1119,7 +1154,13 @@ class TestPostConnectSetupOrdering:
             patch("app.websocket.broadcast_error") as mock_broadcast_error,
             patch("app.websocket.broadcast_health") as mock_broadcast_health,
         ):
-            await prepare_connected_radio(rm, broadcast_on_success=True)
+            with pytest.raises(TimeoutError):
+                await prepare_connected_radio(rm, broadcast_on_success=True)
+            rm._meshcore = MagicMock()
+            rm._meshcore.is_connected = True
+            # The mocked post_connect_setup does not itself transition readiness.
+            rm.readiness_state = "ready"
+            await prepare_connected_radio(rm, broadcast_on_success=True, force=True)
 
         assert rm.post_connect_setup.await_count == 2
         assert rm._last_connected is True

@@ -298,16 +298,23 @@ async def should_run_full_periodic_sync(mc: MeshCore) -> bool:
     return False
 
 
-async def sync_and_offload_channels(mc: MeshCore, max_channels: int | None = None) -> dict:
-    """
-    Sync channels from radio to database, then clear them from radio.
-    Returns counts of synced and cleared channels.
+async def sync_channels_from_radio(
+    mc: MeshCore,
+    max_channels: int | None = None,
+    *,
+    clear_slots: bool = False,
+) -> dict:
+    """Copy channel slots into the DB, optionally clearing physical slots.
+
+    The default is deliberately non-destructive and is used by the ``sync``
+    startup policy. Slot clearing is a separately authorized full-policy stage.
     """
     synced = 0
     cleared = 0
 
     try:
-        radio_manager.reset_channel_send_cache()
+        if clear_slots:
+            radio_manager.reset_channel_send_cache()
         channel_limit = get_radio_channel_limit(max_channels)
 
         # Check all available channel slots for this firmware variant
@@ -317,9 +324,12 @@ async def sync_and_offload_channels(mc: MeshCore, max_channels: int | None = Non
             if result.type != EventType.CHANNEL_INFO:
                 continue
 
+            # A successfully queried channel is physically present, even if an
+            # explicitly authorized clear is requested later in this loop.
+            # Only mark it absent once the firmware confirms the slot clear.
             key_hex = await upsert_channel_from_radio_slot(
                 result.payload,
-                on_radio=False,  # We're about to clear it
+                on_radio=True,
             )
             if key_hex is None:
                 continue
@@ -328,7 +338,10 @@ async def sync_and_offload_channels(mc: MeshCore, max_channels: int | None = Non
             synced += 1
             logger.debug("Synced channel %s: %s", key_hex[:8], result.payload.get("channel_name"))
 
-            # Clear from radio (set empty name and zero key)
+            if not clear_slots:
+                continue
+
+            # Explicitly authorized destructive maintenance only.
             try:
                 clear_result = await mc.commands.set_channel(
                     channel_idx=idx,
@@ -336,6 +349,13 @@ async def sync_and_offload_channels(mc: MeshCore, max_channels: int | None = Non
                     channel_secret=bytes(16),
                 )
                 if clear_result.type == EventType.OK:
+                    # Reflect confirmed device state, not intent to clear.
+                    await ChannelRepository.upsert(
+                        key=key_hex,
+                        name=result.payload["channel_name"],
+                        is_hashtag=result.payload["channel_name"].startswith("#"),
+                        on_radio=False,
+                    )
                     cleared += 1
                 else:
                     logger.warning("Failed to clear channel %d: %s", idx, clear_result.payload)
@@ -349,6 +369,11 @@ async def sync_and_offload_channels(mc: MeshCore, max_channels: int | None = Non
         return {"synced": synced, "cleared": cleared, "error": str(e)}
 
     return {"synced": synced, "cleared": cleared}
+
+
+async def sync_and_offload_channels(mc: MeshCore, max_channels: int | None = None) -> dict:
+    """Compatibility wrapper for explicitly destructive channel offload."""
+    return await sync_channels_from_radio(mc, max_channels, clear_slots=True)
 
 
 def _split_channel_sender_and_text(text: str) -> tuple[str | None, str]:
@@ -375,7 +400,9 @@ async def _resolve_channel_for_pending_message(
         logger.debug("Failed to fetch channel slot %s for pending message: %s", channel_idx, exc)
     else:
         if result.type == EventType.CHANNEL_INFO:
-            key_hex = await upsert_channel_from_radio_slot(result.payload, on_radio=False)
+            # Resolving an incoming message queried an actual radio slot;
+            # it must not downgrade the residency snapshot from startup sync.
+            key_hex = await upsert_channel_from_radio_slot(result.payload, on_radio=True)
             if key_hex is not None:
                 radio_manager.remember_pending_message_channel_slot(key_hex, channel_idx)
                 return key_hex, result.payload.get("channel_name") or None
@@ -1043,9 +1070,19 @@ async def _periodic_sync_loop():
                     blocking=False,
                     defer_when_busy=True,
                 ) as mc:
-                    if await should_run_full_periodic_sync(mc):
+                    # The periodic scheduler is not blanket permission to
+                    # offload/delete device-resident data. An explicit full
+                    # policy opt-in is required for *both* contact and channel
+                    # destructive maintenance; clock updates are independent.
+                    if settings.effective_startup_policy.value != "full":
+                        continue
+                    if (
+                        settings.startup_allow_periodic_offload
+                        and await should_run_full_periodic_sync(mc)
+                    ):
                         await sync_and_offload_all(mc)
-                    await sync_radio_time(mc, warn_on_failure=False)
+                    if settings.startup_sync_clock:
+                        await sync_radio_time(mc, warn_on_failure=False)
             except RadioOperationBusyError:
                 logger.debug("Skipping periodic sync: radio busy")
         except asyncio.CancelledError:
@@ -1134,7 +1171,7 @@ async def sync_contacts_from_radio(mc: MeshCore) -> dict:
 
         for public_key, contact_data in contacts.items():
             await ContactRepository.upsert(
-                ContactUpsert.from_radio_dict(public_key, contact_data, on_radio=False)
+                ContactUpsert.from_radio_dict(public_key, contact_data, on_radio=True)
             )
             asyncio.create_task(
                 _reconcile_contact_messages_background(

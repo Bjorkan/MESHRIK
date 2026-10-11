@@ -106,8 +106,9 @@ app/
 - `RadioManager.post_connect_setup()` delegates to `services/radio_lifecycle.py`.
 - Routers, startup/lifespan code, fanout helpers, and `radio_sync.py` should reach radio state through `services/radio_runtime.py`, not by importing `app.radio.radio_manager` directly.
 - Shared reconnect/setup helpers in `services/radio_lifecycle.py` are used by startup, the monitor, and manual reconnect/reboot flows before broadcasting healthy state.
-- Setup still includes handler registration, key export, time sync, contact/channel sync, and advertisement tasks. The message-poll task always starts: by default it runs as a low-frequency hourly audit, and `MESHCORE_ENABLE_MESSAGE_POLL_FALLBACK=true` switches it to aggressive 10-second polling. That audit checks both missed-radio-message drift and channel-slot cache drift; cache mismatches are logged, toasted, and the send-slot cache is reset.
-- Post-connect setup is timeout-bounded. If initial radio offload/setup hangs too long, the backend logs the failure and broadcasts an `error` toast telling the operator to reboot the radio and restart the server.
+- Startup is a generation-fenced lifecycle workflow with **separate bounded worker jobs** for read-only device bootstrap and (depending on `MESHCORE_STARTUP_POLICY`) contact/channel snapshots and individually opted-in maintenance. Ordinary radio jobs remain gated while lifecycle setup is in progress. `disconnected`, `connecting`, `initializing`, `ready`, `degraded`, and `failed` are distinct readiness states; transport connection alone does not imply radio readiness.
+- Policy defaults to safe non-destructive `sync`; `passive` performs only device bootstrap/receiving, and `full` allows only explicitly enabled maintenance stages. Key export, clock/flood writes, advertisement, drain and destructive offload are **not** automatic. See `RADIO_STARTUP_LIFECYCLE.md` and `HARDWARE_SMOKE_TEST.md`.
+- Failed stages are reported without indefinite retries; use manual recovery or a new fenced connection generation. Separate worker command timeouts protect radio transport sections; incoming events are not queued behind response waits.
 
 ## Important Behaviors
 
@@ -116,7 +117,7 @@ app/
 - Packet `path_len` values are hop counts, not byte counts.
 - Hop width comes from the packet or radio `path_hash_mode`: `0` = 1-byte, `1` = 2-byte, `2` = 3-byte.
 - Channel slot count comes from firmware-reported `DEVICE_INFO.max_channels`; do not hardcode `40` when scanning/offloading channel slots.
-- Channel sends use a session-local LRU slot cache after startup channel offload clears the radio. Repeated sends to the same channel reuse the loaded slot; new channels fill free slots up to the discovered channel capacity, then evict the least recently used cached channel.
+- Channel sends use a session-local LRU slot cache. Startup does **not** clear channel slots by default; clearing/offload requires explicit full-policy opt-in. Repeated sends to the same channel reuse the loaded slot; new channels fill free slots up to the discovered channel capacity, then evict the least recently used cached channel.
 - TCP radios do not reuse cached slot contents. For TCP, channel sends still force `set_channel(...)` before every send because this backend does not have exclusive device access.
 - `MESHCORE_FORCE_CHANNEL_SLOT_RECONFIGURE=true` disables slot reuse on all transports and forces the old always-`set_channel(...)` behavior before every channel send.
 - Contacts persist canonical direct-route fields (`direct_path`, `direct_path_len`, `direct_path_hash_mode`) so contact sync and outbound DM routing reuse the exact stored hop width instead of inferring from path bytes.
@@ -537,7 +538,7 @@ When our own outgoing DM is heard back via `RX_LOG_DATA` (self-echo, loopback), 
 
 ### Infinite setup retry on connection monitor
 
-When `post_connect_setup()` fails (e.g. `export_and_store_private_key` raises `RuntimeError` because the radio didn't respond), `_setup_complete` is never set to `True`. The connection monitor sees `connected and not setup_complete` and retries every 5 seconds — indefinitely. This is intentional: the radio may be rebooting, waking from sleep, or otherwise temporarily unresponsive. We keep retrying so that setup completes automatically once the radio becomes available, without requiring manual intervention.
+When `post_connect_setup()` fails, readiness changes to `failed` or `degraded` with a recorded stage. The connection monitor **does not retry failed setup every 5 seconds**: this prevents repeated radio writes, adverts and ambiguous RF sends. An operator may investigate and explicitly trigger manual recovery, or a genuine reconnect starts a new fenced generation. Never bypass the worker to force recovery.
 
 ### DELETE channel returns 200 for non-existent keys
 

@@ -18,6 +18,7 @@ type Radio = components['schemas']['RadioStatusSnapshot'];
 type Activity = components['schemas']['RadioActivityRecord'];
 const radio: Radio = {
   radio_status: 'connected',
+  startup_policy: 'sync',
   command_status: 'executing',
   radio_generation: 3,
   sequence: 12,
@@ -226,5 +227,20 @@ describe('Radio Activity', () => {
     expect(active).toHaveLength(2);
     expect(queued).toHaveLength(1);
     expect(history).toHaveLength(1);
+  });
+});
+
+describe('Radio stats job classification', () => {
+  it('shows passive read-only radio stats under their own name', async () => {
+    mocks.getRadioJobs.mockResolvedValue({
+      items: [job('completed', 42, { kind: 'radio_stats_sample' })],
+      radio,
+      snapshot_sequence: 20,
+      next_cursor: null,
+      has_more: false,
+    });
+    createView();
+    expect(await screen.findByText('Radio stats sample')).toBeTruthy();
+    expect(screen.queryByText('Periodic sync')).toBeNull();
   });
 });

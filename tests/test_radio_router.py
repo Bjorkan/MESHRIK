@@ -1036,6 +1036,7 @@ class TestAdvertise:
 
         isolated_manager = RadioManager()
         isolated_manager._meshcore = MagicMock()
+        isolated_manager.readiness_state = "ready"
         with (
             patch("app.routers.radio.radio_manager.require_connected"),
             patch("app.routers.radio.radio_manager", _runtime(isolated_manager)),

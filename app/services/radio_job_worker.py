@@ -48,6 +48,7 @@ class RadioCommandOutcome(StrEnum):
 
 Command = Callable[[Any], Awaitable[RadioCommandOutcome]]
 _RADIO_SEND_KINDS = frozenset({RadioJobKind.DIRECT_MESSAGE, RadioJobKind.CHANNEL_MESSAGE})
+_LIFECYCLE_KINDS = frozenset(kind for kind in RadioJobKind if kind.value.startswith("lifecycle_"))
 
 
 class RadioProcessLease:
@@ -122,7 +123,7 @@ class RadioJobWorker:
         self.runtime = runtime
         self.cancellation_grace_seconds = cancellation_grace_seconds
         self.poll_interval_seconds = poll_interval_seconds
-        self._commands: dict[UUID, tuple[Command, dict[str, bool]]] = {}
+        self._commands: dict[UUID, tuple[Command, dict[str, bool], bool]] = {}
         self._runner: asyncio.Task | None = None
         self._active: asyncio.Task | None = None
         self._active_id: UUID | None = None
@@ -151,10 +152,17 @@ class RadioJobWorker:
     def _runtime_generation(self) -> int:
         return int(getattr(self.runtime, "radio_generation", 0))
 
-    def _connected(self) -> bool:
-        return bool(self.runtime.is_connected) and not bool(
+    def _transport_connected(self) -> bool:
+        return bool(self.runtime.is_connected)
+
+    def _ready_for_user_jobs(self) -> bool:
+        if not self._transport_connected() or bool(
             getattr(self.runtime, "is_setup_in_progress", False)
-        )
+        ):
+            return False
+        readiness = getattr(self.runtime, "readiness_state", None)
+        # Small fake runtimes and older embedders do not expose readiness.
+        return readiness is None or str(readiness) in {"ready", "degraded"}
 
     def submit(
         self,
@@ -166,13 +174,33 @@ class RadioJobWorker:
         **options: Any,
     ) -> RadioJobSnapshot:
         """Commands are transient Python callbacks, never public job fields."""
-        if not self.running or self._quarantined or not self._connected():
+        if not self.running or self._quarantined or not self._ready_for_user_jobs():
             raise RadioQueueUnavailableError("Radio not available for queued commands")
         self._sync_generation()
         snapshot = self.scheduler.submit(kind, priority=priority, **options)
-        self._commands.setdefault(
-            snapshot.id, (command, radio_options or {})
-        )  # keep original closure
+        self._commands.setdefault(snapshot.id, (command, radio_options or {}, False))
+        return snapshot
+
+    def submit_lifecycle(
+        self,
+        kind: RadioJobKind,
+        command: Command,
+        *,
+        radio_options: dict[str, bool] | None = None,
+        **options: Any,
+    ) -> RadioJobSnapshot:
+        """Admit a generation-fenced initialization stage through this worker.
+
+        Lifecycle jobs are the only jobs eligible while the readiness barrier is
+        active. They still use the same transport permit and lower-level lock.
+        """
+        if kind not in _LIFECYCLE_KINDS:
+            raise ValueError("Lifecycle submission requires a lifecycle job kind")
+        if not self.running or self._quarantined or not self._transport_connected():
+            raise RadioQueueUnavailableError("Radio lifecycle queue unavailable")
+        self._sync_generation()
+        snapshot = self.scheduler.submit(kind, priority=RadioJobPriority.HIGH, **options)
+        self._commands.setdefault(snapshot.id, (command, radio_options or {}, True))
         return snapshot
 
     def cancel(self, job_id: UUID) -> RadioJobSnapshot:
@@ -211,7 +239,11 @@ class RadioJobWorker:
                 logger.error("Late radio command completed with an error")
 
     async def _execute(
-        self, snapshot: RadioJobSnapshot, command: Command, radio_options: dict[str, bool]
+        self,
+        snapshot: RadioJobSnapshot,
+        command: Command,
+        radio_options: dict[str, bool],
+        lifecycle: bool = False,
     ) -> RadioCommandOutcome:
         # This is the same lock used by all legacy producers, post-connect setup
         # and disconnect. Never retain the lock while awaiting RF confirmations.
@@ -219,7 +251,8 @@ class RadioJobWorker:
         if operation is None:
             operation = self.runtime.radio_operation
         async with operation(f"job_{snapshot.kind.value}", **radio_options) as mc:
-            if self._runtime_generation() != snapshot.radio_generation or not self._connected():
+            available = self._transport_connected() if lifecycle else self._ready_for_user_jobs()
+            if self._runtime_generation() != snapshot.radio_generation or not available:
                 raise _StaleTransport()
             self._command_started = True
             from app.services.radio_producers import active_worker_transport
@@ -233,10 +266,14 @@ class RadioJobWorker:
                 return outcome
 
     async def _dispatch(
-        self, snapshot: RadioJobSnapshot, command: Command, radio_options: dict[str, bool]
+        self,
+        snapshot: RadioJobSnapshot,
+        command: Command,
+        radio_options: dict[str, bool],
+        lifecycle: bool,
     ) -> None:
         task = asyncio.create_task(
-            self._execute(snapshot, command, radio_options), name="radio-job-command"
+            self._execute(snapshot, command, radio_options, lifecycle), name="radio-job-command"
         )
         self._active, self._active_id = task, snapshot.id
         self._command_started = False
@@ -290,7 +327,7 @@ class RadioJobWorker:
             if self._runtime_generation() != snapshot.radio_generation:
                 self._sync_generation()
                 return
-            if not self._connected():
+            if not self._transport_connected():
                 self.scheduler.fence_disconnect()
                 return
             if outcome == RadioCommandOutcome.AWAITING_ACK:
@@ -329,17 +366,28 @@ class RadioJobWorker:
                 self._sync_generation()
                 self.scheduler.sweep()
                 self._discard_completed_commands()
-                if self._connected():
+                if self._transport_connected():
                     # A scoped CLI response/polling session must not be disrupted by
                     # another scheduled command. Import lazily (tracker owns
                     # reservations; the worker owns the command permit).
                     from app.services.radio_response_tracker import radio_response_tracker
 
-                    eligible = (
-                        radio_response_tracker.can_dispatch
-                        if self.scheduler is radio_job_scheduler
-                        else None
-                    )
+                    initializing = bool(getattr(self.runtime, "is_setup_in_progress", False))
+
+                    def eligible(
+                        job: RadioJobSnapshot,
+                        initializing: bool = initializing,
+                    ) -> bool:
+                        is_lifecycle = job.kind in _LIFECYCLE_KINDS
+                        if initializing != is_lifecycle:
+                            return False
+                        if not initializing and not self._ready_for_user_jobs():
+                            return False
+                        return (
+                            self.scheduler is not radio_job_scheduler
+                            or radio_response_tracker.can_dispatch(job)
+                        )
+
                     snapshot = self.scheduler.take_next(eligible=eligible)
                     if snapshot is not None:
                         command_entry = self._commands.get(snapshot.id)

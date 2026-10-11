@@ -2978,8 +2978,28 @@ export interface components {
        * @default disconnected
        * @enum {string}
        */
-      radio_state: 'connected' | 'initializing' | 'connecting' | 'disconnected' | 'paused';
+      radio_state:
+        | 'ready'
+        | 'connected'
+        | 'degraded'
+        | 'failed'
+        | 'initializing'
+        | 'connecting'
+        | 'disconnected'
+        | 'paused';
       radio_stats?: components['schemas']['RadioStatsSnapshot'] | null;
+      /** Startup Error Stage */
+      startup_error_stage?: string | null;
+      /**
+       * Startup Policy
+       * @default sync
+       * @enum {string}
+       */
+      startup_policy: 'passive' | 'sync' | 'full';
+      /** Startup Skipped Stages */
+      startup_skipped_stages?: string[];
+      /** Startup Stage */
+      startup_stage?: string | null;
       /** Status */
       status: string;
     };
@@ -3581,7 +3601,14 @@ export interface components {
      * RadioConnectionStatus
      * @enum {string}
      */
-    RadioConnectionStatus: 'connected' | 'connecting' | 'disconnected';
+    RadioConnectionStatus:
+      | 'connected'
+      | 'ready'
+      | 'degraded'
+      | 'failed'
+      | 'initializing'
+      | 'connecting'
+      | 'disconnected';
     /** RadioContactDeleteFailure */
     RadioContactDeleteFailure: {
       /** Error */
@@ -3716,7 +3743,18 @@ export interface components {
       | 'discovery'
       | 'radio_query'
       | 'periodic_sync'
-      | 'periodic_advertisement';
+      | 'radio_stats_sample'
+      | 'periodic_advertisement'
+      | 'lifecycle_device_info'
+      | 'lifecycle_key_export'
+      | 'lifecycle_clock_sync'
+      | 'lifecycle_flood_scope'
+      | 'lifecycle_contact_sync'
+      | 'lifecycle_channel_sync'
+      | 'lifecycle_channel_clear'
+      | 'lifecycle_advertisement'
+      | 'lifecycle_message_drain'
+      | 'lifecycle_auto_fetch';
     /**
      * RadioJobPriority
      * @enum {integer}
@@ -3951,6 +3989,24 @@ export interface components {
       sf: number;
     };
     /**
+     * RadioStartupStage
+     * @enum {string}
+     */
+    RadioStartupStage:
+      | 'transport'
+      | 'device_info'
+      | 'key_export'
+      | 'clock_sync'
+      | 'flood_scope'
+      | 'contact_sync'
+      | 'channel_sync'
+      | 'channel_clear'
+      | 'advertisement'
+      | 'message_drain'
+      | 'auto_fetch'
+      | 'complete'
+      | 'recovery_required';
+    /**
      * RadioStatsSnapshot
      * @description Latest cached stats from the local radio's periodic 60s poll.
      */
@@ -4002,6 +4058,13 @@ export interface components {
       radio_status: components['schemas']['RadioConnectionStatus'];
       /** Sequence */
       sequence: number;
+      /**
+       * Startup Policy
+       * @default sync
+       * @enum {string}
+       */
+      startup_policy: 'passive' | 'sync' | 'full';
+      startup_stage?: components['schemas']['RadioStartupStage'] | null;
     };
     /**
      * RadioTraceHopRequest

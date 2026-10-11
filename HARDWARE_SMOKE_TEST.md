@@ -30,10 +30,11 @@ an application default and should not be committed to runtime config.
 ## Phase A: passive *startup* / observation
 
 Run from the repo root with a fresh test database and no other owner of the
-radio's TCP port. `MESHCORE_PASSIVE_STARTUP=true` intentionally skips key
+radio's TCP port. `MESHCORE_STARTUP_POLICY=passive` intentionally skips key
 export, clock update, flood-scope write, destructive radio offload, startup
 advertisement, pending-message drain and periodic maintenance. Startup still
-queries metadata/time and enables incoming event reception. This is **not** a
+queries metadata/time and enables incoming event reception. This startup
+bootstrap now runs as bounded, generation-fenced worker stages. This is **not** a
 read-only API security policy: clicking Send, Reboot, settings, CLI, etc. in
 an accessible UI may still issue device/RF commands. During phase A do not
 issue such requests.
@@ -44,8 +45,7 @@ MESHCORE_TCP_PORT=5000 \
 MESHCORE_DATABASE_PATH=data/meshcore-hardware-smoke.db \
 MESHCORE_DISABLE_BOTS=true \
 MESHCORE_ENABLE_LOCAL_PRIVATE_KEY_EXPORT=false \
-MESHCORE_PASSIVE_STARTUP=true \
-MESHCORE_SKIP_POST_CONNECT_SYNC=true \
+MESHCORE_STARTUP_POLICY=passive \
 MESHCORE_AUTO_REBOOT_ON_CLOCK_SKEW=false \
 uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 1
 ```
@@ -80,10 +80,13 @@ DB, a single client, and verified channel/recipient configuration:
    before deliberately retrying after an ambiguous outcome.
 
 `MESHCORE_AUTO_REBOOT_ON_CLOCK_SKEW` defaults to **false**; only set it to true
-if an operator knowingly permits a reboot during clock recovery. Normal
-startup (without `MESHCORE_PASSIVE_STARTUP`) can still sync time, apply flood
-scope, offload radio contacts/channels, advertise and run background work;
-never switch to normal startup until its side effects have been approved.
+if an operator knowingly permits a reboot during clock recovery. The default `MESHCORE_STARTUP_POLICY=sync` reads contacts and channels into
+SQLite without changing radio settings or sending advertisements.
+`MESHCORE_STARTUP_POLICY=full` only enables individually opted-in maintenance;
+`MESHCORE_STARTUP_CLEAR_CHANNEL_SLOTS` and
+`MESHCORE_STARTUP_ALLOW_PERIODIC_OFFLOAD` are explicitly destructive and
+must not be enabled on a real device merely for a test. See
+`RADIO_STARTUP_LIFECYCLE.md` for the complete policy matrix and rollback.
 
 ## Phase C: fault injection only after ordinary sends succeed
 

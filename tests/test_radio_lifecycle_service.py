@@ -89,6 +89,14 @@ class TestReconnectAndPrepareRadio:
 
 
 class TestRunPostConnectSetup:
+    @pytest.fixture(autouse=True)
+    def _passive_policy(self, monkeypatch):
+        from app.config import StartupPolicy, settings
+
+        monkeypatch.setattr(settings, "startup_policy", StartupPolicy.PASSIVE)
+        monkeypatch.setattr(settings, "passive_startup", False)
+        monkeypatch.setattr(settings, "skip_post_connect_sync", False)
+
     @pytest.mark.asyncio
     async def test_uses_current_meshcore_after_waiting_for_operation_lock(self):
         initial_mc = MagicMock()
@@ -149,8 +157,9 @@ class TestRunPostConnectSetup:
             await run_post_connect_setup(radio_manager)
 
         mock_register_handlers.assert_called_once_with(replacement_mc)
-        mock_export_key.assert_awaited_once_with(replacement_mc)
-        mock_sync_time.assert_awaited_once_with(replacement_mc)
+        # Read-only bootstrap must not export secrets or change the clock.
+        mock_export_key.assert_not_awaited()
+        mock_sync_time.assert_not_awaited()
         replacement_mc.start_auto_message_fetching.assert_awaited_once()
         initial_mc.start_auto_message_fetching.assert_not_called()
         assert radio_manager.max_channels == 8

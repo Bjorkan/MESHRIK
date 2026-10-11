@@ -1,11 +1,20 @@
 import logging
 import logging.config
 from collections import deque
+from enum import StrEnum
 from threading import Lock
 from typing import Literal
 
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class StartupPolicy(StrEnum):
+    """Effective automatic behavior for each new radio generation."""
+
+    PASSIVE = "passive"
+    SYNC = "sync"
+    FULL = "full"
 
 
 class Settings(BaseSettings):
@@ -28,6 +37,23 @@ class Settings(BaseSettings):
     )
     enable_local_private_key_export: bool = False
     load_with_autoevict: bool = False
+    # Safe generation-start policy. ``full`` only makes the individually
+    # enabled maintenance switches below eligible; it is not blanket consent.
+    startup_policy: StartupPolicy = StartupPolicy.SYNC
+    startup_export_private_key: bool = False
+    startup_sync_clock: bool = False
+    startup_apply_flood_scope: bool = False
+    startup_send_advertisement: bool = False
+    startup_drain_messages: bool = False
+    startup_reconcile_contacts: bool = False
+    startup_clear_channel_slots: bool = False
+    # Separate explicit permission for repeated contact/channel offload.
+    # Unlike read-only sync this may evict/delete radio-resident data.
+    startup_allow_periodic_offload: bool = False
+    startup_enable_telemetry_collection: bool = False
+
+    # Deprecated compatibility switches. Either switch can only reduce the
+    # effective policy to passive; neither can authorize writes or RF traffic.
     skip_post_connect_sync: bool = False
     # Passive connection diagnostics: query radio metadata and receive events,
     # but do not change device state or trigger startup RF traffic.
@@ -79,6 +105,13 @@ class Settings(BaseSettings):
     def basic_auth_partially_configured(self) -> bool:
         any_credentials_set = bool(self.basic_auth_username or self.basic_auth_password)
         return any_credentials_set and not self.basic_auth_enabled
+
+    @property
+    def effective_startup_policy(self) -> StartupPolicy:
+        """Resolve legacy safety switches without ever broadening authority."""
+        if self.passive_startup or self.skip_post_connect_sync:
+            return StartupPolicy.PASSIVE
+        return self.startup_policy
 
 
 settings = Settings()

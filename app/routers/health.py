@@ -61,9 +61,20 @@ class HealthResponse(BaseModel):
     status: str
     radio_connected: bool
     radio_initializing: bool = False
-    radio_state: Literal["connected", "initializing", "connecting", "disconnected", "paused"] = (
-        "disconnected"
-    )
+    radio_state: Literal[
+        "ready",
+        "connected",
+        "degraded",
+        "failed",
+        "initializing",
+        "connecting",
+        "disconnected",
+        "paused",
+    ] = "disconnected"
+    startup_policy: Literal["passive", "sync", "full"] = "sync"
+    startup_stage: str | None = None
+    startup_error_stage: str | None = None
+    startup_skipped_stages: list[str] = Field(default_factory=list)
     connection_info: str | None
     app_info: AppInfoResponse | None = None
     radio_device_info: RadioDeviceInfoResponse | None = None
@@ -125,13 +136,16 @@ async def build_health_data(radio_connected: bool, connection_info: str | None) 
     connection_desired = getattr(radio_manager, "connection_desired", True)
     is_reconnecting = getattr(radio_manager, "is_reconnecting", False)
 
-    radio_initializing = bool(radio_connected and (setup_in_progress or not setup_complete))
+    readiness = getattr(radio_manager, "readiness_state", None)
+    if readiness not in {"ready", "degraded", "failed", "initializing", "connecting"}:
+        readiness = "connected" if radio_connected and setup_complete else "connecting"
+    if setup_in_progress:
+        readiness = "initializing"
+    radio_initializing = bool(radio_connected and readiness in {"initializing", "connecting"})
     if not connection_desired:
         radio_state = "paused"
-    elif radio_initializing:
-        radio_state = "initializing"
     elif radio_connected:
-        radio_state = "connected"
+        radio_state = readiness
     elif is_reconnecting:
         radio_state = "connecting"
     else:
@@ -174,11 +188,32 @@ async def build_health_data(radio_connected: bool, connection_info: str | None) 
             "direct_rx": packets.get("direct_rx"),
         }
 
+    startup_policy = getattr(radio_manager, "startup_policy", "sync")
+    if startup_policy not in {"passive", "sync", "full"}:
+        startup_policy = "sync"
+    startup_stage = getattr(radio_manager, "startup_stage", None)
+    startup_error_stage = getattr(radio_manager, "startup_error_stage", None)
+    startup_skipped_stages = getattr(radio_manager, "startup_skipped_stages", [])
+    if not isinstance(startup_stage, str):
+        startup_stage = None
+    if not isinstance(startup_error_stage, str):
+        startup_error_stage = None
+    if not isinstance(startup_skipped_stages, list) or not all(
+        isinstance(item, str) for item in startup_skipped_stages
+    ):
+        startup_skipped_stages = []
+
     return {
-        "status": "ok" if radio_connected and not radio_initializing else "degraded",
+        "status": (
+            "ok" if radio_connected and radio_state in {"ready", "connected"} else "degraded"
+        ),
         "radio_connected": radio_connected,
         "radio_initializing": radio_initializing,
         "radio_state": radio_state,
+        "startup_policy": startup_policy,
+        "startup_stage": startup_stage,
+        "startup_error_stage": startup_error_stage,
+        "startup_skipped_stages": startup_skipped_stages,
         "connection_info": connection_info,
         "app_info": {
             "version": app_build_info.version,

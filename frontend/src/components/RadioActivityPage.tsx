@@ -34,7 +34,18 @@ const JOB_NAMES: Record<Job['kind'], string> = {
   discovery: 'Discovery',
   radio_query: 'Radio query',
   periodic_sync: 'Periodic sync',
+  radio_stats_sample: 'Radio stats sample',
   periodic_advertisement: 'Periodic advertisement',
+  lifecycle_device_info: 'Startup device info',
+  lifecycle_key_export: 'Startup key export',
+  lifecycle_clock_sync: 'Startup clock sync',
+  lifecycle_flood_scope: 'Startup flood scope',
+  lifecycle_contact_sync: 'Startup contact sync',
+  lifecycle_channel_sync: 'Startup channel sync',
+  lifecycle_channel_clear: 'Startup channel clear',
+  lifecycle_advertisement: 'Startup advertisement',
+  lifecycle_message_drain: 'Startup message drain',
+  lifecycle_auto_fetch: 'Startup receive service',
 };
 const STATES: Record<Job['state'], string> = {
   queued: 'Queued',
@@ -215,30 +226,34 @@ export function RadioActivityPage({ feed, connection, health }: Props) {
   // connection status can be stale while the WebSocket is still live.
   const radioConnection =
     health && live
-      ? health.radio_initializing
-        ? 'connecting'
-        : health.radio_connected
-          ? 'connected'
-          : 'disconnected'
+      ? (health.radio_state ?? (health.radio_connected ? 'ready' : 'disconnected'))
       : radio?.radio_status;
   const disconnected = radioConnection === 'disconnected';
   const commandLabel = disconnected
     ? 'Disconnected'
-    : radioConnection === 'connecting'
+    : radioConnection === 'connecting' || radioConnection === 'initializing'
       ? 'Connecting'
-      : !radio
-        ? 'Loading status…'
-        : executing
-          ? `Executing ${JOB_NAMES[executing.kind]} command`
-          : radio.command_status === 'legacy_busy'
-            ? 'Legacy command in progress'
-            : 'Idle';
+      : radioConnection === 'failed'
+        ? 'Recovery required'
+        : !radio
+          ? 'Loading status…'
+          : executing
+            ? `Executing ${JOB_NAMES[executing.kind]} command`
+            : radio.command_status === 'legacy_busy'
+              ? 'Legacy command in progress'
+              : 'Idle';
   const status =
-    radioConnection === 'connected'
-      ? 'Connected'
-      : radioConnection === 'connecting'
-        ? 'Connecting'
-        : 'Disconnected';
+    radioConnection === 'ready' || radioConnection === 'connected'
+      ? 'Ready'
+      : radioConnection === 'degraded'
+        ? 'Degraded'
+        : radioConnection === 'failed'
+          ? 'Failed'
+          : radioConnection === 'connecting' || radioConnection === 'initializing'
+            ? 'Initializing'
+            : radioConnection === 'paused'
+              ? 'Paused'
+              : 'Disconnected';
 
   async function submitCancel(job: Job) {
     setStopJob(null);
@@ -329,7 +344,7 @@ export function RadioActivityPage({ feed, connection, health }: Props) {
         )}
 
         <Section title="Radio now">
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-4">
             <div>
               <p className="text-[0.625rem] uppercase tracking-wider text-muted-foreground font-medium">
                 Connection
@@ -350,6 +365,16 @@ export function RadioActivityPage({ feed, connection, health }: Props) {
               </p>
               <p className="text-sm mt-1 text-muted-foreground">
                 Unavailable (TX / listening not measured)
+              </p>
+            </div>
+            <div>
+              <p className="text-[0.625rem] uppercase tracking-wider text-muted-foreground font-medium">
+                Startup policy
+              </p>
+              <p className="text-sm mt-1 capitalize">
+                {health?.startup_policy ?? radio?.startup_policy ?? 'sync'}
+                {(health?.startup_stage ?? radio?.startup_stage) &&
+                  ` · ${(health?.startup_stage ?? radio?.startup_stage)?.replace(/_/g, ' ')}`}
               </p>
             </div>
           </div>

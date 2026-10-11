@@ -128,7 +128,19 @@ export interface HealthStatus {
   status: string;
   radio_connected: boolean;
   radio_initializing: boolean;
-  radio_state?: 'connected' | 'initializing' | 'connecting' | 'disconnected' | 'paused';
+  radio_state?:
+    | 'ready'
+    | 'connected'
+    | 'degraded'
+    | 'failed'
+    | 'initializing'
+    | 'connecting'
+    | 'disconnected'
+    | 'paused';
+  startup_policy?: 'passive' | 'sync' | 'full';
+  startup_stage?: string | null;
+  startup_error_stage?: string | null;
+  startup_skipped_stages?: string[];
   connection_info: string | null;
   app_info?: AppInfo | null;
   radio_device_info?: {

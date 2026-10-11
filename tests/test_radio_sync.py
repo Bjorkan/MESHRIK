@@ -1934,6 +1934,17 @@ class TestPeriodicAdvertLoopRaces:
 class TestPeriodicSyncLoopRaces:
     """Regression tests for disconnect/reconnect race paths in _periodic_sync_loop."""
 
+    @pytest.fixture(autouse=True)
+    def _explicit_periodic_maintenance_permissions(self, monkeypatch):
+        """Destructive offload and clock writes must be specifically opted into."""
+        from app.config import StartupPolicy, settings
+
+        monkeypatch.setattr(settings, "startup_policy", StartupPolicy.FULL)
+        monkeypatch.setattr(settings, "passive_startup", False)
+        monkeypatch.setattr(settings, "skip_post_connect_sync", False)
+        monkeypatch.setattr(settings, "startup_allow_periodic_offload", True)
+        monkeypatch.setattr(settings, "startup_sync_clock", True)
+
     @pytest.mark.asyncio
     async def test_should_run_full_periodic_sync_at_trigger_threshold(self, test_db):
         """Occupancy at 95% of configured capacity triggers a full offload/reload."""
@@ -2994,3 +3005,63 @@ class TestContactSelectionDmActive:
 
         keys = [c.public_key for c in selected]
         assert repeater_key not in keys
+
+
+# Residency metadata regressions from the independent startup hardware audit.
+class TestReadOnlyChannelResidency:
+    @pytest.mark.asyncio
+    async def test_sync_marks_present_slots_on_radio_and_keeps_unrelated_rows(self, test_db):
+        key = "11" * 16
+        other = "22" * 16
+        await ChannelRepository.upsert(key=other, name="#db-only", on_radio=False)
+        channel = MagicMock(type=EventType.CHANNEL_INFO)
+        channel.payload = {"channel_name": "#radio", "channel_secret": bytes.fromhex(key)}
+        mc = MagicMock()
+        mc.commands.get_channel = AsyncMock(return_value=channel)
+
+        result = await radio_sync.sync_channels_from_radio(mc, max_channels=1)
+
+        assert result == {"synced": 1, "cleared": 0}
+        assert (await ChannelRepository.get_by_key(key)).on_radio is True
+        assert (await ChannelRepository.get_by_key(other)).on_radio is False
+        mc.commands.set_channel.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_incoming_message_slot_lookup_preserves_radio_residency(self, test_db):
+        key = "33" * 16
+        channel = MagicMock(type=EventType.CHANNEL_INFO)
+        channel.payload = {"channel_name": "#radio", "channel_secret": bytes.fromhex(key)}
+        mc = MagicMock()
+        mc.commands.get_channel = AsyncMock(return_value=channel)
+        await ChannelRepository.upsert(key=key, name="#radio", on_radio=True)
+
+        resolved_key, resolved_name = await radio_sync._resolve_channel_for_pending_message(mc, 3)
+
+        assert resolved_key == key.upper()
+        assert resolved_name == "#radio"
+        assert (await ChannelRepository.get_by_key(key)).on_radio is True
+        mc.commands.set_channel.assert_not_called()
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "response,expected_residency",
+        [
+            (EventType.OK, False),
+            (EventType.ERROR, True),
+        ],
+    )
+    async def test_destructive_clear_only_marks_absent_after_device_confirmation(
+        self, test_db, response, expected_residency
+    ):
+        key = "44" * 16
+        channel = MagicMock(type=EventType.CHANNEL_INFO)
+        channel.payload = {"channel_name": "#radio", "channel_secret": bytes.fromhex(key)}
+        mc = MagicMock()
+        mc.commands.get_channel = AsyncMock(return_value=channel)
+        mc.commands.set_channel = AsyncMock(return_value=MagicMock(type=response, payload={}))
+
+        result = await radio_sync.sync_channels_from_radio(mc, max_channels=1, clear_slots=True)
+
+        assert result["synced"] == 1
+        assert result["cleared"] == (0 if expected_residency else 1)
+        assert (await ChannelRepository.get_by_key(key)).on_radio is expected_residency

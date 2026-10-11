@@ -53,6 +53,14 @@ class RadioRuntime:
         """Return MeshCore when available, mirroring existing HTTP semantics."""
         if self.is_setup_in_progress:
             raise HTTPException(status_code=423, detail="Radio is initializing")
+        readiness = getattr(self.manager, "readiness_state", None)
+        if isinstance(readiness, str) and readiness not in {"ready", "degraded"}:
+            detail = (
+                "Radio initialization failed; retry startup sync"
+                if readiness == "failed"
+                else "Radio is not ready"
+            )
+            raise HTTPException(status_code=423, detail=detail)
         if not self.is_connected:
             raise HTTPException(status_code=423, detail="Radio not connected")
         mc = self.meshcore
@@ -97,11 +105,18 @@ class RadioRuntime:
     async def disconnect(self) -> None:
         await self.manager.disconnect()
 
-    async def prepare_connected(self, *, broadcast_on_success: bool = True) -> bool:
+    async def prepare_connected(
+        self,
+        *,
+        broadcast_on_success: bool = True,
+        force: bool = False,
+    ) -> bool:
         from app.services.radio_lifecycle import prepare_connected_radio
 
         return await prepare_connected_radio(
-            self.manager, broadcast_on_success=broadcast_on_success
+            self.manager,
+            broadcast_on_success=broadcast_on_success,
+            force=force,
         )
 
     async def reconnect_and_prepare(self, *, broadcast_on_success: bool = True) -> bool:

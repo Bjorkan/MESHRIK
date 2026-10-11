@@ -6,7 +6,7 @@ keep their synchronous responses; opt-in typed enqueue routes return 202.
 
 from hashlib import sha256
 from time import time
-from typing import Literal
+from typing import Literal, cast
 from uuid import UUID
 
 from fastapi import APIRouter, Header, HTTPException, Query
@@ -46,6 +46,7 @@ from app.services.radio_jobs import (
     RadioJobSnapshot,
     RadioJobsPage,
     RadioJobState,
+    RadioStartupStage,
     RadioStatusSnapshot,
 )
 from app.services.radio_runtime import radio_runtime
@@ -214,7 +215,10 @@ async def enqueue_advertisement(
 def radio_status_snapshot() -> RadioStatusSnapshot:
     """Scheduled command slot is not physical RF TX or continuous listening."""
     connected = bool(radio_runtime.is_connected)
-    if connected and not bool(getattr(radio_runtime, "is_setup_in_progress", False)):
+    readiness = getattr(radio_runtime, "readiness_state", None)
+    if connected and readiness in {"ready", "degraded", "failed", "initializing"}:
+        radio_status = RadioConnectionStatus(readiness)
+    elif connected and not bool(getattr(radio_runtime, "is_setup_in_progress", False)):
         radio_status = RadioConnectionStatus.CONNECTED
     elif connected or bool(getattr(radio_runtime, "is_reconnecting", False)):
         radio_status = RadioConnectionStatus.CONNECTING
@@ -230,11 +234,21 @@ def radio_status_snapshot() -> RadioStatusSnapshot:
             if operation_lock is not None and operation_lock.locked()
             else RadioCommandStatus.IDLE
         )
+    startup_policy = getattr(radio_runtime, "startup_policy", "sync")
+    if startup_policy not in {"passive", "sync", "full"}:
+        startup_policy = "sync"
+    startup_policy_value = cast(Literal["passive", "sync", "full"], startup_policy)
+    startup_stage = getattr(radio_runtime, "startup_stage", None)
+    if not isinstance(startup_stage, str):
+        startup_stage = None
+    startup_stage_value = RadioStartupStage(startup_stage) if startup_stage else None
     return RadioStatusSnapshot(
         radio_status=radio_status,
         command_status=command_status,
         radio_generation=radio_job_scheduler.generation,
         sequence=radio_job_scheduler.sequence,
+        startup_policy=startup_policy_value,
+        startup_stage=startup_stage_value,
     )
 
 

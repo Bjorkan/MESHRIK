@@ -69,8 +69,11 @@ TRACE_TIMEOUT_MARGIN = 1.2
 TRACE_HASH_FLAGS = {1: 0, 2: 1, 4: 2}
 
 
-async def _prepare_connected(*, broadcast_on_success: bool) -> bool:
-    return await radio_manager.prepare_connected(broadcast_on_success=broadcast_on_success)
+async def _prepare_connected(*, broadcast_on_success: bool, force: bool = False) -> bool:
+    return await radio_manager.prepare_connected(
+        broadcast_on_success=broadcast_on_success,
+        force=force,
+    )
 
 
 async def _reconnect_and_prepare(*, broadcast_on_success: bool) -> bool:
@@ -838,14 +841,21 @@ async def reconnect_radio() -> dict:
     or power-cycled.
     """
     if radio_manager.is_connected:
-        if radio_manager.is_setup_complete:
+        readiness = getattr(radio_manager, "readiness_state", None)
+        if readiness == "ready" or (
+            not isinstance(readiness, str) and radio_manager.is_setup_complete
+        ):
             return {"status": "ok", "message": "Already connected", "connected": True}
 
-        logger.info("Radio connected but setup incomplete, retrying setup")
+        logger.info("Manual radio lifecycle retry requested")
         try:
-            if not await _prepare_connected(broadcast_on_success=True):
+            if not await _prepare_connected(broadcast_on_success=True, force=True):
                 raise HTTPException(status_code=423, detail="Radio connection is paused")
-            return {"status": "ok", "message": "Setup completed", "connected": True}
+            return {
+                "status": "ok",
+                "message": "Startup lifecycle completed",
+                "connected": True,
+            }
         except HTTPException:
             raise
         except Exception as e:

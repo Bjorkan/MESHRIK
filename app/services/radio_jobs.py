@@ -57,7 +57,18 @@ class RadioJobKind(StrEnum):
     DISCOVERY = "discovery"
     RADIO_QUERY = "radio_query"
     PERIODIC_SYNC = "periodic_sync"
+    RADIO_STATS_SAMPLE = "radio_stats_sample"
     PERIODIC_ADVERTISEMENT = "periodic_advertisement"
+    LIFECYCLE_DEVICE_INFO = "lifecycle_device_info"
+    LIFECYCLE_KEY_EXPORT = "lifecycle_key_export"
+    LIFECYCLE_CLOCK_SYNC = "lifecycle_clock_sync"
+    LIFECYCLE_FLOOD_SCOPE = "lifecycle_flood_scope"
+    LIFECYCLE_CONTACT_SYNC = "lifecycle_contact_sync"
+    LIFECYCLE_CHANNEL_SYNC = "lifecycle_channel_sync"
+    LIFECYCLE_CHANNEL_CLEAR = "lifecycle_channel_clear"
+    LIFECYCLE_ADVERTISEMENT = "lifecycle_advertisement"
+    LIFECYCLE_MESSAGE_DRAIN = "lifecycle_message_drain"
+    LIFECYCLE_AUTO_FETCH = "lifecycle_auto_fetch"
 
 
 class RadioJobResult(StrEnum):
@@ -209,9 +220,30 @@ class RadioActivityRecord(BaseModel):
 
 
 class RadioConnectionStatus(StrEnum):
+    # Retained for older embedded runtimes that do not expose readiness.
     CONNECTED = "connected"
+    READY = "ready"
+    DEGRADED = "degraded"
+    FAILED = "failed"
+    INITIALIZING = "initializing"
     CONNECTING = "connecting"
     DISCONNECTED = "disconnected"
+
+
+class RadioStartupStage(StrEnum):
+    TRANSPORT = "transport"
+    DEVICE_INFO = "device_info"
+    KEY_EXPORT = "key_export"
+    CLOCK_SYNC = "clock_sync"
+    FLOOD_SCOPE = "flood_scope"
+    CONTACT_SYNC = "contact_sync"
+    CHANNEL_SYNC = "channel_sync"
+    CHANNEL_CLEAR = "channel_clear"
+    ADVERTISEMENT = "advertisement"
+    MESSAGE_DRAIN = "message_drain"
+    AUTO_FETCH = "auto_fetch"
+    COMPLETE = "complete"
+    RECOVERY_REQUIRED = "recovery_required"
 
 
 class RadioCommandStatus(StrEnum):
@@ -226,6 +258,8 @@ class RadioStatusSnapshot(BaseModel):
     command_status: RadioCommandStatus
     radio_generation: int = Field(ge=0)
     sequence: int = Field(ge=0)
+    startup_policy: Literal["passive", "sync", "full"] = "sync"
+    startup_stage: RadioStartupStage | None = None
     # Physical TX/listening state is NOT supported by the present driver.
     physical_rf_state: Literal["unavailable"] = "unavailable"
 

@@ -32,6 +32,7 @@ const activity = (sequence: number): Activity => ({
 });
 const radio = {
   radio_status: 'connected',
+  startup_policy: 'sync',
   command_status: 'idle',
   radio_generation: 2,
   sequence: 2,

@@ -84,6 +84,8 @@ def classify_operation(name: str) -> tuple[RadioJobKind, RadioJobPriority]:
             "echo_watchdog_resend",
             "retry_direct_message",
         ) else RadioJobPriority.NORMAL
+    if name == "radio_stats_sample":
+        return RadioJobKind.RADIO_STATS_SAMPLE, RadioJobPriority.LOW
     if name == "periodic_advertisement":
         return RadioJobKind.PERIODIC_ADVERTISEMENT, RadioJobPriority.LOW
     if name in _LOW:
