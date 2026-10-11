@@ -9,7 +9,6 @@ import { RepeaterLogin } from './RepeaterLogin';
 import { ServerLoginStatusBanner } from './ServerLoginStatusBanner';
 import { useRememberedServerPassword } from '../hooks/useRememberedServerPassword';
 import { useRepeaterDashboard } from '../hooks/useRepeaterDashboard';
-import { handleKeyboardActivate } from '../utils/a11y';
 import { isValidLocation } from '../utils/pathUtils';
 import { ContactStatusInfo } from './ContactStatusInfo';
 import type { Contact, Conversation, PathDiscoveryResponse, TelemetryHistoryEntry } from '../types';
@@ -185,19 +184,18 @@ export function RepeaterDashboard({
                   <span className="truncate">{conversation.name}</span>
                 )}
               </h2>
-              <span
-                className="min-w-0 flex-1 truncate font-mono text-[0.6875rem] text-muted-foreground transition-colors hover:text-primary"
-                role="button"
-                tabIndex={0}
-                onKeyDown={handleKeyboardActivate}
+              <button
+                type="button"
+                className="max-w-32 truncate rounded text-left font-mono text-xs text-muted-foreground hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 onClick={() => {
-                  navigator.clipboard.writeText(conversation.id);
+                  void navigator.clipboard.writeText(conversation.id);
                   toast.success('Contact key copied!');
                 }}
-                title="Click to copy"
+                title="Copy full public key"
+                aria-label="Copy repeater public key"
               >
-                {conversation.id}
-              </span>
+                {`${conversation.id.slice(0, 10)}…${conversation.id.slice(-6)}`}
+              </button>
             </span>
           </span>
         </span>
@@ -327,100 +325,176 @@ export function RepeaterDashboard({
               onRetryBlank={handleRepeaterGuestLogin}
               blankRetryLabel="Retry Existing-Access Login"
             />
-            {/* Top row: Telemetry + Radio Settings | Node Info + Neighbors */}
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-stretch">
-              <div className="flex flex-col gap-4">
-                <NodeInfoPane
-                  data={paneData.nodeInfo}
-                  state={paneStates.nodeInfo}
-                  onRefresh={() => refreshPane('nodeInfo')}
-                  disabled={anyLoading}
-                />
-                <TelemetryPane
-                  data={paneData.status}
-                  state={paneStates.status}
-                  onRefresh={() => refreshPane('status')}
-                  disabled={anyLoading}
-                />
-                <RadioSettingsPane
-                  data={paneData.radioSettings}
-                  state={paneStates.radioSettings}
-                  onRefresh={() => refreshPane('radioSettings')}
-                  disabled={anyLoading}
-                  advertData={paneData.advertIntervals}
-                  advertState={paneStates.advertIntervals}
-                  onRefreshAdvert={() => refreshPane('advertIntervals')}
-                />
-                <LppTelemetryPane
-                  data={paneData.lppTelemetry}
-                  state={paneStates.lppTelemetry}
-                  onRefresh={() => refreshPane('lppTelemetry')}
-                  disabled={anyLoading}
-                />
+            <section aria-label="Repeater details" className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="font-semibold text-sm">Repeater details</h3>
+                <span className="text-xs text-muted-foreground">Fetch only what you need</span>
               </div>
-              <div className="flex min-h-0 flex-col gap-4">
-                <NeighborsPane
-                  data={paneData.neighbors}
-                  state={paneStates.neighbors}
-                  onRefresh={() => refreshPane('neighbors')}
-                  disabled={anyLoading}
-                  repeaterContact={contact}
-                  contacts={contacts}
-                  nodeInfo={paneData.nodeInfo}
-                  nodeInfoState={paneStates.nodeInfo}
-                  repeaterName={conversation.name}
-                />
+              <div className="flex flex-wrap gap-2" aria-label="Fetch repeater sections">
+                {(
+                  [
+                    ['nodeInfo', 'Node info'],
+                    ['status', 'Telemetry'],
+                    ['radioSettings', 'Radio settings'],
+                    ['lppTelemetry', 'LPP'],
+                    ['neighbors', 'Neighbors'],
+                    ['acl', 'ACL'],
+                    ['regions', 'Regions'],
+                    ['ownerInfo', 'Owner info'],
+                  ] as const
+                )
+                  .filter(
+                    ([key]) =>
+                      !paneData[key] &&
+                      !paneStates[key].loading &&
+                      !paneStates[key].error &&
+                      !paneStates[key].fetched_at
+                  )
+                  .map(([key, label]) => (
+                    <Button
+                      key={key}
+                      variant="outline"
+                      size="sm"
+                      disabled={anyLoading}
+                      onClick={() => void refreshPane(key)}
+                    >
+                      Fetch {label}
+                    </Button>
+                  ))}
               </div>
-            </div>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:items-start">
+                {(paneData.nodeInfo ||
+                  paneStates.nodeInfo.loading ||
+                  paneStates.nodeInfo.error ||
+                  paneStates.nodeInfo.fetched_at) && (
+                  <NodeInfoPane
+                    data={paneData.nodeInfo}
+                    state={paneStates.nodeInfo}
+                    onRefresh={() => refreshPane('nodeInfo')}
+                    disabled={anyLoading}
+                  />
+                )}
+                {(paneData.status ||
+                  paneStates.status.loading ||
+                  paneStates.status.error ||
+                  paneStates.status.fetched_at) && (
+                  <TelemetryPane
+                    data={paneData.status}
+                    state={paneStates.status}
+                    onRefresh={() => refreshPane('status')}
+                    disabled={anyLoading}
+                  />
+                )}
+                {(paneData.radioSettings ||
+                  paneStates.radioSettings.loading ||
+                  paneStates.radioSettings.error ||
+                  paneStates.radioSettings.fetched_at) && (
+                  <RadioSettingsPane
+                    data={paneData.radioSettings}
+                    state={paneStates.radioSettings}
+                    onRefresh={() => refreshPane('radioSettings')}
+                    disabled={anyLoading}
+                    advertData={paneData.advertIntervals}
+                    advertState={paneStates.advertIntervals}
+                    onRefreshAdvert={() => refreshPane('advertIntervals')}
+                  />
+                )}
+                {(paneData.lppTelemetry ||
+                  paneStates.lppTelemetry.loading ||
+                  paneStates.lppTelemetry.error ||
+                  paneStates.lppTelemetry.fetched_at) && (
+                  <LppTelemetryPane
+                    data={paneData.lppTelemetry}
+                    state={paneStates.lppTelemetry}
+                    onRefresh={() => refreshPane('lppTelemetry')}
+                    disabled={anyLoading}
+                  />
+                )}
+                {(paneData.neighbors ||
+                  paneStates.neighbors.loading ||
+                  paneStates.neighbors.error ||
+                  paneStates.neighbors.fetched_at) && (
+                  <NeighborsPane
+                    data={paneData.neighbors}
+                    state={paneStates.neighbors}
+                    onRefresh={() => refreshPane('neighbors')}
+                    disabled={anyLoading}
+                    repeaterContact={contact}
+                    contacts={contacts}
+                    nodeInfo={paneData.nodeInfo}
+                    nodeInfoState={paneStates.nodeInfo}
+                    repeaterName={conversation.name}
+                  />
+                )}
+                {(paneData.acl ||
+                  paneStates.acl.loading ||
+                  paneStates.acl.error ||
+                  paneStates.acl.fetched_at) && (
+                  <AclPane
+                    data={paneData.acl}
+                    state={paneStates.acl}
+                    onRefresh={() => refreshPane('acl')}
+                    disabled={anyLoading}
+                  />
+                )}
+                {(paneData.regions ||
+                  paneStates.regions.loading ||
+                  paneStates.regions.error ||
+                  paneStates.regions.fetched_at) && (
+                  <RegionsPane
+                    data={paneData.regions}
+                    state={paneStates.regions}
+                    onRefresh={() => refreshPane('regions')}
+                    disabled={anyLoading}
+                  />
+                )}
+                {(paneData.ownerInfo ||
+                  paneStates.ownerInfo.loading ||
+                  paneStates.ownerInfo.error ||
+                  paneStates.ownerInfo.fetched_at) && (
+                  <OwnerInfoPane
+                    data={paneData.ownerInfo}
+                    state={paneStates.ownerInfo}
+                    onRefresh={() => refreshPane('ownerInfo')}
+                    disabled={anyLoading}
+                  />
+                )}
+              </div>
+              <details className="border-t border-border pt-2">
+                <summary className="cursor-pointer text-sm font-medium">
+                  Advanced radio controls
+                </summary>
+                <div className="mt-3">
+                  <ActionsPane
+                    onSendZeroHopAdvert={sendZeroHopAdvert}
+                    onSendFloodAdvert={sendFloodAdvert}
+                    onSyncClock={syncClock}
+                    onReboot={rebootRepeater}
+                    consoleLoading={consoleLoading}
+                  />
+                </div>
+              </details>
+            </section>
 
-            {/* Remaining panes: ACL + Regions | Owner Info + Actions */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="flex flex-col gap-4">
-                <AclPane
-                  data={paneData.acl}
-                  state={paneStates.acl}
-                  onRefresh={() => refreshPane('acl')}
-                  disabled={anyLoading}
-                />
-                <RegionsPane
-                  data={paneData.regions}
-                  state={paneStates.regions}
-                  onRefresh={() => refreshPane('regions')}
-                  disabled={anyLoading}
+            <details className="border-t border-border pt-2">
+              <summary className="cursor-pointer text-sm font-medium">Command console</summary>
+              <div className="mt-3">
+                <ConsolePane
+                  history={consoleHistory}
+                  loading={consoleLoading}
+                  onSend={sendConsoleCommand}
                 />
               </div>
-              <div className="flex flex-col gap-4">
-                <OwnerInfoPane
-                  data={paneData.ownerInfo}
-                  state={paneStates.ownerInfo}
-                  onRefresh={() => refreshPane('ownerInfo')}
-                  disabled={anyLoading}
-                />
-                <ActionsPane
-                  onSendZeroHopAdvert={sendZeroHopAdvert}
-                  onSendFloodAdvert={sendFloodAdvert}
-                  onSyncClock={syncClock}
-                  onReboot={rebootRepeater}
-                  consoleLoading={consoleLoading}
-                />
-              </div>
-            </div>
-
-            {/* Console — full width */}
-            <ConsolePane
-              history={consoleHistory}
-              loading={consoleLoading}
-              onSend={sendConsoleCommand}
-            />
-
-            {/* Telemetry history chart — full width, below console */}
-            <TelemetryHistoryPane
-              entries={telemetryHistory}
-              publicKey={conversation.id}
-              contacts={contacts}
-              trackedTelemetryRepeaters={trackedTelemetryRepeaters}
-              onToggleTrackedTelemetry={onToggleTrackedTelemetry}
-            />
+            </details>
+            {(telemetryHistory.length > 0 || paneStates.status.fetched_at) && (
+              <TelemetryHistoryPane
+                entries={telemetryHistory}
+                publicKey={conversation.id}
+                contacts={contacts}
+                trackedTelemetryRepeaters={trackedTelemetryRepeaters}
+                onToggleTrackedTelemetry={onToggleTrackedTelemetry}
+              />
+            )}
           </div>
         )}
       </div>

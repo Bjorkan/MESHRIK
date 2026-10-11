@@ -3415,6 +3415,19 @@
             "title": "At",
             "type": "string"
           },
+          "hops": {
+            "anyOf": [
+              {
+                "maximum": 64.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hops"
+          },
           "job_id": {
             "anyOf": [
               {
@@ -3430,15 +3443,61 @@
           "kind": {
             "$ref": "#/components/schemas/RadioActivityKind"
           },
+          "packet_type": {
+            "anyOf": [
+              {
+                "enum": [
+                  "channel",
+                  "direct",
+                  "advertisement",
+                  "ack",
+                  "path",
+                  "control",
+                  "other"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Packet Type"
+          },
           "radio_generation": {
             "minimum": 0.0,
             "title": "Radio Generation",
             "type": "integer"
           },
+          "rssi": {
+            "anyOf": [
+              {
+                "maximum": 0.0,
+                "minimum": -160.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rssi"
+          },
           "sequence": {
             "minimum": 1.0,
             "title": "Sequence",
             "type": "integer"
+          },
+          "snr": {
+            "anyOf": [
+              {
+                "maximum": 40.0,
+                "minimum": -40.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snr"
           },
           "source": {
             "$ref": "#/components/schemas/RadioActivitySource"

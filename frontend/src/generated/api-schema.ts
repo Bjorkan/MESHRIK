@@ -3439,13 +3439,23 @@ export interface components {
        * Format: date-time
        */
       at: string;
+      /** Hops */
+      hops?: number | null;
       /** Job Id */
       job_id?: string | null;
       kind: components['schemas']['RadioActivityKind'];
+      /** Packet Type */
+      packet_type?:
+        | ('channel' | 'direct' | 'advertisement' | 'ack' | 'path' | 'control' | 'other')
+        | null;
       /** Radio Generation */
       radio_generation: number;
+      /** Rssi */
+      rssi?: number | null;
       /** Sequence */
       sequence: number;
+      /** Snr */
+      snr?: number | null;
       source: components['schemas']['RadioActivitySource'];
     };
     /**

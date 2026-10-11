@@ -1,6 +1,6 @@
 /** Radio Activity is an observer of the *one* process-owned radio, not a radio controller. */
 import { useEffect, useState } from 'react';
-import { Activity, ArrowDown, Clock3, RadioTower, RefreshCw, XCircle } from 'lucide-react';
+import { ArrowDown, Clock3, RadioTower, RefreshCw, XCircle } from 'lucide-react';
 import type { components } from '../generated/api-schema';
 import type { HealthStatus } from '../types';
 import { type HistoryFilter, type RadioJobFeed, useRadioActivity } from '../hooks/useRadioActivity';
@@ -79,6 +79,21 @@ const ACTIVITY_LABELS: Record<ActivityRecord['kind'], string> = {
   cli_response: 'CLI response observed',
   connection_changed: 'Radio connection changed',
 };
+const PACKET_TYPES: Record<NonNullable<ActivityRecord['packet_type']>, string> = {
+  channel: 'Channel message',
+  direct: 'Direct message',
+  advertisement: 'Advertisement',
+  ack: 'Acknowledgment',
+  path: 'Path / route',
+  control: 'Control packet',
+  other: 'Unidentified packet',
+};
+const BACKGROUND_JOBS = new Set<Job['kind']>([
+  'periodic_sync',
+  'periodic_advertisement',
+  'radio_stats_sample',
+]);
+const TERMINAL = new Set<Job['state']>(['completed', 'failed', 'cancelled', 'unknown']);
 const ACTIVITY_SOURCES: Record<ActivityRecord['source'], string> = {
   raw_rf_log: 'Packet log',
   meshcore_event: 'Radio event',
@@ -92,10 +107,19 @@ const FILTERS: { value: HistoryFilter; label: string }[] = [
   { value: 'unknown', label: 'Unknown' },
 ];
 
-function elapsed(start: string, now: number): string {
-  const secs = Math.max(0, Math.floor((now - Date.parse(start)) / 1000));
+export function elapsed(start: string, now: number): string {
+  const startMs = Date.parse(start);
+  if (!Number.isFinite(startMs) || !Number.isFinite(now)) return '—';
+  const secs = Math.max(0, Math.floor((now - startMs) / 1000));
   if (!Number.isFinite(secs)) return '—';
   return secs < 60 ? `${secs}s` : `${Math.floor(secs / 60)}m ${secs % 60}s`;
+}
+
+export function jobDuration(job: Job, now: number): string {
+  // A finished job's duration is immutable. A job cancelled before dispatch
+  // spent time in the queue, not executing a command.
+  const end = TERMINAL.has(job.state) ? Date.parse(job.completed_at ?? job.updated_at) : now;
+  return elapsed(job.started_at ?? job.queue_entered_at, end);
 }
 
 function clockTime(date: string): string {
@@ -113,23 +137,33 @@ function stateClass(state: Job['state']) {
 function Section({
   title,
   count,
+  compact = false,
   children,
 }: {
   title: string;
   count?: number;
+  compact?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-lg border border-border bg-card min-w-0" aria-label={title}>
-      <h3 className="text-base font-semibold tracking-tight px-4 py-3 border-b border-border flex gap-2 items-center">
+    <section
+      className={cn('min-w-0', compact ? 'py-2' : 'rounded-lg border border-border bg-card')}
+      aria-label={title}
+    >
+      <h3
+        className={cn(
+          'text-base font-semibold tracking-tight flex gap-2 items-center',
+          compact ? 'px-1 py-1' : 'px-4 py-3 border-b border-border'
+        )}
+      >
         {title}
         {count !== undefined && (
-          <span className="rounded bg-muted px-1.5 py-0.5 text-[0.625rem] text-muted-foreground tabular-nums">
+          <span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground tabular-nums">
             {count}
           </span>
         )}
       </h3>
-      <div className="p-3 sm:p-4">{children}</div>
+      <div className={compact ? 'px-1' : 'p-3 sm:p-4'}>{children}</div>
     </section>
   );
 }
@@ -160,27 +194,28 @@ function JobRow({
         <div className="min-w-0 flex-1">
           <p className="font-medium text-sm">{JOB_NAMES[job.kind]}</p>
           <p className={cn('text-xs mt-0.5', stateClass(job.state))}>{STATES[job.state]}</p>
-          <p className="text-xs text-muted-foreground mt-1">{STAGES[job.stage]}</p>
-          <p className="text-[0.6875rem] text-muted-foreground mt-1 tabular-nums">
-            {job.state === 'queued' ? 'Queue wait' : 'Elapsed'}:{' '}
-            {elapsed(job.started_at ?? job.queue_entered_at, now)}
-            {' · '}Priority: {job.priority === 0 ? 'High' : job.priority === 10 ? 'Normal' : 'Low'}
+          {(job.state === 'executing' || awaiting || job.state === 'retrying') && (
+            <p className="text-sm text-muted-foreground mt-1">{STAGES[job.stage]}</p>
+          )}
+          <p className="text-xs text-muted-foreground mt-1 tabular-nums">
+            {job.state === 'queued' || !job.started_at ? 'Queue wait' : 'Duration'}:{' '}
+            {jobDuration(job, now)}
+            {!TERMINAL.has(job.state) &&
+              ` · ${job.priority === 0 ? 'High' : job.priority === 10 ? 'Normal' : 'Low'} priority`}
             {job.attempt > 1 ? ` · Attempt ${job.attempt}` : ''}
           </p>
-          {deadline && (
-            <p className="text-[0.6875rem] text-muted-foreground tabular-nums">
+          {deadline && !TERMINAL.has(job.state) && (
+            <p className="text-xs text-muted-foreground tabular-nums">
               Deadline: {clockTime(deadline)}
             </p>
           )}
           {job.state === 'executing' && (
-            <p className="text-[0.6875rem] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Cancellation is best-effort; an in-flight command may still execute.
             </p>
           )}
-          {job.result && (
-            <p className="text-[0.6875rem] text-muted-foreground">
-              Result: {job.result.replace(/_/g, ' ')}
-            </p>
+          {job.result && job.state !== 'completed' && (
+            <p className="text-xs text-muted-foreground mt-1">{job.result.replace(/_/g, ' ')}</p>
           )}
         </div>
         {cancellable && (
@@ -209,10 +244,14 @@ function JobRow({
 
 export function RadioActivityPage({ feed, connection, health }: Props) {
   const [filter, setFilter] = useState<HistoryFilter>('all');
+  const [showBackground, setShowBackground] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const [stopJob, setStopJob] = useState<Job | null>(null);
   const [cancelError, setCancelError] = useState<string | null>(null);
   const { active, queued, history, historyQuery, cancel } = useRadioActivity(feed, filter, now);
+  const visibleHistory = showBackground
+    ? history
+    : history.filter((job) => !BACKGROUND_JOBS.has(job.kind) || job.state !== 'completed');
 
   useEffect(() => {
     const interval = window.setInterval(() => setNow(Date.now()), 1000);
@@ -302,9 +341,6 @@ export function RadioActivityPage({ feed, connection, health }: Props) {
               <RadioTower className="h-5 w-5 text-primary" aria-hidden="true" />
               Radio Activity
             </h2>
-            <p className="text-[0.8125rem] text-muted-foreground mt-1">
-              One radio, one command at a time; independent RF replies may remain pending.
-            </p>
           </div>
           <Button
             variant="outline"
@@ -320,13 +356,13 @@ export function RadioActivityPage({ feed, connection, health }: Props) {
             Refresh
           </Button>
         </div>
-        <p aria-live="polite" role="status" className="text-xs text-muted-foreground">
-          {connection === 'live'
-            ? 'Live WebSocket updates'
-            : connection === 'connecting'
+        {connection !== 'live' && (
+          <p aria-live="polite" role="status" className="text-sm text-warning">
+            {connection === 'connecting'
               ? 'Connecting to live updates…'
               : 'Offline — snapshots may be stale. Reconnecting…'}
-        </p>
+          </p>
+        )}
         {feed.jobs.isLoading && (
           <p role="status" className="text-sm">
             Loading radio jobs…
@@ -343,59 +379,38 @@ export function RadioActivityPage({ feed, connection, health }: Props) {
           </p>
         )}
 
-        <Section title="Radio now">
-          <div className="grid gap-3 sm:grid-cols-4">
-            <div>
-              <p className="text-[0.625rem] uppercase tracking-wider text-muted-foreground font-medium">
-                Connection
-              </p>
-              <p className="font-semibold text-sm mt-1">{radioConnection ? status : 'Checking…'}</p>
+        <section aria-label="Radio now" className="rounded-lg border border-border p-3 sm:p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+              <div>
+                <span className="text-sm text-muted-foreground mr-2">Radio</span>
+                <strong className="text-sm">{radioConnection ? status : 'Checking…'}</strong>
+              </div>
+              <div aria-live="polite">
+                <span className="text-sm text-muted-foreground mr-2">Command</span>
+                <strong className="text-sm font-medium">{commandLabel}</strong>
+              </div>
             </div>
-            <div>
-              <p className="text-[0.625rem] uppercase tracking-wider text-muted-foreground font-medium">
-                Command slot
-              </p>
-              <p className="font-semibold text-sm mt-1" aria-live="polite">
-                {commandLabel}
-              </p>
-            </div>
-            <div>
-              <p className="text-[0.625rem] uppercase tracking-wider text-muted-foreground font-medium">
-                Physical RF state
-              </p>
-              <p className="text-sm mt-1 text-muted-foreground">
-                Unavailable (TX / listening not measured)
-              </p>
-            </div>
-            <div>
-              <p className="text-[0.625rem] uppercase tracking-wider text-muted-foreground font-medium">
-                Startup policy
-              </p>
-              <p className="text-sm mt-1 capitalize">
-                {health?.startup_policy ?? radio?.startup_policy ?? 'sync'}
-                {(health?.startup_stage ?? radio?.startup_stage) &&
-                  ` · ${(health?.startup_stage ?? radio?.startup_stage)?.replace(/_/g, ' ')}`}
-              </p>
-            </div>
+            <span className="text-xs text-muted-foreground">
+              RF TX/RX unmeasured · {health?.startup_policy ?? radio?.startup_policy ?? 'sync'}{' '}
+              startup
+            </span>
           </div>
           {(disconnected || !live) && (
-            <p className="text-xs text-muted-foreground mt-3">
+            <p className="text-sm text-warning mt-2">
               {!live
                 ? 'Connection to the server is not live; displayed states may be outdated.'
-                : 'The radio is disconnected. Waiting operations may be reclassified by the scheduler.'}
+                : 'Radio disconnected. Pending operations may have unknown outcomes.'}
             </p>
           )}
-        </Section>
+        </section>
 
         <div className="grid lg:grid-cols-2 gap-4 items-start">
-          <Section title="Ongoing operations" count={active.length}>
-            {renderJobs(active, 'No scheduled operations in progress.')}
+          <Section title="Ongoing operations" count={active.length} compact={active.length === 0}>
+            {renderJobs(active, 'No ongoing operations')}
           </Section>
-          <Section title="Queued" count={queued.length}>
-            <p className="text-xs text-muted-foreground mb-2">
-              Estimated order (priority aging); exclusive response sessions may delay dispatch.
-            </p>
-            {renderJobs(queued, 'No commands waiting for their turn.')}
+          <Section title="Queued" count={queued.length} compact={queued.length === 0}>
+            {renderJobs(queued, 'No queued commands')}
           </Section>
         </div>
 
@@ -424,9 +439,21 @@ export function RadioActivityPage({ feed, connection, health }: Props) {
                     className="flex gap-2 justify-between py-2.5 border-b border-border/70 last:border-0 text-xs"
                   >
                     <span className="min-w-0">
-                      <span className="font-medium">{ACTIVITY_LABELS[event.kind]}</span>
-                      <span className="block text-muted-foreground text-[0.6875rem]">
-                        {ACTIVITY_SOURCES[event.source]}
+                      <span className="font-medium">
+                        {event.kind === 'packet_received' && event.packet_type
+                          ? PACKET_TYPES[event.packet_type]
+                          : ACTIVITY_LABELS[event.kind]}
+                      </span>
+                      <span className="block text-muted-foreground text-xs">
+                        {event.kind === 'packet_received'
+                          ? [
+                              event.hops != null ? `${event.hops} hops` : null,
+                              event.rssi != null ? `${event.rssi} dBm` : null,
+                              event.snr != null ? `SNR ${event.snr} dB` : null,
+                            ]
+                              .filter(Boolean)
+                              .join(' · ') || 'Sender unavailable'
+                          : ACTIVITY_SOURCES[event.source]}
                       </span>
                     </span>
                     <time
@@ -441,7 +468,7 @@ export function RadioActivityPage({ feed, connection, health }: Props) {
             )}
           </Section>
           <Section title="History">
-            <label className="flex items-center justify-between gap-2 text-xs text-muted-foreground mb-3">
+            <label className="flex items-center justify-between gap-2 text-sm text-muted-foreground mb-3">
               Filter outcomes
               <select
                 aria-label="Filter job history"
@@ -466,7 +493,24 @@ export function RadioActivityPage({ feed, connection, health }: Props) {
                 Failed to load job history.
               </p>
             )}
-            {renderJobs(history, 'No completed or stopped jobs found.')}
+            <label className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={showBackground}
+                onChange={(event) => setShowBackground(event.target.checked)}
+              />
+              Include routine background jobs
+            </label>
+            <div
+              className="max-h-[26rem] overflow-y-auto min-w-0"
+              role="group"
+              aria-label="Job history list"
+            >
+              {renderJobs(
+                visibleHistory,
+                'No matching history. Enable background jobs to see routine samples.'
+              )}
+            </div>
             {historyQuery.hasNextPage && (
               <Button
                 variant="outline"
@@ -481,12 +525,6 @@ export function RadioActivityPage({ feed, connection, health }: Props) {
             )}
           </Section>
         </div>
-        <p className="text-xs text-muted-foreground flex gap-2 items-start">
-          <Activity className="h-4 w-4 shrink-0" aria-hidden="true" />
-          The dashboard lists scheduled jobs only. Existing direct radio operations may still use
-          the legacy command path until their migration. ACK observation alone does not prove
-          delivery; “Unknown” is not “Failed”.
-        </p>
       </div>
       <Dialog open={stopJob !== null} onOpenChange={(open) => !open && setStopJob(null)}>
         <DialogContent>

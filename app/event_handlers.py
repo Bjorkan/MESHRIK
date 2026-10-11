@@ -151,11 +151,6 @@ async def on_rx_log_data(event: "Event") -> None:
 
     raw_hex = payload["payload"]
     raw_bytes = bytes.fromhex(raw_hex)
-    from app.services.radio_job_worker import radio_job_scheduler
-    from app.services.radio_jobs import RadioActivityKind
-
-    radio_job_scheduler.record_activity(RadioActivityKind.PACKET_RECEIVED)
-
     await process_raw_packet(
         raw_bytes=raw_bytes,
         snr=payload.get("snr"),

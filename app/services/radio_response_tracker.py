@@ -3,8 +3,9 @@
 Reservations are installed before their matching transport command. Unambiguous
 DM ACKs are confirmed *only* by the existing dm_ack_tracker/SQLite ACK path.
 Firmware login/CLI replies have no request ID: concurrent same-target sessions
-are forbidden and an ambiguous timeout fences the target until a new radio
-session. A CLI session blocks *all* other scheduled command dispatch while it
+are forbidden. After a login ends, user-initiated retries are admitted, with
+late SUCCESS interpreted as target-session authentication and ambiguous FAILED
+ignored for a later attempt. CLI responses remain fenced until reconnect. A CLI session blocks *all* other scheduled command dispatch while it
 owns the response/polling channel; it does not stop inbound event delivery.
 
 This is the opt-in infrastructure for #42/#43 producer migrations. Legacy
@@ -54,6 +55,7 @@ class PendingResponse:
     subscriptions: list[Any] = field(default_factory=list)
     extra_ack_codes: set[str] = field(default_factory=set)
     closed: bool = False
+    prior_login_session: bool = False
 
     async def wait(self, timeout: float | None = None) -> RadioJobResult | None:
         """Wait for a correlation outcome, not for access to the radio lock."""
@@ -86,6 +88,7 @@ class RadioResponseTracker:
         self.max_pending = max_pending
         self._pending: dict[UUID, PendingResponse] = {}
         self._ambiguous_targets: set[tuple[ResponseKind, str, int]] = set()
+        self._completed_login_targets: set[tuple[ResponseKind, str, int]] = set()
         self._generation = scheduler.generation
         self._unlisten = scheduler.subscribe(self._on_job_change)
 
@@ -104,6 +107,7 @@ class RadioResponseTracker:
         for pending in list(self._pending.values()):
             self._close(pending, None, ambiguous=False)
         self._ambiguous_targets.clear()
+        self._completed_login_targets.clear()
         return True
 
     @staticmethod
@@ -159,8 +163,11 @@ class RadioResponseTracker:
                 raise ValueError("Login/CLI target must be a bounded private key")
             if meshcore is None:
                 raise ValueError("Login/CLI reservation requires the existing MeshCore instance")
-            if self._fence_key(kind, target, self._generation) in self._ambiguous_targets:
-                raise ResponseReservationConflict("Previous unconfirmed reply may arrive late")
+            if (
+                kind == ResponseKind.CLI
+                and self._fence_key(kind, target, self._generation) in self._ambiguous_targets
+            ):
+                raise ResponseReservationConflict("Previous CLI reply may arrive late")
             if any(
                 p.target == target
                 and p.kind
@@ -180,6 +187,14 @@ class RadioResponseTracker:
         pending = PendingResponse(
             self, job_id, kind, self._generation, target, ack_code, message_id, loop.create_future()
         )
+        if pending.target is not None and kind in (
+            ResponseKind.REPEATER_LOGIN,
+            ResponseKind.ROOM_LOGIN,
+        ):
+            pending.prior_login_session = (
+                self._fence_key(kind, pending.target, pending.generation)
+                in self._completed_login_targets
+            )
         self._pending[job_id] = pending
         try:
             if kind != ResponseKind.DM_ACK:
@@ -260,6 +275,17 @@ class RadioResponseTracker:
             else RadioActivityKind.LOGIN_RESPONSE,
             job_id=job_id,
         )
+        # Firmware login replies identify the target but not the attempt. Once
+        # a previous login has finished, a late SUCCESS still proves target
+        # authentication for this radio session; an old FAILED cannot reliably
+        # reject the newer attempt. Let that attempt time out if no success is
+        # observed. Do not apply this rule to CLI response sessions.
+        if (
+            not success
+            and pending.prior_login_session
+            and pending.kind in (ResponseKind.REPEATER_LOGIN, ResponseKind.ROOM_LOGIN)
+        ):
+            return
         self._settle(
             pending,
             RadioJobResult.RESPONSE_RECEIVED if success else RadioJobResult.REJECTED,
@@ -352,11 +378,16 @@ class RadioResponseTracker:
         # Fail closed until reconnect (or an explicit future transport barrier),
         # even after a successful login. A never-dispatched queued job is safe.
         current = self.scheduler.get(pending.job_id)
-        if (
-            pending.kind != ResponseKind.DM_ACK
-            and pending.target is not None
-            and (ambiguous or (current is not None and current.started_at is not None))
-        ):
+        if pending.target is not None and current is not None and current.started_at is not None:
+            key = self._fence_key(pending.kind, pending.target, pending.generation)
+            if pending.kind in (ResponseKind.REPEATER_LOGIN, ResponseKind.ROOM_LOGIN):
+                # A terminal login releases retry admission. Target-scoped
+                # success is valid session evidence, but a later failure may
+                # originate from this earlier attempt.
+                self._completed_login_targets.add(key)
+            elif pending.kind == ResponseKind.CLI:
+                self._ambiguous_targets.add(key)
+        elif ambiguous and pending.kind == ResponseKind.CLI and pending.target is not None:
             self._ambiguous_targets.add(
                 self._fence_key(pending.kind, pending.target, pending.generation)
             )
@@ -367,6 +398,7 @@ class RadioResponseTracker:
         for pending in list(self._pending.values()):
             self._close(pending, None, ambiguous=False)
         self._ambiguous_targets.clear()
+        self._completed_login_targets.clear()
 
 
 # Uses the same scheduler/worker generation and no extra radio connection.

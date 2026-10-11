@@ -107,6 +107,33 @@ async def test_activity_is_bounded_replayable_and_free_of_raw_fields(client, iso
         queue.record_activity("raw secrets here")
 
 
+def test_sanitized_packet_activity_exposes_type_and_signal_but_not_payload(isolated_api):
+    from pydantic import ValidationError
+
+    activity = isolated_api.record_activity(
+        RadioActivityKind.PACKET_RECEIVED,
+        packet_type="advertisement",
+        rssi=-104,
+        snr=3.5,
+        hops=2,
+    )
+    public = activity.model_dump(mode="json")
+    assert public["packet_type"] == "advertisement"
+    assert public["rssi"] == -104
+    assert public["snr"] == 3.5
+    assert public["hops"] == 2
+    assert "payload" not in public
+    assert "public_key" not in public
+    with pytest.raises(ValidationError):
+        isolated_api.record_activity(RadioActivityKind.PACKET_RECEIVED, packet_type="secret-text")
+    # Non-RF activity must not accidentally inherit packet metadata.
+    login = isolated_api.record_activity(
+        RadioActivityKind.LOGIN_RESPONSE, packet_type="direct", rssi=-99
+    )
+    assert login.packet_type is None
+    assert login.rssi is None
+
+
 def test_ws_contract_deltas_are_typed_and_fail_closed_for_private_fields(isolated_api):
     job = isolated_api.submit(RadioJobKind.REPEATER_LOGIN)
     activity = isolated_api.record_activity(RadioActivityKind.LOGIN_RESPONSE, job_id=job.id)

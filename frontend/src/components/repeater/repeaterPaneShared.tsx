@@ -193,7 +193,7 @@ export function RepeaterPane({
 }
 
 export function NotFetched() {
-  return <p className="text-sm text-muted-foreground italic">&lt;not fetched&gt;</p>;
+  return <p className="text-sm text-muted-foreground">Not requested</p>;
 }
 
 export function KvRow({ label, value }: { label: string; value: ReactNode }) {

@@ -140,6 +140,9 @@ def broadcast_success(message: str, details: str | None = None) -> None:
     asyncio.create_task(ws_manager.broadcast("success", data))
 
 
+_last_radio_activity_status: tuple[bool, str, int] | None = None
+
+
 def broadcast_health(radio_connected: bool, connection_info: str | None = None) -> None:
     """Broadcast health status change to all connected clients."""
 
@@ -149,8 +152,25 @@ def broadcast_health(radio_connected: bool, connection_info: str | None = None) 
         data = await build_health_data(radio_connected, connection_info)
         await ws_manager.broadcast("health", data)
 
+    # Health also changes for statistics/MQTT without any radio lifecycle event.
+    # Capture readiness at call time (not in the asynchronously scheduled task).
     from app.services.radio_job_worker import radio_job_scheduler
     from app.services.radio_jobs import RadioActivityKind
+    from app.services.radio_runtime import radio_runtime
 
-    radio_job_scheduler.record_activity(RadioActivityKind.CONNECTION_CHANGED)
+    global _last_radio_activity_status
+    snapshot = (
+        radio_connected,
+        str(
+            getattr(
+                radio_runtime, "readiness_state", "ready" if radio_connected else "disconnected"
+            )
+        ),
+        int(getattr(radio_runtime, "radio_generation", 0)),
+    )
+    if _last_radio_activity_status != snapshot:
+        # Record the first observed state and each real transition; never
+        # consume the bounded ring for identical periodic health broadcasts.
+        radio_job_scheduler.record_activity(RadioActivityKind.CONNECTION_CHANGED)
+        _last_radio_activity_status = snapshot
     asyncio.create_task(_broadcast())

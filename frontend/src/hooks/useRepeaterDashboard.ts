@@ -86,17 +86,6 @@ function createInitialPaneData(): PaneData {
 
 const repeaterDashboardCache = new Map<string, RepeaterDashboardCacheEntry>();
 
-function getLoginToastTitle(status: string): string {
-  switch (status) {
-    case 'timeout':
-      return 'Login confirmation not heard';
-    case 'error':
-      return 'Login not confirmed';
-    default:
-      return 'Repeater login not confirmed';
-  }
-}
-
 function clonePaneData(data: PaneData): PaneData {
   return { ...data };
 }
@@ -307,7 +296,8 @@ export function useRepeaterDashboard(
         if (!result.authenticated) {
           const msg = result.message ?? 'Repeater login was not confirmed';
           setLoginError(msg);
-          toast.error(getLoginToastTitle(result.status), { description: msg });
+          // The inline login banner remains visible with a recovery action;
+          // don't duplicate the same failure as an unrelated toast.
         }
       } catch (err) {
         if (activeIdRef.current !== conversationId) return;
@@ -315,9 +305,7 @@ export function useRepeaterDashboard(
         setLastLoginAttempt(buildServerLoginAttemptFromError(method, msg, 'repeater'));
         setLoggedIn(true);
         setLoginError(msg);
-        toast.error('Login request failed', {
-          description: `${msg}. The dashboard is still available, but repeater operations may fail until a login succeeds.`,
-        });
+        // The retry banner is the single source of visible login failure feedback.
       } finally {
         if (activeIdRef.current === conversationId) {
           setLoginLoading(false);

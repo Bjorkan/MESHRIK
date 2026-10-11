@@ -32,6 +32,7 @@ from app.services.radio_jobs import (
     RadioJobSnapshot,
     RadioJobStage,
     RadioJobState,
+    RadioPacketType,
     require_utc,
     utc_now,
 )
@@ -151,7 +152,14 @@ class RadioJobScheduler:
         return unsubscribe
 
     def record_activity(
-        self, kind: RadioActivityKind, *, job_id: UUID | None = None
+        self,
+        kind: RadioActivityKind,
+        *,
+        job_id: UUID | None = None,
+        packet_type: RadioPacketType | None = None,
+        rssi: int | None = None,
+        snr: float | None = None,
+        hops: int | None = None,
     ) -> RadioActivityRecord:
         """Public activity is an allowlisted classification, never a raw event."""
         if not isinstance(kind, RadioActivityKind):
@@ -172,6 +180,10 @@ class RadioJobScheduler:
             ),
             job_id=job_id,
             radio_generation=self._generation,
+            packet_type=packet_type if kind == RadioActivityKind.PACKET_RECEIVED else None,
+            rssi=rssi if kind == RadioActivityKind.PACKET_RECEIVED else None,
+            snr=snr if kind == RadioActivityKind.PACKET_RECEIVED else None,
+            hops=hops if kind == RadioActivityKind.PACKET_RECEIVED else None,
         )
         if self._activities.maxlen and len(self._activities) == self._activities.maxlen:
             self._activity_dropped_through = self._activities[0].sequence

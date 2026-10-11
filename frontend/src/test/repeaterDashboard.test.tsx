@@ -178,31 +178,32 @@ describe('RepeaterDashboard', () => {
     expect(screen.getByText('Log in to access repeater dashboard')).toBeInTheDocument();
   });
 
-  it('renders dashboard panes when logged in', () => {
+  it('shows compact fetch controls instead of a wall of unfetched cards', () => {
     mockHook.loggedIn = true;
-
     render(<RepeaterDashboard {...defaultProps} />);
-
-    expect(screen.getByText('Telemetry')).toBeInTheDocument();
-    expect(screen.getByText('Node Info')).toBeInTheDocument();
-    expect(screen.getByText('Neighbors')).toBeInTheDocument();
-    expect(screen.getByText('ACL')).toBeInTheDocument();
-    expect(screen.getByText('Radio Settings')).toBeInTheDocument();
-    expect(screen.getByText('Advert Intervals')).toBeInTheDocument(); // sub-section inside Radio Settings
-    expect(screen.getByText('LPP Sensors')).toBeInTheDocument();
-    expect(screen.getByText('Owner Info')).toBeInTheDocument();
-    expect(screen.getByText('Actions')).toBeInTheDocument();
-    expect(screen.getByText('Console')).toBeInTheDocument();
+    for (const label of [
+      'Node info',
+      'Telemetry',
+      'Radio settings',
+      'LPP',
+      'Neighbors',
+      'ACL',
+      'Regions',
+      'Owner info',
+    ]) {
+      expect(screen.getByRole('button', { name: `Fetch ${label}` })).toBeInTheDocument();
+    }
+    expect(screen.queryByText('<not fetched>')).not.toBeInTheDocument();
+    expect(screen.getByText('Advanced radio controls')).toBeInTheDocument();
+    expect(screen.queryByText('No neighbors reported')).not.toBeInTheDocument();
   });
 
-  it('shows not fetched placeholder for empty panes', () => {
+  it('fetches only the requested section', () => {
     mockHook.loggedIn = true;
-
     render(<RepeaterDashboard {...defaultProps} />);
-
-    // All panes should show <not fetched> since data is null
-    const notFetched = screen.getAllByText('<not fetched>');
-    expect(notFetched.length).toBeGreaterThanOrEqual(7); // At least 7 data panes (incl. LPP Sensors)
+    fireEvent.click(screen.getByRole('button', { name: 'Fetch Node info' }));
+    expect(mockHook.refreshPane).toHaveBeenCalledWith('nodeInfo');
+    expect(mockHook.refreshPane).toHaveBeenCalledTimes(1);
   });
 
   it('shows Load All button when logged in', () => {
@@ -718,13 +719,10 @@ describe('RepeaterDashboard', () => {
       });
     });
 
-    it('shows telemetry history pane in logged-in view even before status fetch', () => {
+    it('does not display an empty telemetry-history card before any data was loaded', () => {
       mockHook.loggedIn = true;
-
       render(<RepeaterDashboard {...defaultProps} />);
-
-      expect(screen.getByText('Telemetry History')).toBeInTheDocument();
-      expect(screen.getByText(/No history yet/)).toBeInTheDocument();
+      expect(screen.queryByText('Telemetry History')).not.toBeInTheDocument();
     });
 
     it('updates history from live status fetch', async () => {

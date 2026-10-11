@@ -214,8 +214,8 @@ export function NeighborsPane({
       state={state}
       onRefresh={onRefresh}
       disabled={disabled}
-      className="flex min-h-0 flex-1 flex-col"
-      contentClassName="flex min-h-0 flex-1 flex-col"
+      className={sorted.length > 0 ? 'flex min-h-0 flex-col' : undefined}
+      contentClassName={sorted.length > 0 ? 'flex min-h-0 flex-col' : undefined}
     >
       {!data ? (
         <NotFetched />

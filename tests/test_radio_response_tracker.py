@@ -76,7 +76,7 @@ async def test_early_login_and_unrelated_ack_can_complete_while_other_job_execut
 
 
 @pytest.mark.asyncio
-async def test_login_collision_fenced_until_connection_generation_changes():
+async def test_login_retry_after_terminal_wait_and_generation_change():
     scheduler = RadioJobScheduler()
     tracker = RadioResponseTracker(scheduler)
     mc = RadioEvents()
@@ -92,10 +92,18 @@ async def test_login_collision_fenced_until_connection_generation_changes():
     assert await pending.wait(0.001) is None
     assert scheduler.get(first.id).state == RadioJobState.UNKNOWN
     assert mc.active_count() == 0
-    # A late reply must NEVER be allowed to settle another job for this target.
+    # Once the previous wait terminates, the operator can retry on the same
+    # radio. Old LOGIN_FAILED events cannot reject this later attempt, but a
+    # target-matched LOGIN_SUCCESS confirms authentication in this session.
     mc.emit(EventType.LOGIN_SUCCESS, pubkey_prefix="abcd")
-    with pytest.raises(ResponseReservationConflict):
-        tracker.reserve(second.id, kind=ResponseKind.REPEATER_LOGIN, target="abcd", meshcore=mc)
+    retry = tracker.reserve(second.id, kind=ResponseKind.REPEATER_LOGIN, target="abcd", meshcore=mc)
+    assert scheduler.take_next().id == second.id
+    scheduler.transition(second.id, RadioJobState.AWAITING_RESPONSE)
+    mc.emit(EventType.LOGIN_FAILED, pubkey_prefix="abcd")
+    assert not retry.future.done()
+    mc.emit(EventType.LOGIN_SUCCESS, pubkey_prefix="abcd")
+    assert await retry.wait(0.01) == RadioJobResult.RESPONSE_RECEIVED
+    assert scheduler.get(second.id).state == RadioJobState.COMPLETED
     scheduler.change_generation(1)
     new = scheduler.submit(RadioJobKind.REPEATER_LOGIN)
     next_pending = tracker.reserve(
@@ -238,7 +246,7 @@ async def test_generation_provider_fences_stale_events_between_worker_polls():
 
 
 @pytest.mark.asyncio
-async def test_response_capacity_and_successful_login_duplicate_fence():
+async def test_response_capacity_and_successful_login_retries_are_allowed():
     scheduler = RadioJobScheduler()
     tracker = RadioResponseTracker(scheduler, max_pending=1)
     radio = RadioEvents()
@@ -255,6 +263,6 @@ async def test_response_capacity_and_successful_login_duplicate_fence():
     radio.emit(EventType.LOGIN_SUCCESS, pubkey_prefix="abc")
     assert await pending.wait(0.01) == RadioJobResult.RESPONSE_RECEIVED
     assert scheduler.get(first.id).state == RadioJobState.COMPLETED
-    with pytest.raises(ResponseReservationConflict):
-        tracker.reserve(second.id, kind=ResponseKind.ROOM_LOGIN, target="abc", meshcore=radio)
+    again = tracker.reserve(second.id, kind=ResponseKind.ROOM_LOGIN, target="abc", meshcore=radio)
+    assert again.prior_login_session is True
     tracker.shutdown()

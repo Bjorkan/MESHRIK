@@ -139,7 +139,7 @@ describe('Radio Activity', () => {
       within(queued).getByRole('button', { name: 'Cancel Radio settings' })
     ).toBeInTheDocument();
     expect(screen.getByText('Executing Channel message command')).toBeInTheDocument();
-    expect(screen.getByText('Unavailable (TX / listening not measured)')).toBeInTheDocument();
+    expect(screen.getByText(/RF TX\/RX unmeasured/)).toBeInTheDocument();
     expect(screen.getByText('Packet received')).toBeInTheDocument();
     expect(screen.getByText('Outcome unknown')).toBeInTheDocument();
   });
@@ -185,7 +185,7 @@ describe('Radio Activity', () => {
     await waitFor(() =>
       expect(mocks.getRadioJobs).toHaveBeenCalledWith(expect.objectContaining({ status: 'failed' }))
     );
-    expect(screen.getByText('No completed or stopped jobs found.')).toBeInTheDocument();
+    expect(screen.getByText(/No matching history/)).toBeInTheDocument();
   });
 
   it('merges inbound events without consuming the command queue and resyncs missed events on reconnect', async () => {
@@ -240,7 +240,36 @@ describe('Radio stats job classification', () => {
       has_more: false,
     });
     createView();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Include routine background jobs' }));
     expect(await screen.findByText('Radio stats sample')).toBeTruthy();
     expect(screen.queryByText('Periodic sync')).toBeNull();
+  });
+});
+
+describe('Radio Activity presentation regressions', () => {
+  it('freezes terminal duration at completed_at and reports queue wait for unstarted cancellations', async () => {
+    const { jobDuration } = await import('./RadioActivityPage');
+    const finished = job('completed', 39, {
+      started_at: '2026-10-10T20:00:00Z',
+      completed_at: '2026-10-10T20:00:09Z',
+    });
+    const cancelled = job('completed', 40, {
+      state: 'cancelled',
+      started_at: null,
+      completed_at: '2026-10-10T20:00:03Z',
+    });
+    expect(jobDuration(finished, Date.parse('2027-01-01T00:00:00Z'))).toBe('9s');
+    expect(jobDuration(finished, Date.parse('2028-01-01T00:00:00Z'))).toBe('9s');
+    expect(jobDuration(cancelled, Date.parse('2028-01-01T00:00:00Z'))).toBe('3s');
+  });
+  it('renders a bounded history and opt-in background records', async () => {
+    createView();
+    const history = await screen.findByRole('region', { name: 'History' });
+    expect(within(history).getByRole('group', { name: 'Job history list' })).toHaveClass(
+      'max-h-[26rem]'
+    );
+    expect(
+      within(history).getByRole('checkbox', { name: 'Include routine background jobs' })
+    ).not.toBeChecked();
   });
 });

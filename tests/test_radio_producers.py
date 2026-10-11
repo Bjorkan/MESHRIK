@@ -260,7 +260,7 @@ async def test_login_waiter_does_not_hold_worker_permit(monkeypatch):
         again = await server_control.scheduled_authenticated_contact_login(
             contact, "private-password", label="repeater", response_timeout=0.01
         )
-        assert again.authenticated is False  # fenced until reconnect
+        assert again.authenticated is False  # a real second attempt may time out
     finally:
         if not login.done():
             login.cancel()

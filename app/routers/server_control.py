@@ -690,7 +690,7 @@ async def scheduled_authenticated_contact_login(
         return RepeaterLoginResponse(
             status="error",
             authenticated=False,
-            message="Radio busy or an earlier login reply is still ambiguous. Reconnect before retrying.",
+            message="Another operation is still using this radio or repeater. Wait for it to finish, then retry.",
         )
 
     # A transport failure can finish a job without the callback ever yielding a

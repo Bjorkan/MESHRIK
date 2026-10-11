@@ -97,9 +97,7 @@ describe('useRepeaterDashboard', () => {
     expect(result.current.loginError).toBe('Auth failed');
     expect(result.current.lastLoginAttempt?.heardBack).toBe(true);
     expect(result.current.lastLoginAttempt?.outcome).toBe('not_confirmed');
-    expect(mockToast.error).toHaveBeenCalledWith('Login not confirmed', {
-      description: 'Auth failed',
-    });
+    expect(mockToast.error).not.toHaveBeenCalled(); // inline login banner owns the error
   });
 
   it('loginAsGuest calls login with empty password', async () => {
@@ -132,10 +130,7 @@ describe('useRepeaterDashboard', () => {
     expect(result.current.loginError).toBe('Network error');
     expect(result.current.lastLoginAttempt?.heardBack).toBe(false);
     expect(result.current.lastLoginAttempt?.outcome).toBe('request_failed');
-    expect(mockToast.error).toHaveBeenCalledWith('Login request failed', {
-      description:
-        'Network error. The dashboard is still available, but repeater operations may fail until a login succeeds.',
-    });
+    expect(mockToast.error).not.toHaveBeenCalled(); // do not duplicate banner feedback
   });
 
   it('refreshPane stores data on success', async () => {

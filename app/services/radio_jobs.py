@@ -207,6 +207,9 @@ class RadioActivitySource(StrEnum):
     RADIO_LIFECYCLE = "radio_lifecycle"
 
 
+RadioPacketType = Literal["channel", "direct", "advertisement", "ack", "path", "control", "other"]
+
+
 class RadioActivityRecord(BaseModel):
     """Only classification and opaque reliable job correlation; no RF payloads."""
 
@@ -217,6 +220,14 @@ class RadioActivityRecord(BaseModel):
     source: RadioActivitySource
     radio_generation: int = Field(ge=0)
     job_id: UUID | None = None
+    # Public RF metadata is allowlisted: never include packet bodies, addresses,
+    # decrypted messages, full public keys or private channel names.
+    packet_type: (
+        Literal["channel", "direct", "advertisement", "ack", "path", "control", "other"] | None
+    ) = None
+    rssi: int | None = Field(default=None, ge=-160, le=0)
+    snr: float | None = Field(default=None, ge=-40, le=40)
+    hops: int | None = Field(default=None, ge=0, le=64)
 
 
 class RadioConnectionStatus(StrEnum):

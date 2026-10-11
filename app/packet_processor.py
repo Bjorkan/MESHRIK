@@ -454,6 +454,36 @@ async def process_raw_packet(
     )
     broadcast_event("raw_packet", broadcast_payload.model_dump())
 
+    # Emit one sanitized, classified observation only after the packet was
+    # parsed. Detailed contents remain exclusively in the raw-packet pipeline.
+    from app.services.radio_job_worker import radio_job_scheduler
+    from app.services.radio_jobs import RadioActivityKind, RadioPacketType
+
+    categories: dict[PayloadType, RadioPacketType] = {
+        PayloadType.GROUP_TEXT: "channel",
+        PayloadType.TEXT_MESSAGE: "direct",
+        PayloadType.ADVERT: "advertisement",
+        PayloadType.ACK: "ack",
+        PayloadType.PATH: "path",
+        PayloadType.REQUEST: "control",
+        PayloadType.RESPONSE: "control",
+    }
+    category: RadioPacketType = (
+        categories.get(payload_type, "other") if payload_type is not None else "other"
+    )
+    # Suppress unactionable unknown/control spam; the existing raw packet feed
+    # still receives every observation, including unknown packets and repeats.
+    if category != "other" and is_new_packet:
+        radio_job_scheduler.record_activity(
+            RadioActivityKind.PACKET_RECEIVED,
+            packet_type=category,
+            rssi=rssi if isinstance(rssi, int) and -160 <= rssi <= 0 else None,
+            snr=float(snr) if isinstance(snr, (float, int)) and -40 <= snr <= 40 else None,
+            hops=packet_info.path_length
+            if packet_info and 0 <= packet_info.path_length <= 64
+            else None,
+        )
+
     return result
 
 
