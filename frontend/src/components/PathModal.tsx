@@ -13,7 +13,7 @@ import {
   type PathHop,
 } from '../utils/pathUtils';
 import { formatTime } from '../utils/messageParser';
-import { getMapFocusHash } from '../utils/urlHash';
+import { getMapFocusPath } from '../routing/toolRoutes';
 import { useDistanceUnit } from '../contexts/DistanceUnitContext';
 import type { DistanceUnit } from '../utils/distanceUnits';
 
@@ -524,8 +524,8 @@ function CoordinateLink({ lat, lon, publicKey }: { lat: number; lon: number; pub
     e.preventDefault();
     e.stopPropagation();
     // Open map in new tab with focus on this contact
-    const url = window.location.origin + window.location.pathname + getMapFocusHash(publicKey);
-    window.open(url, '_blank');
+    const url = new URL(getMapFocusPath(publicKey), window.location.origin);
+    window.open(url.toString(), '_blank');
   };
 
   return (

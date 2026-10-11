@@ -33,7 +33,7 @@ import {
   parsePathHops,
 } from '../utils/pathUtils';
 import { isPublicChannelKey } from '../utils/publicChannel';
-import { getMapFocusHash } from '../utils/urlHash';
+import { getMapFocusPath } from '../routing/toolRoutes';
 import { handleKeyboardActivate } from '../utils/a11y';
 import { ContactAvatar } from './ContactAvatar';
 import { LppSensorRow, formatLppLabel } from './repeater/repeaterPaneShared';
@@ -408,7 +408,7 @@ export function ContactInfoPane({
               <div className="px-5 py-3 border-b border-border">
                 <SectionLabel>Location</SectionLabel>
                 <a
-                  href={getMapFocusHash(contact.public_key)}
+                  href={getMapFocusPath(contact.public_key)}
                   className="text-sm font-mono cursor-pointer hover:text-primary hover:underline transition-colors"
                   onClick={onClose}
                   aria-label={`View ${getContactDisplayName(contact.name, contact.public_key, contact.last_advert)} on map`}

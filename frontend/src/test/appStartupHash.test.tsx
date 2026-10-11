@@ -237,10 +237,17 @@ describe('App startup hash resolution', () => {
     });
   });
 
-  it('resolves Radio Activity from a direct hash even when channels have not loaded', async () => {
-    setHash('#radio-activity');
+  it('resolves Radio Activity from route state even when channels have not loaded', async () => {
     mocks.api.getChannels.mockResolvedValue([]);
-    render(<App />);
+    render(
+      <App
+        routeConversation={{
+          type: 'radio-activity',
+          id: 'radio-activity',
+          name: 'Radio Activity',
+        }}
+      />
+    );
     await waitFor(() => {
       for (const node of screen.getAllByTestId('active-conversation')) {
         expect(node).toHaveTextContent('radio-activity:radio-activity:Radio Activity');
@@ -248,10 +255,8 @@ describe('App startup hash resolution', () => {
     });
   });
 
-  it('restores the trace tool from the URL hash', async () => {
-    setHash('#trace');
-
-    render(<App />);
+  it('restores the trace tool from route state', async () => {
+    render(<App routeConversation={{ type: 'trace', id: 'trace', name: 'Trace' }} />);
 
     await waitFor(() => {
       for (const node of screen.getAllByTestId('active-conversation')) {
@@ -260,11 +265,10 @@ describe('App startup hash resolution', () => {
     });
   });
 
-  it('restores the trace tool from the URL hash even when channels are unavailable', async () => {
-    setHash('#trace');
+  it('restores the trace tool from route state even when channels are unavailable', async () => {
     mocks.api.getChannels.mockResolvedValue([]);
 
-    render(<App />);
+    render(<App routeConversation={{ type: 'trace', id: 'trace', name: 'Trace' }} />);
 
     await waitFor(() => {
       for (const node of screen.getAllByTestId('active-conversation')) {

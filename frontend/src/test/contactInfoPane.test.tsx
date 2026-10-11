@@ -287,7 +287,7 @@ describe('ContactInfoPane', () => {
     );
 
     const mapLink = await screen.findByRole('link', { name: 'View Alice on map' });
-    expect(mapLink).toHaveAttribute('href', `#map/focus/${contact.public_key}`);
+    expect(mapLink).toHaveAttribute('href', `/map?focus=${contact.public_key}`);
     expect(mapLink).not.toHaveAttribute('target');
     fireEvent.click(mapLink);
 

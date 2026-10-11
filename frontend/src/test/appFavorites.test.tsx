@@ -197,7 +197,6 @@ vi.mock('../utils/urlHash', () => ({
   updateSettingsHash: vi.fn(),
   pushSettingsHash: vi.fn(),
   getSettingsHash: (section: string) => `#settings/${section}`,
-  getMapFocusHash: () => '#map',
 }));
 
 import { App } from '../App';

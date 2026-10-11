@@ -9,50 +9,204 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppRouteImport } from './routes/_app'
+import { Route as AppIndexRouteImport } from './routes/_app.index'
+import { Route as AppMapRouteImport } from './routes/_app.map'
+import { Route as AppRadioActivityRouteImport } from './routes/_app.radio-activity'
+import { Route as AppRawRouteImport } from './routes/_app.raw'
+import { Route as AppSearchRouteImport } from './routes/_app.search'
+import { Route as AppTraceRouteImport } from './routes/_app.trace'
+import { Route as AppVisualizerRouteImport } from './routes/_app.visualizer'
 
-const IndexRoute = IndexRouteImport.update({
+const AppRoute = AppRouteImport.update({
+  id: '/_app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
+} as any)
+const AppMapRoute = AppMapRouteImport.update({
+  id: '/map',
+  path: '/map',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppRadioActivityRoute = AppRadioActivityRouteImport.update({
+  id: '/radio-activity',
+  path: '/radio-activity',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppRawRoute = AppRawRouteImport.update({
+  id: '/raw',
+  path: '/raw',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSearchRoute = AppSearchRouteImport.update({
+  id: '/search',
+  path: '/search',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppTraceRoute = AppTraceRouteImport.update({
+  id: '/trace',
+  path: '/trace',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppVisualizerRoute = AppVisualizerRouteImport.update({
+  id: '/visualizer',
+  path: '/visualizer',
+  getParentRoute: () => AppRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
+  '/': typeof AppIndexRoute
+  '/map': typeof AppMapRoute
+  '/radio-activity': typeof AppRadioActivityRoute
+  '/raw': typeof AppRawRoute
+  '/search': typeof AppSearchRoute
+  '/trace': typeof AppTraceRoute
+  '/visualizer': typeof AppVisualizerRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
+  '/map': typeof AppMapRoute
+  '/radio-activity': typeof AppRadioActivityRoute
+  '/raw': typeof AppRawRoute
+  '/search': typeof AppSearchRoute
+  '/trace': typeof AppTraceRoute
+  '/visualizer': typeof AppVisualizerRoute
+  '/': typeof AppIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
+  '/_app': typeof AppRouteWithChildren
+  '/_app/map': typeof AppMapRoute
+  '/_app/radio-activity': typeof AppRadioActivityRoute
+  '/_app/raw': typeof AppRawRoute
+  '/_app/search': typeof AppSearchRoute
+  '/_app/trace': typeof AppTraceRoute
+  '/_app/visualizer': typeof AppVisualizerRoute
+  '/_app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/map'
+    | '/radio-activity'
+    | '/raw'
+    | '/search'
+    | '/trace'
+    | '/visualizer'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/map'
+    | '/radio-activity'
+    | '/raw'
+    | '/search'
+    | '/trace'
+    | '/visualizer'
+    | '/'
+  id:
+    | '__root__'
+    | '/_app'
+    | '/_app/map'
+    | '/_app/radio-activity'
+    | '/_app/raw'
+    | '/_app/search'
+    | '/_app/trace'
+    | '/_app/visualizer'
+    | '/_app/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
+  AppRoute: typeof AppRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app/': {
+      id: '/_app/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/map': {
+      id: '/_app/map'
+      path: '/map'
+      fullPath: '/map'
+      preLoaderRoute: typeof AppMapRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/radio-activity': {
+      id: '/_app/radio-activity'
+      path: '/radio-activity'
+      fullPath: '/radio-activity'
+      preLoaderRoute: typeof AppRadioActivityRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/raw': {
+      id: '/_app/raw'
+      path: '/raw'
+      fullPath: '/raw'
+      preLoaderRoute: typeof AppRawRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/search': {
+      id: '/_app/search'
+      path: '/search'
+      fullPath: '/search'
+      preLoaderRoute: typeof AppSearchRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/trace': {
+      id: '/_app/trace'
+      path: '/trace'
+      fullPath: '/trace'
+      preLoaderRoute: typeof AppTraceRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/visualizer': {
+      id: '/_app/visualizer'
+      path: '/visualizer'
+      fullPath: '/visualizer'
+      preLoaderRoute: typeof AppVisualizerRouteImport
+      parentRoute: typeof AppRoute
     }
   }
 }
 
+interface AppRouteChildren {
+  AppMapRoute: typeof AppMapRoute
+  AppRadioActivityRoute: typeof AppRadioActivityRoute
+  AppRawRoute: typeof AppRawRoute
+  AppSearchRoute: typeof AppSearchRoute
+  AppTraceRoute: typeof AppTraceRoute
+  AppVisualizerRoute: typeof AppVisualizerRoute
+  AppIndexRoute: typeof AppIndexRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppMapRoute: AppMapRoute,
+  AppRadioActivityRoute: AppRadioActivityRoute,
+  AppRawRoute: AppRawRoute,
+  AppSearchRoute: AppSearchRoute,
+  AppTraceRoute: AppTraceRoute,
+  AppVisualizerRoute: AppVisualizerRoute,
+  AppIndexRoute: AppIndexRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
+  AppRoute: AppRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

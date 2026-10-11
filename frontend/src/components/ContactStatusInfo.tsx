@@ -8,7 +8,7 @@ import {
   formatRouteLabel,
   getEffectiveContactRoute,
 } from '../utils/pathUtils';
-import { getMapFocusHash } from '../utils/urlHash';
+import { getMapFocusPath } from '../routing/toolRoutes';
 import { handleKeyboardActivate } from '../utils/a11y';
 import type { Contact } from '../types';
 import { useDistanceUnit } from '../contexts/DistanceUnitContext';
@@ -66,11 +66,8 @@ export function ContactStatusInfo({ contact, ourLat, ourLon }: ContactStatusInfo
           onKeyDown={handleKeyboardActivate}
           onClick={(e) => {
             e.stopPropagation();
-            const url =
-              window.location.origin +
-              window.location.pathname +
-              getMapFocusHash(contact.public_key);
-            window.open(url, '_blank');
+            const url = new URL(getMapFocusPath(contact.public_key), window.location.origin);
+            window.open(url.toString(), '_blank');
           }}
           title="View on map"
         >

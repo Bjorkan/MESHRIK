@@ -10,7 +10,6 @@ import {
   parseHashConversation,
   parseHashSettingsSection,
   getSettingsHash,
-  getMapFocusHash,
   getConversationHash,
   resolveChannelFromHashToken,
   resolveContactFromHashToken,
@@ -67,30 +66,6 @@ describe('parseHashConversation', () => {
     const result = parseHashConversation();
 
     expect(result).toEqual({ type: 'trace', name: 'trace' });
-  });
-
-  it('parses #map/focus/PUBKEY with focus key', () => {
-    window.location.hash = '#map/focus/ABCD1234';
-
-    const result = parseHashConversation();
-
-    expect(result).toEqual({ type: 'map', name: 'map', mapFocusKey: 'ABCD1234' });
-  });
-
-  it('parses #map/focus/ with empty focus as plain map', () => {
-    window.location.hash = '#map/focus/';
-
-    const result = parseHashConversation();
-
-    expect(result).toEqual({ type: 'map', name: 'map' });
-  });
-
-  it('decodes URL-encoded map focus key', () => {
-    window.location.hash = '#map/focus/AB%20CD';
-
-    const result = parseHashConversation();
-
-    expect(result).toEqual({ type: 'map', name: 'map', mapFocusKey: 'AB CD' });
   });
 
   it('parses channel hash', () => {
@@ -321,19 +296,5 @@ describe('resolveContactFromHashToken', () => {
     expect(result?.public_key).toBe(
       'eeeeee111111222222333333444444555555666666777777888888999999aaaa'
     );
-  });
-});
-
-describe('getMapFocusHash', () => {
-  it('generates hash with focus key', () => {
-    const result = getMapFocusHash('ABCD1234');
-
-    expect(result).toBe('#map/focus/ABCD1234');
-  });
-
-  it('encodes special characters in key', () => {
-    const result = getMapFocusHash('AB CD/12');
-
-    expect(result).toBe('#map/focus/AB%20CD%2F12');
   });
 });

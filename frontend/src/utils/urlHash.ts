@@ -5,14 +5,7 @@ import type { SettingsSection } from '../components/settings/settingsConstants';
 
 interface ParsedHashConversation {
   type:
-    | 'channel'
-    | 'contact'
-    | 'raw'
-    | 'map'
-    | 'visualizer'
-    | 'search'
-    | 'trace'
-    | 'radio-activity';
+    'channel' | 'contact' | 'raw' | 'map' | 'visualizer' | 'search' | 'trace' | 'radio-activity';
   /** Conversation identity token (channel key or contact public key, or legacy name token) */
   name: string;
   /** Optional human-readable label segment (ignored for identity resolution) */
@@ -59,15 +52,6 @@ export function parseHashConversation(): ParsedHashConversation | null {
 
   if (hash === 'trace') {
     return { type: 'trace', name: 'trace' };
-  }
-
-  // Check for map with focus: #map/focus/{pubkey_prefix}
-  if (hash.startsWith('map/focus/')) {
-    const focusKey = hash.slice('map/focus/'.length);
-    if (focusKey) {
-      return { type: 'map', name: 'map', mapFocusKey: decodeURIComponent(focusKey) };
-    }
-    return { type: 'map', name: 'map' };
   }
 
   const slashIndex = hash.indexOf('/');
@@ -149,14 +133,6 @@ export function resolveContactFromHashToken(token: string, contacts: Contact[]):
         c.public_key.toLowerCase().startsWith(lowerToken)
     ) || null
   );
-}
-
-/**
- * Generate a URL hash for focusing on a contact in the map view
- * @param publicKeyPrefix - The public key or prefix to focus on
- */
-export function getMapFocusHash(publicKeyPrefix: string): string {
-  return `#map/focus/${encodeURIComponent(publicKeyPrefix)}`;
 }
 
 // Generate URL hash from conversation

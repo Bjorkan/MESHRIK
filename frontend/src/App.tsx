@@ -74,7 +74,12 @@ export function resolveUnreadMarkerId(
   return oldestLoaded.id;
 }
 
-export function App() {
+interface AppProps {
+  routeConversation?: Conversation | null;
+  onNavigateConversation?: (conversation: Conversation) => void;
+}
+
+export function App({ routeConversation, onNavigateConversation }: AppProps = {}) {
   const [queryClient] = useState(() => {
     const client = createAppQueryClient();
     primePrefetchCache(client);
@@ -83,12 +88,15 @@ export function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AppContent />
+      <AppContent
+        routeConversation={routeConversation}
+        onNavigateConversation={onNavigateConversation}
+      />
     </QueryClientProvider>
   );
 }
 
-function AppContent() {
+function AppContent({ routeConversation, onNavigateConversation }: AppProps) {
   const queryClient = useQueryClient();
   const quoteSearchOperatorValue = useCallback((value: string) => {
     return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
@@ -278,6 +286,8 @@ function AppContent() {
     setSidebarOpen,
     pendingDeleteFallbackRef,
     hasSetDefaultConversation,
+    routeConversation,
+    onNavigateConversation,
   });
 
   // One Query snapshot cache and the existing single WebSocket connection.

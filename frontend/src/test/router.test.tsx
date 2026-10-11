@@ -12,13 +12,40 @@ describe('application router', () => {
     await router.load();
 
     expect(router.state.location.pathname).toBe('/');
-    expect(router.state.matches[router.state.matches.length - 1]?.routeId).toBe('/');
+    expect(router.state.matches[router.state.matches.length - 1]?.routeId).toBe('/_app/');
+  });
+
+  it.each([
+    ['/raw', '/_app/raw'],
+    ['/map', '/_app/map'],
+    ['/visualizer', '/_app/visualizer'],
+    ['/search', '/_app/search'],
+    ['/trace', '/_app/trace'],
+    ['/radio-activity', '/_app/radio-activity'],
+  ])('matches the %s tool route directly', async (pathname, routeId) => {
+    const router = createAppRouter(createMemoryHistory({ initialEntries: [pathname] }));
+
+    await router.load();
+
+    expect(router.state.matches[router.state.matches.length - 1]?.routeId).toBe(routeId);
+  });
+
+  it('uses router history for Back and Forward between tool routes', async () => {
+    const router = createAppRouter(createMemoryHistory({ initialEntries: ['/raw'] }));
+    await router.load();
+    await router.navigate({ to: '/map', search: {} });
+
+    router.history.back();
+    await router.load();
+    expect(router.state.location.pathname).toBe('/raw');
+
+    router.history.forward();
+    await router.load();
+    expect(router.state.location.pathname).toBe('/map');
   });
 
   it('renders the application not-found UI for an unknown pathname', async () => {
-    const router = createAppRouter(
-      createMemoryHistory({ initialEntries: ['/does-not-exist'] })
-    );
+    const router = createAppRouter(createMemoryHistory({ initialEntries: ['/does-not-exist'] }));
 
     render(
       <StrictMode>

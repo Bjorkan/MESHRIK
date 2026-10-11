@@ -32,18 +32,6 @@ function resolveConversationFromHash(
   if (!hashConv) return null;
 
   switch (hashConv.type) {
-    case 'raw':
-      return { type: 'raw', id: 'raw', name: 'Raw Packet Feed' };
-    case 'map':
-      return { type: 'map', id: 'map', name: 'Node Map', mapFocusKey: hashConv.mapFocusKey };
-    case 'visualizer':
-      return { type: 'visualizer', id: 'visualizer', name: 'Mesh Visualizer' };
-    case 'search':
-      return { type: 'search', id: 'search', name: 'Message Search' };
-    case 'radio-activity':
-      return { type: 'radio-activity', id: 'radio-activity', name: 'Radio Activity' };
-    case 'trace':
-      return { type: 'trace', id: 'trace', name: 'Trace' };
     case 'channel': {
       const channel = resolveChannelFromHashToken(hashConv.name, channels);
       return channel ? { type: 'channel', id: channel.key, name: channel.name } : null;
@@ -71,6 +59,8 @@ interface UseConversationRouterArgs {
   setSidebarOpen: (open: boolean) => void;
   pendingDeleteFallbackRef: MutableRefObject<boolean>;
   hasSetDefaultConversation: MutableRefObject<boolean>;
+  routeConversation?: Conversation | null;
+  onNavigateConversation?: (conversation: Conversation) => void;
 }
 
 export function useConversationRouter({
@@ -81,8 +71,12 @@ export function useConversationRouter({
   setSidebarOpen,
   pendingDeleteFallbackRef,
   hasSetDefaultConversation,
+  routeConversation,
+  onNavigateConversation,
 }: UseConversationRouterArgs) {
-  const [activeConversation, setActiveConversationState] = useState<Conversation | null>(null);
+  const [activeConversation, setActiveConversationState] = useState<Conversation | null>(
+    routeConversation ?? null
+  );
   const activeConversationRef = useRef<Conversation | null>(null);
   const hashSyncEnabledRef = useRef(
     typeof window !== 'undefined'
@@ -101,64 +95,61 @@ export function useConversationRouter({
     contactsRef.current = contacts;
   }, [contacts]);
 
-  const setActiveConversation = useCallback((conv: Conversation | null) => {
-    hashSyncEnabledRef.current = true;
-    shouldPushHistoryRef.current = true;
-    setActiveConversationState(conv);
-  }, []);
+  const setActiveConversation = useCallback(
+    (conv: Conversation | null) => {
+      if (conv && onNavigateConversation) {
+        onNavigateConversation(conv);
+      } else {
+        hashSyncEnabledRef.current = true;
+        shouldPushHistoryRef.current = true;
+      }
+      setActiveConversationState(conv);
+    },
+    [onNavigateConversation]
+  );
 
   const getPublicChannelConversation = useCallback(
     (): Conversation | null => resolvePublicFromChannels(channels),
     [channels]
   );
 
+  useEffect(() => {
+    if (routeConversation === undefined) return;
+    if (routeConversation) {
+      hasSetDefaultConversation.current = true;
+      setActiveConversationState((current) =>
+        current?.type === routeConversation.type &&
+        current.id === routeConversation.id &&
+        current.mapFocusKey === routeConversation.mapFocusKey
+          ? current
+          : routeConversation
+      );
+      return;
+    }
+
+    if (
+      activeConversation &&
+      activeConversation.type !== 'channel' &&
+      activeConversation.type !== 'contact' &&
+      window.location.hash.length === 0
+    ) {
+      const publicConversation = getPublicChannelConversation();
+      if (publicConversation) setActiveConversationState(publicConversation);
+    }
+  }, [
+    activeConversation,
+    getPublicChannelConversation,
+    hasSetDefaultConversation,
+    routeConversation,
+  ]);
+
   // Phase 1: Set initial conversation from URL hash or default to Public channel
   // Only needs channels (fast path) - doesn't wait for contacts
   useEffect(() => {
     if (hasSetDefaultConversation.current || activeConversation) return;
+    if (routeConversation) return;
 
     const hashConv = parseHashSettingsSection() ? null : parseHashConversation();
-
-    // Handle non-data views immediately
-    if (hashConv?.type === 'raw') {
-      setActiveConversationState({ type: 'raw', id: 'raw', name: 'Raw Packet Feed' });
-      hasSetDefaultConversation.current = true;
-      return;
-    }
-    if (hashConv?.type === 'map') {
-      setActiveConversationState({
-        type: 'map',
-        id: 'map',
-        name: 'Node Map',
-        mapFocusKey: hashConv.mapFocusKey,
-      });
-      hasSetDefaultConversation.current = true;
-      return;
-    }
-    if (hashConv?.type === 'visualizer') {
-      setActiveConversationState({ type: 'visualizer', id: 'visualizer', name: 'Mesh Visualizer' });
-      hasSetDefaultConversation.current = true;
-      return;
-    }
-    if (hashConv?.type === 'search') {
-      setActiveConversationState({ type: 'search', id: 'search', name: 'Message Search' });
-      hasSetDefaultConversation.current = true;
-      return;
-    }
-    if (hashConv?.type === 'radio-activity') {
-      setActiveConversationState({
-        type: 'radio-activity',
-        id: 'radio-activity',
-        name: 'Radio Activity',
-      });
-      hasSetDefaultConversation.current = true;
-      return;
-    }
-    if (hashConv?.type === 'trace') {
-      setActiveConversationState({ type: 'trace', id: 'trace', name: 'Trace' });
-      hasSetDefaultConversation.current = true;
-      return;
-    }
 
     // No hash: optionally restore last-viewed non-data conversation if enabled on this device.
     if (!hashConv && getReopenLastConversationEnabled()) {
@@ -171,7 +162,11 @@ export function useConversationRouter({
           lastViewed.type === 'trace' ||
           lastViewed.type === 'radio-activity')
       ) {
-        setActiveConversationState(lastViewed);
+        if (onNavigateConversation) {
+          onNavigateConversation(lastViewed);
+        } else {
+          setActiveConversationState(lastViewed);
+        }
         hasSetDefaultConversation.current = true;
         return;
       }
@@ -224,11 +219,19 @@ export function useConversationRouter({
       setActiveConversationState(publicConversation);
       hasSetDefaultConversation.current = true;
     }
-  }, [channels, activeConversation, getPublicChannelConversation, hasSetDefaultConversation]);
+  }, [
+    channels,
+    activeConversation,
+    getPublicChannelConversation,
+    hasSetDefaultConversation,
+    onNavigateConversation,
+    routeConversation,
+  ]);
 
   // Phase 2: Resolve contact hash (only if phase 1 didn't set a conversation)
   useEffect(() => {
     if (hasSetDefaultConversation.current || activeConversation) return;
+    if (routeConversation) return;
 
     const hashConv = parseHashSettingsSection() ? null : parseHashConversation();
     if (hashConv?.type === 'contact') {
@@ -289,6 +292,7 @@ export function useConversationRouter({
     contactsLoaded,
     getPublicChannelConversation,
     hasSetDefaultConversation,
+    routeConversation,
   ]);
 
   // Keep ref in sync and update URL hash
@@ -298,7 +302,7 @@ export function useConversationRouter({
       // URL is already correct from the browser's popstate — no update needed
       isHandlingPopstateRef.current = false;
     } else if (activeConversation) {
-      if (hashSyncEnabledRef.current && !suspendHashSync) {
+      if (!onNavigateConversation && hashSyncEnabledRef.current && !suspendHashSync) {
         if (shouldPushHistoryRef.current) {
           shouldPushHistoryRef.current = false;
           pushUrlHash(activeConversation);
@@ -310,7 +314,7 @@ export function useConversationRouter({
     if (activeConversation && activeConversation.type !== 'search') {
       saveLastViewedConversation(activeConversation);
     }
-  }, [activeConversation, suspendHashSync]);
+  }, [activeConversation, onNavigateConversation, suspendHashSync]);
 
   // Respond to browser back/forward by updating the active conversation
   useEffect(() => {
