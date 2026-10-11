@@ -239,6 +239,7 @@ async def _attempt_server_login(
     """
     pubkey_prefix = contact.public_key[:12].lower()
     loop = asyncio.get_running_loop()
+    started = loop.time()
     login_future = loop.create_future()
 
     def _resolve_login(event_type: EventType, message: str | None = None) -> None:
@@ -271,6 +272,12 @@ async def _attempt_server_login(
         login_result = await mc.commands.send_login(contact.public_key, password)
 
         if login_result.type == EventType.ERROR:
+            logger.warning(
+                "Login transport failed for %s %s after %.2fs",
+                contact_label,
+                pubkey_prefix,
+                loop.time() - started,
+            )
             return RepeaterLoginResponse(
                 status="error",
                 authenticated=False,
@@ -278,12 +285,21 @@ async def _attempt_server_login(
             )
 
         try:
-            return await asyncio.wait_for(login_future, timeout=response_timeout)
+            response = await asyncio.wait_for(login_future, timeout=response_timeout)
+            logger.info(
+                "Login response from %s %s after %.2fs (%s)",
+                contact_label,
+                pubkey_prefix,
+                loop.time() - started,
+                "confirmed" if response.authenticated else "rejected",
+            )
+            return response
         except TimeoutError:
             logger.warning(
-                "No login response from %s %s within %.1fs",
+                "No login response from %s %s after %.2fs (limit %.1fs)",
                 contact_label,
-                contact.public_key[:12],
+                pubkey_prefix,
+                loop.time() - started,
                 response_timeout,
             )
             return RepeaterLoginResponse(

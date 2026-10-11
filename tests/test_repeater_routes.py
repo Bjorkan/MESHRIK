@@ -757,7 +757,7 @@ class TestRepeaterLogin:
 
 class TestPrepareRepeaterConnection:
     @pytest.mark.asyncio
-    async def test_returns_success_when_login_confirmed(self):
+    async def test_returns_success_when_login_confirmed(self, caplog):
         mc = _mock_mc()
         contact = _make_contact()
         subscriptions: dict[EventType, tuple[object, object]] = {}
@@ -775,11 +775,16 @@ class TestPrepareRepeaterConnection:
         mc.subscribe = MagicMock(side_effect=_subscribe)
         mc.commands.send_login = AsyncMock(side_effect=_send_login)
 
-        response = await prepare_repeater_connection(mc, contact, "secret")
+        with caplog.at_level("INFO", logger="app.routers.server_control"):
+            response = await prepare_repeater_connection(mc, contact, "secret")
 
         assert response.status == "ok"
         assert response.authenticated is True
         assert response.message is None
+        assert "Login response from repeater" in caplog.text
+        assert "after" in caplog.text
+        assert "secret" not in caplog.text
+        assert KEY_A not in caplog.text
 
     @pytest.mark.asyncio
     async def test_returns_error_when_login_rejected(self):
