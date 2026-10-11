@@ -1,12 +1,13 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { App } from './App';
+import { RouterProvider } from '@tanstack/react-router';
 import './index.css';
 import './themes.css';
 import './styles.css';
 import { getSavedTheme, applyTheme, initFollowOSListener } from './utils/theme';
 import { applyFontScale, getSavedFontScale } from './utils/fontScale';
 import { PushSubscriptionProvider } from './contexts/PushSubscriptionContext';
+import { router } from './router';
 import { registerServiceWorker } from './serviceWorkerRegistration';
 
 // Apply saved theme before first render
@@ -18,7 +19,7 @@ applyFontScale(getSavedFontScale());
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <PushSubscriptionProvider>
-      <App />
+      <RouterProvider router={router} />
     </PushSubscriptionProvider>
   </StrictMode>
 );
