@@ -94,12 +94,15 @@ async def repeater_login(public_key: str, request: RepeaterLoginRequest) -> Repe
             response_timeout=REPEATER_LOGIN_RESPONSE_TIMEOUT_SECONDS,
         )
 
-    async with radio_manager.radio_operation(
+    async def login(mc):
+        return await prepare_repeater_connection(mc, contact, request.password)
+
+    return await radio_manager.run_radio_command(
         "repeater_login",
+        login,
         pause_polling=True,
         suspend_auto_fetch=True,
-    ) as mc:
-        return await prepare_repeater_connection(mc, contact, request.password)
+    )
 
 
 @router.post("/{public_key}/repeater/status", response_model=RepeaterStatusResponse)
@@ -109,16 +112,14 @@ async def repeater_status(public_key: str) -> RepeaterStatusResponse:
     contact = await _resolve_contact_or_404(public_key)
     _require_repeater(contact)
 
-    lpp_raw = None
-    async with radio_manager.radio_operation(
-        "repeater_status", pause_polling=True, suspend_auto_fetch=True
-    ) as mc:
+    async def fetch_status(mc):
         # Ensure contact is on radio for routing
         await _ensure_on_radio(mc, contact)
 
         status = await mc.commands.req_status_sync(contact.public_key, timeout=10, min_timeout=5)
 
         # Best-effort LPP sensor fetch while we still hold the lock
+        lpp_raw = None
         if status is not None:
             try:
                 lpp_raw = await mc.commands.req_telemetry_sync(
@@ -126,6 +127,15 @@ async def repeater_status(public_key: str) -> RepeaterStatusResponse:
                 )
             except Exception as e:
                 logger.debug("LPP sensor fetch failed for %s (non-fatal): %s", public_key[:12], e)
+
+        return status, lpp_raw
+
+    status, lpp_raw = await radio_manager.run_radio_command(
+        "repeater_status",
+        fetch_status,
+        pause_polling=True,
+        suspend_auto_fetch=True,
+    )
 
     if status is None:
         raise HTTPException(status_code=408, detail="No status response from repeater")
@@ -227,14 +237,16 @@ async def repeater_lpp_telemetry(public_key: str) -> RepeaterLppTelemetryRespons
     contact = await _resolve_contact_or_404(public_key)
     _require_repeater(contact)
 
-    async with radio_manager.radio_operation(
-        "repeater_lpp_telemetry", pause_polling=True, suspend_auto_fetch=True
-    ) as mc:
+    async def fetch_telemetry(mc):
         await _ensure_on_radio(mc, contact)
+        return await mc.commands.req_telemetry_sync(contact.public_key, timeout=10, min_timeout=5)
 
-        telemetry = await mc.commands.req_telemetry_sync(
-            contact.public_key, timeout=10, min_timeout=5
-        )
+    telemetry = await radio_manager.run_radio_command(
+        "repeater_lpp_telemetry",
+        fetch_telemetry,
+        pause_polling=True,
+        suspend_auto_fetch=True,
+    )
 
     if telemetry is None:
         raise HTTPException(status_code=408, detail="No telemetry response from repeater")
@@ -256,15 +268,18 @@ async def repeater_neighbors(public_key: str) -> RepeaterNeighborsResponse:
     contact = await _resolve_contact_or_404(public_key)
     _require_repeater(contact)
 
-    async with radio_manager.radio_operation(
-        "repeater_neighbors", pause_polling=True, suspend_auto_fetch=True
-    ) as mc:
+    async def fetch_neighbors(mc):
         # Ensure contact is on radio for routing
         await _ensure_on_radio(mc, contact)
 
-        neighbors_data = await mc.commands.fetch_all_neighbours(
-            contact.public_key, timeout=10, min_timeout=5
-        )
+        return await mc.commands.fetch_all_neighbours(contact.public_key, timeout=10, min_timeout=5)
+
+    neighbors_data = await radio_manager.run_radio_command(
+        "repeater_neighbors",
+        fetch_neighbors,
+        pause_polling=True,
+        suspend_auto_fetch=True,
+    )
 
     neighbors: list[NeighborInfo] = []
     if neighbors_data and "neighbours" in neighbors_data:
@@ -291,13 +306,17 @@ async def repeater_acl(public_key: str) -> RepeaterAclResponse:
     contact = await _resolve_contact_or_404(public_key)
     _require_repeater(contact)
 
-    async with radio_manager.radio_operation(
-        "repeater_acl", pause_polling=True, suspend_auto_fetch=True
-    ) as mc:
+    async def fetch_acl(mc):
         # Ensure contact is on radio for routing
         await _ensure_on_radio(mc, contact)
+        return await mc.commands.req_acl_sync(contact.public_key, timeout=10, min_timeout=5)
 
-        acl_data = await mc.commands.req_acl_sync(contact.public_key, timeout=10, min_timeout=5)
+    acl_data = await radio_manager.run_radio_command(
+        "repeater_acl",
+        fetch_acl,
+        pause_polling=True,
+        suspend_auto_fetch=True,
+    )
 
     acl_entries: list[AclEntry] = []
     if acl_data and isinstance(acl_data, list):
@@ -533,10 +552,16 @@ async def _fetch_anon_flood_allowed_regions(contact: Contact) -> list[RepeaterRe
     Returns ``None`` when the repeater does not answer (older firmware, out of
     range) so the caller can leave the pane empty.
     """
-    async with radio_manager.radio_operation(
-        "repeater_regions_anon", pause_polling=True, suspend_auto_fetch=True
-    ) as mc:
-        names = await request_anon_region_names(mc, contact)
+
+    async def fetch_regions(mc):
+        return await request_anon_region_names(mc, contact)
+
+    names = await radio_manager.run_radio_command(
+        "repeater_regions_anon",
+        fetch_regions,
+        pause_polling=True,
+        suspend_auto_fetch=True,
+    )
 
     if names is None:
         return None

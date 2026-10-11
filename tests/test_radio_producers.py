@@ -353,9 +353,6 @@ def test_legacy_radio_operation_bridge_has_a_closed_migration_allowlist():
     root = Path(__file__).resolve().parents[1]
     allowed = {
         "app/radio_sync.py",  # bounded background contact-reconcile batches
-        "app/routers/repeaters.py",  # issue #43 server response sessions
-        "app/routers/rooms.py",  # issue #43 server response sessions
-        "app/routers/server_control.py",  # issue #43 CLI response sessions
         "app/services/message_send.py",  # issue #42 send/restore transactions
         "app/services/radio_runtime.py",  # transport seam implementation
     }

@@ -437,11 +437,7 @@ async def batch_cli_fetch(
             # Yield briefly so queued operations can acquire the lock.
             await asyncio.sleep(0.25)
 
-        async with radio_manager.radio_operation(
-            operation_name,
-            pause_polling=True,
-            suspend_auto_fetch=True,
-        ) as mc:
+        async def fetch_one(mc, cmd=cmd, field=field):
             # Re-ensure contact is loaded each iteration; another operation
             # may have evicted it while we didn't hold the lock.
             await _ensure_on_radio(mc, contact)
@@ -454,15 +450,22 @@ async def batch_cli_fetch(
             send_result = await mc.commands.send_cmd(contact.public_key, cmd)
             if send_result.type == EventType.ERROR:
                 logger.debug("Command '%s' send error: %s", cmd, send_result.payload)
-                continue
+                return None
 
             response_event = await fetch_contact_cli_response(
                 mc, contact.public_key[:12], timeout=10.0
             )
             if response_event is not None:
-                results[field] = extract_response_text(response_event)
-            else:
-                logger.warning("No response for command '%s' (%s)", cmd, field)
+                return extract_response_text(response_event)
+            logger.warning("No response for command '%s' (%s)", cmd, field)
+            return None
+
+        results[field] = await radio_manager.run_radio_command(
+            operation_name,
+            fetch_one,
+            pause_polling=True,
+            suspend_auto_fetch=True,
+        )
 
     return results
 
@@ -522,9 +525,8 @@ async def fetch_repeater_owner_info_binary(
     firmware (level < 2), not logged in, or out of range — so callers can fall
     back or leave the fields blank. See issue #306.
     """
-    async with radio_manager.radio_operation(
-        operation_name, pause_polling=True, suspend_auto_fetch=True
-    ) as mc:
+
+    async def fetch_owner_info(mc):
         # Ensure contact is on radio for reply routing.
         await _ensure_on_radio(mc, contact)
         await asyncio.sleep(1.0)  # settle after add_contact
@@ -563,7 +565,14 @@ async def fetch_repeater_owner_info_binary(
             )
             return None
 
-    return _parse_owner_info_payload(response.payload.get("data", ""))
+        return _parse_owner_info_payload(response.payload.get("data", ""))
+
+    return await radio_manager.run_radio_command(
+        operation_name,
+        fetch_owner_info,
+        pause_polling=True,
+        suspend_auto_fetch=True,
+    )
 
 
 async def send_contact_cli_command(
@@ -575,11 +584,7 @@ async def send_contact_cli_command(
     """Send a CLI command to a server-capable contact and return the text response."""
     label = get_server_contact_label(contact)
 
-    async with radio_manager.radio_operation(
-        operation_name,
-        pause_polling=True,
-        suspend_auto_fetch=True,
-    ) as mc:
+    async def send_command(mc) -> CommandResponse:
         logger.info("Adding %s %s to radio", label, contact.public_key[:12])
         await _ensure_on_radio(mc, contact)
         await asyncio.sleep(1.0)
@@ -627,6 +632,13 @@ async def send_contact_cli_command(
             response=response_text,
             sender_timestamp=sender_timestamp,
         )
+
+    return await radio_manager.run_radio_command(
+        operation_name,
+        send_command,
+        pause_polling=True,
+        suspend_auto_fetch=True,
+    )
 
 
 async def scheduled_authenticated_contact_login(

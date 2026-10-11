@@ -39,17 +39,20 @@ async def room_login(public_key: str, request: RepeaterLoginRequest) -> Repeater
             contact, request.password, label="room server"
         )
 
-    async with radio_manager.radio_operation(
-        "room_login",
-        pause_polling=True,
-        suspend_auto_fetch=True,
-    ) as mc:
+    async def login(mc):
         return await prepare_authenticated_contact_connection(
             mc,
             contact,
             request.password,
             label="room server",
         )
+
+    return await radio_manager.run_radio_command(
+        "room_login",
+        login,
+        pause_polling=True,
+        suspend_auto_fetch=True,
+    )
 
 
 @router.post("/{public_key}/room/status", response_model=RepeaterStatusResponse)
@@ -59,11 +62,16 @@ async def room_status(public_key: str) -> RepeaterStatusResponse:
     contact = await _resolve_contact_or_404(public_key)
     _require_room(contact)
 
-    async with radio_manager.radio_operation(
-        "room_status", pause_polling=True, suspend_auto_fetch=True
-    ) as mc:
+    async def fetch_status(mc):
         await _ensure_on_radio(mc, contact)
-        status = await mc.commands.req_status_sync(contact.public_key, timeout=10, min_timeout=5)
+        return await mc.commands.req_status_sync(contact.public_key, timeout=10, min_timeout=5)
+
+    status = await radio_manager.run_radio_command(
+        "room_status",
+        fetch_status,
+        pause_polling=True,
+        suspend_auto_fetch=True,
+    )
 
     if status is None:
         raise HTTPException(status_code=408, detail="No status response from room server")
@@ -97,13 +105,16 @@ async def room_lpp_telemetry(public_key: str) -> RepeaterLppTelemetryResponse:
     contact = await _resolve_contact_or_404(public_key)
     _require_room(contact)
 
-    async with radio_manager.radio_operation(
-        "room_lpp_telemetry", pause_polling=True, suspend_auto_fetch=True
-    ) as mc:
+    async def fetch_telemetry(mc):
         await _ensure_on_radio(mc, contact)
-        telemetry = await mc.commands.req_telemetry_sync(
-            contact.public_key, timeout=10, min_timeout=5
-        )
+        return await mc.commands.req_telemetry_sync(contact.public_key, timeout=10, min_timeout=5)
+
+    telemetry = await radio_manager.run_radio_command(
+        "room_lpp_telemetry",
+        fetch_telemetry,
+        pause_polling=True,
+        suspend_auto_fetch=True,
+    )
 
     if telemetry is None:
         raise HTTPException(status_code=408, detail="No telemetry response from room server")
@@ -126,11 +137,16 @@ async def room_acl(public_key: str) -> RepeaterAclResponse:
     contact = await _resolve_contact_or_404(public_key)
     _require_room(contact)
 
-    async with radio_manager.radio_operation(
-        "room_acl", pause_polling=True, suspend_auto_fetch=True
-    ) as mc:
+    async def fetch_acl(mc):
         await _ensure_on_radio(mc, contact)
-        acl_data = await mc.commands.req_acl_sync(contact.public_key, timeout=10, min_timeout=5)
+        return await mc.commands.req_acl_sync(contact.public_key, timeout=10, min_timeout=5)
+
+    acl_data = await radio_manager.run_radio_command(
+        "room_acl",
+        fetch_acl,
+        pause_polling=True,
+        suspend_auto_fetch=True,
+    )
 
     acl_entries = []
     if acl_data and isinstance(acl_data, list):
