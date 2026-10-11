@@ -72,6 +72,26 @@ _LOW = {
     "community_stats_fetch",
 }
 
+# These deadlines bound the complete legacy-compatible command section. RF
+# waits inside each operation have their own shorter protocol timeout; the
+# worker deadline is the final fail-closed ceiling visible in Radio Activity.
+_COMMAND_TIMEOUT_SECONDS = {
+    "discover_mesh": 20,
+    "radio_trace": 60,
+    "request_trace": 60,
+    "request_path_discovery": 45,
+    "contact_telemetry": 45,
+    "repeater_status": 55,
+    "repeater_lpp_telemetry": 45,
+    "repeater_neighbors": 45,
+    "repeater_acl": 45,
+    "repeater_regions_anon": 45,
+    "room_status": 45,
+    "room_lpp_telemetry": 45,
+    "room_acl": 45,
+    "debug_support_snapshot": 60,
+}
+
 
 def classify_operation(name: str) -> tuple[RadioJobKind, RadioJobPriority]:
     if name in _HIGH:
@@ -95,6 +115,15 @@ def classify_operation(name: str) -> tuple[RadioJobKind, RadioJobPriority]:
             RadioJobKind.REPEATER_LOGIN if name == "repeater_login" else RadioJobKind.ROOM_LOGIN,
             RadioJobPriority.NORMAL,
         )
+    if name in ("radio_trace", "request_trace"):
+        return RadioJobKind.TRACE, RadioJobPriority.NORMAL
+    if name.startswith(("repeater_", "room_")) or name == "send_repeater_command":
+        return RadioJobKind.SERVER_QUERY, RadioJobPriority.NORMAL
+    if name in (
+        "contact_telemetry",
+        "set_routing_override_on_radio",
+    ):
+        return RadioJobKind.CONTACT_QUERY, RadioJobPriority.NORMAL
     if "advertisement" in name:
         return RadioJobKind.ADVERTISEMENT, RadioJobPriority.NORMAL
     if name in ("update_radio_config", "set_flood_scope", "import_private_key"):
@@ -102,6 +131,11 @@ def classify_operation(name: str) -> tuple[RadioJobKind, RadioJobPriority]:
     if "discover" in name or "trace" in name:
         return RadioJobKind.DISCOVERY, RadioJobPriority.NORMAL
     return RadioJobKind.RADIO_QUERY, RadioJobPriority.NORMAL
+
+
+def command_timeout_for_operation(name: str) -> float:
+    """Return a bounded worker deadline without exposing operation parameters."""
+    return float(_COMMAND_TIMEOUT_SECONDS.get(name, 120))
 
 
 @dataclass
@@ -275,7 +309,7 @@ async def scheduled_radio_operation(
             critical_section,
             priority=priority,
             radio_options=operation_options,
-            command_timeout_seconds=120,
+            command_timeout_seconds=command_timeout_for_operation(name),
             response_timeout_seconds=180 if kind == RadioJobKind.DIRECT_MESSAGE else 30,
             queue_timeout_seconds=180 if defer_when_busy else (5 if not blocking else 60),
             scope=coalesce_scope if coalesce_key else "global",

@@ -296,3 +296,28 @@ def test_radio_stats_samples_have_distinct_low_priority_job_kind():
         RadioJobKind.PERIODIC_SYNC,
         RadioJobPriority.LOW,
     )
+
+
+@pytest.mark.parametrize(
+    ("operation", "expected_kind", "expected_timeout"),
+    [
+        ("discover_mesh", RadioJobKind.DISCOVERY, 20),
+        ("discover_regions", RadioJobKind.DISCOVERY, 120),
+        ("radio_trace", RadioJobKind.TRACE, 60),
+        ("request_trace", RadioJobKind.TRACE, 60),
+        ("request_path_discovery", RadioJobKind.DISCOVERY, 45),
+        ("contact_telemetry", RadioJobKind.CONTACT_QUERY, 45),
+        ("repeater_status", RadioJobKind.SERVER_QUERY, 55),
+        ("repeater_node_info", RadioJobKind.SERVER_QUERY, 120),
+        ("room_status", RadioJobKind.SERVER_QUERY, 45),
+        ("debug_support_snapshot", RadioJobKind.RADIO_QUERY, 60),
+    ],
+)
+def test_user_radio_operations_have_visible_kinds_and_bounded_deadlines(
+    operation, expected_kind, expected_timeout
+):
+    assert producers.classify_operation(operation) == (
+        expected_kind,
+        RadioJobPriority.NORMAL,
+    )
+    assert producers.command_timeout_for_operation(operation) == expected_timeout
