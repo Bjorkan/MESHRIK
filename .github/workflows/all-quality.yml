@@ -92,6 +92,10 @@ jobs:
         env:
           NODE_OPTIONS: --no-experimental-webstorage
 
+      - name: Frontend Docker-context typecheck
+        run: npm run docker:typecheck
+        working-directory: frontend
+
       - name: Frontend build
         run: npm run build
         working-directory: frontend

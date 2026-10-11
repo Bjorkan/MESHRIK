@@ -80,6 +80,11 @@ fi
 rm -f "$vitest_log"
 echo -e "${GREEN}Passed!${NC}"
 
+echo -ne "${BLUE}[docker typecheck]${NC} "
+cd "$REPO_ROOT/frontend"
+npm run docker:typecheck --silent
+echo -e "${GREEN}Passed!${NC}"
+
 echo -ne "${BLUE}[build]${NC} "
 cd "$REPO_ROOT/frontend"
 npx --quiet tsc 2>&1

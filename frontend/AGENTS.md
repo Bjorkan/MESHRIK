@@ -543,8 +543,15 @@ Or run frontend checks individually:
 ```bash
 cd frontend
 npm run test:run
+npm run docker:typecheck
 npm run build
 ```
+
+`npm run docker:typecheck` reproduces TypeScript's Docker build inputs: the
+root `.dockerignore` excludes `frontend/src/test/`, including the Vitest
+setup file that registers jest-dom matchers. The declaration-only import at
+`src/types/testing-matchers.d.ts` must remain outside that excluded directory
+so component test files elsewhere in `src/` still type-check during GHCR builds.
 
 `npm run packaged-build` is release-only. It writes the fallback `frontend/prebuilt`
 directory used by the downloadable prebuilt release zip; normal development and
