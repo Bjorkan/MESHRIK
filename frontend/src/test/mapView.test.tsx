@@ -1,8 +1,9 @@
 import { forwardRef, useImperativeHandle } from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MapView } from '../components/MapView';
 import type { Contact } from '../types';
+import { THEME_CHANGE_EVENT } from '../utils/theme';
 
 vi.mock('react-map-gl/maplibre', () => {
   const mapApi = {
@@ -42,6 +43,8 @@ vi.mock('react-map-gl/maplibre', () => {
 });
 
 describe('MapView', () => {
+  beforeEach(() => localStorage.clear());
+
   it('follows the dark default app theme with the Dark style', () => {
     render(<MapView contacts={[]} />);
 
@@ -64,6 +67,23 @@ describe('MapView', () => {
     } finally {
       localStorage.removeItem('meshrik-theme');
     }
+  });
+
+  it('switches an auto basemap in place when the app theme changes', async () => {
+    const { container } = render(<MapView contacts={[]} />);
+    const originalMap = screen.getByTestId('maplibre-map');
+
+    localStorage.setItem('meshrik-theme', 'light');
+    window.dispatchEvent(new CustomEvent(THEME_CHANGE_EVENT, { detail: 'light' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('maplibre-map')).toHaveAttribute(
+        'data-map-style',
+        'https://tiles.openfreemap.org/styles/liberty'
+      );
+    });
+    expect(screen.getByTestId('maplibre-map')).toBe(originalMap);
+    expect(container.querySelectorAll('[data-testid="maplibre-map"]')).toHaveLength(1);
   });
 
   it('renders a never-heard fallback for a focused contact without last_seen', () => {

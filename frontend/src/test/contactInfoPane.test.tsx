@@ -30,7 +30,16 @@ vi.mock('../components/ContactAvatar', () => ({
 }));
 
 vi.mock('react-map-gl/maplibre', () => ({
-  default: () => null,
+  default: ({
+    children,
+    attributionControl,
+  }: {
+    children: React.ReactNode;
+    attributionControl?: boolean;
+  }) => <div data-default-attribution={String(attributionControl)}>{children}</div>,
+  AttributionControl: ({ compact }: { compact?: boolean }) => (
+    <div data-testid="embedded-attribution" data-compact={String(compact)} />
+  ),
   Marker: () => null,
   Popup: () => null,
 }));
@@ -284,5 +293,33 @@ describe('ContactInfoPane', () => {
 
     expect(onClose).toHaveBeenCalledOnce();
     expect(windowOpen).not.toHaveBeenCalled();
+  });
+
+  it('uses collapsed attribution in the contact telemetry map', async () => {
+    const contact = createContact();
+    getContactAnalytics.mockResolvedValue(createAnalytics(contact));
+    contactTelemetryHistory.mockResolvedValue([
+      {
+        timestamp: 1_700_000_000,
+        data: {
+          lpp_sensors: [
+            {
+              channel: 1,
+              type_name: 'gps',
+              value: { latitude: 59.3293, longitude: 18.0686 },
+            },
+          ],
+        },
+      },
+    ]);
+
+    render(<ContactInfoPane {...baseProps} contactKey={contact.public_key} />);
+    fireEvent.click(await screen.findByRole('button', { name: /GPS:/ }));
+
+    expect(screen.getByTestId('embedded-attribution')).toHaveAttribute('data-compact', 'true');
+    expect(screen.getByTestId('embedded-attribution').parentElement).toHaveAttribute(
+      'data-default-attribution',
+      'false'
+    );
   });
 });
