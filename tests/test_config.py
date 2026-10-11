@@ -139,3 +139,13 @@ class TestRadioTimeoutConfiguration:
 
         with pytest.raises(ValidationError):
             Settings(radio_operation_lock_timeout_seconds=121)
+
+    def test_add_contact_timeout_is_bounded(self):
+        settings = Settings(radio_add_contact_timeout_seconds=12.5)
+        assert settings.radio_add_contact_timeout_seconds == 12.5
+
+        with pytest.raises(ValidationError):
+            Settings(radio_add_contact_timeout_seconds=0.5)
+
+        with pytest.raises(ValidationError):
+            Settings(radio_add_contact_timeout_seconds=121)

@@ -9,6 +9,7 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from meshcore import EventType
 from pydantic import BaseModel, Field
 
+from app.config import settings as radio_settings
 from app.models import (
     Contact,
     ContactActiveRoom,
@@ -74,9 +75,39 @@ async def _resolve_contact_or_404(
     return contact
 
 
-async def _ensure_on_radio(mc, contact: Contact) -> None:
-    """Add a contact to the radio for routing, raising 422 on failure."""
-    add_result = await mc.commands.add_contact(contact.to_radio_dict())
+async def _ensure_on_radio(
+    mc,
+    contact: Contact,
+    *,
+    timeout_seconds: float | None = None,
+) -> None:
+    """Add a contact with a bounded transport wait, raising a controlled API error."""
+    timeout = (
+        radio_settings.radio_add_contact_timeout_seconds
+        if timeout_seconds is None
+        else timeout_seconds
+    )
+    started = asyncio.get_running_loop().time()
+    try:
+        add_result = await asyncio.wait_for(
+            mc.commands.add_contact(contact.to_radio_dict()),
+            timeout=timeout,
+        )
+    except TimeoutError as exc:
+        elapsed = asyncio.get_running_loop().time() - started
+        logger.warning(
+            "Radio add_contact timed out for %s after %.2fs (limit %.2fs)",
+            contact.public_key[:12],
+            elapsed,
+            timeout,
+        )
+        raise HTTPException(
+            status_code=504,
+            detail=(
+                "Timed out while preparing the contact on the radio. "
+                "The command outcome is unknown; check Radio Activity before retrying."
+            ),
+        ) from exc
     if add_result is not None and add_result.type == EventType.ERROR:
         raise HTTPException(
             status_code=422, detail=f"Failed to add contact to radio: {add_result.payload}"

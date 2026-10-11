@@ -6,13 +6,17 @@ historical decrypt, and routing override endpoints.
 Uses httpx.AsyncClient with real in-memory SQLite database.
 """
 
+import asyncio
 from contextlib import asynccontextmanager
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from fastapi import HTTPException
 from meshcore import EventType
 
 from app.repository import ContactAdvertPathRepository, ContactRepository, MessageRepository
+from app.routers.contacts import _ensure_on_radio
 
 # Sample 64-char hex public keys for testing
 KEY_A = "aa" * 32  # aaaa...aa
@@ -57,6 +61,63 @@ async def _insert_contact(public_key=KEY_A, name="Alice", on_radio=False, **over
     }
     data.update(overrides)
     await ContactRepository.upsert(data)
+
+
+class TestEnsureContactOnRadio:
+    @staticmethod
+    def contact():
+        return SimpleNamespace(public_key=KEY_A, to_radio_dict=lambda: {"public_key": KEY_A})
+
+    @pytest.mark.asyncio
+    async def test_success_and_device_error_behavior_is_preserved(self):
+        mc = SimpleNamespace(commands=SimpleNamespace(add_contact=AsyncMock(return_value=None)))
+        await _ensure_on_radio(mc, self.contact(), timeout_seconds=0.1)
+
+        mc.commands.add_contact.return_value = _radio_result(EventType.ERROR, {"reason": "full"})
+        with pytest.raises(HTTPException) as caught:
+            await _ensure_on_radio(mc, self.contact(), timeout_seconds=0.1)
+        assert caught.value.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_timeout_cancels_command_and_next_attempt_can_recover(self):
+        cancelled = asyncio.Event()
+
+        async def hanging_add(_payload):
+            try:
+                await asyncio.Event().wait()
+            finally:
+                cancelled.set()
+
+        mc = SimpleNamespace(
+            commands=SimpleNamespace(add_contact=AsyncMock(side_effect=hanging_add))
+        )
+        with pytest.raises(HTTPException) as caught:
+            await _ensure_on_radio(mc, self.contact(), timeout_seconds=0.01)
+
+        assert caught.value.status_code == 504
+        assert "outcome is unknown" in caught.value.detail
+        assert cancelled.is_set()
+
+        mc.commands.add_contact = AsyncMock(return_value=_radio_result())
+        await _ensure_on_radio(mc, self.contact(), timeout_seconds=0.1)
+
+    @pytest.mark.asyncio
+    async def test_caller_cancellation_propagates_and_cleans_up_command(self):
+        cancelled = asyncio.Event()
+
+        async def hanging_add(_payload):
+            try:
+                await asyncio.Event().wait()
+            finally:
+                cancelled.set()
+
+        mc = SimpleNamespace(commands=SimpleNamespace(add_contact=hanging_add))
+        task = asyncio.create_task(_ensure_on_radio(mc, self.contact(), timeout_seconds=1))
+        await asyncio.sleep(0)
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+        assert cancelled.is_set()
 
 
 class TestListContacts:

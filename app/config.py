@@ -65,6 +65,8 @@ class Settings(BaseSettings):
     # Final safety bound for lifecycle/legacy callers waiting on the raw radio lock.
     # Scheduled producers normally wait in the observable worker queue instead.
     radio_operation_lock_timeout_seconds: float = Field(default=15.0, ge=0.1, le=120.0)
+    # Transport deadline for staging a contact before routed radio commands.
+    radio_add_contact_timeout_seconds: float = Field(default=25.0, ge=1.0, le=120.0)
     basic_auth_username: str = ""
     basic_auth_password: str = ""
     vapid_subject: str = "mailto:noreply@meshcore.local"
