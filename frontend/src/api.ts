@@ -97,6 +97,69 @@ type DeepPartial<T> = T extends readonly (infer Item)[]
     ? { [Key in keyof T]?: DeepPartial<T[Key]> }
     : T;
 
+const MAX_ERROR_MESSAGE_LENGTH = 300;
+const PROXY_ERROR_MESSAGES: Readonly<Record<number, string>> = {
+  502: 'Upstream service returned an invalid response',
+  503: 'Service temporarily unavailable',
+  504: 'Request timed out upstream',
+  524: 'Request timed out upstream',
+};
+
+function statusErrorMessage(status: number, statusText: string): string {
+  const prefix = PROXY_ERROR_MESSAGES[status] ?? 'Request failed';
+  const suffix = statusText && !PROXY_ERROR_MESSAGES[status] ? ` ${statusText}` : '';
+  const retryHint =
+    status === 504 || status === 524
+      ? ' The radio operation may still have completed; check Radio Activity before retrying.'
+      : '';
+  return `${prefix} (HTTP ${status}${suffix}).${retryHint}`;
+}
+
+function safeTextError(text: string): string | null {
+  const withoutControls = Array.from(text, (character) => {
+    const code = character.charCodeAt(0);
+    return code < 32 || code === 127 ? ' ' : character;
+  }).join('');
+  const normalized = withoutControls.replace(/\s+/g, ' ').trim();
+  if (!normalized || /<(?:!doctype|html|head|body|script|style)\b/i.test(normalized)) return null;
+  return normalized.length <= MAX_ERROR_MESSAGE_LENGTH
+    ? normalized
+    : `${normalized.slice(0, MAX_ERROR_MESSAGE_LENGTH - 1)}\u2026`;
+}
+
+function fastApiDetailMessage(value: unknown): string | null {
+  if (typeof value === 'string') return safeTextError(value);
+  if (!Array.isArray(value)) return null;
+  const messages = value
+    .map((entry) => {
+      if (!entry || typeof entry !== 'object' || !('msg' in entry)) return null;
+      return typeof entry.msg === 'string' ? safeTextError(entry.msg) : null;
+    })
+    .filter((message): message is string => Boolean(message));
+  return messages.length > 0 ? safeTextError(messages.join('; ')) : null;
+}
+
+function responseErrorMessage(res: Response, text: string): string {
+  let parsedJson = false;
+  try {
+    const parsed: unknown = JSON.parse(text);
+    parsedJson = true;
+    if (parsed && typeof parsed === 'object' && 'detail' in parsed) {
+      const detail = fastApiDetailMessage(parsed.detail);
+      if (detail) return detail;
+    }
+  } catch {
+    // Non-JSON responses are handled below without exposing markup.
+  }
+
+  const contentType = res.headers?.get?.('content-type')?.toLowerCase() ?? '';
+  if (!parsedJson && !contentType.includes('html') && !PROXY_ERROR_MESSAGES[res.status]) {
+    const safeText = safeTextError(text);
+    if (safeText) return safeText;
+  }
+  return statusErrorMessage(res.status, res.statusText);
+}
+
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
   const hasBody = options?.body !== undefined;
   const res = await fetch(`${API_BASE}${url}`, {
@@ -108,17 +171,7 @@ async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
   });
   if (!res.ok) {
     const errorText = await res.text();
-    // FastAPI returns errors as {"detail": "message"}, extract the message
-    let errorMessage = errorText || res.statusText;
-    try {
-      const errorJson = JSON.parse(errorText);
-      if (errorJson.detail) {
-        errorMessage = errorJson.detail;
-      }
-    } catch {
-      // Not JSON, use raw text
-    }
-    throw new Error(errorMessage);
+    throw new Error(responseErrorMessage(res, errorText));
   }
   return res.json();
 }

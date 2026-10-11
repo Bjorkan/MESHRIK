@@ -157,10 +157,12 @@ describe('fetchJson (via api methods)', () => {
         text: () => Promise.resolve(''),
       });
 
-      await expect(api.getHealth()).rejects.toThrow('Bad Gateway');
+      await expect(api.getHealth()).rejects.toThrow(
+        'Upstream service returned an invalid response (HTTP 502).'
+      );
     });
 
-    it('uses raw text when JSON lacks detail field', async () => {
+    it('uses a bounded status error when JSON lacks a detail field', async () => {
       installMockFetch();
       mockFetch.mockResolvedValueOnce({
         ok: false,
@@ -169,7 +171,65 @@ describe('fetchJson (via api methods)', () => {
         text: () => Promise.resolve('{"error": "validation failed"}'),
       });
 
-      await expect(api.getHealth()).rejects.toThrow('{"error": "validation failed"}');
+      await expect(api.getHealth()).rejects.toThrow(
+        'Request failed (HTTP 422 Unprocessable Entity).'
+      );
+    });
+
+    it.each([
+      [502, 'Bad Gateway', 'Upstream service returned an invalid response (HTTP 502).'],
+      [503, 'Service Unavailable', 'Service temporarily unavailable (HTTP 503).'],
+      [504, 'Gateway Timeout', 'Request timed out upstream (HTTP 504).'],
+      [524, 'A Timeout Occurred', 'Request timed out upstream (HTTP 524).'],
+    ])('sanitizes HTML proxy errors for HTTP %i', async (status, statusText, expected) => {
+      installMockFetch();
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status,
+        statusText,
+        headers: { get: () => 'text/html; charset=UTF-8' },
+        text: () =>
+          Promise.resolve(
+            '<!DOCTYPE html><html><script>privateProxyContext()</script><body>huge page</body></html>'
+          ),
+      });
+
+      const error = await api.getHealth().catch((caught: unknown) => caught);
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toContain(expected);
+      expect((error as Error).message).not.toMatch(/html|script|privateProxyContext/i);
+    });
+
+    it('extracts FastAPI validation messages without serializing the response object', async () => {
+      installMockFetch();
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 422,
+        statusText: 'Unprocessable Entity',
+        headers: { get: () => 'application/json' },
+        text: () =>
+          Promise.resolve(
+            JSON.stringify({ detail: [{ loc: ['body', 'name'], msg: 'Field required' }] })
+          ),
+      });
+
+      await expect(api.getHealth()).rejects.toThrow('Field required');
+    });
+
+    it('truncates long plain-text failures', async () => {
+      installMockFetch();
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        statusText: 'Internal Server Error',
+        headers: { get: () => 'text/plain' },
+        text: () => Promise.resolve('x'.repeat(10_000)),
+      });
+
+      const error = await api.getHealth().catch((caught: unknown) => caught);
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message.length).toBeLessThanOrEqual(300);
+      expect((error as Error).message).toMatch(/\u2026$/);
     });
   });
 
