@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 import { ContactInfoPane } from '../components/ContactInfoPane';
@@ -260,5 +260,29 @@ describe('ContactInfoPane', () => {
     button.click();
 
     expect(baseProps.onSearchMessagesByKey).toHaveBeenCalledWith(contact.public_key);
+  });
+
+  it('opens contact coordinates in the current map view and closes the pane', async () => {
+    const contact = createContact({ lat: 59.3293, lon: 18.0686 });
+    const onClose = vi.fn();
+    const windowOpen = vi.spyOn(window, 'open');
+    getContactAnalytics.mockResolvedValue(createAnalytics(contact));
+
+    render(
+      <ContactInfoPane
+        {...baseProps}
+        contactKey={contact.public_key}
+        contacts={[contact]}
+        onClose={onClose}
+      />
+    );
+
+    const mapLink = await screen.findByRole('link', { name: 'View Alice on map' });
+    expect(mapLink).toHaveAttribute('href', `#map/focus/${contact.public_key}`);
+    expect(mapLink).not.toHaveAttribute('target');
+    fireEvent.click(mapLink);
+
+    expect(onClose).toHaveBeenCalledOnce();
+    expect(windowOpen).not.toHaveBeenCalled();
   });
 });

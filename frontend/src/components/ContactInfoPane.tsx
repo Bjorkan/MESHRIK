@@ -407,22 +407,15 @@ export function ContactInfoPane({
             {isValidLocation(contact.lat, contact.lon) && (
               <div className="px-5 py-3 border-b border-border">
                 <SectionLabel>Location</SectionLabel>
-                <span
+                <a
+                  href={getMapFocusHash(contact.public_key)}
                   className="text-sm font-mono cursor-pointer hover:text-primary hover:underline transition-colors"
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={handleKeyboardActivate}
-                  onClick={() => {
-                    const url =
-                      window.location.origin +
-                      window.location.pathname +
-                      getMapFocusHash(contact.public_key);
-                    window.open(url, '_blank');
-                  }}
+                  onClick={onClose}
+                  aria-label={`View ${getContactDisplayName(contact.name, contact.public_key, contact.last_advert)} on map`}
                   title="View on map"
                 >
                   {contact.lat!.toFixed(5)}, {contact.lon!.toFixed(5)}
-                </span>
+                </a>
               </div>
             )}
 
