@@ -41,7 +41,16 @@ describe('useWebSocket lifecycle', () => {
 
   afterEach(() => {
     globalThis.WebSocket = originalWebSocket;
+    window.history.replaceState(null, '', '/');
     vi.useRealTimers();
+  });
+
+  it('connects to the root API from a nested pathname', () => {
+    window.history.replaceState(null, '', '/channel/example');
+
+    renderHook(() => useWebSocket({}));
+
+    expect(MockWebSocket.instances[0].url).toBe('ws://localhost:3000/api/ws');
   });
 
   it('does not reconnect after hook unmount cleanup', () => {

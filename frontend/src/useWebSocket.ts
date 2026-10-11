@@ -55,11 +55,9 @@ export function useWebSocket(options: UseWebSocketOptions) {
   // Connect function - uses ref for handlers to avoid stale closures
   // No dependencies needed since we access handlers through ref
   const connect = useCallback(() => {
-    // Determine WebSocket URL based on current location
+    // Always connect at the application origin, regardless of the active route.
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    // Resolve relative to the page so sub-path reverse proxies work
-    const base = new URL('./api/ws', window.location.href);
-    const wsUrl = `${protocol}//${base.host}${base.pathname}`;
+    const wsUrl = `${protocol}//${window.location.host}/api/ws`;
 
     const ws = new WebSocket(wsUrl);
 

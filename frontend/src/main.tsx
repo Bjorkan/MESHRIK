@@ -7,6 +7,7 @@ import './styles.css';
 import { getSavedTheme, applyTheme, initFollowOSListener } from './utils/theme';
 import { applyFontScale, getSavedFontScale } from './utils/fontScale';
 import { PushSubscriptionProvider } from './contexts/PushSubscriptionContext';
+import { registerServiceWorker } from './serviceWorkerRegistration';
 
 // Apply saved theme before first render
 applyTheme(getSavedTheme());
@@ -23,8 +24,4 @@ createRoot(document.getElementById('root')!).render(
 );
 
 // Register service worker for Web Push (requires secure context)
-if ('serviceWorker' in navigator && window.isSecureContext) {
-  navigator.serviceWorker.register('./sw.js').catch((err) => {
-    console.warn('Service worker registration failed:', err);
-  });
-}
+registerServiceWorker();

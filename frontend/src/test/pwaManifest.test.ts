@@ -27,13 +27,13 @@ describe('development PWA manifest', () => {
 
     expect(manifest.name).toBe('MESHRIK for MeshCore');
     expect(manifest.short_name).toBe('MESHRIK');
-    expect(manifest.id).toBe('./');
-    expect(manifest.start_url).toBe('./');
-    expect(manifest.scope).toBe('./');
+    expect(manifest.id).toBe('/');
+    expect(manifest.start_url).toBe('/');
+    expect(manifest.scope).toBe('/');
 
     for (const asset of [...manifest.icons, ...manifest.screenshots]) {
       expect(asset.type).toBe('image/png');
-      expect(existsSync(resolve(publicDir, asset.src.replace(/^\.\//, '')))).toBe(true);
+      expect(existsSync(resolve(publicDir, asset.src.replace(/^\//, '')))).toBe(true);
     }
   });
 

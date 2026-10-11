@@ -39,16 +39,7 @@ def _is_index_file(path: Path, index_file: Path) -> bool:
 
 
 def _resolve_request_base(request: Request) -> str:
-    """Resolve the external base URL, honoring common reverse-proxy headers.
-
-    Returns a URL like ``https://host:8000/meshcore/`` (always trailing-slash)
-    so callers can append paths directly.
-
-    Recognized headers:
-    - ``X-Forwarded-Proto`` + ``X-Forwarded-Host``: override scheme and host.
-    - ``X-Forwarded-Prefix`` (or ``X-Forwarded-Path``): sub-path prefix added
-      by the proxy (e.g. ``/meshcore``).
-    """
+    """Resolve the external origin root, honoring forwarded origin headers."""
     forwarded_proto = request.headers.get("x-forwarded-proto")
     forwarded_host = request.headers.get("x-forwarded-host")
 
@@ -62,14 +53,7 @@ def _resolve_request_base(request: Request) -> str:
     else:
         origin = str(request.base_url).rstrip("/")
 
-    # Sub-path prefix (e.g. /meshcore) communicated by the reverse proxy
-    prefix = (
-        (request.headers.get("x-forwarded-prefix") or request.headers.get("x-forwarded-path") or "")
-        .strip()
-        .rstrip("/")
-    )
-
-    return f"{origin}{prefix}/"
+    return f"{origin}/"
 
 
 def _validate_frontend_dir(frontend_dir: Path, *, log_failures: bool = True) -> tuple[bool, Path]:

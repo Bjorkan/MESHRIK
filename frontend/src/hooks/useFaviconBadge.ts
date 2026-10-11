@@ -5,7 +5,7 @@ import { getStateKey } from '../utils/conversationState';
 
 const APP_TITLE = 'MESHRIK for MeshCore';
 const UNREAD_APP_TITLE = 'MESHRIK';
-const BASE_FAVICON_PATH = './favicon.svg';
+const BASE_FAVICON_PATH = '/favicon.svg';
 const GREEN_BADGE_FILL = '#16a34a';
 const RED_BADGE_FILL = '#dc2626';
 const BADGE_CENTER = 750;

@@ -1055,7 +1055,7 @@ describe('SettingsModal', () => {
     fireEvent.click(screen.getByRole('button', { name: /Statistics/i }));
 
     await waitFor(() => {
-      expect(fetchSpy).toHaveBeenCalledWith('./api/statistics', expect.any(Object));
+      expect(fetchSpy).toHaveBeenCalledWith('/api/statistics', expect.any(Object));
     });
 
     await waitFor(() => {

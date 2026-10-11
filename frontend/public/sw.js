@@ -23,8 +23,8 @@ self.addEventListener("push", (event) => {
   const title = data.title || "New message";
   const options = {
     body: data.body || "",
-    icon: "./favicon-256x256.png",
-    badge: "./favicon-96x96.png",
+    icon: "/favicon-256x256.png",
+    badge: "/favicon-96x96.png",
     tag: data.tag || "meshcore-push",
     data: { url_hash: data.url_hash || "" },
   };
