@@ -61,3 +61,21 @@ body {
 .maplibregl-control-container {
   z-index: 10 !important;
 }
+
+/* MapLibre popups use a light surface regardless of the application theme. */
+.maplibregl-popup .maplibregl-popup-close-button {
+  color: #111827;
+  background: transparent;
+  border-radius: 0.25rem;
+}
+
+.maplibregl-popup .maplibregl-popup-close-button:hover {
+  color: #020617;
+  background: rgb(15 23 42 / 12%);
+}
+
+.maplibregl-popup .maplibregl-popup-close-button:focus-visible {
+  color: #020617;
+  outline: 2px solid #2563eb;
+  outline-offset: -2px;
+}
