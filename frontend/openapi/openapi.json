@@ -1498,6 +1498,244 @@
         "title": "CreateContactRequest",
         "type": "object"
       },
+      "CreateContactResult": {
+        "description": "Created/updated contact plus an optional user-requested decrypt outcome.",
+        "properties": {
+          "direct_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Direct Path"
+          },
+          "direct_path_hash_mode": {
+            "default": -1,
+            "title": "Direct Path Hash Mode",
+            "type": "integer"
+          },
+          "direct_path_len": {
+            "default": -1,
+            "title": "Direct Path Len",
+            "type": "integer"
+          },
+          "direct_path_updated_at": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Direct Path Updated At"
+          },
+          "direct_route": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContactRoute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "effective_route": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContactRoute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "effective_route_source": {
+            "default": "flood",
+            "enum": [
+              "override",
+              "direct",
+              "flood"
+            ],
+            "title": "Effective Route Source",
+            "type": "string"
+          },
+          "favorite": {
+            "default": false,
+            "title": "Favorite",
+            "type": "boolean"
+          },
+          "first_seen": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Seen"
+          },
+          "flags": {
+            "default": 0,
+            "title": "Flags",
+            "type": "integer"
+          },
+          "historical_decrypt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HistoricalDmDecryptStart"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "last_advert": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Advert"
+          },
+          "last_contacted": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Contacted"
+          },
+          "last_read_at": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Read At"
+          },
+          "last_seen": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seen"
+          },
+          "lat": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lat"
+          },
+          "lon": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lon"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "on_radio": {
+            "default": false,
+            "title": "On Radio",
+            "type": "boolean"
+          },
+          "public_key": {
+            "description": "Public key (64-char hex)",
+            "title": "Public Key",
+            "type": "string"
+          },
+          "route_override": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContactRoute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "route_override_hash_mode": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Route Override Hash Mode"
+          },
+          "route_override_len": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Route Override Len"
+          },
+          "route_override_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Route Override Path"
+          },
+          "type": {
+            "default": 0,
+            "title": "Type",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "public_key"
+        ],
+        "title": "CreateContactResult",
+        "type": "object"
+      },
       "DebugAppSettings": {
         "properties": {
           "advert_interval": {
@@ -2586,6 +2824,32 @@
           "oldest_undecrypted_timestamp"
         ],
         "title": "HealthResponse",
+        "type": "object"
+      },
+      "HistoricalDmDecryptStart": {
+        "description": "Outcome of attempting to start a contact-specific historical DM sweep.",
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "started",
+              "unavailable_policy",
+              "unavailable_export",
+              "unavailable_key",
+              "invalid_contact_key"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "message"
+        ],
+        "title": "HistoricalDmDecryptStart",
         "type": "object"
       },
       "LppSensor": {
@@ -8667,7 +8931,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Contact"
+                  "$ref": "#/components/schemas/CreateContactResult"
                 }
               }
             },

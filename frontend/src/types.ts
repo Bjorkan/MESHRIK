@@ -194,6 +194,10 @@ export type Contact = Omit<
   effective_route_source?: ApiSchemas['Contact']['effective_route_source'];
 };
 
+export type CreateContactResult = Contact & {
+  historical_decrypt?: ApiSchemas['HistoricalDmDecryptStart'] | null;
+};
+
 export type ContactRoute = ApiSchemas['ContactRoute'];
 
 export interface ContactAdvertPath {

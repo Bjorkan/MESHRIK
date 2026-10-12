@@ -170,6 +170,7 @@ export function useRealtimeAppState({
       onError: (error: { message: string; details?: string }) => {
         toast.error(error.message, {
           description: error.details,
+          id: `websocket-error:${error.message}:${error.details ?? ''}`,
         });
       },
       onSuccess: (success: { message: string; details?: string }) => {

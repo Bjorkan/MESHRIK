@@ -15,6 +15,7 @@ import pytest
 from fastapi import HTTPException
 from meshcore import EventType
 
+from app.models import HistoricalDmDecryptStart
 from app.repository import ContactAdvertPathRepository, ContactRepository, MessageRepository
 from app.routers.contacts import _ensure_on_radio
 
@@ -653,6 +654,9 @@ class TestCreateContactWithHistorical:
         with patch(
             "app.routers.contacts.start_historical_dm_decryption", new_callable=AsyncMock
         ) as mock_start:
+            mock_start.return_value = HistoricalDmDecryptStart(
+                status="started", message="Historical DM decryption started in the background."
+            )
             response = await client.post(
                 "/api/contacts",
                 json={"public_key": KEY_A, "name": "Alice", "try_historical": True},
@@ -660,6 +664,7 @@ class TestCreateContactWithHistorical:
 
         assert response.status_code == 200
         assert response.json()["public_key"] == KEY_A
+        assert response.json()["historical_decrypt"]["status"] == "started"
 
         mock_start.assert_awaited_once()
         # Verify correct args: (background_tasks, public_key, name)
@@ -673,6 +678,9 @@ class TestCreateContactWithHistorical:
         with patch(
             "app.routers.contacts.start_historical_dm_decryption", new_callable=AsyncMock
         ) as mock_start:
+            mock_start.return_value = HistoricalDmDecryptStart(
+                status="started", message="Historical DM decryption started in the background."
+            )
             response = await client.post(
                 "/api/contacts",
                 json={"public_key": KEY_A, "name": "Alice", "try_historical": False},
@@ -689,6 +697,9 @@ class TestCreateContactWithHistorical:
         with patch(
             "app.routers.contacts.start_historical_dm_decryption", new_callable=AsyncMock
         ) as mock_start:
+            mock_start.return_value = HistoricalDmDecryptStart(
+                status="started", message="Historical DM decryption started in the background."
+            )
             response = await client.post(
                 "/api/contacts",
                 json={"public_key": KEY_A, "name": "Alice", "try_historical": True},
@@ -705,6 +716,9 @@ class TestCreateContactWithHistorical:
         with patch(
             "app.routers.contacts.start_historical_dm_decryption", new_callable=AsyncMock
         ) as mock_start:
+            mock_start.return_value = HistoricalDmDecryptStart(
+                status="started", message="Historical DM decryption started in the background."
+            )
             response = await client.post(
                 "/api/contacts",
                 json={"public_key": KEY_A, "name": "NewName", "try_historical": True},
@@ -730,6 +744,21 @@ class TestCreateContactWithHistorical:
 
         assert response.status_code == 200
         mock_start.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_missing_private_key_returns_contextual_manual_result(self, test_db, client):
+        """A manual request reports the safe-policy prerequisite without a global error."""
+        with patch("app.packet_processor.has_private_key", return_value=False):
+            response = await client.post(
+                "/api/contacts",
+                json={"public_key": KEY_A, "name": "Alice", "try_historical": True},
+            )
+
+        assert response.status_code == 200
+        result = response.json()["historical_decrypt"]
+        assert result["status"] == "unavailable_policy"
+        assert "startup policy 'sync'" in result["message"].lower()
+        assert "firmware may need" not in result["message"].lower()
 
 
 class TestRoutingOverride:

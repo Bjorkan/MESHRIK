@@ -218,6 +218,25 @@ class Contact(BaseModel):
         return ContactUpsert.from_contact(self, **changes)
 
 
+class HistoricalDmDecryptStart(BaseModel):
+    """Outcome of attempting to start a contact-specific historical DM sweep."""
+
+    status: Literal[
+        "started",
+        "unavailable_policy",
+        "unavailable_export",
+        "unavailable_key",
+        "invalid_contact_key",
+    ]
+    message: str
+
+
+class CreateContactResult(Contact):
+    """Created/updated contact plus an optional user-requested decrypt outcome."""
+
+    historical_decrypt: HistoricalDmDecryptStart | None = None
+
+
 class CreateContactRequest(BaseModel):
     """Request to create a new contact."""
 

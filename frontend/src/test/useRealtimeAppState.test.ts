@@ -134,6 +134,30 @@ describe('useRealtimeAppState', () => {
     });
   });
 
+  it('uses stable identities to deduplicate repeated websocket errors', () => {
+    const { args } = createRealtimeArgs();
+    const { result } = renderHook(() => useRealtimeAppState(args));
+    const error = {
+      message: 'Cannot decrypt historical DMs',
+      details: 'Private key unavailable',
+    };
+
+    act(() => {
+      result.current.onError?.(error);
+      result.current.onError?.(error);
+    });
+
+    expect(mocks.toast.error).toHaveBeenCalledTimes(2);
+    expect(mocks.toast.error).toHaveBeenNthCalledWith(1, error.message, {
+      description: error.details,
+      id: 'websocket-error:Cannot decrypt historical DMs:Private key unavailable',
+    });
+    expect(mocks.toast.error).toHaveBeenNthCalledWith(2, error.message, {
+      description: error.details,
+      id: 'websocket-error:Cannot decrypt historical DMs:Private key unavailable',
+    });
+  });
+
   it('reconnect skips active-conversation reconcile while browsing mid-history', async () => {
     const { args } = createRealtimeArgs();
 

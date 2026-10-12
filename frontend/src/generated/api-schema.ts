@@ -2573,6 +2573,83 @@ export interface components {
        */
       type: number;
     };
+    /**
+     * CreateContactResult
+     * @description Created/updated contact plus an optional user-requested decrypt outcome.
+     */
+    CreateContactResult: {
+      /** Direct Path */
+      direct_path?: string | null;
+      /**
+       * Direct Path Hash Mode
+       * @default -1
+       */
+      direct_path_hash_mode: number;
+      /**
+       * Direct Path Len
+       * @default -1
+       */
+      direct_path_len: number;
+      /** Direct Path Updated At */
+      direct_path_updated_at?: number | null;
+      direct_route?: components['schemas']['ContactRoute'] | null;
+      effective_route?: components['schemas']['ContactRoute'] | null;
+      /**
+       * Effective Route Source
+       * @default flood
+       * @enum {string}
+       */
+      effective_route_source: 'override' | 'direct' | 'flood';
+      /**
+       * Favorite
+       * @default false
+       */
+      favorite: boolean;
+      /** First Seen */
+      first_seen?: number | null;
+      /**
+       * Flags
+       * @default 0
+       */
+      flags: number;
+      historical_decrypt?: components['schemas']['HistoricalDmDecryptStart'] | null;
+      /** Last Advert */
+      last_advert?: number | null;
+      /** Last Contacted */
+      last_contacted?: number | null;
+      /** Last Read At */
+      last_read_at?: number | null;
+      /** Last Seen */
+      last_seen?: number | null;
+      /** Lat */
+      lat?: number | null;
+      /** Lon */
+      lon?: number | null;
+      /** Name */
+      name?: string | null;
+      /**
+       * On Radio
+       * @default false
+       */
+      on_radio: boolean;
+      /**
+       * Public Key
+       * @description Public key (64-char hex)
+       */
+      public_key: string;
+      route_override?: components['schemas']['ContactRoute'] | null;
+      /** Route Override Hash Mode */
+      route_override_hash_mode?: number | null;
+      /** Route Override Len */
+      route_override_len?: number | null;
+      /** Route Override Path */
+      route_override_path?: string | null;
+      /**
+       * Type
+       * @default 0
+       */
+      type: number;
+    };
     /** DebugAppSettings */
     DebugAppSettings: {
       /** Advert Interval */
@@ -3002,6 +3079,24 @@ export interface components {
       startup_stage?: string | null;
       /** Status */
       status: string;
+    };
+    /**
+     * HistoricalDmDecryptStart
+     * @description Outcome of attempting to start a contact-specific historical DM sweep.
+     */
+    HistoricalDmDecryptStart: {
+      /** Message */
+      message: string;
+      /**
+       * Status
+       * @enum {string}
+       */
+      status:
+        | 'started'
+        | 'unavailable_policy'
+        | 'unavailable_export'
+        | 'unavailable_key'
+        | 'invalid_contact_key';
     };
     /**
      * LppSensor
@@ -6421,7 +6516,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['Contact'];
+          'application/json': components['schemas']['CreateContactResult'];
         };
       };
       /** @description Bad request */

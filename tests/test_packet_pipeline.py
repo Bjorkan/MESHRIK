@@ -9,6 +9,7 @@ between backend and frontend - both sides test against the same data.
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -78,6 +79,92 @@ def _build_ack_packet(code: bytes, *, route_type: RouteType = RouteType.DIRECT) 
     """Build a standalone ACK packet whose cleartext payload is the 4-byte code."""
     header = bytes([(PayloadType.ACK << 2) | route_type, 0x00])
     return header + code
+
+
+class TestHistoricalDmDecryptionStart:
+    @pytest.mark.asyncio
+    async def test_repeated_automatic_attempts_skip_quietly_without_private_key(self):
+        """Expected missing capability is logged once and never schedules decrypt work."""
+        import app.packet_processor as packet_processor
+        from app.config import StartupPolicy
+
+        packet_processor._last_historical_dm_skip_status = None
+        fake_settings = SimpleNamespace(
+            effective_startup_policy=StartupPolicy.SYNC,
+            startup_export_private_key=False,
+        )
+        with (
+            patch("app.packet_processor.has_private_key", return_value=False),
+            patch("app.config.settings", fake_settings),
+            patch.object(packet_processor.logger, "info") as log_info,
+            patch(
+                "app.packet_processor.run_historical_dm_decryption", new_callable=AsyncMock
+            ) as run_decrypt,
+        ):
+            results = [
+                await packet_processor.start_historical_dm_decryption(
+                    None, f"{index:064x}", f"Contact {index}"
+                )
+                for index in range(12)
+            ]
+
+        assert {result.status for result in results} == {"unavailable_policy"}
+        assert log_info.call_count == 1
+        run_decrypt.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("policy", "export_enabled", "expected_status"),
+        [
+            ("passive", False, "unavailable_policy"),
+            ("sync", False, "unavailable_policy"),
+            ("full", False, "unavailable_export"),
+            ("full", True, "unavailable_key"),
+        ],
+    )
+    async def test_missing_key_result_distinguishes_startup_policy(
+        self, policy, export_enabled, expected_status
+    ):
+        import app.packet_processor as packet_processor
+        from app.config import StartupPolicy
+
+        fake_settings = SimpleNamespace(
+            effective_startup_policy=StartupPolicy(policy),
+            startup_export_private_key=export_enabled,
+        )
+        with (
+            patch("app.packet_processor.has_private_key", return_value=False),
+            patch("app.config.settings", fake_settings),
+        ):
+            result = await packet_processor.start_historical_dm_decryption(None, "aa" * 32)
+
+        assert result.status == expected_status
+
+    @pytest.mark.asyncio
+    async def test_available_key_schedules_background_work_after_an_unavailable_attempt(self):
+        import app.packet_processor as packet_processor
+
+        packet_processor._last_historical_dm_skip_status = "unavailable_policy"
+        background_tasks = MagicMock()
+        private_key = b"k" * 64
+
+        with (
+            patch("app.packet_processor.has_private_key", return_value=True),
+            patch("app.packet_processor.get_private_key", return_value=private_key),
+        ):
+            result = await packet_processor.start_historical_dm_decryption(
+                background_tasks, "aa" * 32, "Alice"
+            )
+
+        assert result.status == "started"
+        assert packet_processor._last_historical_dm_skip_status is None
+        background_tasks.add_task.assert_called_once_with(
+            packet_processor.run_historical_dm_decryption,
+            private_key,
+            bytes.fromhex("aa" * 32),
+            "aa" * 32,
+            "Alice",
+        )
 
 
 class TestChannelMessagePipeline:

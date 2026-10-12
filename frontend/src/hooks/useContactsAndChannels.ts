@@ -104,6 +104,12 @@ export function useContactsAndChannels({
       const created = await api.createContact(publicKey, name || undefined, tryHistorical, type);
       await refreshContacts();
 
+      if (created.historical_decrypt && created.historical_decrypt.status !== 'started') {
+        toast.info('Historical DM decryption unavailable', {
+          description: created.historical_decrypt.message,
+        });
+      }
+
       setActiveConversation({
         type: 'contact',
         id: created.public_key,

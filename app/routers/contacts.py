@@ -19,6 +19,8 @@ from app.models import (
     ContactTelemetryResponse,
     ContactUpsert,
     CreateContactRequest,
+    CreateContactResult,
+    HistoricalDmDecryptStart,
     LppSensor,
     NearestRepeater,
     PathDiscoveryResponse,
@@ -302,10 +304,10 @@ async def get_contact_analytics(
     return await _build_name_only_contact_analytics(normalized_name)
 
 
-@router.post("", response_model=Contact)
+@router.post("", response_model=CreateContactResult)
 async def create_contact(
     request: CreateContactRequest, background_tasks: BackgroundTasks
-) -> Contact:
+) -> CreateContactResult:
     """Create a new contact in the database.
 
     If the contact already exists, updates the name (if provided).
@@ -320,6 +322,7 @@ async def create_contact(
     # Check if contact already exists
     existing = await ContactRepository.get_by_key(request.public_key)
     if existing:
+        historical_decrypt: HistoricalDmDecryptStart | None = None
         # Update name if provided and record name history
         if request.name:
             await ContactRepository.upsert(existing.to_upsert(name=request.name))
@@ -345,12 +348,12 @@ async def create_contact(
 
         # Trigger historical decryption if requested (even for existing contacts)
         if request.try_historical:
-            await start_historical_dm_decryption(
+            historical_decrypt = await start_historical_dm_decryption(
                 background_tasks, request.public_key, request.name or existing.name
             )
 
         await _broadcast_contact_update(existing)
-        return existing
+        return CreateContactResult(**existing.model_dump(), historical_decrypt=historical_decrypt)
 
     # Create new contact
     lower_key = request.public_key.lower()
@@ -375,15 +378,18 @@ async def create_contact(
     )
 
     # Trigger historical decryption if requested
+    historical_decrypt = None
     if request.try_historical:
-        await start_historical_dm_decryption(background_tasks, lower_key, request.name)
+        historical_decrypt = await start_historical_dm_decryption(
+            background_tasks, lower_key, request.name
+        )
 
     stored = await ContactRepository.get_by_key(lower_key)
     if stored is None:
         raise HTTPException(status_code=500, detail="Contact was created but could not be reloaded")
     await _broadcast_contact_update(stored)
     await _broadcast_contact_resolution(promoted_keys, stored)
-    return stored
+    return CreateContactResult(**stored.model_dump(), historical_decrypt=historical_decrypt)
 
 
 @router.post("/{public_key}/mark-read", response_model=MarkContactReadResponse)

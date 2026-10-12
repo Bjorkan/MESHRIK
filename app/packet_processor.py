@@ -33,6 +33,7 @@ from app.keystore import get_private_key, get_public_key, has_private_key
 from app.models import (
     Contact,
     ContactUpsert,
+    HistoricalDmDecryptStart,
     RawPacketBroadcast,
     RawPacketDecryptedInfo,
 )
@@ -57,11 +58,12 @@ from app.services.messages import (
 from app.services.messages import (
     create_message_from_decrypted as _create_message_from_decrypted,
 )
-from app.websocket import broadcast_error, broadcast_event
+from app.websocket import broadcast_event
 
 logger = logging.getLogger(__name__)
 
 _raw_observation_counter = count(1)
+_last_historical_dm_skip_status: str | None = None
 
 
 async def create_message_from_decrypted(
@@ -235,22 +237,53 @@ async def start_historical_dm_decryption(
     background_tasks,
     contact_public_key_hex: str,
     display_name: str | None = None,
-) -> None:
+) -> HistoricalDmDecryptStart:
     """Start historical DM decryption using the stored private key."""
+    global _last_historical_dm_skip_status
+
     if not has_private_key():
-        logger.warning(
-            "Cannot start historical DM decryption: private key not available. "
-            "Ensure radio firmware has ENABLE_PRIVATE_KEY_EXPORT=1."
-        )
-        broadcast_error(
-            "Cannot decrypt historical DMs",
-            "Private key not available. Radio firmware may need ENABLE_PRIVATE_KEY_EXPORT=1.",
-        )
-        return
+        from app.config import StartupPolicy, settings
+
+        policy = settings.effective_startup_policy
+        if policy is not StartupPolicy.FULL:
+            result = HistoricalDmDecryptStart(
+                status="unavailable_policy",
+                message=(
+                    f"Startup policy '{policy.value}' intentionally does not export the radio's "
+                    "private key. Historical DM decryption is unavailable, but live radio "
+                    "messages are unaffected."
+                ),
+            )
+        elif not settings.startup_export_private_key:
+            result = HistoricalDmDecryptStart(
+                status="unavailable_export",
+                message=(
+                    "Private-key export is not enabled for full startup. Historical DM "
+                    "decryption is unavailable, but live radio messages are unaffected."
+                ),
+            )
+        else:
+            result = HistoricalDmDecryptStart(
+                status="unavailable_key",
+                message=(
+                    "No private key is available after the permitted export attempt. The radio "
+                    "firmware may not support export, export may be disabled, or the attempt failed."
+                ),
+            )
+
+        if _last_historical_dm_skip_status != result.status:
+            logger.info("Skipping historical DM decryption: %s", result.status)
+            _last_historical_dm_skip_status = result.status
+        return result
 
     private_key_bytes = get_private_key()
     if private_key_bytes is None:
-        return
+        return HistoricalDmDecryptStart(
+            status="unavailable_key",
+            message="The private key became unavailable before decryption could start.",
+        )
+
+    _last_historical_dm_skip_status = None
 
     try:
         contact_public_key_bytes = bytes.fromhex(contact_public_key_hex)
@@ -259,7 +292,10 @@ async def start_historical_dm_decryption(
             "Cannot start historical DM decryption: invalid contact key %s",
             contact_public_key_hex,
         )
-        return
+        return HistoricalDmDecryptStart(
+            status="invalid_contact_key",
+            message="The contact public key is invalid, so historical decryption was not started.",
+        )
 
     logger.info("Starting historical DM decryption for contact %s", contact_public_key_hex[:12])
     if background_tasks is None:
@@ -279,6 +315,10 @@ async def start_historical_dm_decryption(
             contact_public_key_hex.lower(),
             display_name,
         )
+    return HistoricalDmDecryptStart(
+        status="started",
+        message="Historical DM decryption started in the background.",
+    )
 
 
 async def process_raw_packet(

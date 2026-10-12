@@ -39,7 +39,7 @@ vi.mock('../prefetch', async (importOriginal) => ({
 
 // Mock sonner
 vi.mock('../components/ui/sonner', () => ({
-  toast: { success: vi.fn(), warning: vi.fn(), error: vi.fn() },
+  toast: { success: vi.fn(), warning: vi.fn(), error: vi.fn(), info: vi.fn() },
 }));
 
 function makeContact(suffix: string): Contact {
@@ -240,6 +240,31 @@ describe('useContactsAndChannels', () => {
       expect(api.getChannels).toHaveBeenCalled();
       expect(api.getUndecryptedPacketCount).toHaveBeenCalled();
       expect(response).toEqual(resultPayload);
+    });
+  });
+
+  describe('contact creation', () => {
+    it('shows one contextual result when requested historical decryption is unavailable', async () => {
+      const { toast } = await import('../components/ui/sonner');
+      const contact = makeContact('1');
+      vi.mocked(api.createContact).mockResolvedValueOnce({
+        ...contact,
+        historical_decrypt: {
+          status: 'unavailable_policy',
+          message: "Startup policy 'sync' intentionally does not export the radio's private key.",
+        },
+      });
+
+      const { result } = renderUseContactsAndChannels();
+      await act(async () => {
+        await result.current.handleCreateContact('Alice', contact.public_key, true);
+      });
+
+      expect(toast.info).toHaveBeenCalledOnce();
+      expect(toast.info).toHaveBeenCalledWith('Historical DM decryption unavailable', {
+        description: "Startup policy 'sync' intentionally does not export the radio's private key.",
+      });
+      expect(toast.error).not.toHaveBeenCalled();
     });
   });
 

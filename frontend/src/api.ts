@@ -7,6 +7,7 @@ import type {
   ChannelDetail,
   CommandResponse,
   Contact,
+  CreateContactResult,
   ContactDeleteResult,
   ContactAnalytics,
   ContactAdvertPathSummary,
@@ -422,7 +423,7 @@ export const api = {
     tryHistorical: CreateContactBody['try_historical'] = false,
     type: CreateContactBody['type'] = 0
   ) =>
-    fetchApiView<'/api/contacts', 'post', Contact>('/contacts', {
+    fetchApiView<'/api/contacts', 'post', CreateContactResult>('/contacts', {
       method: 'POST',
       body: jsonBody<CreateContactBody>({
         public_key: publicKey,
