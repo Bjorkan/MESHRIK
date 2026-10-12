@@ -1,14 +1,19 @@
-import { test, expect } from '@playwright/test';
-import { createChannel, createContact, deleteChannel, deleteContact } from '../helpers/api';
+import { test, expect } from "@playwright/test";
+import {
+  createChannel,
+  createContact,
+  deleteChannel,
+  deleteContact,
+} from "../helpers/api";
 
-test.describe('Sidebar search/filter', () => {
+test.describe("Sidebar search/filter", () => {
   const suffix = Date.now().toString().slice(-6);
   const nameA = `#alpha${suffix}`;
   const nameB = `#bravo${suffix}`;
   const contactName = `Search Contact ${suffix}`;
-  const contactKey = `feed${suffix.padStart(8, '0')}${'ab'.repeat(26)}`;
-  let keyA = '';
-  let keyB = '';
+  const contactKey = `feed${suffix.padStart(8, "0")}${"ab".repeat(26)}`;
+  let keyA = "";
+  let keyB = "";
 
   test.beforeAll(async () => {
     const chA = await createChannel(nameA);
@@ -33,24 +38,26 @@ test.describe('Sidebar search/filter', () => {
     }
   });
 
-  test('search filters channel and contact conversations by name and key prefix', async ({
+  test("search filters channel and contact conversations by name and key prefix", async ({
     page,
   }) => {
-    await page.goto('/');
-    await expect(page.getByRole('status', { name: 'Radio OK' })).toBeVisible();
+    await page.goto("/");
+    await expect(page.getByRole("status", { name: "Radio OK" })).toBeVisible();
 
     // Seeded conversations should be visible.
     await expect(page.getByText(nameA, { exact: true })).toBeVisible();
     await expect(page.getByText(nameB, { exact: true })).toBeVisible();
     await expect(page.getByText(contactName, { exact: true })).toBeVisible();
 
-    const searchInput = page.getByLabel('Search conversations');
+    const searchInput = page.getByLabel("Search conversations");
 
     // Channel name query should filter to the matching channel only.
     await searchInput.fill(`alpha${suffix}`);
     await expect(page.getByText(nameA, { exact: true })).toBeVisible();
     await expect(page.getByText(nameB, { exact: true })).not.toBeVisible();
-    await expect(page.getByText(contactName, { exact: true })).not.toBeVisible();
+    await expect(
+      page.getByText(contactName, { exact: true }),
+    ).not.toBeVisible();
 
     // Contact name query should filter to the matching contact.
     await searchInput.fill(`contact ${suffix}`);
@@ -64,7 +71,7 @@ test.describe('Sidebar search/filter', () => {
     await expect(page.getByText(nameA, { exact: true })).not.toBeVisible();
 
     // Clear search should restore the full conversation list.
-    await page.getByTitle('Clear search').click();
+    await page.getByTitle("Clear search").click();
     await expect(page.getByText(nameA, { exact: true })).toBeVisible();
     await expect(page.getByText(nameB, { exact: true })).toBeVisible();
     await expect(page.getByText(contactName, { exact: true })).toBeVisible();

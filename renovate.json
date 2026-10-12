@@ -7,9 +7,7 @@
     ":maintainLockFilesMonthly"
   ],
   "timezone": "Europe/Stockholm",
-  "schedule": [
-    "* 0-5 * * *"
-  ],
+  "schedule": ["* 0-5 * * *"],
   "prConcurrentLimit": 5,
   "prHourlyLimit": 2,
   "semanticCommits": "enabled",
@@ -32,12 +30,8 @@
   "packageRules": [
     {
       "description": "Update React and its type packages together",
-      "matchManagers": [
-        "npm"
-      ],
-      "matchFileNames": [
-        "frontend/package.json"
-      ],
+      "matchManagers": ["npm"],
+      "matchFileNames": ["frontend/package.json"],
       "matchPackageNames": [
         "react",
         "react-dom",
@@ -48,76 +42,39 @@
     },
     {
       "description": "Update the Vite build and test tools together",
-      "matchManagers": [
-        "npm"
-      ],
-      "matchFileNames": [
-        "frontend/package.json"
-      ],
-      "matchPackageNames": [
-        "vite",
-        "vitest",
-        "@vitejs/plugin-react"
-      ],
+      "matchManagers": ["npm"],
+      "matchFileNames": ["frontend/package.json"],
+      "matchPackageNames": ["vite", "vitest", "@vitejs/plugin-react"],
       "groupName": "Vite and Vitest"
     },
     {
       "description": "Keep UI component libraries grouped by ecosystem",
-      "matchManagers": [
-        "npm"
-      ],
-      "matchFileNames": [
-        "frontend/package.json"
-      ],
-      "matchPackageNames": [
-        "@radix-ui/**"
-      ],
+      "matchManagers": ["npm"],
+      "matchFileNames": ["frontend/package.json"],
+      "matchPackageNames": ["@radix-ui/**"],
       "groupName": "Radix UI"
     },
     {
-      "matchManagers": [
-        "npm"
-      ],
-      "matchFileNames": [
-        "frontend/package.json"
-      ],
-      "matchPackageNames": [
-        "@tanstack/react-query",
-        "@tanstack/react-virtual"
-      ],
+      "matchManagers": ["npm"],
+      "matchFileNames": ["frontend/package.json"],
+      "matchPackageNames": ["@tanstack/react-query", "@tanstack/react-virtual"],
       "groupName": "TanStack"
     },
     {
-      "matchManagers": [
-        "npm"
-      ],
-      "matchFileNames": [
-        "frontend/package.json"
-      ],
-      "matchPackageNames": [
-        "@codemirror/**",
-        "@uiw/react-codemirror"
-      ],
+      "matchManagers": ["npm"],
+      "matchFileNames": ["frontend/package.json"],
+      "matchPackageNames": ["@codemirror/**", "@uiw/react-codemirror"],
       "groupName": "CodeMirror"
     },
     {
-      "matchManagers": [
-        "npm"
-      ],
-      "matchFileNames": [
-        "frontend/package.json"
-      ],
-      "matchPackageNames": [
-        "three",
-        "@types/three"
-      ],
+      "matchManagers": ["npm"],
+      "matchFileNames": ["frontend/package.json"],
+      "matchPackageNames": ["three", "@types/three"],
       "groupName": "Three.js"
     },
     {
       "description": "Review patched decoder alias PRs manually before merging",
-      "matchManagers": [
-        "npm"
-      ],
+      "matchManagers": ["npm"],
       "matchPackageNames": [
         "@michaelhart/meshcore-decoder",
         "meshcore-decoder-multibyte-patch"
@@ -128,57 +85,35 @@
     },
     {
       "description": "Review the MeshCore radio integration PR manually before merging",
-      "matchManagers": [
-        "pep621"
-      ],
-      "matchPackageNames": [
-        "meshcore"
-      ],
+      "matchManagers": ["pep621"],
+      "matchPackageNames": ["meshcore"],
       "prBodyNotes": [
         "Check MeshCore device compatibility and radio-related behavior manually."
       ]
     },
     {
       "description": "Backend test and development tooling",
-      "matchManagers": [
-        "pep621"
-      ],
-      "matchDepTypes": [
-        "dependency-groups"
-      ],
-      "matchUpdateTypes": [
-        "minor",
-        "patch"
-      ],
+      "matchManagers": ["pep621"],
+      "matchDepTypes": ["dependency-groups"],
+      "matchUpdateTypes": ["minor", "patch"],
       "groupName": "Python dev tools"
     },
     {
       "description": "Playwright E2E needs a physical MeshCore radio and is not part of standard CI",
-      "matchManagers": [
-        "npm"
-      ],
-      "matchFileNames": [
-        "tests/e2e/package.json"
-      ],
+      "matchManagers": ["npm"],
+      "matchFileNames": ["tests/e2e/package.json"],
       "prBodyNotes": [
         "Playwright E2E tests require a connected MeshCore radio; run them manually before merging."
       ]
     },
     {
-      "matchManagers": [
-        "github-actions"
-      ],
-      "matchUpdateTypes": [
-        "minor",
-        "patch"
-      ],
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["minor", "patch"],
       "groupName": "GitHub Actions"
     },
     {
       "description": "Track base image security updates through immutable Docker digests",
-      "matchManagers": [
-        "dockerfile"
-      ],
+      "matchManagers": ["dockerfile"],
       "pinDigests": true
     }
   ]

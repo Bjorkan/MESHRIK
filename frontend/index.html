@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
@@ -7,7 +7,10 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="MESHRIK" />
     <meta name="theme-color" content="#111419" />
-    <meta name="description" content="Web interface for MeshCore mesh radio networks. Send and receive messages, manage contacts and channels, and configure your radio." />
+    <meta
+      name="description"
+      content="Web interface for MeshCore mesh radio networks. Send and receive messages, manage contacts and channels, and configure your radio."
+    />
     <title>MESHRIK for MeshCore</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
@@ -22,27 +25,29 @@
       // Must be in <head> BEFORE the module script so the browser queues these
       // fetches before it discovers and starts downloading the JS bundle.
       // React hooks consume the promises via window.__prefetch.
-      var fetchJsonOrThrow = function(url) {
-        return fetch(url).then(function(response) {
-          if (response.ok) {
-            return response.json();
-          }
-          return response.text().then(function(rawError) {
-            var message = rawError || response.statusText || ('HTTP ' + response.status);
-            try {
-              var parsed = JSON.parse(rawError);
-              if (parsed && typeof parsed.detail === 'string' && parsed.detail.length > 0) {
-                message = parsed.detail;
-              }
-            } catch {
-              // Keep raw text fallback when body is not JSON.
+      var fetchJsonOrThrow = function (url) {
+        return fetch(url)
+          .then(function (response) {
+            if (response.ok) {
+              return response.json();
             }
-            throw new Error('Prefetch failed for ' + url + ': ' + message);
+            return response.text().then(function (rawError) {
+              var message = rawError || response.statusText || 'HTTP ' + response.status;
+              try {
+                var parsed = JSON.parse(rawError);
+                if (parsed && typeof parsed.detail === 'string' && parsed.detail.length > 0) {
+                  message = parsed.detail;
+                }
+              } catch {
+                // Keep raw text fallback when body is not JSON.
+              }
+              throw new Error('Prefetch failed for ' + url + ': ' + message);
+            });
+          })
+          .catch(function (err) {
+            console.error(err);
+            throw err;
           });
-        }).catch(function(err) {
-          console.error(err);
-          throw err;
-        });
       };
       window.__prefetch = {
         config: fetchJsonOrThrow('/api/radio/config'),

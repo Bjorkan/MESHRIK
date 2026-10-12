@@ -45,10 +45,10 @@ You can also see the MQTT topic IDs in MESHRIK's Home Assistant integration UI:
 
 Always created. Updates every 60 seconds.
 
-| Entity | Type | Description |
-|--------|------|-------------|
-| `binary_sensor.<radio_name>_connected` | Connectivity | Radio online/offline |
-| `sensor.<radio_name>_noise_floor` | Signal strength | Radio noise floor (dBm) |
+| Entity                                 | Type            | Description             |
+| -------------------------------------- | --------------- | ----------------------- |
+| `binary_sensor.<radio_name>_connected` | Connectivity    | Radio online/offline    |
+| `sensor.<radio_name>_noise_floor`      | Signal strength | Radio noise floor (dBm) |
 
 ### Repeater Devices
 
@@ -56,15 +56,15 @@ One device per tracked repeater selected in the HA integration. Updates when tel
 
 Repeaters must first be added to the auto-telemetry tracking list in MESHRIK's Radio settings section. Only auto-tracked repeaters appear in the HA integration's repeater picker.
 
-| Entity | Type | Unit | Description |
-|--------|------|------|-------------|
-| `sensor.<repeater_name>_battery_voltage` | Voltage | V | Battery level |
-| `sensor.<repeater_name>_noise_floor` | Signal strength | dBm | Local noise floor |
-| `sensor.<repeater_name>_last_rssi` | Signal strength | dBm | Last received signal strength |
-| `sensor.<repeater_name>_last_snr` | -- | dB | Last signal-to-noise ratio |
-| `sensor.<repeater_name>_packets_received` | -- | count | Total packets received |
-| `sensor.<repeater_name>_packets_sent` | -- | count | Total packets sent |
-| `sensor.<repeater_name>_uptime` | Duration | s | Uptime since last reboot |
+| Entity                                    | Type            | Unit  | Description                   |
+| ----------------------------------------- | --------------- | ----- | ----------------------------- |
+| `sensor.<repeater_name>_battery_voltage`  | Voltage         | V     | Battery level                 |
+| `sensor.<repeater_name>_noise_floor`      | Signal strength | dBm   | Local noise floor             |
+| `sensor.<repeater_name>_last_rssi`        | Signal strength | dBm   | Last received signal strength |
+| `sensor.<repeater_name>_last_snr`         | --              | dB    | Last signal-to-noise ratio    |
+| `sensor.<repeater_name>_packets_received` | --              | count | Total packets received        |
+| `sensor.<repeater_name>_packets_sent`     | --              | count | Total packets sent            |
+| `sensor.<repeater_name>_uptime`           | Duration        | s     | Uptime since last reboot      |
 
 If MESHRIK already has a cached telemetry snapshot for that repeater, it republishes it on startup so HA can populate the sensors immediately instead of waiting for the next collection cycle.
 
@@ -79,25 +79,25 @@ One HA device per tracked contact, which can expose two kinds of entities.
 
 **CayenneLPP sensors** -- if the contact is tracked for telemetry collection and reports LPP readings, a numeric sensor is created per reading, auto-detected from the data (e.g. `sensor.<contact_name>_lpp_temperature_ch1`, `_lpp_voltage_ch1`).
 
-| Entity | Description |
-|--------|-------------|
-| `device_tracker.<contact_name>` | GPS position (`latitude`/`longitude` attributes, plus `altitude` when a telemetry reading includes it) |
-| `sensor.<contact_name>_lpp_<type>_ch<n>` | CayenneLPP sensor reading (auto-detected; GPS excluded -- see tracker above) |
+| Entity                                   | Description                                                                                            |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `device_tracker.<contact_name>`          | GPS position (`latitude`/`longitude` attributes, plus `altitude` when a telemetry reading includes it) |
+| `sensor.<contact_name>_lpp_<type>_ch<n>` | CayenneLPP sensor reading (auto-detected; GPS excluded -- see tracker above)                           |
 
 ### Message Event Entity
 
 A single radio-scoped event entity, `event.<radio_name>_messages`, fires for each message matching your configured scope. Each event carries these attributes:
 
-| Attribute | Example | Description |
-|-----------|---------|-------------|
-| `event_type` | `message_received` | Always `message_received` |
-| `sender_name` | `Alice` | Display name of the sender |
-| `sender_key` | `aabbccdd...` | Sender's public key |
-| `text` | `hello` | Message body |
-| `message_type` | `PRIV` or `CHAN` | Direct message or channel |
-| `channel_name` | `#general` | Channel name (null for DMs) |
-| `conversation_key` | `aabbccdd...` | Contact key (DM) or channel key |
-| `outgoing` | `false` | Whether you sent this message |
+| Attribute          | Example            | Description                     |
+| ------------------ | ------------------ | ------------------------------- |
+| `event_type`       | `message_received` | Always `message_received`       |
+| `sender_name`      | `Alice`            | Display name of the sender      |
+| `sender_key`       | `aabbccdd...`      | Sender's public key             |
+| `text`             | `hello`            | Message body                    |
+| `message_type`     | `PRIV` or `CHAN`   | Direct message or channel       |
+| `channel_name`     | `#general`         | Channel name (null for DMs)     |
+| `conversation_key` | `aabbccdd...`      | Contact key (DM) or channel key |
+| `outgoing`         | `false`            | Whether you sent this message   |
 
 ## Entity Naming
 
@@ -126,6 +126,7 @@ Notify when a tracked repeater's battery drops below a threshold.
 **GUI:** Settings > Automations > Create > Numeric state trigger on `sensor.<repeater_name>_battery_voltage`, below `3.8`, action: notification.
 
 **YAML:**
+
 ```yaml
 automation:
   - alias: "Repeater battery low"
@@ -149,6 +150,7 @@ Notify if the radio has been disconnected for more than 5 minutes.
 **GUI:** Settings > Automations > Create > State trigger on `binary_sensor.<radio_name>_connected`, to `off`, for `00:05:00`, action: notification.
 
 **YAML:**
+
 ```yaml
 automation:
   - alias: "Radio offline"
@@ -175,6 +177,7 @@ If you only care about one room, configure the HA integration's message scope to
 **GUI:** Settings > Automations > Create > State trigger on `event.<radio_name>_messages`, action: notification.
 
 **YAML:**
+
 ```yaml
 automation:
   - alias: "Emergency channel alert"
@@ -197,6 +200,7 @@ Keep scope as "All messages" and filter in the automation. The trigger is GUI, b
 **GUI:** Settings > Automations > Create > State trigger on `event.<radio_name>_messages` > Add condition > Template > enter the template below.
 
 **YAML:**
+
 ```yaml
 automation:
   - alias: "Emergency channel alert"
@@ -219,6 +223,7 @@ automation:
 ### Alert on DM from a specific contact
 
 **YAML:**
+
 ```yaml
 automation:
   - alias: "DM from Alice"
@@ -240,6 +245,7 @@ automation:
 ### Alert on messages containing a keyword
 
 **YAML:**
+
 ```yaml
 automation:
   - alias: "Keyword alert"
@@ -317,28 +323,28 @@ views:
     icon: mdi:radio-tower
     cards:
       - type: entities
-        title: Hilltop — Current                     # ← repeater name
+        title: Hilltop — Current # ← repeater name
         state_color: true
         entities:
-          - entity: sensor.hilltop_battery_voltage    # ← repeater_slug
+          - entity: sensor.hilltop_battery_voltage # ← repeater_slug
             name: Battery
-          - entity: sensor.hilltop_noise_floor        # ← repeater_slug
+          - entity: sensor.hilltop_noise_floor # ← repeater_slug
             name: Noise Floor
-          - entity: sensor.hilltop_last_rssi          # ← repeater_slug
+          - entity: sensor.hilltop_last_rssi # ← repeater_slug
             name: Last RSSI
-          - entity: sensor.hilltop_last_snr           # ← repeater_slug
+          - entity: sensor.hilltop_last_snr # ← repeater_slug
             name: Last SNR
-          - entity: sensor.hilltop_uptime             # ← repeater_slug
+          - entity: sensor.hilltop_uptime # ← repeater_slug
             name: Uptime
-          - entity: sensor.hilltop_packets_received   # ← repeater_slug
+          - entity: sensor.hilltop_packets_received # ← repeater_slug
             name: Packets Rx
-          - entity: sensor.hilltop_packets_sent       # ← repeater_slug
+          - entity: sensor.hilltop_packets_sent # ← repeater_slug
             name: Packets Tx
 
       - type: statistics-graph
         title: Battery Voltage
         entities:
-          - sensor.hilltop_battery_voltage            # ← repeater_slug
+          - sensor.hilltop_battery_voltage # ← repeater_slug
         stat_types: [mean, min, max]
         days_to_show: 7
         period: hour
@@ -346,7 +352,7 @@ views:
       - type: statistics-graph
         title: Noise Floor
         entities:
-          - sensor.hilltop_noise_floor                # ← repeater_slug
+          - sensor.hilltop_noise_floor # ← repeater_slug
         stat_types: [mean, min, max]
         days_to_show: 7
         period: hour
@@ -368,7 +374,7 @@ views:
       - type: statistics-graph
         title: Overall Packets Received
         entities:
-          - sensor.myradio_packets_received           # ← radio_slug
+          - sensor.myradio_packets_received # ← radio_slug
         stat_types: [change]
         days_to_show: 7
         period: hour
@@ -385,7 +391,7 @@ mode: queued
 max: 10
 triggers:
   - trigger: state
-    entity_id: event.myradio_messages               # ← message_event
+    entity_id: event.myradio_messages # ← message_event
 actions:
   - action: input_text.set_value
     target:
@@ -460,6 +466,7 @@ actions:
 ### Stale or duplicate devices
 
 If you see unexpected devices (e.g. a generic "MeshCore Radio" alongside your named radio), clear the stale retained messages:
+
 ```
 mosquitto_pub -h <broker> -t 'homeassistant/binary_sensor/meshcore_unknown/connected/config' -r -n
 mosquitto_pub -h <broker> -t 'homeassistant/sensor/meshcore_unknown/noise_floor/config' -r -n
@@ -513,22 +520,22 @@ To stop and clean up:
 
 Runtime/state topics (where data is published):
 
-| Topic | Content | Update frequency |
-|-------|---------|-----------------|
-| `meshcore/{node_id}/health` | `{"connected": bool, "noise_floor_dbm": int}` | Every 60s |
-| `meshcore/{node_id}/telemetry` | `{"battery_volts": float, ...}` | ~8h or manual |
-| `meshcore/{node_id}/gps` | `{"latitude": float, "longitude": float, ...}` | On advert |
-| `meshcore/{node_id}/events/message` | `{"event_type": "message_received", ...}` | On message |
+| Topic                               | Content                                        | Update frequency |
+| ----------------------------------- | ---------------------------------------------- | ---------------- |
+| `meshcore/{node_id}/health`         | `{"connected": bool, "noise_floor_dbm": int}`  | Every 60s        |
+| `meshcore/{node_id}/telemetry`      | `{"battery_volts": float, ...}`                | ~8h or manual    |
+| `meshcore/{node_id}/gps`            | `{"latitude": float, "longitude": float, ...}` | On advert        |
+| `meshcore/{node_id}/events/message` | `{"event_type": "message_received", ...}`      | On message       |
 
 Discovery topics (entity registration, under `homeassistant/`):
 
-| Pattern | Entity type |
-|---------|------------|
-| `homeassistant/binary_sensor/meshcore_<node_id>/connected/config` | Radio connectivity |
-| `homeassistant/sensor/meshcore_<node_id>/noise_floor/config` | Noise floor sensor |
-| `homeassistant/sensor/meshcore_<node_id>/battery_voltage/config` | Repeater battery |
-| `homeassistant/sensor/meshcore_<node_id>/*/config` | Other repeater sensors |
-| `homeassistant/device_tracker/meshcore_<node_id>/config` | Contact GPS tracker |
-| `homeassistant/event/meshcore_<node_id>/messages/config` | Message event entity |
+| Pattern                                                           | Entity type            |
+| ----------------------------------------------------------------- | ---------------------- |
+| `homeassistant/binary_sensor/meshcore_<node_id>/connected/config` | Radio connectivity     |
+| `homeassistant/sensor/meshcore_<node_id>/noise_floor/config`      | Noise floor sensor     |
+| `homeassistant/sensor/meshcore_<node_id>/battery_voltage/config`  | Repeater battery       |
+| `homeassistant/sensor/meshcore_<node_id>/*/config`                | Other repeater sensors |
+| `homeassistant/device_tracker/meshcore_<node_id>/config`          | Contact GPS tracker    |
+| `homeassistant/event/meshcore_<node_id>/messages/config`          | Message event entity   |
 
 The `{node_id}` is always the first 12 characters of the node's public key, lowercased.

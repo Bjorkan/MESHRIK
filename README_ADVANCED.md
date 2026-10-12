@@ -6,15 +6,15 @@ Once the backend is running, FastAPI serves interactive API docs at `/docs` on t
 
 These are intended for diagnosing or working around radios that behave oddly, or enabling advanced functionality.
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `MESHCORE_ENABLE_MESSAGE_POLL_FALLBACK` | false | Run aggressive 10-second `get_msg()` fallback polling to check for messages ([docs](#message-poll-fallback)) |
-| `MESHCORE_FORCE_CHANNEL_SLOT_RECONFIGURE` | false | Disable channel-slot reuse and force `set_channel(...)` before every channel send ([docs](#force-channel-slot-reconfigure)) |
-| `MESHCORE_LOAD_WITH_AUTOEVICT` | false | Enable autoevict mode for contact loading ([docs](#autoevict-mode)) |
-| `__CLOWNTOWN_DO_CLOCK_WRAPAROUND` | false | Highly experimental: if the radio clock is ahead of system time, try forcing the clock to `0xFFFFFFFF`, wait for uint32 wraparound, and then retry normal time sync before falling back to reboot ([docs](#clock-wraparound)) |
-| `MESHCORE_ENABLE_LOCAL_PRIVATE_KEY_EXPORT` | false | Enable `GET /api/radio/private-key` to return the in-memory private key as hex for backup or migration. Only enable on a trusted network. Import via `PUT /api/radio/private-key` is always available. ([docs](#private-key-export)) |
-| `MESHCORE_RADIO_OPERATION_LOCK_TIMEOUT_SECONDS` | 15 | Maximum wait for the low-level radio lock on lifecycle and remaining legacy paths. Normal commands wait in the observable Radio Activity worker queue. |
-| `MESHCORE_RADIO_ADD_CONTACT_TIMEOUT_SECONDS` | 25 | Maximum transport wait when staging a contact on the radio before a routed command. A timeout is reported as an unknown outcome in Radio Activity-aware flows. |
+| Variable                                        | Default | Description                                                                                                                                                                                                                          |
+| ----------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `MESHCORE_ENABLE_MESSAGE_POLL_FALLBACK`         | false   | Run aggressive 10-second `get_msg()` fallback polling to check for messages ([docs](#message-poll-fallback))                                                                                                                         |
+| `MESHCORE_FORCE_CHANNEL_SLOT_RECONFIGURE`       | false   | Disable channel-slot reuse and force `set_channel(...)` before every channel send ([docs](#force-channel-slot-reconfigure))                                                                                                          |
+| `MESHCORE_LOAD_WITH_AUTOEVICT`                  | false   | Enable autoevict mode for contact loading ([docs](#autoevict-mode))                                                                                                                                                                  |
+| `__CLOWNTOWN_DO_CLOCK_WRAPAROUND`               | false   | Highly experimental: if the radio clock is ahead of system time, try forcing the clock to `0xFFFFFFFF`, wait for uint32 wraparound, and then retry normal time sync before falling back to reboot ([docs](#clock-wraparound))        |
+| `MESHCORE_ENABLE_LOCAL_PRIVATE_KEY_EXPORT`      | false   | Enable `GET /api/radio/private-key` to return the in-memory private key as hex for backup or migration. Only enable on a trusted network. Import via `PUT /api/radio/private-key` is always available. ([docs](#private-key-export)) |
+| `MESHCORE_RADIO_OPERATION_LOCK_TIMEOUT_SECONDS` | 15      | Maximum wait for the low-level radio lock on lifecycle and remaining legacy paths. Normal commands wait in the observable Radio Activity worker queue.                                                                               |
+| `MESHCORE_RADIO_ADD_CONTACT_TIMEOUT_SECONDS`    | 25      | Maximum transport wait when staging a contact on the radio before a routed command. A timeout is reported as an unknown outcome in Radio Activity-aware flows.                                                                       |
 
 By default the app relies on radio events plus MeshCore auto-fetch for incoming messages, and also runs a low-frequency hourly audit poll. That audit checks both:
 
@@ -141,7 +141,7 @@ The scheduler's default pending queue limit is **64 jobs**. New submissions when
 full are rejected with a service-unavailable/retry-after contract; the later
 API layer will map that contract to HTTP 503. Within a priority work is FIFO;
 older waiting jobs gain a fairness boost every 30 seconds. Queue wait,
-transport-command execution and awaited RF responses have *separate* deadlines.
+transport-command execution and awaited RF responses have _separate_ deadlines.
 Waiting for an ACK or reply does not reserve the command execution slot.
 Background producers may coalesce the same pending periodic task. Idempotency is
 scoped to a validated operation and SHA-256 request fingerprint; matching text

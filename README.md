@@ -4,15 +4,15 @@ Backend server + browser interface for MeshCore mesh radio networks, providing a
 
 Connect your radio over Serial, TCP, or BLE, and then you can:
 
-* Send and receive DMs and channel messages
-* Cache all received packets, decrypting as you gain keys
-* Run multiple Python bots that can analyze messages and respond to DMs and channels
-* Monitor unlimited contacts and channels (radio limits don't apply -- packets are decrypted server-side)
-* Access your radio remotely over your network or VPN
-* Search for hashtag channel names for channels you don't have keys for yet
-* Forward packets, messages, and automatic repeater telemetry to MQTT, Home Assistant, LetsMesh, MeshRank, SQS, Apprise, etc.
-* Use the more recent 1.14+ firmwares which support multibyte pathing
-* Visualize the mesh as a map or node set, view repeater stats, and more!
+- Send and receive DMs and channel messages
+- Cache all received packets, decrypting as you gain keys
+- Run multiple Python bots that can analyze messages and respond to DMs and channels
+- Monitor unlimited contacts and channels (radio limits don't apply -- packets are decrypted server-side)
+- Access your radio remotely over your network or VPN
+- Search for hashtag channel names for channels you don't have keys for yet
+- Forward packets, messages, and automatic repeater telemetry to MQTT, Home Assistant, LetsMesh, MeshRank, SQS, Apprise, etc.
+- Use the more recent 1.14+ firmwares which support multibyte pathing
+- Visualize the mesh as a map or node set, view repeater stats, and more!
 
 For advanced setup and troubleshooting see [README_ADVANCED.md](README_ADVANCED.md). If you plan to contribute, read [CONTRIBUTING.md](CONTRIBUTING.md).
 
@@ -21,7 +21,7 @@ For advanced setup and troubleshooting see [README_ADVANCED.md](README_ADVANCED.
 ![Screenshot of the application's web interface](app_screenshot.png)
 
 > [!WARNING]
-> MESHRIK does *full* management of the radio, meaning that once a radio is connected to MESHRIK, all contacts/channels will be imported and offloaded to MESHRIK and the contacts actually synced to the device will be governed by MESHRIK. This means that MESHRIK can be a poor fit for users who are looking to swap radios in and out, maintaining radio state (favorites, channels, etc.) irrespective of app usage.
+> MESHRIK does _full_ management of the radio, meaning that once a radio is connected to MESHRIK, all contacts/channels will be imported and offloaded to MESHRIK and the contacts actually synced to the device will be governed by MESHRIK. This means that MESHRIK can be a poor fit for users who are looking to swap radios in and out, maintaining radio state (favorites, channels, etc.) irrespective of app usage.
 
 ## Requirements
 
@@ -64,6 +64,7 @@ usbipd bind --busid 3-8 # (or whatever the right ID is)
 usbipd attach --wsl --busid 3-8
 # device will appear in WSL as /dev/ttyUSB0 or /dev/ttyACM0
 ```
+
 </details>
 
 ## Install Path 1: Clone And Build
@@ -175,20 +176,20 @@ sudo docker compose down
 
 Only one transport may be active at a time. If multiple are set, the server will refuse to start.
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `MESHCORE_SERIAL_PORT` | (auto-detect) | Serial port path |
-| `MESHCORE_SERIAL_BAUDRATE` | 115200 | Serial baud rate |
-| `MESHCORE_TCP_HOST` | | TCP host (mutually exclusive with serial/BLE) |
-| `MESHCORE_TCP_PORT` | 5000 | TCP port |
-| `MESHCORE_BLE_ADDRESS` | | BLE device address (mutually exclusive with serial/TCP) |
-| `MESHCORE_BLE_PIN` | | BLE PIN (required when BLE address is set) |
-| `MESHCORE_LOG_LEVEL` | INFO | `DEBUG`, `INFO`, `WARNING`, `ERROR` |
-| `MESHCORE_DATABASE_PATH` | `data/meshcore.db` | SQLite database path |
-| `MESHCORE_DISABLE_BOTS` | false | Disable bot system entirely (blocks execution and config; an intermediate security precaution, but not as good as basic auth) |
-| `MESHCORE_BASIC_AUTH_USERNAME` | | Optional app-wide HTTP Basic auth username; must be set together with `MESHCORE_BASIC_AUTH_PASSWORD` |
-| `MESHCORE_BASIC_AUTH_PASSWORD` | | Optional app-wide HTTP Basic auth password; must be set together with `MESHCORE_BASIC_AUTH_USERNAME` |
-| `MESHCORE_VAPID_SUBJECT` | `mailto:noreply@meshcore.local` | Subject (`sub`) claim for Web Push VAPID tokens; must be a `mailto:` or `https:` contact. Apple's push service rejects the default `.local` domain, so iOS/Safari users must set this to a real address (e.g. `mailto:you@example.com`). |
+| Variable                       | Default                         | Description                                                                                                                                                                                                                              |
+| ------------------------------ | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `MESHCORE_SERIAL_PORT`         | (auto-detect)                   | Serial port path                                                                                                                                                                                                                         |
+| `MESHCORE_SERIAL_BAUDRATE`     | 115200                          | Serial baud rate                                                                                                                                                                                                                         |
+| `MESHCORE_TCP_HOST`            |                                 | TCP host (mutually exclusive with serial/BLE)                                                                                                                                                                                            |
+| `MESHCORE_TCP_PORT`            | 5000                            | TCP port                                                                                                                                                                                                                                 |
+| `MESHCORE_BLE_ADDRESS`         |                                 | BLE device address (mutually exclusive with serial/TCP)                                                                                                                                                                                  |
+| `MESHCORE_BLE_PIN`             |                                 | BLE PIN (required when BLE address is set)                                                                                                                                                                                               |
+| `MESHCORE_LOG_LEVEL`           | INFO                            | `DEBUG`, `INFO`, `WARNING`, `ERROR`                                                                                                                                                                                                      |
+| `MESHCORE_DATABASE_PATH`       | `data/meshcore.db`              | SQLite database path                                                                                                                                                                                                                     |
+| `MESHCORE_DISABLE_BOTS`        | false                           | Disable bot system entirely (blocks execution and config; an intermediate security precaution, but not as good as basic auth)                                                                                                            |
+| `MESHCORE_BASIC_AUTH_USERNAME` |                                 | Optional app-wide HTTP Basic auth username; must be set together with `MESHCORE_BASIC_AUTH_PASSWORD`                                                                                                                                     |
+| `MESHCORE_BASIC_AUTH_PASSWORD` |                                 | Optional app-wide HTTP Basic auth password; must be set together with `MESHCORE_BASIC_AUTH_USERNAME`                                                                                                                                     |
+| `MESHCORE_VAPID_SUBJECT`       | `mailto:noreply@meshcore.local` | Subject (`sub`) claim for Web Push VAPID tokens; must be a `mailto:` or `https:` contact. Apple's push service rejects the default `.local` domain, so iOS/Safari users must set this to a real address (e.g. `mailto:you@example.com`). |
 
 Common launch patterns:
 
@@ -233,7 +234,6 @@ If you enable Basic Auth, protect the app with HTTPS. HTTP Basic credentials are
 This is developed with very heavy agentic assistance -- there is no warranty of fitness for any purpose. It's been lovingly guided by an engineer with a passion for clean code and good tests, but it's still mostly LLM output, so you may find some bugs.
 
 If extending, have your LLM read the three `AGENTS.md` files: `./AGENTS.md`, `./frontend/AGENTS.md`, and `./app/AGENTS.md`.
-
 
 ## Hardware smoke testing
 

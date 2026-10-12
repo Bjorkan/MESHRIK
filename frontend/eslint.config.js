@@ -12,7 +12,10 @@ export default tseslint.config(
     rules: {
       ...reactHooks.configs.recommended.rules,
       // Allow unused vars prefixed with _
-      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
       // Allow any in specific cases (can tighten later)
       '@typescript-eslint/no-explicit-any': 'warn',
     },

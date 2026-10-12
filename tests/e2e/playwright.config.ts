@@ -1,12 +1,12 @@
-import { defineConfig } from '@playwright/test';
-import path from 'path';
+import { defineConfig } from "@playwright/test";
+import path from "path";
 
-const projectRoot = path.resolve(__dirname, '..', '..');
-const tmpDir = path.resolve(__dirname, '.tmp');
+const projectRoot = path.resolve(__dirname, "..", "..");
+const tmpDir = path.resolve(__dirname, ".tmp");
 
 export default defineConfig({
-  testDir: './specs',
-  globalSetup: './global-setup.ts',
+  testDir: "./specs",
+  globalSetup: "./global-setup.ts",
 
   // Radio operations are slow — generous timeouts
   timeout: 60_000,
@@ -19,19 +19,21 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
 
-  reporter: [['list'], ['html', { open: 'never' }]],
+  reporter: [["list"], ["html", { open: "never" }]],
 
   use: {
-    baseURL: 'http://localhost:8001',
-    trace: 'on-first-retry',
-    screenshot: 'only-on-failure',
+    baseURL: "http://localhost:8001",
+    trace: "on-first-retry",
+    screenshot: "only-on-failure",
     // Dismiss the security warning modal that blocks interaction on fresh browser contexts
     storageState: {
       cookies: [],
       origins: [
         {
-          origin: 'http://localhost:8001',
-          localStorage: [{ name: 'meshcore_security_warning_acknowledged', value: 'true' }],
+          origin: "http://localhost:8001",
+          localStorage: [
+            { name: "meshcore_security_warning_acknowledged", value: "true" },
+          ],
         },
       ],
     },
@@ -39,8 +41,8 @@ export default defineConfig({
 
   projects: [
     {
-      name: 'chromium',
-      use: { browserName: 'chromium' },
+      name: "chromium",
+      use: { browserName: "chromium" },
     },
   ],
 
@@ -62,7 +64,7 @@ export default defineConfig({
     reuseExistingServer: false,
     timeout: 180_000,
     env: {
-      MESHCORE_DATABASE_PATH: path.join(tmpDir, 'e2e-test.db'),
+      MESHCORE_DATABASE_PATH: path.join(tmpDir, "e2e-test.db"),
       // Pass through the serial port from the environment
       ...(process.env.MESHCORE_SERIAL_PORT
         ? { MESHCORE_SERIAL_PORT: process.env.MESHCORE_SERIAL_PORT }

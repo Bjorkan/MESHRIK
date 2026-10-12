@@ -150,14 +150,16 @@ app/
 
 `prepare_authenticated_contact_connection` (`routers/server_control.py`, shared by repeater and room login) sends one login over the contact's effective route. If that draws **no reply at all**, it calls `reset_path(...)` and retries exactly once as flood.
 
-This is intentionally *more* than the reference implementations do — do not "correct" it back to single-shot:
+This is intentionally _more_ than the reference implementations do — do not "correct" it back to single-shot:
+
 - Firmware `BaseChatMesh::sendLogin` picks flood only when `out_path_len == OUT_PATH_UNKNOWN` and never retries; `CMD_SEND_LOGIN` calls it once.
 - `meshcore_py` has `send_msg_with_retry` (with `flood_after` + `reset_path`) but no login equivalent — `send_login`/`send_login_sync` are single-shot.
-- Firmware only clears a stale path when the *host* asks (`CMD_RESET_PATH`); client-side path learning is otherwise passive via `onContactPathRecv`.
+- Firmware only clears a stale path when the _host_ asks (`CMD_RESET_PATH`); client-side path learning is otherwise passive via `onContactPathRecv`.
 
 Escalating is still correct because the **server** side treats an inbound flood as its cue to relearn the return path (`simple_repeater`/`simple_room_server`: `if (is_flood) client->out_path_len = OUT_PATH_UNKNOWN`). A flood login is therefore what repairs a broken route in both directions, and login gates the whole repeater dashboard.
 
 Escalation is bounded to one extra attempt and only fires when:
+
 - the first attempt **timed out**. `LOGIN_FAILED` means the server heard us and refused, so the route is fine and retrying only hammers it with bad credentials; a send error is a local radio problem a different route will not fix.
 - the contact was **not already on flood** (`effective_route_source != "flood"`), since the retry would otherwise be byte-identical.
 
@@ -239,12 +241,15 @@ drives `frontend/src/generated/api-schema.ts`. Route/request/response contract c
 the FastAPI app without entering its lifespan, so it needs neither a running server nor a radio.
 
 ### Health
+
 - `GET /health`
 
 ### Debug
+
 - `GET /debug` — support snapshot with recent logs, live radio probe, slot/contact audits, and version/git info
 
 ### Radio
+
 - `GET /radio/config` — includes `path_hash_mode`, `path_hash_mode_supported`, companion repeat-mode state/support, advert-location on/off, and `multi_acks_enabled`
 - `PATCH /radio/config` — may update `path_hash_mode` (`0..2`) and companion repeat mode when firmware supports them, plus `multi_acks_enabled`
 - `GET /radio/private-key` — export in-memory private key as hex (requires `MESHCORE_ENABLE_LOCAL_PRIVATE_KEY_EXPORT=true`)
@@ -258,6 +263,7 @@ the FastAPI app without entering its lifespan, so it needs neither a running ser
 - `POST /radio/reconnect`
 
 ### Contacts
+
 - `GET /contacts`
 - `GET /contacts/analytics` — unified keyed-or-name analytics payload
 - `GET /contacts/repeaters/advert-paths` — recent advert paths for all contacts
@@ -288,6 +294,7 @@ the FastAPI app without entering its lifespan, so it needs neither a running ser
 - `POST /contacts/{public_key}/room/acl`
 
 ### Channels
+
 - `GET /channels`
 - `GET /channels/{key}/detail`
 - `POST /channels`
@@ -298,6 +305,7 @@ the FastAPI app without entering its lifespan, so it needs neither a running ser
 - `POST /channels/{key}/mark-read`
 
 ### Messages
+
 - `GET /messages` — list with filters; supports `q` (full-text search), `after`/`after_id` (forward cursor)
 - `GET /messages/around/{message_id}` — context messages around a target (for jump-to-message navigation)
 - `POST /messages/direct`
@@ -305,6 +313,7 @@ the FastAPI app without entering its lifespan, so it needs neither a running ser
 - `POST /messages/channel/{message_id}/resend`
 
 ### Packets
+
 - `GET /packets/undecrypted/count`
 - `POST /packets/region-backfill` — re-resolve region scope for stored channel messages that still have a retained raw packet (region is otherwise only tagged at ingest); returns `{scanned, scoped, named}`
 - `GET /packets/{packet_id}` — fetch one stored raw packet by row ID for on-demand inspection
@@ -312,10 +321,12 @@ the FastAPI app without entering its lifespan, so it needs neither a running ser
 - `POST /packets/maintenance`
 
 ### Read state
+
 - `GET /read-state/unreads` — counts, mention flags, `last_message_times`, `last_read_ats`, and `first_unread_ids`
 - `POST /read-state/mark-all-read`
 
 ### Settings
+
 - `GET /settings`
 - `PATCH /settings`
 - `POST /settings/favorites/toggle`
@@ -328,6 +339,7 @@ the FastAPI app without entering its lifespan, so it needs neither a running ser
 - `POST /settings/muted-channels/toggle`
 
 ### Fanout
+
 - `GET /fanout` — list all fanout configs
 - `POST /fanout` — create new fanout config
 - `PATCH /fanout/{id}` — update fanout config (triggers module reload)
@@ -335,9 +347,11 @@ the FastAPI app without entering its lifespan, so it needs neither a running ser
 - `POST /fanout/bots/disable-until-restart` — stop bot modules and keep bots disabled until restart
 
 ### Statistics
+
 - `GET /statistics` — aggregated mesh network stats (entity counts, message/packet splits, activity windows, busiest channels, `region_scope_24h` regional adoption)
 
 ### Push
+
 - `GET /push/vapid-public-key` — VAPID public key for browser `PushManager.subscribe()`
 - `POST /push/subscribe` — register/upsert push subscription (keyed by endpoint URL)
 - `GET /push/subscriptions` — list all push subscriptions
@@ -348,6 +362,7 @@ the FastAPI app without entering its lifespan, so it needs neither a running ser
 - `POST /push/conversations/toggle` — add or remove a conversation from the global push list
 
 ### WebSocket
+
 - `WS /ws`
 
 ## WebSocket Events
@@ -370,6 +385,7 @@ Client sends `"ping"` text; server replies `{"type":"pong"}`.
 ## Data Model Notes
 
 Main tables:
+
 - `contacts` (includes `first_seen` for contact age tracking and `direct_path_hash_mode` / `route_override_*` for DM routing)
 - `channels`
   Includes optional `flood_scope_override` for channel-specific regional sends and optional `path_hash_mode_override` for per-channel path hop width.
@@ -384,6 +400,7 @@ Main tables:
 - `app_settings` (includes `vapid_private_key` and `vapid_public_key` for Web Push VAPID signing)
 
 Contact route state is canonicalized on the backend:
+
 - stored route inputs: `direct_path`, `direct_path_len`, `direct_path_hash_mode`, `direct_path_updated_at`, plus optional `route_override_*`
 - computed route surface: `effective_route`, `effective_route_source`, `direct_route`, `route_override`
 - removed legacy names: `last_path`, `last_path_len`, `out_path_hash_mode`
@@ -395,6 +412,7 @@ Repository writes should prefer typed models such as `ContactUpsert` over ad hoc
 `max_radio_contacts` is the configured radio contact capacity baseline. Favorites reload first, the app refills non-favorite working-set contacts to about 80% of that capacity, and periodic offload triggers once occupancy reaches about 95%.
 
 `app_settings` fields in active model:
+
 - `max_radio_contacts`
 - `auto_decrypt_dm_on_advert`
 - `last_message_times`
@@ -506,7 +524,7 @@ permit. `awaiting_ack`/`awaiting_response` jobs do not occupy it.
 Command callbacks run under `radio_runtime.radio_operation()`, therefore sharing
 the **existing** `RadioManager` lock with every legacy producer. The worker
 must not create a separate MeshCore or perform long RF confirmation waits under
-the lock. A typed command outcome distinguishes a completed *local* command from
+the lock. A typed command outcome distinguishes a completed _local_ command from
 ACK/response waiting. Neither local completion nor a command timeout implies
 successful RF delivery. Queued cancellation guarantees no dispatch; executing
 cancellation only records a request; stopping a waiter never retracts RF.
@@ -552,6 +570,7 @@ MeshCore uses `0.0` as the sentinel for "no GPS coordinates" (see `models.py` `t
 ## Editing Checklist
 
 When changing backend behavior:
+
 1. Update/add router and repository tests.
 2. Confirm WS event contracts when payload shape changes.
 3. Run `PYTHONPATH=. uv run pytest tests/ -v`.
@@ -567,4 +586,4 @@ ambiguous login/CLI responses. `routers/radio_jobs.py` exposes REST jobs, cancel
 inbound activity; `events.py` exports two additional typed WS events. Existing
 producers still use the legacy radio lock until the follow-up migration issues.
 See `RADIO_JOB_SCHEDULER.md` for correlation, cancellation, reconnect and API
-contracts; in particular `executing` does *not* assert physical RF transmission.
+contracts; in particular `executing` does _not_ assert physical RF transmission.

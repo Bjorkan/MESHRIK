@@ -104,29 +104,29 @@ PYTHONPATH=. uv run python -m pytest tests/ -v -m contract -n 0
 <details>
 <summary>scripts/quality/</summary>
 
-| Script | Purpose |
-|--------|---------|
-| `all_quality.sh` | Repo-standard gate: autofix (ruff, eslint, prettier), then pyright, pytest, vitest, and frontend build. Run before finishing any code change. |
-| `extended_quality.sh` | `all_quality.sh` plus e2e tests and Docker build matrix. Used for release validation. |
-| `e2e.sh` | Thin wrapper that runs Playwright e2e tests from `tests/e2e/`. |
-| `docker_ci.sh` | Builds the Docker image and runs a smoke test against it. |
+| Script                | Purpose                                                                                                                                       |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `all_quality.sh`      | Repo-standard gate: autofix (ruff, eslint, prettier), then pyright, pytest, vitest, and frontend build. Run before finishing any code change. |
+| `extended_quality.sh` | `all_quality.sh` plus e2e tests and Docker build matrix. Used for release validation.                                                         |
+| `e2e.sh`              | Thin wrapper that runs Playwright e2e tests from `tests/e2e/`.                                                                                |
+| `docker_ci.sh`        | Builds the Docker image and runs a smoke test against it.                                                                                     |
 
 </details>
 
 <details>
 <summary>scripts/build/</summary>
 
-| Script | Purpose |
-|--------|---------|
-| `publish.sh` | Full release ceremony: quality gate, version bump, changelog, frontend artifact, and GitHub release. Publishing the release triggers the GHCR workflow. |
-| `release_common.sh` | Shared shell helpers (version validation, formatting) sourced by other build scripts. |
-| `package_release_artifact.sh` | Builds the prebuilt-frontend release zip attached to GitHub releases. |
-| `push_docker_multiarch.sh` | Manual recovery helper for pushing amd64 + arm64 images to GitHub Container Registry. Normal releases use `publish-container.yml`. |
-| `create_github_release.sh` | Creates a GitHub release with changelog notes and the release artifact. |
-| `extract_release_notes.sh` | Extracts the latest version's notes from `CHANGELOG.md` for the release body. |
-| `collect_licenses.sh` | Gathers third-party license attributions into `LICENSES.md`. |
-| `print_frontend_licenses.cjs` | Helper that extracts frontend npm dependency licenses. |
-| `dump_api_specs.py` | Deterministically exports OpenAPI and optional WebSocket schemas directly from backend code; no running server or radio is required. |
+| Script                        | Purpose                                                                                                                                                 |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `publish.sh`                  | Full release ceremony: quality gate, version bump, changelog, frontend artifact, and GitHub release. Publishing the release triggers the GHCR workflow. |
+| `release_common.sh`           | Shared shell helpers (version validation, formatting) sourced by other build scripts.                                                                   |
+| `package_release_artifact.sh` | Builds the prebuilt-frontend release zip attached to GitHub releases.                                                                                   |
+| `push_docker_multiarch.sh`    | Manual recovery helper for pushing amd64 + arm64 images to GitHub Container Registry. Normal releases use `publish-container.yml`.                      |
+| `create_github_release.sh`    | Creates a GitHub release with changelog notes and the release artifact.                                                                                 |
+| `extract_release_notes.sh`    | Extracts the latest version's notes from `CHANGELOG.md` for the release body.                                                                           |
+| `collect_licenses.sh`         | Gathers third-party license attributions into `LICENSES.md`.                                                                                            |
+| `print_frontend_licenses.cjs` | Helper that extracts frontend npm dependency licenses.                                                                                                  |
+| `dump_api_specs.py`           | Deterministically exports OpenAPI and optional WebSocket schemas directly from backend code; no running server or radio is required.                    |
 
 Container publication is handled exclusively by `.github/workflows/publish-container.yml`. Publishing a GitHub release builds `linux/amd64` and `linux/arm64` images and pushes them to `ghcr.io/bjorkan/meshrik`; no Docker Hub or AUR credentials are used. The workflow can also be rerun manually with an explicit source ref and container tag.
 
@@ -172,6 +172,7 @@ The most practical way to guarantee incoming traffic is to run an **echo bot on 
 The test suite sends `!echo please give incoming message` to the echo channel (default `#flightless`) at the start of each `@mesh-traffic` test. The trigger message is configurable via `E2E_ECHO_TRIGGER_MESSAGE`.
 
 Setup:
+
 1. Set up a second MeshCore radio within RF range of your test radio
 2. Run a MESHRIK instance on the second radio
 3. Configure a bot on the second radio that monitors the echo channel and replies when it sees the trigger. Example bot code:
@@ -190,13 +191,13 @@ Without the echo bot, `@mesh-traffic` tests rely on organic traffic from other n
 
 All E2E environment configuration is centralized in `tests/e2e/helpers/env.ts` with defaults that work for the maintainer's test rig. Override via environment variables:
 
-| Variable | Default | Purpose |
-|----------|---------|---------|
-| `MESHCORE_SERIAL_PORT` | auto-detect | Serial port for the test radio |
-| `E2E_ECHO_CHANNEL` | `#flightless` | Channel the echo bot monitors for traffic generation |
-| `E2E_ECHO_TRIGGER_MESSAGE` | `!echo please give incoming message` | Message sent to nudge the echo bot |
-| `E2E_PARTNER_RADIO_PUBKEY` | *(maintainer's test node)* | 64-char hex public key of a node that will ACK DMs from your radio |
-| `E2E_PARTNER_RADIO_NAME` | *(maintainer's test node)* | Display name of that node (used in UI assertions) |
+| Variable                   | Default                              | Purpose                                                            |
+| -------------------------- | ------------------------------------ | ------------------------------------------------------------------ |
+| `MESHCORE_SERIAL_PORT`     | auto-detect                          | Serial port for the test radio                                     |
+| `E2E_ECHO_CHANNEL`         | `#flightless`                        | Channel the echo bot monitors for traffic generation               |
+| `E2E_ECHO_TRIGGER_MESSAGE` | `!echo please give incoming message` | Message sent to nudge the echo bot                                 |
+| `E2E_PARTNER_RADIO_PUBKEY` | _(maintainer's test node)_           | 64-char hex public key of a node that will ACK DMs from your radio |
+| `E2E_PARTNER_RADIO_NAME`   | _(maintainer's test node)_           | Display name of that node (used in UI assertions)                  |
 
 Example for a contributor with their own two-radio setup:
 

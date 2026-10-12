@@ -15,10 +15,12 @@ This is the repo's end-to-end quality gate. It runs backend/frontend autofixers 
 A web interface for MeshCore mesh radio networks. The backend connects to a MeshCore-compatible radio over Serial, TCP, or BLE and exposes REST/WebSocket APIs. The React frontend provides real-time messaging and radio configuration.
 
 **For detailed component documentation, see these primary AGENTS.md files:**
+
 - `app/AGENTS.md` - Backend (FastAPI, database, radio connection, packet decryption)
 - `frontend/AGENTS.md` - Frontend (React, state management, WebSocket, components)
 
 Ancillary AGENTS.md files which should generally not be reviewed unless specific work is being performed on those features include:
+
 - `app/fanout/AGENTS_fanout.md` - Fanout bus architecture (MQTT, bots, webhooks, Apprise, SQS)
 - `frontend/src/components/visualizer/AGENTS_packet_visualizer.md` - Packet visualizer (force-directed graph, advert-path identity, layout engine)
 
@@ -61,6 +63,7 @@ Ancillary AGENTS.md files which should generally not be reviewed unless specific
 ## Feature Priority
 
 **Primary (must work correctly):**
+
 - Sending and receiving direct messages and channel messages
 - Accurate message display: correct ordering, deduplication, pagination/history loading, and real-time updates without data loss or duplicates
 - Accurate ACK tracking, repeat/echo counting, and path display
@@ -68,10 +71,12 @@ Ancillary AGENTS.md files which should generally not be reviewed unless specific
 - Outgoing DMs are stored as plaintext by the send endpoint — no decryption needed
 
 **Secondary:**
+
 - Channel key cracker (WebGPU brute-force)
 - Repeater management (telemetry, CLI commands, ACL)
 
 **Tertiary (best-effort, quality-of-life):**
+
 - Raw packet feed — a debug/observation tool ("radio aquarium"); interesting to watch or copy packets from, but not critical infrastructure
 - Map view — visual display of node locations from advertisements
 - Network visualizer — force-directed graph of mesh topology
@@ -113,6 +118,7 @@ The following are **deliberate design choices**, not bugs. They are documented i
 ## Intentional Packet Handling Decision
 
 Raw packet handling uses two identities by design:
+
 - **`id` (DB packet row ID)**: storage identity from payload-hash deduplication (path bytes are excluded), so repeated payloads share one stored raw-packet row.
 - **`observation_id` (WebSocket only)**: realtime observation identity, unique per RF arrival, so path-diverse repeats are still visible in-session.
 
@@ -164,6 +170,7 @@ MeshCore firmware can encode path hops as 1-byte, 2-byte, or 3-byte identifiers.
 Outgoing messages include `send_status`. A missing radio response is an ambiguous outcome, so the backend retains and broadcasts the row as `unknown` while returning HTTP 408; explicit radio errors do not retain a row that is known not to have been sent.
 
 Direct-message send behavior intentionally mirrors the firmware/library `send_msg_with_retry(...)` flow:
+
 - We push the contact's effective route to the radio via `add_contact(...)` before sending.
 - If the initial `MSG_SENT` result includes an expected ACK code, background retries are armed.
 - Non-final retry attempts use the effective route (`override > direct > flood`).
@@ -280,6 +287,7 @@ PYTHONPATH=. uv run pytest tests/ -v
 ```
 
 Key test files:
+
 - `tests/test_api.py` - Broad API integration coverage across routers and read-state flows
 - `tests/test_packet_pipeline.py` - End-to-end packet processing, decrypt, dedup, and message creation
 - `tests/test_event_handlers.py` - ACK tracking, fallback DM handling, and event subscription cleanup
@@ -313,94 +321,94 @@ npm run test:run
 
 All endpoints are prefixed with `/api` (e.g., `/api/health`).
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/health` | Connection status, fanout statuses, bots_disabled flag |
-| GET | `/api/debug` | Support snapshot: recent logs, live radio probe, contact/channel drift audit, and running version/git info |
-| GET | `/api/radio/config` | Radio configuration, including `path_hash_mode`, `path_hash_mode_supported`, advert-location on/off, and `multi_acks_enabled` |
-| PATCH | `/api/radio/config` | Update name, location, advert-location on/off, `multi_acks_enabled`, radio params, and `path_hash_mode` when supported |
-| GET | `/api/radio/private-key` | Export in-memory private key as hex (requires `MESHCORE_ENABLE_LOCAL_PRIVATE_KEY_EXPORT=true`) |
-| PUT | `/api/radio/private-key` | Import private key to radio |
-| POST | `/api/radio/advertise` | Send advertisement (`mode`: `flood` or `zero_hop`, default `flood`) |
-| POST | `/api/radio/discover` | Run a short mesh discovery sweep for nearby repeaters/sensors |
-| POST | `/api/radio/discover-regions` | Sweep nearby repeaters (anon regions request) for flood-allowed region names to merge into `known_regions` |
-| POST | `/api/radio/trace` | Send a multi-hop trace loop through known repeaters and back to the local radio |
-| POST | `/api/radio/reboot` | Reboot radio or reconnect if disconnected |
-| POST | `/api/radio/disconnect` | Disconnect from radio and pause automatic reconnect attempts |
-| POST | `/api/radio/reconnect` | Manual radio reconnection |
-| GET | `/api/contacts` | List contacts |
-| GET | `/api/contacts/analytics` | Unified keyed-or-name contact analytics payload |
-| GET | `/api/contacts/repeaters/advert-paths` | List recent unique advert paths for all contacts |
-| POST | `/api/contacts` | Create contact (optionally trigger historical DM decrypt) |
-| POST | `/api/contacts/bulk-delete` | Delete multiple contacts |
-| DELETE | `/api/contacts/{public_key}` | Delete contact |
-| POST | `/api/contacts/{public_key}/mark-read` | Mark contact conversation as read |
-| POST | `/api/contacts/{public_key}/command` | Send CLI command to repeater |
-| POST | `/api/contacts/{public_key}/routing-override` | Set or clear a forced routing override |
-| POST | `/api/contacts/{public_key}/trace` | Trace route to contact |
-| POST | `/api/contacts/{public_key}/path-discovery` | Discover forward/return paths and persist the learned direct route |
-| POST | `/api/contacts/{public_key}/repeater/login` | Log in to a repeater (escalates to one flood retry if the first attempt draws no reply) |
-| POST | `/api/contacts/{public_key}/repeater/status` | Fetch repeater status telemetry |
-| POST | `/api/contacts/{public_key}/repeater/lpp-telemetry` | Fetch CayenneLPP sensor data |
-| POST | `/api/contacts/{public_key}/repeater/neighbors` | Fetch repeater neighbors |
-| POST | `/api/contacts/{public_key}/repeater/acl` | Fetch repeater ACL |
-| POST | `/api/contacts/{public_key}/repeater/node-info` | Fetch repeater name, location, and clock via CLI |
-| POST | `/api/contacts/{public_key}/repeater/radio-settings` | Fetch repeater radio config via CLI |
-| POST | `/api/contacts/{public_key}/repeater/regions` | Fetch repeater region hierarchy via CLI, falling back to the guest anon flood-allowed region names (`source`: `cli` or `anon`) |
-| POST | `/api/contacts/{public_key}/repeater/advert-intervals` | Fetch advert intervals |
-| POST | `/api/contacts/{public_key}/repeater/owner-info` | Fetch owner info |
-| GET | `/api/contacts/{public_key}/repeater/telemetry-history` | Stored telemetry history for a repeater (read-only, no radio access) |
-| POST | `/api/contacts/{public_key}/telemetry` | Fetch CayenneLPP telemetry from any contact (single attempt, 10s timeout) |
-| GET | `/api/contacts/{public_key}/telemetry-history` | Stored LPP telemetry history for a contact (read-only, no radio access) |
-| POST | `/api/contacts/{public_key}/room/login` | Log in to a room server (escalates to one flood retry if the first attempt draws no reply) |
-| POST | `/api/contacts/{public_key}/room/status` | Fetch room-server status telemetry |
-| POST | `/api/contacts/{public_key}/room/lpp-telemetry` | Fetch room-server CayenneLPP sensor data |
-| POST | `/api/contacts/{public_key}/room/acl` | Fetch room-server ACL entries |
-| GET | `/api/channels` | List channels |
-| GET | `/api/channels/{key}/detail` | Comprehensive channel profile (message stats, top senders) |
-| POST | `/api/channels` | Create channel |
-| POST | `/api/channels/bulk-hashtag` | Create multiple hashtag channels |
-| DELETE | `/api/channels/{key}` | Delete channel |
-| POST | `/api/channels/{key}/flood-scope-override` | Set or clear a per-channel regional flood-scope override |
-| POST | `/api/channels/{key}/path-hash-mode-override` | Set or clear a per-channel path hash mode override |
-| POST | `/api/channels/{key}/mark-read` | Mark channel as read |
-| GET | `/api/messages` | List with filters (`q`, `after`/`after_id` for forward pagination) |
-| GET | `/api/messages/around/{id}` | Get messages around a specific message (for jump-to-message) |
-| POST | `/api/messages/direct` | Send direct message |
-| POST | `/api/messages/channel` | Send channel message |
-| POST | `/api/messages/channel/{message_id}/resend` | Resend channel message (default: byte-perfect within 30s; `?new_timestamp=true`: fresh timestamp, no time limit, creates new message row) |
-| GET | `/api/packets/undecrypted/count` | Count of undecrypted packets |
-| GET | `/api/packets/{packet_id}` | Fetch one stored raw packet by row ID for on-demand inspection |
-| POST | `/api/packets/region-backfill` | Re-resolve region scope for stored channel messages with retained raw packets |
-| POST | `/api/packets/decrypt/historical` | Decrypt stored packets |
-| POST | `/api/packets/maintenance` | Delete old packets and vacuum |
-| GET | `/api/read-state/unreads` | Server-computed unread counts, mentions, last message times, `last_read_ats` boundaries, and `first_unread_ids` (unread-divider anchor) |
-| POST | `/api/read-state/mark-all-read` | Mark all conversations as read |
-| GET | `/api/settings` | Get app settings |
-| PATCH | `/api/settings` | Update app settings |
-| POST | `/api/settings/favorites/toggle` | Toggle favorite status |
-| POST | `/api/settings/blocked-keys/toggle` | Toggle blocked key |
-| POST | `/api/settings/blocked-names/toggle` | Toggle blocked name |
-| POST | `/api/settings/tracked-telemetry/toggle` | Toggle tracked telemetry repeater |
-| GET | `/api/settings/tracked-telemetry/schedule` | Current telemetry scheduling derivation and next-run-at timestamp |
-| POST | `/api/settings/tracked-telemetry-contacts/toggle` | Toggle tracked LPP telemetry for any contact |
-| GET | `/api/settings/tracked-telemetry-contacts/schedule` | Contact telemetry scheduling derivation (shared ceiling with repeaters) |
-| POST | `/api/settings/muted-channels/toggle` | Toggle muted status for a channel |
-| GET | `/api/fanout` | List all fanout configs |
-| POST | `/api/fanout` | Create new fanout config |
-| PATCH | `/api/fanout/{id}` | Update fanout config (triggers module reload) |
-| DELETE | `/api/fanout/{id}` | Delete fanout config (stops module) |
-| POST | `/api/fanout/bots/disable-until-restart` | Stop bot fanout modules and keep bots disabled until the process restarts |
-| GET | `/api/statistics` | Aggregated mesh network statistics, including `region_scope_24h` regional flood-scope adoption |
-| GET | `/api/push/vapid-public-key` | VAPID public key for browser push subscription |
-| POST | `/api/push/subscribe` | Register/upsert a push subscription |
-| GET | `/api/push/subscriptions` | List all push subscriptions |
-| PATCH | `/api/push/subscriptions/{id}` | Update subscription label or filter preferences |
-| DELETE | `/api/push/subscriptions/{id}` | Delete a push subscription |
-| POST | `/api/push/subscriptions/{id}/test` | Send a test push notification |
-| GET | `/api/push/conversations` | Global list of push-enabled conversation state keys |
-| POST | `/api/push/conversations/toggle` | Add or remove a conversation from the global push list |
-| WS | `/api/ws` | Real-time updates |
+| Method | Endpoint                                                | Description                                                                                                                               |
+| ------ | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/api/health`                                           | Connection status, fanout statuses, bots_disabled flag                                                                                    |
+| GET    | `/api/debug`                                            | Support snapshot: recent logs, live radio probe, contact/channel drift audit, and running version/git info                                |
+| GET    | `/api/radio/config`                                     | Radio configuration, including `path_hash_mode`, `path_hash_mode_supported`, advert-location on/off, and `multi_acks_enabled`             |
+| PATCH  | `/api/radio/config`                                     | Update name, location, advert-location on/off, `multi_acks_enabled`, radio params, and `path_hash_mode` when supported                    |
+| GET    | `/api/radio/private-key`                                | Export in-memory private key as hex (requires `MESHCORE_ENABLE_LOCAL_PRIVATE_KEY_EXPORT=true`)                                            |
+| PUT    | `/api/radio/private-key`                                | Import private key to radio                                                                                                               |
+| POST   | `/api/radio/advertise`                                  | Send advertisement (`mode`: `flood` or `zero_hop`, default `flood`)                                                                       |
+| POST   | `/api/radio/discover`                                   | Run a short mesh discovery sweep for nearby repeaters/sensors                                                                             |
+| POST   | `/api/radio/discover-regions`                           | Sweep nearby repeaters (anon regions request) for flood-allowed region names to merge into `known_regions`                                |
+| POST   | `/api/radio/trace`                                      | Send a multi-hop trace loop through known repeaters and back to the local radio                                                           |
+| POST   | `/api/radio/reboot`                                     | Reboot radio or reconnect if disconnected                                                                                                 |
+| POST   | `/api/radio/disconnect`                                 | Disconnect from radio and pause automatic reconnect attempts                                                                              |
+| POST   | `/api/radio/reconnect`                                  | Manual radio reconnection                                                                                                                 |
+| GET    | `/api/contacts`                                         | List contacts                                                                                                                             |
+| GET    | `/api/contacts/analytics`                               | Unified keyed-or-name contact analytics payload                                                                                           |
+| GET    | `/api/contacts/repeaters/advert-paths`                  | List recent unique advert paths for all contacts                                                                                          |
+| POST   | `/api/contacts`                                         | Create contact (optionally trigger historical DM decrypt)                                                                                 |
+| POST   | `/api/contacts/bulk-delete`                             | Delete multiple contacts                                                                                                                  |
+| DELETE | `/api/contacts/{public_key}`                            | Delete contact                                                                                                                            |
+| POST   | `/api/contacts/{public_key}/mark-read`                  | Mark contact conversation as read                                                                                                         |
+| POST   | `/api/contacts/{public_key}/command`                    | Send CLI command to repeater                                                                                                              |
+| POST   | `/api/contacts/{public_key}/routing-override`           | Set or clear a forced routing override                                                                                                    |
+| POST   | `/api/contacts/{public_key}/trace`                      | Trace route to contact                                                                                                                    |
+| POST   | `/api/contacts/{public_key}/path-discovery`             | Discover forward/return paths and persist the learned direct route                                                                        |
+| POST   | `/api/contacts/{public_key}/repeater/login`             | Log in to a repeater (escalates to one flood retry if the first attempt draws no reply)                                                   |
+| POST   | `/api/contacts/{public_key}/repeater/status`            | Fetch repeater status telemetry                                                                                                           |
+| POST   | `/api/contacts/{public_key}/repeater/lpp-telemetry`     | Fetch CayenneLPP sensor data                                                                                                              |
+| POST   | `/api/contacts/{public_key}/repeater/neighbors`         | Fetch repeater neighbors                                                                                                                  |
+| POST   | `/api/contacts/{public_key}/repeater/acl`               | Fetch repeater ACL                                                                                                                        |
+| POST   | `/api/contacts/{public_key}/repeater/node-info`         | Fetch repeater name, location, and clock via CLI                                                                                          |
+| POST   | `/api/contacts/{public_key}/repeater/radio-settings`    | Fetch repeater radio config via CLI                                                                                                       |
+| POST   | `/api/contacts/{public_key}/repeater/regions`           | Fetch repeater region hierarchy via CLI, falling back to the guest anon flood-allowed region names (`source`: `cli` or `anon`)            |
+| POST   | `/api/contacts/{public_key}/repeater/advert-intervals`  | Fetch advert intervals                                                                                                                    |
+| POST   | `/api/contacts/{public_key}/repeater/owner-info`        | Fetch owner info                                                                                                                          |
+| GET    | `/api/contacts/{public_key}/repeater/telemetry-history` | Stored telemetry history for a repeater (read-only, no radio access)                                                                      |
+| POST   | `/api/contacts/{public_key}/telemetry`                  | Fetch CayenneLPP telemetry from any contact (single attempt, 10s timeout)                                                                 |
+| GET    | `/api/contacts/{public_key}/telemetry-history`          | Stored LPP telemetry history for a contact (read-only, no radio access)                                                                   |
+| POST   | `/api/contacts/{public_key}/room/login`                 | Log in to a room server (escalates to one flood retry if the first attempt draws no reply)                                                |
+| POST   | `/api/contacts/{public_key}/room/status`                | Fetch room-server status telemetry                                                                                                        |
+| POST   | `/api/contacts/{public_key}/room/lpp-telemetry`         | Fetch room-server CayenneLPP sensor data                                                                                                  |
+| POST   | `/api/contacts/{public_key}/room/acl`                   | Fetch room-server ACL entries                                                                                                             |
+| GET    | `/api/channels`                                         | List channels                                                                                                                             |
+| GET    | `/api/channels/{key}/detail`                            | Comprehensive channel profile (message stats, top senders)                                                                                |
+| POST   | `/api/channels`                                         | Create channel                                                                                                                            |
+| POST   | `/api/channels/bulk-hashtag`                            | Create multiple hashtag channels                                                                                                          |
+| DELETE | `/api/channels/{key}`                                   | Delete channel                                                                                                                            |
+| POST   | `/api/channels/{key}/flood-scope-override`              | Set or clear a per-channel regional flood-scope override                                                                                  |
+| POST   | `/api/channels/{key}/path-hash-mode-override`           | Set or clear a per-channel path hash mode override                                                                                        |
+| POST   | `/api/channels/{key}/mark-read`                         | Mark channel as read                                                                                                                      |
+| GET    | `/api/messages`                                         | List with filters (`q`, `after`/`after_id` for forward pagination)                                                                        |
+| GET    | `/api/messages/around/{id}`                             | Get messages around a specific message (for jump-to-message)                                                                              |
+| POST   | `/api/messages/direct`                                  | Send direct message                                                                                                                       |
+| POST   | `/api/messages/channel`                                 | Send channel message                                                                                                                      |
+| POST   | `/api/messages/channel/{message_id}/resend`             | Resend channel message (default: byte-perfect within 30s; `?new_timestamp=true`: fresh timestamp, no time limit, creates new message row) |
+| GET    | `/api/packets/undecrypted/count`                        | Count of undecrypted packets                                                                                                              |
+| GET    | `/api/packets/{packet_id}`                              | Fetch one stored raw packet by row ID for on-demand inspection                                                                            |
+| POST   | `/api/packets/region-backfill`                          | Re-resolve region scope for stored channel messages with retained raw packets                                                             |
+| POST   | `/api/packets/decrypt/historical`                       | Decrypt stored packets                                                                                                                    |
+| POST   | `/api/packets/maintenance`                              | Delete old packets and vacuum                                                                                                             |
+| GET    | `/api/read-state/unreads`                               | Server-computed unread counts, mentions, last message times, `last_read_ats` boundaries, and `first_unread_ids` (unread-divider anchor)   |
+| POST   | `/api/read-state/mark-all-read`                         | Mark all conversations as read                                                                                                            |
+| GET    | `/api/settings`                                         | Get app settings                                                                                                                          |
+| PATCH  | `/api/settings`                                         | Update app settings                                                                                                                       |
+| POST   | `/api/settings/favorites/toggle`                        | Toggle favorite status                                                                                                                    |
+| POST   | `/api/settings/blocked-keys/toggle`                     | Toggle blocked key                                                                                                                        |
+| POST   | `/api/settings/blocked-names/toggle`                    | Toggle blocked name                                                                                                                       |
+| POST   | `/api/settings/tracked-telemetry/toggle`                | Toggle tracked telemetry repeater                                                                                                         |
+| GET    | `/api/settings/tracked-telemetry/schedule`              | Current telemetry scheduling derivation and next-run-at timestamp                                                                         |
+| POST   | `/api/settings/tracked-telemetry-contacts/toggle`       | Toggle tracked LPP telemetry for any contact                                                                                              |
+| GET    | `/api/settings/tracked-telemetry-contacts/schedule`     | Contact telemetry scheduling derivation (shared ceiling with repeaters)                                                                   |
+| POST   | `/api/settings/muted-channels/toggle`                   | Toggle muted status for a channel                                                                                                         |
+| GET    | `/api/fanout`                                           | List all fanout configs                                                                                                                   |
+| POST   | `/api/fanout`                                           | Create new fanout config                                                                                                                  |
+| PATCH  | `/api/fanout/{id}`                                      | Update fanout config (triggers module reload)                                                                                             |
+| DELETE | `/api/fanout/{id}`                                      | Delete fanout config (stops module)                                                                                                       |
+| POST   | `/api/fanout/bots/disable-until-restart`                | Stop bot fanout modules and keep bots disabled until the process restarts                                                                 |
+| GET    | `/api/statistics`                                       | Aggregated mesh network statistics, including `region_scope_24h` regional flood-scope adoption                                            |
+| GET    | `/api/push/vapid-public-key`                            | VAPID public key for browser push subscription                                                                                            |
+| POST   | `/api/push/subscribe`                                   | Register/upsert a push subscription                                                                                                       |
+| GET    | `/api/push/subscriptions`                               | List all push subscriptions                                                                                                               |
+| PATCH  | `/api/push/subscriptions/{id}`                          | Update subscription label or filter preferences                                                                                           |
+| DELETE | `/api/push/subscriptions/{id}`                          | Delete a push subscription                                                                                                                |
+| POST   | `/api/push/subscriptions/{id}/test`                     | Send a test push notification                                                                                                             |
+| GET    | `/api/push/conversations`                               | Global list of push-enabled conversation state keys                                                                                       |
+| POST   | `/api/push/conversations/toggle`                        | Add or remove a conversation from the global push list                                                                                    |
+| WS     | `/api/ws`                                               | Real-time updates                                                                                                                         |
 
 ## Key Concepts
 
@@ -436,12 +444,14 @@ All endpoints are prefixed with `/api` (e.g., `/api/health`).
 ### Read State Tracking
 
 Read state is tracked **server-side** for consistency across devices:
+
 - Stored as a `(last_read_at, last_read_message_id)` cursor on contacts and channels. The ID tie-breaker prevents a later arrival in the same second from being treated as read, while the timestamp keeps historically decrypted older messages behind the boundary.
 - Updated via `POST /api/contacts/{public_key}/mark-read` and `POST /api/channels/{key}/mark-read`; both accept optional `message_id` to advance only through an exact visible message. The frontend debounces these exact-boundary updates while a conversation is open and flushes them when leaving.
 - Bulk update via `POST /api/read-state/mark-all-read`
 - Aggregated counts via `GET /api/read-state/unreads` (server-side computation of counts, mention flags, `last_message_times`, `last_read_ats`, and `first_unread_ids`)
 
 **State Tracking Keys (Frontend)**: Generated by `getStateKey()` for message times (sidebar sorting):
+
 - Channels: `channel-{channel_key}`
 - Contacts: `contact-{full-public-key}`
 
@@ -496,25 +506,25 @@ mc.subscribe(EventType.ACK, handler)
 
 ## Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `MESHCORE_SERIAL_PORT` | auto-detect | Serial port for radio |
-| `MESHCORE_TCP_HOST` | *(none)* | TCP host for radio (mutually exclusive with serial/BLE) |
-| `MESHCORE_TCP_PORT` | `5000` | TCP port (used with `MESHCORE_TCP_HOST`) |
-| `MESHCORE_BLE_ADDRESS` | *(none)* | BLE device address (mutually exclusive with serial/TCP) |
-| `MESHCORE_BLE_PIN` | *(required with BLE)* | BLE PIN code |
-| `MESHCORE_SERIAL_BAUDRATE` | `115200` | Serial baud rate |
-| `MESHCORE_LOG_LEVEL` | `INFO` | Logging level (`DEBUG`/`INFO`/`WARNING`/`ERROR`) |
-| `MESHCORE_DATABASE_PATH` | `data/meshcore.db` | SQLite database location |
-| `MESHCORE_DISABLE_BOTS` | `false` | Disable bot system entirely (blocks execution and config) |
-| `MESHCORE_BASIC_AUTH_USERNAME` | *(none)* | Optional app-wide HTTP Basic auth username; must be set together with `MESHCORE_BASIC_AUTH_PASSWORD` |
-| `MESHCORE_BASIC_AUTH_PASSWORD` | *(none)* | Optional app-wide HTTP Basic auth password; must be set together with `MESHCORE_BASIC_AUTH_USERNAME` |
-| `MESHCORE_ENABLE_MESSAGE_POLL_FALLBACK` | `false` | Switch the always-on radio audit task from hourly checks to aggressive 10-second polling; the audit checks both missed message drift and channel-slot cache drift |
-| `MESHCORE_FORCE_CHANNEL_SLOT_RECONFIGURE` | `false` | Disable channel-slot reuse and force `set_channel(...)` before every channel send, even on serial/BLE |
-| `MESHCORE_LOAD_WITH_AUTOEVICT` | `false` | Enable autoevict contact loading: sets `AUTO_ADD_OVERWRITE_OLDEST` on the radio so adds never fail with TABLE_FULL, skips the removal phase during reconcile, and allows blind loading when `get_contacts` fails. Loaded contacts are not radio-favorited and may be evicted by new adverts when the table is full. |
-| `MESHCORE_SKIP_POST_CONNECT_SYNC` | `false` | Debug/diagnostic escape hatch: skip the contact/channel sync-and-offload, startup advertisement, and pending-message drain during post-connect setup, and do not start the periodic sync/advert/message-poll/telemetry background loops. Handler registration, key export, time sync, flood-scope apply, and auto message fetching still run. Useful when the radio's contact/channel state must be left untouched; not for normal operation. |
-| `MESHCORE_ENABLE_LOCAL_PRIVATE_KEY_EXPORT` | `false` | Enable `GET /api/radio/private-key` to return the in-memory private key as hex. Disabled by default; only enable on a trusted network where you need to retrieve the key (e.g. for backup or migration). |
-| `MESHCORE_VAPID_SUBJECT` | `mailto:noreply@meshcore.local` | Subject (`sub`) claim for Web Push VAPID tokens; must be a `mailto:` or `https:` contact. Apple's push service (APNs) rejects the default `.local` domain with `403 BadJwtToken`, so iOS/Safari operators must set this to a real address. Google FCM (Chrome/Android) accepts the default. |
+| Variable                                   | Default                         | Description                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ------------------------------------------ | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `MESHCORE_SERIAL_PORT`                     | auto-detect                     | Serial port for radio                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `MESHCORE_TCP_HOST`                        | _(none)_                        | TCP host for radio (mutually exclusive with serial/BLE)                                                                                                                                                                                                                                                                                                                                                                                       |
+| `MESHCORE_TCP_PORT`                        | `5000`                          | TCP port (used with `MESHCORE_TCP_HOST`)                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `MESHCORE_BLE_ADDRESS`                     | _(none)_                        | BLE device address (mutually exclusive with serial/TCP)                                                                                                                                                                                                                                                                                                                                                                                       |
+| `MESHCORE_BLE_PIN`                         | _(required with BLE)_           | BLE PIN code                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `MESHCORE_SERIAL_BAUDRATE`                 | `115200`                        | Serial baud rate                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `MESHCORE_LOG_LEVEL`                       | `INFO`                          | Logging level (`DEBUG`/`INFO`/`WARNING`/`ERROR`)                                                                                                                                                                                                                                                                                                                                                                                              |
+| `MESHCORE_DATABASE_PATH`                   | `data/meshcore.db`              | SQLite database location                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `MESHCORE_DISABLE_BOTS`                    | `false`                         | Disable bot system entirely (blocks execution and config)                                                                                                                                                                                                                                                                                                                                                                                     |
+| `MESHCORE_BASIC_AUTH_USERNAME`             | _(none)_                        | Optional app-wide HTTP Basic auth username; must be set together with `MESHCORE_BASIC_AUTH_PASSWORD`                                                                                                                                                                                                                                                                                                                                          |
+| `MESHCORE_BASIC_AUTH_PASSWORD`             | _(none)_                        | Optional app-wide HTTP Basic auth password; must be set together with `MESHCORE_BASIC_AUTH_USERNAME`                                                                                                                                                                                                                                                                                                                                          |
+| `MESHCORE_ENABLE_MESSAGE_POLL_FALLBACK`    | `false`                         | Switch the always-on radio audit task from hourly checks to aggressive 10-second polling; the audit checks both missed message drift and channel-slot cache drift                                                                                                                                                                                                                                                                             |
+| `MESHCORE_FORCE_CHANNEL_SLOT_RECONFIGURE`  | `false`                         | Disable channel-slot reuse and force `set_channel(...)` before every channel send, even on serial/BLE                                                                                                                                                                                                                                                                                                                                         |
+| `MESHCORE_LOAD_WITH_AUTOEVICT`             | `false`                         | Enable autoevict contact loading: sets `AUTO_ADD_OVERWRITE_OLDEST` on the radio so adds never fail with TABLE_FULL, skips the removal phase during reconcile, and allows blind loading when `get_contacts` fails. Loaded contacts are not radio-favorited and may be evicted by new adverts when the table is full.                                                                                                                           |
+| `MESHCORE_SKIP_POST_CONNECT_SYNC`          | `false`                         | Debug/diagnostic escape hatch: skip the contact/channel sync-and-offload, startup advertisement, and pending-message drain during post-connect setup, and do not start the periodic sync/advert/message-poll/telemetry background loops. Handler registration, key export, time sync, flood-scope apply, and auto message fetching still run. Useful when the radio's contact/channel state must be left untouched; not for normal operation. |
+| `MESHCORE_ENABLE_LOCAL_PRIVATE_KEY_EXPORT` | `false`                         | Enable `GET /api/radio/private-key` to return the in-memory private key as hex. Disabled by default; only enable on a trusted network where you need to retrieve the key (e.g. for backup or migration).                                                                                                                                                                                                                                      |
+| `MESHCORE_VAPID_SUBJECT`                   | `mailto:noreply@meshcore.local` | Subject (`sub`) claim for Web Push VAPID tokens; must be a `mailto:` or `https:` contact. Apple's push service (APNs) rejects the default `.local` domain with `403 BadJwtToken`, so iOS/Safari operators must set this to a real address. Google FCM (Chrome/Android) accepts the default.                                                                                                                                                   |
 
 **Note:** Runtime app settings are stored in the database (`app_settings` table), not environment variables. These include `max_radio_contacts`, `auto_decrypt_dm_on_advert`, `advert_interval`, `last_advert_time`, `last_message_times`, `flood_scope`, `known_regions`, `blocked_keys`, `blocked_names`, `discovery_blocked_types`, `tracked_telemetry_repeaters`, `tracked_telemetry_contacts`, `auto_resend_channel`, and `telemetry_interval_hours`. `max_radio_contacts` is the configured radio contact capacity baseline used by background maintenance: favorites reload first, non-favorite fill targets about 80% of that value, and full offload/reload triggers around 95% occupancy. They are configured via `GET/PATCH /api/settings`. MQTT, bot, webhook, Apprise, and SQS configs are stored in the `fanout_configs` table, managed via `/api/fanout`. If the radio's channel slots appear unstable or another client is mutating them underneath this app, operators can force the old always-reconfigure send path with `MESHCORE_FORCE_CHANNEL_SLOT_RECONFIGURE=true`.
 

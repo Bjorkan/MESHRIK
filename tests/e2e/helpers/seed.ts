@@ -1,9 +1,9 @@
-import { execSync } from 'child_process';
-import path from 'path';
-import crypto from 'crypto';
+import { execSync } from "child_process";
+import path from "path";
+import crypto from "crypto";
 
-const ROOT = path.resolve(__dirname, '..', '..', '..');
-const DEFAULT_E2E_DB = path.join(ROOT, 'tests', 'e2e', '.tmp', 'e2e-test.db');
+const ROOT = path.resolve(__dirname, "..", "..", "..");
+const DEFAULT_E2E_DB = path.join(ROOT, "tests", "e2e", ".tmp", "e2e-test.db");
 const DB_PATH = process.env.MESHCORE_DATABASE_PATH ?? DEFAULT_E2E_DB;
 
 interface SeedOptions {
@@ -20,9 +20,9 @@ interface SeedReadStateOptions {
 }
 
 function runPython(payload: object) {
-  const b64 = Buffer.from(JSON.stringify(payload), 'utf8').toString('base64');
+  const b64 = Buffer.from(JSON.stringify(payload), "utf8").toString("base64");
 
-const script = String.raw`python3 - <<'PY'
+  const script = String.raw`python3 - <<'PY'
 import base64, json, os, sqlite3, time
 
 payload = json.loads(base64.b64decode(os.environ['PAYLOAD']).decode())
@@ -137,29 +137,32 @@ PY`;
 
   execSync(script, {
     env: { ...process.env, PAYLOAD: b64 },
-    stdio: 'inherit',
+    stdio: "inherit",
   });
 }
 
 function channelKeyFromName(name: string): string {
   // Matches backend: SHA256("#name").digest()[:16]
-  const hash = crypto.createHash('sha256').update(name).digest('hex');
+  const hash = crypto.createHash("sha256").update(name).digest("hex");
   return hash.slice(0, 32).toUpperCase();
 }
 
 export function seedChannelMessages(options: SeedOptions) {
   const keyHex = channelKeyFromName(
-    options.channelName.startsWith('#') ? options.channelName : `#${options.channelName}`
+    options.channelName.startsWith("#")
+      ? options.channelName
+      : `#${options.channelName}`,
   );
   runPython({
-    action: 'seed_channel',
+    action: "seed_channel",
     root: ROOT,
     db_path: DB_PATH,
     name: options.channelName,
     key_hex: keyHex,
     opts: {
       count: options.count,
-      start_ts: options.startTimestamp ?? Math.floor(Date.now() / 1000) - options.count,
+      start_ts:
+        options.startTimestamp ?? Math.floor(Date.now() / 1000) - options.count,
       out_every: options.outgoingEvery ?? 0,
       paths: options.includePaths ?? false,
     },
@@ -188,16 +191,19 @@ function buildEncryptedGroupTextPacket(options: EncryptedGroupTextOptions): {
   rawHex: string;
   payloadHash: string;
 } {
-  const hashName = options.channelName.startsWith('#')
+  const hashName = options.channelName.startsWith("#")
     ? options.channelName
     : `#${options.channelName}`;
 
   // channel_key = SHA256("#name")[:16]
-  const channelKeyFull = crypto.createHash('sha256').update(hashName).digest();
+  const channelKeyFull = crypto.createHash("sha256").update(hashName).digest();
   const channelKey = channelKeyFull.subarray(0, 16);
 
   // channel_hash = SHA256(channel_key)[0]
-  const channelHash = crypto.createHash('sha256').update(channelKey).digest()[0];
+  const channelHash = crypto
+    .createHash("sha256")
+    .update(channelKey)
+    .digest()[0];
 
   // Build plaintext: timestamp(4 LE) + flags(1) + "sender: message\0"
   const ts = options.timestamp ?? Math.floor(Date.now() / 1000);
@@ -205,7 +211,7 @@ function buildEncryptedGroupTextPacket(options: EncryptedGroupTextOptions): {
   tsBuf.writeUInt32LE(ts, 0);
   const flagsBuf = Buffer.from([0x00]);
   const textStr = `${options.senderName}: ${options.messageText}\0`;
-  const textBuf = Buffer.from(textStr, 'utf-8');
+  const textBuf = Buffer.from(textStr, "utf-8");
 
   const plainLen = 4 + 1 + textBuf.length;
   const paddedLen = Math.ceil(plainLen / 16) * 16;
@@ -215,13 +221,17 @@ function buildEncryptedGroupTextPacket(options: EncryptedGroupTextOptions): {
   textBuf.copy(plaintext, 5);
 
   // Encrypt: AES-128-ECB
-  const cipher = crypto.createCipheriv('aes-128-ecb', channelKey, null);
+  const cipher = crypto.createCipheriv("aes-128-ecb", channelKey, null);
   cipher.setAutoPadding(false);
   const ciphertext = Buffer.concat([cipher.update(plaintext), cipher.final()]);
 
   // MAC: HMAC-SHA256(channel_key + 16_zero_bytes, ciphertext)[:2]
   const channelSecret = Buffer.concat([channelKey, Buffer.alloc(16, 0)]);
-  const mac = crypto.createHmac('sha256', channelSecret).update(ciphertext).digest().subarray(0, 2);
+  const mac = crypto
+    .createHmac("sha256", channelSecret)
+    .update(ciphertext)
+    .digest()
+    .subarray(0, 2);
 
   // Payload: channel_hash + mac + ciphertext
   const payload = Buffer.concat([Buffer.from([channelHash]), mac, ciphertext]);
@@ -230,10 +240,14 @@ function buildEncryptedGroupTextPacket(options: EncryptedGroupTextOptions): {
   const rawPacket = Buffer.concat([Buffer.from([0x15, 0x00]), payload]);
 
   // payload_hash for dedup: SHA256 of the payload portion
-  const payloadHash = crypto.createHash('sha256').update(payload).digest().toString('hex');
+  const payloadHash = crypto
+    .createHash("sha256")
+    .update(payload)
+    .digest()
+    .toString("hex");
 
   return {
-    rawHex: rawPacket.toString('hex'),
+    rawHex: rawPacket.toString("hex"),
     payloadHash,
   };
 }
@@ -244,7 +258,7 @@ function buildEncryptedGroupTextPacket(options: EncryptedGroupTextOptions): {
 export function injectEncryptedGroupText(options: EncryptedGroupTextOptions) {
   const { rawHex, payloadHash } = buildEncryptedGroupTextPacket(options);
   runPython({
-    action: 'inject_raw_packet',
+    action: "inject_raw_packet",
     root: ROOT,
     db_path: DB_PATH,
     hex_data: rawHex,
@@ -255,10 +269,12 @@ export function injectEncryptedGroupText(options: EncryptedGroupTextOptions) {
 
 export function seedChannelUnread(options: SeedReadStateOptions) {
   const keyHex = channelKeyFromName(
-    options.channelName.startsWith('#') ? options.channelName : `#${options.channelName}`
+    options.channelName.startsWith("#")
+      ? options.channelName
+      : `#${options.channelName}`,
   );
   runPython({
-    action: 'seed_unread',
+    action: "seed_unread",
     root: ROOT,
     db_path: DB_PATH,
     name: options.channelName,

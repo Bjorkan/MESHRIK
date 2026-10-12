@@ -1,17 +1,17 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from "@playwright/test";
 
-test.describe('Sidebar sort toggle', () => {
-  test('toggle sort order between A-Z and recent', async ({ page }) => {
-    await page.goto('/');
-    await expect(page.getByRole('status', { name: 'Radio OK' })).toBeVisible();
+test.describe("Sidebar sort toggle", () => {
+  test("toggle sort order between A-Z and recent", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.getByRole("status", { name: "Radio OK" })).toBeVisible();
 
     // Sidebar sort is now tracked per section, so target the Channels control
     // explicitly instead of assuming a shared global toggle.
-    const sortByRecent = page.getByRole('button', {
-      name: 'Sort Channels by recent',
+    const sortByRecent = page.getByRole("button", {
+      name: "Sort Channels by recent",
     });
-    const sortAlpha = page.getByRole('button', {
-      name: 'Sort Channels alphabetically',
+    const sortAlpha = page.getByRole("button", {
+      name: "Sort Channels alphabetically",
     });
 
     // Wait for at least one sort button to appear

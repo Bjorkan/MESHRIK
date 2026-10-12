@@ -1,22 +1,28 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from "@playwright/test";
 
-test.describe('Health & UI basics', () => {
-  test('page loads and shows connected status', async ({ page }) => {
-    await page.goto('/');
+test.describe("Health & UI basics", () => {
+  test("page loads and shows connected status", async ({ page }) => {
+    await page.goto("/");
 
     // Status bar shows the connected-ready label
-    await expect(page.getByRole('status', { name: 'Radio OK' })).toBeVisible();
+    await expect(page.getByRole("status", { name: "Radio OK" })).toBeVisible();
 
     // Sidebar is visible with key sections
-    await expect(page.getByRole('navigation', { name: 'Conversations' })).toBeVisible();
-    await expect(page.getByText('Packet Feed')).toBeVisible();
-    await expect(page.getByText('Node Map')).toBeVisible();
+    await expect(
+      page.getByRole("navigation", { name: "Conversations" }),
+    ).toBeVisible();
+    await expect(page.getByText("Packet Feed")).toBeVisible();
+    await expect(page.getByText("Node Map")).toBeVisible();
   });
 
-  test('sidebar shows Channels and Contacts sections', async ({ page }) => {
-    await page.goto('/');
+  test("sidebar shows Channels and Contacts sections", async ({ page }) => {
+    await page.goto("/");
 
-    await expect(page.getByText('Channels', { exact: true }).first()).toBeVisible();
-    await expect(page.getByText('Contacts', { exact: true }).first()).toBeVisible();
+    await expect(
+      page.getByText("Channels", { exact: true }).first(),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Contacts", { exact: true }).first(),
+    ).toBeVisible();
   });
 });

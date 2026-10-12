@@ -3,16 +3,18 @@
  * These bypass the UI to set up preconditions and verify backend state.
  */
 
-const BASE_URL = 'http://localhost:8001/api';
+const BASE_URL = "http://localhost:8001/api";
 
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`, {
-    headers: { 'Content-Type': 'application/json', ...init?.headers },
+    headers: { "Content-Type": "application/json", ...init?.headers },
     ...init,
   });
   if (!res.ok) {
     const body = await res.text();
-    throw new Error(`API ${init?.method || 'GET'} ${path} returned ${res.status}: ${body}`);
+    throw new Error(
+      `API ${init?.method || "GET"} ${path} returned ${res.status}: ${body}`,
+    );
   }
   return res.json() as Promise<T>;
 }
@@ -24,12 +26,12 @@ export interface HealthStatus {
   radio_initializing: boolean;
   connection_info: string | null;
   bots_disabled?: boolean;
-  bots_disabled_source?: 'env' | 'until_restart' | null;
+  bots_disabled_source?: "env" | "until_restart" | null;
   basic_auth_enabled?: boolean;
 }
 
 export function getHealth(): Promise<HealthStatus> {
-  return fetchJson('/health');
+  return fetchJson("/health");
 }
 
 // --- Radio Config ---
@@ -46,26 +48,30 @@ export interface RadioConfig {
   cr: number;
 }
 
-export type RadioAdvertMode = 'flood' | 'zero_hop';
+export type RadioAdvertMode = "flood" | "zero_hop";
 
 export function getRadioConfig(): Promise<RadioConfig> {
-  return fetchJson('/radio/config');
+  return fetchJson("/radio/config");
 }
 
-export function updateRadioConfig(patch: Partial<RadioConfig>): Promise<RadioConfig> {
-  return fetchJson('/radio/config', {
-    method: 'PATCH',
+export function updateRadioConfig(
+  patch: Partial<RadioConfig>,
+): Promise<RadioConfig> {
+  return fetchJson("/radio/config", {
+    method: "PATCH",
     body: JSON.stringify(patch),
   });
 }
 
 export function rebootRadio(): Promise<{ status: string; message: string }> {
-  return fetchJson('/radio/reboot', { method: 'POST' });
+  return fetchJson("/radio/reboot", { method: "POST" });
 }
 
-export function sendAdvertisement(mode: RadioAdvertMode = 'flood'): Promise<{ status: string }> {
-  return fetchJson('/radio/advertise', {
-    method: 'POST',
+export function sendAdvertisement(
+  mode: RadioAdvertMode = "flood",
+): Promise<{ status: string }> {
+  return fetchJson("/radio/advertise", {
+    method: "POST",
     body: JSON.stringify({ mode }),
   });
 }
@@ -82,18 +88,18 @@ export interface Channel {
 }
 
 export function getChannels(): Promise<Channel[]> {
-  return fetchJson('/channels');
+  return fetchJson("/channels");
 }
 
 export function createChannel(name: string): Promise<Channel> {
-  return fetchJson('/channels', {
-    method: 'POST',
+  return fetchJson("/channels", {
+    method: "POST",
     body: JSON.stringify({ name }),
   });
 }
 
 export function deleteChannel(key: string): Promise<void> {
-  return fetchJson(`/channels/${key}`, { method: 'DELETE' });
+  return fetchJson(`/channels/${key}`, { method: "DELETE" });
 }
 
 // --- Contacts ---
@@ -118,17 +124,20 @@ export interface Contact {
   last_read_at: number | null;
 }
 
-export function getContacts(limit: number = 100, offset: number = 0): Promise<Contact[]> {
+export function getContacts(
+  limit: number = 100,
+  offset: number = 0,
+): Promise<Contact[]> {
   return fetchJson(`/contacts?limit=${limit}&offset=${offset}`);
 }
 
 export function createContact(
   publicKey: string,
   name?: string,
-  tryHistorical: boolean = false
+  tryHistorical: boolean = false,
 ): Promise<Contact> {
-  return fetchJson('/contacts', {
-    method: 'POST',
+  return fetchJson("/contacts", {
+    method: "POST",
     body: JSON.stringify({
       public_key: publicKey,
       ...(name ? { name } : {}),
@@ -138,21 +147,25 @@ export function createContact(
 }
 
 export function deleteContact(publicKey: string): Promise<{ status: string }> {
-  return fetchJson(`/contacts/${publicKey}`, { method: 'DELETE' });
+  return fetchJson(`/contacts/${publicKey}`, { method: "DELETE" });
 }
 
-export async function getContactByKey(publicKey: string): Promise<Contact | undefined> {
+export async function getContactByKey(
+  publicKey: string,
+): Promise<Contact | undefined> {
   const normalized = publicKey.toLowerCase();
   const contacts = await getContacts(500, 0);
-  return contacts.find((contact) => contact.public_key.toLowerCase() === normalized);
+  return contacts.find(
+    (contact) => contact.public_key.toLowerCase() === normalized,
+  );
 }
 
 export function setContactRoutingOverride(
   publicKey: string,
-  route: string
+  route: string,
 ): Promise<{ status: string; public_key: string }> {
   return fetchJson(`/contacts/${publicKey}/routing-override`, {
-    method: 'POST',
+    method: "POST",
     body: JSON.stringify({ route }),
   });
 }
@@ -166,7 +179,7 @@ export interface MessagePath {
 
 export interface Message {
   id: number;
-  type: 'PRIV' | 'CHAN';
+  type: "PRIV" | "CHAN";
   conversation_key: string;
   text: string;
   outgoing: boolean;
@@ -182,18 +195,19 @@ export function getMessages(params: {
   limit?: number;
 }): Promise<Message[]> {
   const qs = new URLSearchParams();
-  if (params.type) qs.set('type', params.type);
-  if (params.conversation_key) qs.set('conversation_key', params.conversation_key);
-  if (params.limit) qs.set('limit', String(params.limit));
+  if (params.type) qs.set("type", params.type);
+  if (params.conversation_key)
+    qs.set("conversation_key", params.conversation_key);
+  if (params.limit) qs.set("limit", String(params.limit));
   return fetchJson(`/messages?${qs}`);
 }
 
 export function sendChannelMessage(
   channelKey: string,
-  text: string
+  text: string,
 ): Promise<{ status: string; message_id: number }> {
-  return fetchJson('/messages/channel', {
-    method: 'POST',
+  return fetchJson("/messages/channel", {
+    method: "POST",
     body: JSON.stringify({ channel_key: channelKey, text }),
   });
 }
@@ -208,11 +222,11 @@ export interface UnreadCounts {
 }
 
 export function getUnreads(): Promise<UnreadCounts> {
-  return fetchJson('/read-state/unreads');
+  return fetchJson("/read-state/unreads");
 }
 
 export function markAllRead(): Promise<{ status: string; timestamp: number }> {
-  return fetchJson('/read-state/mark-all-read', { method: 'POST' });
+  return fetchJson("/read-state/mark-all-read", { method: "POST" });
 }
 
 // --- Settings ---
@@ -225,12 +239,14 @@ export interface AppSettings {
 }
 
 export function getSettings(): Promise<AppSettings> {
-  return fetchJson('/settings');
+  return fetchJson("/settings");
 }
 
-export function updateSettings(patch: Partial<AppSettings>): Promise<AppSettings> {
-  return fetchJson('/settings', {
-    method: 'PATCH',
+export function updateSettings(
+  patch: Partial<AppSettings>,
+): Promise<AppSettings> {
+  return fetchJson("/settings", {
+    method: "PATCH",
     body: JSON.stringify(patch),
   });
 }
@@ -249,7 +265,7 @@ export interface FanoutConfig {
 }
 
 export function getFanoutConfigs(): Promise<FanoutConfig[]> {
-  return fetchJson('/fanout');
+  return fetchJson("/fanout");
 }
 
 export function createFanoutConfig(body: {
@@ -259,24 +275,29 @@ export function createFanoutConfig(body: {
   scope?: Record<string, unknown>;
   enabled?: boolean;
 }): Promise<FanoutConfig> {
-  return fetchJson('/fanout', {
-    method: 'POST',
+  return fetchJson("/fanout", {
+    method: "POST",
     body: JSON.stringify(body),
   });
 }
 
 export function updateFanoutConfig(
   id: string,
-  patch: Partial<{ name: string; config: Record<string, unknown>; scope: Record<string, unknown>; enabled: boolean }>
+  patch: Partial<{
+    name: string;
+    config: Record<string, unknown>;
+    scope: Record<string, unknown>;
+    enabled: boolean;
+  }>,
 ): Promise<FanoutConfig> {
   return fetchJson(`/fanout/${id}`, {
-    method: 'PATCH',
+    method: "PATCH",
     body: JSON.stringify(patch),
   });
 }
 
 export function deleteFanoutConfig(id: string): Promise<{ deleted: boolean }> {
-  return fetchJson(`/fanout/${id}`, { method: 'DELETE' });
+  return fetchJson(`/fanout/${id}`, { method: "DELETE" });
 }
 
 // --- Helpers ---
@@ -294,7 +315,7 @@ export async function ensureChannel(name: string): Promise<Channel> {
 
 /** Convenience alias — ensures #flightless exists. */
 export async function ensureFlightlessChannel(): Promise<Channel> {
-  return ensureChannel('#flightless');
+  return ensureChannel("#flightless");
 }
 
 /**
@@ -302,7 +323,7 @@ export async function ensureFlightlessChannel(): Promise<Channel> {
  */
 export async function waitForRadioConnected(
   timeoutMs: number = 30_000,
-  intervalMs: number = 2000
+  intervalMs: number = 2000,
 ): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
@@ -320,7 +341,7 @@ export async function waitForRadioConnected(
 // --- Packets / Historical decryption ---
 
 export function getUndecryptedCount(): Promise<{ count: number }> {
-  return fetchJson('/packets/undecrypted/count');
+  return fetchJson("/packets/undecrypted/count");
 }
 
 export interface DecryptResult {
@@ -330,14 +351,14 @@ export interface DecryptResult {
 }
 
 export function decryptHistorical(params: {
-  key_type: 'channel' | 'contact';
+  key_type: "channel" | "contact";
   channel_key?: string;
   channel_name?: string;
   private_key?: string;
   contact_public_key?: string;
 }): Promise<DecryptResult> {
-  return fetchJson('/packets/decrypt/historical', {
-    method: 'POST',
+  return fetchJson("/packets/decrypt/historical", {
+    method: "POST",
     body: JSON.stringify(params),
   });
 }

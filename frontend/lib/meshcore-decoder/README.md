@@ -27,16 +27,17 @@ npm install -g @michaelhart/meshcore-decoder
 ## Quick Start
 
 ```typescript
-import { 
-  MeshCoreDecoder, 
+import {
+  MeshCoreDecoder,
   PayloadType,
   Utils,
   DecodedPacket,
-  AdvertPayload 
+  AdvertPayload,
 } from '@michaelhart/meshcore-decoder';
 
 // Decode a MeshCore packet
-const hexData: string = '11007E7662676F7F0850A8A355BAAFBFC1EB7B4174C340442D7D7161C9474A2C94006CE7CF682E58408DD8FCC51906ECA98EBF94A037886BDADE7ECD09FD92B839491DF3809C9454F5286D1D3370AC31A34593D569E9A042A3B41FD331DFFB7E18599CE1E60992A076D50238C5B8F85757375354522F50756765744D65736820436F75676172';
+const hexData: string =
+  '11007E7662676F7F0850A8A355BAAFBFC1EB7B4174C340442D7D7161C9474A2C94006CE7CF682E58408DD8FCC51906ECA98EBF94A037886BDADE7ECD09FD92B839491DF3809C9454F5286D1D3370AC31A34593D569E9A042A3B41FD331DFFB7E18599CE1E60992A076D50238C5B8F85757375354522F50756765744D65736820436F75676172';
 
 const packet: DecodedPacket = MeshCoreDecoder.decode(hexData);
 
@@ -49,7 +50,9 @@ if (packet.payloadType === PayloadType.Advert && packet.payload.decoded) {
   console.log(`Device Name: ${advert.appData.name}`);
   console.log(`Device Role: ${Utils.getDeviceRoleName(advert.appData.deviceRole)}`);
   if (advert.appData.location) {
-    console.log(`Location: ${advert.appData.location.latitude}, ${advert.appData.location.longitude}`);
+    console.log(
+      `Location: ${advert.appData.location.latitude}, ${advert.appData.location.longitude}`
+    );
   }
 }
 ```
@@ -61,7 +64,8 @@ Here's what a complete decoded packet looks like:
 ```typescript
 import { MeshCoreDecoder, DecodedPacket } from '@michaelhart/meshcore-decoder';
 
-const hexData: string = '11007E7662676F7F0850A8A355BAAFBFC1EB7B4174C340442D7D7161C9474A2C94006CE7CF682E58408DD8FCC51906ECA98EBF94A037886BDADE7ECD09FD92B839491DF3809C9454F5286D1D3370AC31A34593D569E9A042A3B41FD331DFFB7E18599CE1E60992A076D50238C5B8F85757375354522F50756765744D65736820436F75676172';
+const hexData: string =
+  '11007E7662676F7F0850A8A355BAAFBFC1EB7B4174C340442D7D7161C9474A2C94006CE7CF682E58408DD8FCC51906ECA98EBF94A037886BDADE7ECD09FD92B839491DF3809C9454F5286D1D3370AC31A34593D569E9A042A3B41FD331DFFB7E18599CE1E60992A076D50238C5B8F85757375354522F50756765744D65736820436F75676172';
 
 const packet: DecodedPacket = MeshCoreDecoder.decode(hexData);
 
@@ -69,6 +73,7 @@ console.log(JSON.stringify(packet, null, 2));
 ```
 
 **Output:**
+
 ```json
 {
   "messageHash": "F9C060FE",
@@ -106,22 +111,23 @@ console.log(JSON.stringify(packet, null, 2));
 
 ## Packet Support
 
-| Value | Name | Description | Decoding | Decryption | Segment Analysis |
-|-------|------|-------------|----------|------------|------------------|
-| `0x00` | Request | Request (destination/source hashes + MAC) | ✅ | 🚧 | ✅ |
-| `0x01` | Response | Response to REQ or ANON_REQ | ✅ | 🚧 | ✅ |
-| `0x02` | Plain text message | Plain text message | ✅ | 🚧 | ✅ |
-| `0x03` | Acknowledgment | Acknowledgment | ✅ | N/A | ✅ |
-| `0x04` | Node advertisement | Node advertisement | ✅ | N/A | ✅ |
-| `0x05` | Group text message | Group text message | ✅ | ✅ | ✅ |
-| `0x06` | Group datagram | Group datagram | 🚧 | 🚧 | 🚧 |
-| `0x07` | Anonymous request | Anonymous request | ✅ | 🚧 | ✅ |
-| `0x08` | Returned path | Returned path | ✅ | N/A | ✅ |
-| `0x09` | Trace | Trace a path, collecting SNI for each hop | ✅ | N/A | ✅ |
-| `0x0A` | Multi-part packet | Packet is part of a sequence of packets | 🚧 | 🚧 | 🚧 |
-| `0x0F` | Custom packet | Custom packet (raw bytes, custom encryption) | 🚧 | 🚧 | 🚧 |
+| Value  | Name               | Description                                  | Decoding | Decryption | Segment Analysis |
+| ------ | ------------------ | -------------------------------------------- | -------- | ---------- | ---------------- |
+| `0x00` | Request            | Request (destination/source hashes + MAC)    | ✅       | 🚧         | ✅               |
+| `0x01` | Response           | Response to REQ or ANON_REQ                  | ✅       | 🚧         | ✅               |
+| `0x02` | Plain text message | Plain text message                           | ✅       | 🚧         | ✅               |
+| `0x03` | Acknowledgment     | Acknowledgment                               | ✅       | N/A        | ✅               |
+| `0x04` | Node advertisement | Node advertisement                           | ✅       | N/A        | ✅               |
+| `0x05` | Group text message | Group text message                           | ✅       | ✅         | ✅               |
+| `0x06` | Group datagram     | Group datagram                               | 🚧       | 🚧         | 🚧               |
+| `0x07` | Anonymous request  | Anonymous request                            | ✅       | 🚧         | ✅               |
+| `0x08` | Returned path      | Returned path                                | ✅       | N/A        | ✅               |
+| `0x09` | Trace              | Trace a path, collecting SNI for each hop    | ✅       | N/A        | ✅               |
+| `0x0A` | Multi-part packet  | Packet is part of a sequence of packets      | 🚧       | 🚧         | 🚧               |
+| `0x0F` | Custom packet      | Custom packet (raw bytes, custom encryption) | 🚧       | 🚧         | 🚧               |
 
 **Legend:**
+
 - ✅ Fully implemented
 - 🚧 Planned/In development
 - `-` Not applicable
@@ -133,12 +139,12 @@ For some packet types not yet supported here, they may not exist in MeshCore yet
 Simply provide your channel secret keys and the library handles everything else:
 
 ```typescript
-import { 
-  MeshCoreDecoder, 
+import {
+  MeshCoreDecoder,
   PayloadType,
   CryptoKeyStore,
   DecodedPacket,
-  GroupTextPayload 
+  GroupTextPayload,
 } from '@michaelhart/meshcore-decoder';
 
 // Create a key store with channel secret keys
@@ -146,7 +152,7 @@ const keyStore: CryptoKeyStore = MeshCoreDecoder.createKeyStore({
   channelSecrets: [
     '8b3387e9c5cdea6ac9e5edbaa115cd72', // Public channel (channel hash 11)
     'ff2b7d74e8d20f71505bda9ea8d59a1c', // A different channel's secret
-  ]
+  ],
 });
 
 const groupTextHexData: string = '...'; // Your encrypted GroupText packet hex
@@ -156,7 +162,7 @@ const encryptedPacket: DecodedPacket = MeshCoreDecoder.decode(groupTextHexData, 
 
 if (encryptedPacket.payloadType === PayloadType.GroupText && encryptedPacket.payload.decoded) {
   const groupText: GroupTextPayload = encryptedPacket.payload.decoded as GroupTextPayload;
-  
+
   if (groupText.decrypted) {
     console.log(`Sender: ${groupText.decrypted.sender}`);
     console.log(`Message: ${groupText.decrypted.message}`);
@@ -168,6 +174,7 @@ if (encryptedPacket.payloadType === PayloadType.GroupText && encryptedPacket.pay
 ```
 
 The library automatically:
+
 - Calculates channel hashes from your secret keys using SHA256
 - Handles hash collisions (multiple keys with same first byte) by trying all matching keys
 - Verifies message authenticity using HMAC-SHA256
@@ -181,7 +188,8 @@ For detailed packet analysis and debugging, use `analyzeStructure()` to get byte
 import { MeshCoreDecoder, PacketStructure } from '@michaelhart/meshcore-decoder';
 
 console.log('=== Packet Breakdown ===');
-const hexData: string = '11007E7662676F7F0850A8A355BAAFBFC1EB7B4174C340442D7D7161C9474A2C94006CE7CF682E58408DD8FCC51906ECA98EBF94A037886BDADE7ECD09FD92B839491DF3809C9454F5286D1D3370AC31A34593D569E9A042A3B41FD331DFFB7E18599CE1E60992A076D50238C5B8F85757375354522F50756765744D65736820436F75676172';
+const hexData: string =
+  '11007E7662676F7F0850A8A355BAAFBFC1EB7B4174C340442D7D7161C9474A2C94006CE7CF682E58408DD8FCC51906ECA98EBF94A037886BDADE7ECD09FD92B839491DF3809C9454F5286D1D3370AC31A34593D569E9A042A3B41FD331DFFB7E18599CE1E60992A076D50238C5B8F85757375354522F50756765744D65736820436F75676172';
 
 console.log('Packet length:', hexData.length);
 console.log('Expected bytes:', hexData.length / 2);
@@ -189,17 +197,18 @@ console.log('Expected bytes:', hexData.length / 2);
 const structure: PacketStructure = MeshCoreDecoder.analyzeStructure(hexData);
 console.log('\nMain segments:');
 structure.segments.forEach((seg, i) => {
-  console.log(`${i+1}. ${seg.name} (bytes ${seg.startByte}-${seg.endByte}): ${seg.value}`);
+  console.log(`${i + 1}. ${seg.name} (bytes ${seg.startByte}-${seg.endByte}): ${seg.value}`);
 });
 
 console.log('\nPayload segments:');
 structure.payload.segments.forEach((seg, i) => {
-  console.log(`${i+1}. ${seg.name} (bytes ${seg.startByte}-${seg.endByte}): ${seg.value}`);
+  console.log(`${i + 1}. ${seg.name} (bytes ${seg.startByte}-${seg.endByte}): ${seg.value}`);
   console.log(`   Description: ${seg.description}`);
 });
 ```
 
 **Output:**
+
 ```
 === Packet Breakdown ===
 Packet length: 268
@@ -228,6 +237,7 @@ Payload segments:
 ```
 
 The `analyzeStructure()` method provides:
+
 - **Header breakdown** with bit-level field analysis
 - **Byte-accurate segments** with start/end positions
 - **Payload field parsing** for all supported packet types
@@ -241,7 +251,8 @@ The library includes MeshCore-compatible Ed25519 key derivation using the exact 
 import { Utils } from '@michaelhart/meshcore-decoder';
 
 // Derive public key from MeshCore private key (64-byte format)
-const privateKey = '18469d6140447f77de13cd8d761e605431f52269fbff43b0925752ed9e6745435dc6a86d2568af8b70d3365db3f88234760c8ecc645ce469829bc45b65f1d5d5';
+const privateKey =
+  '18469d6140447f77de13cd8d761e605431f52269fbff43b0925752ed9e6745435dc6a86d2568af8b70d3365db3f88234760c8ecc645ce469829bc45b65f1d5d5';
 
 const publicKey = await Utils.derivePublicKey(privateKey);
 console.log('Derived Public Key:', publicKey);
@@ -281,7 +292,6 @@ meshcore-decoder derive-key 18469d6140447f77de13cd8d761e605431f52269fbff43b09257
 # Key derivation with JSON output
 meshcore-decoder derive-key 18469d6140447f77de13cd8d761e605431f52269fbff43b0925752ed9e6745435dc6a86d2568af8b70d3365db3f88234760c8ecc645ce469829bc45b65f1d5d5 --json
 ```
-
 
 ## Using with Angular
 
@@ -335,15 +345,16 @@ export class MeshCoreWasmService {
     try {
       const jsResponse = await fetch('/assets/orlp-ed25519.js');
       const jsText = await jsResponse.text();
-      
+
       const script = document.createElement('script');
       script.textContent = jsText;
       document.head.appendChild(script);
-      
+
       this.wasm = await (window as any).OrlpEd25519({
-        locateFile: (path: string) => path === 'orlp-ed25519.wasm' ? '/assets/orlp-ed25519.wasm' : path
+        locateFile: (path: string) =>
+          path === 'orlp-ed25519.wasm' ? '/assets/orlp-ed25519.wasm' : path,
       });
-      
+
       this.ready.next(true);
     } catch (error) {
       console.error('WASM load failed:', error);
@@ -353,20 +364,25 @@ export class MeshCoreWasmService {
 
   derivePublicKey(privateKeyHex: string): string | null {
     if (!this.wasm) return null;
-    
+
     const privateKeyBytes = this.hexToBytes(privateKeyHex);
     const privateKeyPtr = 1024;
     const publicKeyPtr = 1088;
-    
+
     this.wasm.HEAPU8.set(privateKeyBytes, privateKeyPtr);
-    
-    const result = this.wasm.ccall('orlp_derive_public_key', 'number', ['number', 'number'], [publicKeyPtr, privateKeyPtr]);
-    
+
+    const result = this.wasm.ccall(
+      'orlp_derive_public_key',
+      'number',
+      ['number', 'number'],
+      [publicKeyPtr, privateKeyPtr]
+    );
+
     if (result === 0) {
       const publicKeyBytes = this.wasm.HEAPU8.subarray(publicKeyPtr, publicKeyPtr + 32);
       return this.bytesToHex(publicKeyBytes);
     }
-    
+
     return null;
   }
 
@@ -379,7 +395,10 @@ export class MeshCoreWasmService {
   }
 
   private bytesToHex(bytes: Uint8Array): string {
-    return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+    return Array.from(bytes)
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('')
+      .toUpperCase();
   }
 }
 ```
@@ -394,7 +413,7 @@ import { MeshCoreWasmService } from './services/meshcore-wasm';
 const packet = MeshCorePacketDecoder.decode(hexData);
 
 // Key derivation (wait for WASM)
-wasmService.ready.subscribe(isReady => {
+wasmService.ready.subscribe((isReady) => {
   if (isReady) {
     const publicKey = wasmService.derivePublicKey(privateKeyHex);
   }
@@ -407,7 +426,6 @@ wasmService.ready.subscribe(isReady => {
 - **Browser Compatibility**: The library automatically detects the environment and uses Web Crypto API in browsers, Node.js crypto in Node.js.
 - **Async Operations**: Key derivation is async due to WASM loading. Always wait for the `WasmService.ready` observable.
 - **Error Handling**: WASM operations may fail in some environments. Always wrap in try-catch blocks.
-
 
 ## Development
 

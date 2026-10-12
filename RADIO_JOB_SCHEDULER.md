@@ -17,12 +17,12 @@ Do not log or serialize full targets, payloads, passwords, raw commands, ACK cod
 
 All endpoints use the existing optional application-wide HTTP Basic Auth policy:
 
-| Method | Endpoint | Contract |
-| --- | --- | --- |
-| `GET` | `/api/radio/jobs?status=&limit=&cursor=` | Recently changed jobs, newest first, `limit` 1–100, optional state filter, exclusive **update sequence** cursor, `has_more`, `next_cursor`, `snapshot_sequence`, radio/command status |
-| `GET` | `/api/radio/jobs/{job_id}` | Full sanitized state, stage, version, result and timestamps, or 404 |
-| `POST` | `/api/radio/jobs/{job_id}/cancel` | Idempotent typed result. Queued: `cancelled_before_dispatch`. Executing: `requested` (cooperative only). Awaiting: `stop_waiting` (not an RF undo). Terminal: `unchanged`. Missing: 404 |
-| `GET` | `/api/radio/activity?cursor=&limit=` | Bounded recent **inbound/connection** event classifications, oldest first on cursor replay, `limit` 1–100, monotonic sequences and `gap` if retained history was overrun |
+| Method | Endpoint                                 | Contract                                                                                                                                                                                |
+| ------ | ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`  | `/api/radio/jobs?status=&limit=&cursor=` | Recently changed jobs, newest first, `limit` 1–100, optional state filter, exclusive **update sequence** cursor, `has_more`, `next_cursor`, `snapshot_sequence`, radio/command status   |
+| `GET`  | `/api/radio/jobs/{job_id}`               | Full sanitized state, stage, version, result and timestamps, or 404                                                                                                                     |
+| `POST` | `/api/radio/jobs/{job_id}/cancel`        | Idempotent typed result. Queued: `cancelled_before_dispatch`. Executing: `requested` (cooperative only). Awaiting: `stop_waiting` (not an RF undo). Terminal: `unchanged`. Missing: 404 |
+| `GET`  | `/api/radio/activity?cursor=&limit=`     | Bounded recent **inbound/connection** event classifications, oldest first on cursor replay, `limit` 1–100, monotonic sequences and `gap` if retained history was overrun                |
 
 Activity is a bounded ring of at most 512 sanitized classifications, not a raw-packet or chat-message store. `source` distinguishes raw RF log, MeshCore event and radio lifecycle. Job IDs appear in activity records only for reliable local correlations. `radio_status` describes connection/initialization; `command_status` describes the scheduled command permit (`legacy_busy` is distinct); `physical_rf_state: "unavailable"` explicitly avoids claiming physical transmit/receive/listen state. A running command is **not** proof of RF TX. Connection state must not be inferred from an `awaiting_*` job.
 
@@ -32,7 +32,7 @@ The list cursor is not a stable database transaction: versions can advance while
 
 Existing `/api/ws` now also broadcasts typed `radio_job` (sanitized `RadioJobSnapshot`, including `id`/`version`/`sequence`) and `radio_activity` (`RadioActivityRecord`, including `sequence` and no packet data). Existing message/health events are unchanged. Client consumers should drop duplicate/out-of-order job deltas by **job ID + version**, activity duplicates by sequence, and refresh both GET snapshots on reconnect. `frontend/src/hooks/useRadioJobFeed.ts` uses React Query for this reconciliation and exposes callbacks for the existing shared `useWebSocket` connection; #45 will wire these into the dedicated Radio Activity page without opening another socket.
 
-**There is intentionally no arbitrary command POST endpoint** (`POST /api/radio/jobs` is not supported). Future individually validated enqueue endpoints in #42–#44 may use `202 Accepted` with `RadioJobAccepted { job_id, state }`; a 202 means *accepted into memory*, not successfully transmitted or acknowledged. Keep existing routes synchronous until an explicit opt-in/compatible migration is implemented. Never enable automatic retries on ambiguous transmissions.
+**There is intentionally no arbitrary command POST endpoint** (`POST /api/radio/jobs` is not supported). Future individually validated enqueue endpoints in #42–#44 may use `202 Accepted` with `RadioJobAccepted { job_id, state }`; a 202 means _accepted into memory_, not successfully transmitted or acknowledged. Keep existing routes synchronous until an explicit opt-in/compatible migration is implemented. Never enable automatic retries on ambiguous transmissions.
 
 ## Verification
 
@@ -82,11 +82,11 @@ The original `POST /api/messages/direct`, `POST /api/messages/channel`, and
 contracts. New explicit opt-in operations use the same radio/SQLite/ACK domain
 services without a nested worker admission:
 
-| Method and endpoint | Payload | Result |
-| --- | --- | --- |
-| `POST /api/radio/jobs/send/direct` | `SendDirectMessageRequest` | `202 RadioJobAccepted` |
+| Method and endpoint                 | Payload                     | Result                 |
+| ----------------------------------- | --------------------------- | ---------------------- |
+| `POST /api/radio/jobs/send/direct`  | `SendDirectMessageRequest`  | `202 RadioJobAccepted` |
 | `POST /api/radio/jobs/send/channel` | `SendChannelMessageRequest` | `202 RadioJobAccepted` |
-| `POST /api/radio/jobs/advertise` | `{ "mode": "flood" | "zero_hop" }` | `202 RadioJobAccepted` |
+| `POST /api/radio/jobs/advertise`    | `{ "mode": "flood"          | "zero_hop" }`          | `202 RadioJobAccepted` |
 
 All three require an `Idempotency-Key` header (8–128 characters). A repeated
 key for the **same operation and exact validated request** returns the same job;

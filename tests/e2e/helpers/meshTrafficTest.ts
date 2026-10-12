@@ -16,15 +16,15 @@
  * full 3-minute wait. The nudge is best-effort — tests still rely on the
  * long polling timeout for environments without the bot.
  */
-import { test as base, expect } from '@playwright/test';
-import { ensureChannel, sendChannelMessage } from './api';
-import { E2E_ECHO_CHANNEL, E2E_ECHO_TRIGGER_MESSAGE } from './env';
+import { test as base, expect } from "@playwright/test";
+import { ensureChannel, sendChannelMessage } from "./api";
+import { E2E_ECHO_CHANNEL, E2E_ECHO_TRIGGER_MESSAGE } from "./env";
 
 export { expect };
 
 const TRAFFIC_ADVISORY =
-  'This test depends on receiving messages from other nodes on the mesh ' +
-  'network. Failure may indicate insufficient mesh traffic rather than a bug.';
+  "This test depends on receiving messages from other nodes on the mesh " +
+  "network. Failure may indicate insufficient mesh traffic rather than a bug.";
 
 /**
  * Best-effort: send a message to the echo channel that triggers a remote
@@ -48,8 +48,14 @@ export const test = base.extend<{ _meshTrafficAdvisory: void }>({
   _meshTrafficAdvisory: [
     async ({}, use, testInfo) => {
       await use();
-      if (testInfo.status !== 'passed' && testInfo.tags.includes('@mesh-traffic')) {
-        testInfo.annotations.push({ type: 'notice', description: TRAFFIC_ADVISORY });
+      if (
+        testInfo.status !== "passed" &&
+        testInfo.tags.includes("@mesh-traffic")
+      ) {
+        testInfo.annotations.push({
+          type: "notice",
+          description: TRAFFIC_ADVISORY,
+        });
         // Also print to console so it's visible in terminal output
         console.log(`\n⚠️  ${TRAFFIC_ADVISORY}\n`);
       }

@@ -239,6 +239,7 @@ frontend/src/
 ### State ownership
 
 `App.tsx` is now a thin composition entrypoint over the hook layer. `AppShell.tsx` owns shell layout/composition:
+
 - local label banner
 - status bar
 - desktop/mobile sidebar container
@@ -248,6 +249,7 @@ frontend/src/
 - trusted-network `SecurityWarningModal`
 
 High-level state is delegated to hooks:
+
 - `useAppShell`: app-shell view state (settings section, sidebar, cracker, new-message modal)
 - `useRadioControl`: radio health/config state, reconnect/reboot polling
 - `useAppSettings`: settings CRUD, favorites, preferences migration
@@ -267,6 +269,7 @@ High-level state is delegated to hooks:
 That gives the store a load-bearing invariant: **no ancestor of `MessageList` may call `useRawPackets()` / `useRawPacketStatsSession()`.** Nothing about the prop signatures enforces it — an innocuous-looking subscription added to `App`, `AppShell`, or `ConversationPane` silently restores the original slowdown. `src/test/appPacketIsolation.test.tsx` pins it by mounting the real ancestor chain and asserting `MessageList` does not re-render when packets arrive; it carries a negative control so the assertion cannot pass vacuously. Reach for packets in a new view by subscribing in that view, never by lifting them up.
 
 `ConversationPane.tsx` owns the main active-conversation surface branching:
+
 - empty state
 - map view
 - visualizer
@@ -363,6 +366,7 @@ Entity routes use stable IDs only; display names are presentation data and never
 ## Conversation State Keys (`utils/conversationState.ts`)
 
 `getStateKey(type, id)` produces:
+
 - channels: `channel-{channelKey}`
 - contacts: `contact-{publicKey}`
 
@@ -376,6 +380,7 @@ Canonical persistence for unread and sort metadata is server-side (`app_settings
 ### `utils/pubkey.ts`
 
 Current public export:
+
 - `getContactDisplayName(name, pubkey)`
 
 It falls back to a 12-char prefix when `name` is missing.
@@ -387,6 +392,7 @@ Distance/validation helpers used by path + map UI.
 ## Types and Contracts (`types.ts`)
 
 `AppSettings` currently includes:
+
 - `max_radio_contacts`
 - `auto_decrypt_dm_on_advert`
 - `last_message_times`
@@ -573,4 +579,4 @@ This is intentional. In the sidebar, unread direct messages for actual contact c
 
 ## Radio Activity dashboard (#45)
 
-`/radio-activity` opens `RadioActivityPage` through the existing sidebar/conversation navigation. `useRadioJobFeed` in `App.tsx` merges typed `radio_job` and `radio_activity` deltas into Query snapshots; the *existing* `useWebSocket` connection owns reconnects and refetches those snapshots. `useRadioActivity` owns cursor-paginated history and non-retried cancellation. The command-slot label is **not** physical TX/RX; firmware RF activity is marked unavailable. Queued cancellation prevents dispatch, whereas post-send **Stop waiting** only stops RF response tracking. Until #42–#44 migrate producers, legacy direct radio commands are not visible as scheduler jobs.
+`/radio-activity` opens `RadioActivityPage` through the existing sidebar/conversation navigation. `useRadioJobFeed` in `App.tsx` merges typed `radio_job` and `radio_activity` deltas into Query snapshots; the _existing_ `useWebSocket` connection owns reconnects and refetches those snapshots. `useRadioActivity` owns cursor-paginated history and non-retried cancellation. The command-slot label is **not** physical TX/RX; firmware RF activity is marked unavailable. Queued cancellation prevents dispatch, whereas post-send **Stop waiting** only stops RF response tracking. Until #42–#44 migrate producers, legacy direct radio commands are not visible as scheduler jobs.

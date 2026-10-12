@@ -1,11 +1,11 @@
-import { test, expect } from '@playwright/test';
-import { getUnreads } from '../helpers/api';
-import { seedChannelUnread } from '../helpers/seed';
+import { test, expect } from "@playwright/test";
+import { getUnreads } from "../helpers/api";
+import { seedChannelUnread } from "../helpers/seed";
 
-const CHANNEL_NAME = '#markread-e2e';
+const CHANNEL_NAME = "#markread-e2e";
 
-test.describe('Mark all as read', () => {
-  test('clears server and UI unread state', async ({ page }) => {
+test.describe("Mark all as read", () => {
+  test("clears server and UI unread state", async ({ page }) => {
     // Seed a couple of unread channel messages
     seedChannelUnread({ channelName: CHANNEL_NAME, unreadCount: 2 });
 
@@ -13,11 +13,13 @@ test.describe('Mark all as read', () => {
     const before = await getUnreads();
     expect(Object.values(before.counts).some((c) => c > 0)).toBeTruthy();
 
-    await page.goto('/');
-    await expect(page.getByText(CHANNEL_NAME, { exact: true })).toBeVisible({ timeout: 15_000 });
+    await page.goto("/");
+    await expect(page.getByText(CHANNEL_NAME, { exact: true })).toBeVisible({
+      timeout: 15_000,
+    });
 
     // Sidebar should show the mark-all control
-    const markAll = page.getByText('Mark all as read');
+    const markAll = page.getByText("Mark all as read");
     await expect(markAll).toBeVisible();
 
     await markAll.click();
@@ -31,6 +33,6 @@ test.describe('Mark all as read', () => {
 
     // Reload to ensure persistence
     await page.reload();
-    await expect(page.getByText('Mark all as read')).not.toBeVisible();
+    await expect(page.getByText("Mark all as read")).not.toBeVisible();
   });
 });

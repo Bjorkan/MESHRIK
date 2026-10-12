@@ -1381,7 +1381,7 @@ SOFTWARE.
 
 ### @uiw/react-codemirror (4.25.8) — MIT
 
-*License file not found in package.*
+_License file not found in package._
 
 ### class-variance-authority (0.7.1) — Apache-2.0
 
@@ -2330,4 +2330,3 @@ THE SOFTWARE.
 ```
 
 </details>
-

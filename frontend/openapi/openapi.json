@@ -32,11 +32,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "pubkey_prefix",
-          "permission",
-          "permission_name"
-        ],
+        "required": ["pubkey_prefix", "permission", "permission_name"],
         "title": "AclEntry",
         "type": "object"
       },
@@ -58,9 +54,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "version"
-        ],
+        "required": ["version"],
         "title": "AppInfoResponse",
         "type": "object"
       },
@@ -336,9 +330,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "key"
-        ],
+        "required": ["key"],
         "title": "BlockKeyRequest",
         "type": "object"
       },
@@ -350,9 +342,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "name"
-        ],
+        "required": ["name"],
         "title": "BlockNameRequest",
         "type": "object"
       },
@@ -374,9 +364,7 @@
             "type": "boolean"
           }
         },
-        "required": [
-          "channel_names"
-        ],
+        "required": ["channel_names"],
         "title": "BulkCreateHashtagChannelsRequest",
         "type": "object"
       },
@@ -415,12 +403,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "created_channels",
-          "existing_count",
-          "invalid_names",
-          "message"
-        ],
+        "required": ["created_channels", "existing_count", "invalid_names", "message"],
         "title": "BulkCreateHashtagChannelsResponse",
         "type": "object"
       },
@@ -446,12 +429,7 @@
             "type": "array"
           }
         },
-        "required": [
-          "deleted",
-          "radio_deleted",
-          "radio_failed",
-          "radio_failures"
-        ],
+        "required": ["deleted", "radio_deleted", "radio_failed", "radio_failures"],
         "title": "BulkDeleteContactsResponse",
         "type": "object"
       },
@@ -466,9 +444,7 @@
             "type": "array"
           }
         },
-        "required": [
-          "public_keys"
-        ],
+        "required": ["public_keys"],
         "title": "BulkDeleteRequest",
         "type": "object"
       },
@@ -487,11 +463,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "channel_key",
-          "channel_name",
-          "message_count"
-        ],
+        "required": ["channel_key", "channel_name", "message_count"],
         "title": "BusyChannel",
         "type": "object"
       },
@@ -562,10 +534,7 @@
             "title": "Path Hash Mode Override"
           }
         },
-        "required": [
-          "key",
-          "name"
-        ],
+        "required": ["key", "name"],
         "title": "Channel",
         "type": "object"
       },
@@ -605,9 +574,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "channel"
-        ],
+        "required": ["channel"],
         "title": "ChannelDetail",
         "type": "object"
       },
@@ -619,9 +586,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "flood_scope_override"
-        ],
+        "required": ["flood_scope_override"],
         "title": "ChannelFloodScopeOverrideRequest",
         "type": "object"
       },
@@ -700,10 +665,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "sender_name",
-          "message_count"
-        ],
+        "required": ["sender_name", "message_count"],
         "title": "ChannelTopSender",
         "type": "object"
       },
@@ -717,9 +679,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "command"
-        ],
+        "required": ["command"],
         "title": "CommandRequest",
         "type": "object"
       },
@@ -749,10 +709,7 @@
             "title": "Sender Timestamp"
           }
         },
-        "required": [
-          "command",
-          "response"
-        ],
+        "required": ["command", "response"],
         "title": "CommandResponse",
         "type": "object"
       },
@@ -812,11 +769,7 @@
           },
           "effective_route_source": {
             "default": "flood",
-            "enum": [
-              "override",
-              "direct",
-              "flood"
-            ],
+            "enum": ["override", "direct", "flood"],
             "title": "Effective Route Source",
             "type": "string"
           },
@@ -977,9 +930,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "public_key"
-        ],
+        "required": ["public_key"],
         "title": "Contact",
         "type": "object"
       },
@@ -999,11 +950,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "channel_key",
-          "channel_name",
-          "message_count"
-        ],
+        "required": ["channel_key", "channel_name", "message_count"],
         "title": "ContactActiveRoom",
         "type": "object"
       },
@@ -1022,11 +969,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "last_hour",
-          "last_24_hours",
-          "last_week"
-        ],
+        "required": ["last_hour", "last_24_hours", "last_week"],
         "title": "ContactActivityCounts",
         "type": "object"
       },
@@ -1071,13 +1014,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "path",
-          "path_len",
-          "first_seen",
-          "last_seen",
-          "heard_count"
-        ],
+        "required": ["path", "path_len", "first_seen", "last_seen", "heard_count"],
         "title": "ContactAdvertPath",
         "type": "object"
       },
@@ -1098,9 +1035,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "public_key"
-        ],
+        "required": ["public_key"],
         "title": "ContactAdvertPathSummary",
         "type": "object"
       },
@@ -1159,10 +1094,7 @@
             "type": "boolean"
           },
           "lookup_type": {
-            "enum": [
-              "contact",
-              "name"
-            ],
+            "enum": ["contact", "name"],
             "title": "Lookup Type",
             "type": "string"
           },
@@ -1210,10 +1142,7 @@
             "type": "array"
           }
         },
-        "required": [
-          "lookup_type",
-          "name"
-        ],
+        "required": ["lookup_type", "name"],
         "title": "ContactAnalytics",
         "type": "object"
       },
@@ -1241,9 +1170,7 @@
             "type": "number"
           }
         },
-        "required": [
-          "bucket_start"
-        ],
+        "required": ["bucket_start"],
         "title": "ContactAnalyticsHourlyBucket",
         "type": "object"
       },
@@ -1261,9 +1188,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "bucket_start"
-        ],
+        "required": ["bucket_start"],
         "title": "ContactAnalyticsWeeklyBucket",
         "type": "object"
       },
@@ -1296,20 +1221,12 @@
             "title": "Radio Error"
           },
           "status": {
-            "enum": [
-              "ok",
-              "partial"
-            ],
+            "enum": ["ok", "partial"],
             "title": "Status",
             "type": "string"
           }
         },
-        "required": [
-          "status",
-          "database_deleted",
-          "radio_deleted",
-          "radio_error"
-        ],
+        "required": ["status", "database_deleted", "radio_deleted", "radio_error"],
         "title": "ContactDeleteResponse",
         "type": "object"
       },
@@ -1329,11 +1246,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "name",
-          "first_seen",
-          "last_seen"
-        ],
+        "required": ["name", "first_seen", "last_seen"],
         "title": "ContactNameHistory",
         "type": "object"
       },
@@ -1356,11 +1269,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "path",
-          "path_len",
-          "path_hash_mode"
-        ],
+        "required": ["path", "path_len", "path_hash_mode"],
         "title": "ContactRoute",
         "type": "object"
       },
@@ -1373,9 +1282,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "route"
-        ],
+        "required": ["route"],
         "title": "ContactRoutingOverrideRequest",
         "type": "object"
       },
@@ -1390,10 +1297,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "status",
-          "public_key"
-        ],
+        "required": ["status", "public_key"],
         "title": "ContactRoutingOverrideResponse",
         "type": "object"
       },
@@ -1422,9 +1326,7 @@
             "type": "array"
           }
         },
-        "required": [
-          "fetched_at"
-        ],
+        "required": ["fetched_at"],
         "title": "ContactTelemetryResponse",
         "type": "object"
       },
@@ -1449,9 +1351,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "name"
-        ],
+        "required": ["name"],
         "title": "CreateChannelRequest",
         "type": "object"
       },
@@ -1492,9 +1392,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "public_key"
-        ],
+        "required": ["public_key"],
         "title": "CreateContactRequest",
         "type": "object"
       },
@@ -1555,11 +1453,7 @@
           },
           "effective_route_source": {
             "default": "flood",
-            "enum": [
-              "override",
-              "direct",
-              "flood"
-            ],
+            "enum": ["override", "direct", "flood"],
             "title": "Effective Route Source",
             "type": "string"
           },
@@ -1730,9 +1624,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "public_key"
-        ],
+        "required": ["public_key"],
         "title": "CreateContactResult",
         "type": "object"
       },
@@ -1833,11 +1725,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "version",
-          "version_source",
-          "python_version"
-        ],
+        "required": ["version", "version_source", "python_version"],
         "title": "DebugApplicationInfo",
         "type": "object"
       },
@@ -1855,10 +1743,7 @@
             "type": "array"
           }
         },
-        "required": [
-          "matched_slots",
-          "wrong_slots"
-        ],
+        "required": ["matched_slots", "wrong_slots"],
         "title": "DebugChannelAudit",
         "type": "object"
       },
@@ -1891,9 +1776,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "slot_number"
-        ],
+        "required": ["slot_number"],
         "title": "DebugChannelSlotMismatch",
         "type": "object"
       },
@@ -1918,11 +1801,7 @@
             "type": "array"
           }
         },
-        "required": [
-          "expected_and_found",
-          "expected_but_not_found",
-          "found_but_not_expected"
-        ],
+        "required": ["expected_and_found", "expected_but_not_found", "found_but_not_expected"],
         "title": "DebugContactAudit",
         "type": "object"
       },
@@ -1941,11 +1820,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "total_dms",
-          "total_channel_messages",
-          "total_outgoing"
-        ],
+        "required": ["total_dms", "total_channel_messages", "total_outgoing"],
         "title": "DebugDatabaseInfo",
         "type": "object"
       },
@@ -2027,10 +1902,7 @@
           "bots_disabled_source": {
             "anyOf": [
               {
-                "enum": [
-                  "env",
-                  "until_restart"
-                ],
+                "enum": ["env", "until_restart"],
                 "type": "string"
               },
               {
@@ -2066,11 +1938,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "radio_state",
-          "database_size_mb",
-          "oldest_undecrypted_timestamp"
-        ],
+        "required": ["radio_state", "database_size_mb", "oldest_undecrypted_timestamp"],
         "title": "DebugHealthSummary",
         "type": "object"
       },
@@ -2156,9 +2024,7 @@
             "title": "Stats Radio"
           }
         },
-        "required": [
-          "performed"
-        ],
+        "required": ["performed"],
         "title": "DebugRadioProbe",
         "type": "object"
       },
@@ -2288,12 +2154,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "os",
-          "arch",
-          "arch_bits",
-          "total_ram_mb"
-        ],
+        "required": ["os", "arch", "arch_bits", "total_ram_mb"],
         "title": "DebugSystemInfo",
         "type": "object"
       },
@@ -2353,9 +2214,7 @@
             "title": "Private Key"
           }
         },
-        "required": [
-          "key_type"
-        ],
+        "required": ["key_type"],
         "title": "DecryptRequest",
         "type": "object"
       },
@@ -2374,11 +2233,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "started",
-          "total_packets",
-          "message"
-        ],
+        "required": ["started", "total_packets", "message"],
         "title": "DecryptResult",
         "type": "object"
       },
@@ -2389,9 +2244,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "status"
-        ],
+        "required": ["status"],
         "title": "DeleteChannelResponse",
         "type": "object"
       },
@@ -2401,10 +2254,7 @@
         "properties": {
           "mode": {
             "default": "flood",
-            "enum": [
-              "flood",
-              "zero_hop"
-            ],
+            "enum": ["flood", "zero_hop"],
             "title": "Mode",
             "type": "string"
           }
@@ -2444,10 +2294,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "type",
-          "name"
-        ],
+        "required": ["type", "name"],
         "title": "FanoutConfigCreate",
         "type": "object"
       },
@@ -2586,11 +2433,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "name",
-          "type",
-          "status"
-        ],
+        "required": ["name", "type", "status"],
         "title": "FanoutStatusResponse",
         "type": "object"
       },
@@ -2603,18 +2446,12 @@
           },
           "type": {
             "description": "'channel' or 'contact'",
-            "enum": [
-              "channel",
-              "contact"
-            ],
+            "enum": ["channel", "contact"],
             "title": "Type",
             "type": "string"
           }
         },
-        "required": [
-          "type",
-          "id"
-        ],
+        "required": ["type", "id"],
         "title": "FavoriteRequest",
         "type": "object"
       },
@@ -2629,19 +2466,12 @@
             "type": "string"
           },
           "type": {
-            "enum": [
-              "channel",
-              "contact"
-            ],
+            "enum": ["channel", "contact"],
             "title": "Type",
             "type": "string"
           }
         },
-        "required": [
-          "type",
-          "id",
-          "favorite"
-        ],
+        "required": ["type", "id", "favorite"],
         "title": "FavoriteToggleResponse",
         "type": "object"
       },
@@ -2683,10 +2513,7 @@
           "bots_disabled_source": {
             "anyOf": [
               {
-                "enum": [
-                  "env",
-                  "until_restart"
-                ],
+                "enum": ["env", "until_restart"],
                 "type": "string"
               },
               {
@@ -2785,11 +2612,7 @@
           },
           "startup_policy": {
             "default": "sync",
-            "enum": [
-              "passive",
-              "sync",
-              "full"
-            ],
+            "enum": ["passive", "sync", "full"],
             "title": "Startup Policy",
             "type": "string"
           },
@@ -2845,10 +2668,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "status",
-          "message"
-        ],
+        "required": ["status", "message"],
         "title": "HistoricalDmDecryptStart",
         "type": "object"
       },
@@ -2879,11 +2699,7 @@
             "title": "Value"
           }
         },
-        "required": [
-          "channel",
-          "type_name",
-          "value"
-        ],
+        "required": ["channel", "type_name", "value"],
         "title": "LppSensor",
         "type": "object"
       },
@@ -2923,10 +2739,7 @@
             "type": "boolean"
           }
         },
-        "required": [
-          "packets_deleted",
-          "vacuumed"
-        ],
+        "required": ["packets_deleted", "vacuumed"],
         "title": "MaintenanceResult",
         "type": "object"
       },
@@ -2941,10 +2754,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "status",
-          "timestamp"
-        ],
+        "required": ["status", "timestamp"],
         "title": "MarkAllReadResponse",
         "type": "object"
       },
@@ -2959,10 +2769,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "status",
-          "key"
-        ],
+        "required": ["status", "key"],
         "title": "MarkChannelReadResponse",
         "type": "object"
       },
@@ -2977,10 +2784,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "status",
-          "public_key"
-        ],
+        "required": ["status", "public_key"],
         "title": "MarkContactReadResponse",
         "type": "object"
       },
@@ -3061,11 +2865,7 @@
           },
           "send_status": {
             "default": "confirmed",
-            "enum": [
-              "pending",
-              "confirmed",
-              "unknown"
-            ],
+            "enum": ["pending", "confirmed", "unknown"],
             "title": "Send Status",
             "type": "string"
           },
@@ -3136,21 +2936,12 @@
           },
           "type": {
             "description": "PRIV or CHAN",
-            "enum": [
-              "PRIV",
-              "CHAN"
-            ],
+            "enum": ["PRIV", "CHAN"],
             "title": "Type",
             "type": "string"
           }
         },
-        "required": [
-          "id",
-          "type",
-          "conversation_key",
-          "text",
-          "received_at"
-        ],
+        "required": ["id", "type", "conversation_key", "text", "received_at"],
         "title": "Message",
         "type": "object"
       },
@@ -3204,10 +2995,7 @@
             "title": "Snr"
           }
         },
-        "required": [
-          "path",
-          "received_at"
-        ],
+        "required": ["path", "received_at"],
         "title": "MessagePath",
         "type": "object"
       },
@@ -3229,11 +3017,7 @@
             "type": "array"
           }
         },
-        "required": [
-          "messages",
-          "has_older",
-          "has_newer"
-        ],
+        "required": ["messages", "has_older", "has_newer"],
         "title": "MessagesAroundResponse",
         "type": "object"
       },
@@ -3245,9 +3029,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "key"
-        ],
+        "required": ["key"],
         "title": "MuteChannelRequest",
         "type": "object"
       },
@@ -3262,10 +3044,7 @@
             "type": "boolean"
           }
         },
-        "required": [
-          "key",
-          "muted"
-        ],
+        "required": ["key", "muted"],
         "title": "MuteChannelToggleResponse",
         "type": "object"
       },
@@ -3300,12 +3079,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "public_key",
-          "path_len",
-          "last_seen",
-          "heard_count"
-        ],
+        "required": ["public_key", "path_len", "last_seen", "heard_count"],
         "title": "NearestRepeater",
         "type": "object"
       },
@@ -3340,11 +3114,7 @@
             "type": "number"
           }
         },
-        "required": [
-          "pubkey_prefix",
-          "snr",
-          "last_heard_seconds"
-        ],
+        "required": ["pubkey_prefix", "snr", "last_heard_seconds"],
         "title": "NeighborInfo",
         "type": "object"
       },
@@ -3392,10 +3162,7 @@
             "type": "array"
           }
         },
-        "required": [
-          "sample_interval_seconds",
-          "coverage_seconds"
-        ],
+        "required": ["sample_interval_seconds", "coverage_seconds"],
         "title": "NoiseFloorHistoryStats",
         "type": "object"
       },
@@ -3412,10 +3179,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "timestamp",
-          "noise_floor_dbm"
-        ],
+        "required": ["timestamp", "noise_floor_dbm"],
         "title": "NoiseFloorSample",
         "type": "object"
       },
@@ -3432,10 +3196,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "timestamp",
-          "count"
-        ],
+        "required": ["timestamp", "count"],
         "title": "PacketsPerHourBucket",
         "type": "object"
       },
@@ -3455,11 +3216,7 @@
             "description": "Route used from the target contact back to the local radio"
           }
         },
-        "required": [
-          "contact",
-          "forward_path",
-          "return_path"
-        ],
+        "required": ["contact", "forward_path", "return_path"],
         "title": "PathDiscoveryResponse",
         "type": "object"
       },
@@ -3482,11 +3239,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "path",
-          "path_len",
-          "path_hash_mode"
-        ],
+        "required": ["path", "path_len", "path_hash_mode"],
         "title": "PathDiscoveryRoute",
         "type": "object"
       },
@@ -3540,9 +3293,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "private_key"
-        ],
+        "required": ["private_key"],
         "title": "PrivateKeyUpdate",
         "type": "object"
       },
@@ -3554,9 +3305,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "key"
-        ],
+        "required": ["key"],
         "title": "PushConversationToggle",
         "type": "object"
       },
@@ -3583,11 +3332,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "endpoint",
-          "p256dh",
-          "auth"
-        ],
+        "required": ["endpoint", "p256dh", "auth"],
         "title": "PushSubscribeRequest",
         "type": "object"
       },
@@ -3662,11 +3407,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "items",
-          "snapshot_sequence",
-          "radio"
-        ],
+        "required": ["items", "snapshot_sequence", "radio"],
         "title": "RadioActivityPage",
         "type": "object"
       },
@@ -3710,15 +3451,7 @@
           "packet_type": {
             "anyOf": [
               {
-                "enum": [
-                  "channel",
-                  "direct",
-                  "advertisement",
-                  "ack",
-                  "path",
-                  "control",
-                  "other"
-                ],
+                "enum": ["channel", "direct", "advertisement", "ack", "path", "control", "other"],
                 "type": "string"
               },
               {
@@ -3767,22 +3500,12 @@
             "$ref": "#/components/schemas/RadioActivitySource"
           }
         },
-        "required": [
-          "sequence",
-          "at",
-          "kind",
-          "source",
-          "radio_generation"
-        ],
+        "required": ["sequence", "at", "kind", "source", "radio_generation"],
         "title": "RadioActivityRecord",
         "type": "object"
       },
       "RadioActivitySource": {
-        "enum": [
-          "raw_rf_log",
-          "meshcore_event",
-          "radio_lifecycle"
-        ],
+        "enum": ["raw_rf_log", "meshcore_event", "radio_lifecycle"],
         "title": "RadioActivitySource",
         "type": "string"
       },
@@ -3791,10 +3514,7 @@
           "mode": {
             "default": "flood",
             "description": "Advertisement mode: flood through repeaters or zero-hop local only",
-            "enum": [
-              "flood",
-              "zero_hop"
-            ],
+            "enum": ["flood", "zero_hop"],
             "title": "Mode",
             "type": "string"
           }
@@ -3803,11 +3523,7 @@
         "type": "object"
       },
       "RadioCommandStatus": {
-        "enum": [
-          "idle",
-          "executing",
-          "legacy_busy"
-        ],
+        "enum": ["idle", "executing", "legacy_busy"],
         "title": "RadioCommandStatus",
         "type": "string"
       },
@@ -3816,10 +3532,7 @@
           "advert_location_source": {
             "default": "current",
             "description": "Whether adverts include the node's current location state",
-            "enum": [
-              "off",
-              "current"
-            ],
+            "enum": ["off", "current"],
             "title": "Advert Location Source",
             "type": "string"
           },
@@ -3908,15 +3621,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "public_key",
-          "name",
-          "lat",
-          "lon",
-          "tx_power",
-          "max_tx_power",
-          "radio"
-        ],
+        "required": ["public_key", "name", "lat", "lon", "tx_power", "max_tx_power", "radio"],
         "title": "RadioConfigResponse",
         "type": "object"
       },
@@ -3925,10 +3630,7 @@
           "advert_location_source": {
             "anyOf": [
               {
-                "enum": [
-                  "off",
-                  "current"
-                ],
+                "enum": ["off", "current"],
                 "type": "string"
               },
               {
@@ -4101,10 +3803,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "public_key",
-          "error"
-        ],
+        "required": ["public_key", "error"],
         "title": "RadioContactDeleteFailure",
         "type": "object"
       },
@@ -4175,11 +3874,7 @@
           "target": {
             "default": "all",
             "description": "Which node classes to discover over the mesh",
-            "enum": [
-              "repeaters",
-              "sensors",
-              "all"
-            ],
+            "enum": ["repeaters", "sensors", "all"],
             "title": "Target",
             "type": "string"
           }
@@ -4205,19 +3900,12 @@
           },
           "target": {
             "description": "Which node classes were requested",
-            "enum": [
-              "repeaters",
-              "sensors",
-              "all"
-            ],
+            "enum": ["repeaters", "sensors", "all"],
             "title": "Target",
             "type": "string"
           }
         },
-        "required": [
-          "target",
-          "duration_seconds"
-        ],
+        "required": ["target", "duration_seconds"],
         "title": "RadioDiscoveryResponse",
         "type": "object"
       },
@@ -4268,10 +3956,7 @@
           },
           "node_type": {
             "description": "Discovered node class",
-            "enum": [
-              "repeater",
-              "sensor"
-            ],
+            "enum": ["repeater", "sensor"],
             "title": "Node Type",
             "type": "string"
           },
@@ -4293,10 +3978,7 @@
             "title": "Remote Snr"
           }
         },
-        "required": [
-          "public_key",
-          "node_type"
-        ],
+        "required": ["public_key", "node_type"],
         "title": "RadioDiscoveryResult",
         "type": "object"
       },
@@ -4312,22 +3994,14 @@
             "$ref": "#/components/schemas/RadioJobState"
           }
         },
-        "required": [
-          "job_id",
-          "state"
-        ],
+        "required": ["job_id", "state"],
         "title": "RadioJobAccepted",
         "type": "object"
       },
       "RadioJobCancelResponse": {
         "properties": {
           "action": {
-            "enum": [
-              "cancelled_before_dispatch",
-              "stop_waiting",
-              "requested",
-              "unchanged"
-            ],
+            "enum": ["cancelled_before_dispatch", "stop_waiting", "requested", "unchanged"],
             "title": "Action",
             "type": "string"
           },
@@ -4335,10 +4009,7 @@
             "$ref": "#/components/schemas/RadioJobSnapshot"
           }
         },
-        "required": [
-          "job",
-          "action"
-        ],
+        "required": ["job", "action"],
         "title": "RadioJobCancelResponse",
         "type": "object"
       },
@@ -4374,11 +4045,7 @@
         "type": "string"
       },
       "RadioJobPriority": {
-        "enum": [
-          0,
-          10,
-          20
-        ],
+        "enum": [0, 10, 20],
         "title": "RadioJobPriority",
         "type": "integer"
       },
@@ -4623,11 +4290,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "items",
-          "snapshot_sequence",
-          "radio"
-        ],
+        "required": ["items", "snapshot_sequence", "radio"],
         "title": "RadioJobsPage",
         "type": "object"
       },
@@ -4665,10 +4328,7 @@
             "type": "array"
           }
         },
-        "required": [
-          "public_key",
-          "answered"
-        ],
+        "required": ["public_key", "answered"],
         "title": "RadioRegionDiscoveryRepeater",
         "type": "object"
       },
@@ -4732,10 +4392,7 @@
             "type": "array"
           }
         },
-        "required": [
-          "repeaters_queried",
-          "repeaters_answered"
-        ],
+        "required": ["repeaters_queried", "repeaters_answered"],
         "title": "RadioRegionDiscoveryResponse",
         "type": "object"
       },
@@ -4762,12 +4419,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "freq",
-          "bw",
-          "sf",
-          "cr"
-        ],
+        "required": ["freq", "bw", "sf", "cr"],
         "title": "RadioSettings",
         "type": "object"
       },
@@ -5000,11 +4652,7 @@
           },
           "startup_policy": {
             "default": "sync",
-            "enum": [
-              "passive",
-              "sync",
-              "full"
-            ],
+            "enum": ["passive", "sync", "full"],
             "title": "Startup Policy",
             "type": "string"
           },
@@ -5019,12 +4667,7 @@
             ]
           }
         },
-        "required": [
-          "radio_status",
-          "command_status",
-          "radio_generation",
-          "sequence"
-        ],
+        "required": ["radio_status", "command_status", "radio_generation", "sequence"],
         "title": "RadioStatusSnapshot",
         "type": "object"
       },
@@ -5100,11 +4743,7 @@
           },
           "role": {
             "description": "Node role in the trace",
-            "enum": [
-              "repeater",
-              "custom",
-              "local"
-            ],
+            "enum": ["repeater", "custom", "local"],
             "title": "Role",
             "type": "string"
           },
@@ -5121,9 +4760,7 @@
             "title": "Snr"
           }
         },
-        "required": [
-          "role"
-        ],
+        "required": ["role"],
         "title": "RadioTraceNode",
         "type": "object"
       },
@@ -5133,11 +4770,7 @@
           "hop_hash_bytes": {
             "default": 4,
             "description": "Hash width in bytes for every hop in this trace path",
-            "enum": [
-              1,
-              2,
-              4
-            ],
+            "enum": [1, 2, 4],
             "title": "Hop Hash Bytes",
             "type": "integer"
           },
@@ -5151,9 +4784,7 @@
             "type": "array"
           }
         },
-        "required": [
-          "hops"
-        ],
+        "required": ["hops"],
         "title": "RadioTraceRequest",
         "type": "object"
       },
@@ -5179,10 +4810,7 @@
             "type": "number"
           }
         },
-        "required": [
-          "path_len",
-          "timeout_seconds"
-        ],
+        "required": ["path_len", "timeout_seconds"],
         "title": "RadioTraceResponse",
         "type": "object"
       },
@@ -5344,12 +4972,7 @@
             "title": "Transport Code"
           }
         },
-        "required": [
-          "id",
-          "timestamp",
-          "data",
-          "payload_type"
-        ],
+        "required": ["id", "timestamp", "data", "payload_type"],
         "title": "RawPacketDetail",
         "type": "object"
       },
@@ -5487,10 +5110,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "status",
-          "authenticated"
-        ],
+        "required": ["status", "authenticated"],
         "title": "RepeaterLoginResponse",
         "type": "object"
       },
@@ -5761,12 +5381,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "name",
-          "depth",
-          "flood_allowed",
-          "is_home"
-        ],
+        "required": ["name", "depth", "flood_allowed", "is_home"],
         "title": "RepeaterRegionEntry",
         "type": "object"
       },
@@ -5795,10 +5410,7 @@
           "source": {
             "anyOf": [
               {
-                "enum": [
-                  "cli",
-                  "anon"
-                ],
+                "enum": ["cli", "anon"],
                 "type": "string"
               },
               {
@@ -5970,10 +5582,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "status",
-          "message_id"
-        ],
+        "required": ["status", "message_id"],
         "title": "ResendChannelMessageResponse",
         "type": "object"
       },
@@ -6002,10 +5611,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "text",
-          "channel_key"
-        ],
+        "required": ["text", "channel_key"],
         "title": "SendChannelMessageRequest",
         "type": "object"
       },
@@ -6022,10 +5628,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "text",
-          "destination"
-        ],
+        "required": ["text", "destination"],
         "title": "SendDirectMessageRequest",
         "type": "object"
       },
@@ -6134,10 +5737,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "timestamp",
-          "data"
-        ],
+        "required": ["timestamp", "data"],
         "title": "TelemetryHistoryEntry",
         "type": "object"
       },
@@ -6246,9 +5846,7 @@
             "title": "Remote Snr"
           }
         },
-        "required": [
-          "path_len"
-        ],
+        "required": ["path_len"],
         "title": "TraceResponse",
         "type": "object"
       },
@@ -6275,11 +5873,7 @@
             "type": "array"
           }
         },
-        "required": [
-          "tracked_telemetry_contacts",
-          "names",
-          "schedule"
-        ],
+        "required": ["tracked_telemetry_contacts", "names", "schedule"],
         "title": "TrackedTelemetryContactsResponse",
         "type": "object"
       },
@@ -6291,9 +5885,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "public_key"
-        ],
+        "required": ["public_key"],
         "title": "TrackedTelemetryRequest",
         "type": "object"
       },
@@ -6320,11 +5912,7 @@
             "type": "array"
           }
         },
-        "required": [
-          "tracked_telemetry_repeaters",
-          "names",
-          "schedule"
-        ],
+        "required": ["tracked_telemetry_repeaters", "names", "schedule"],
         "title": "TrackedTelemetryResponse",
         "type": "object"
       },
@@ -6421,11 +6009,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "loc",
-          "msg",
-          "type"
-        ],
+        "required": ["loc", "msg", "type"],
         "title": "ValidationError",
         "type": "object"
       },
@@ -6436,9 +6020,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "public_key"
-        ],
+        "required": ["public_key"],
         "title": "VapidPublicKeyResponse",
         "type": "object"
       }
@@ -6724,9 +6306,7 @@
           }
         },
         "summary": "List Channels",
-        "tags": [
-          "channels"
-        ]
+        "tags": ["channels"]
       },
       "post": {
         "description": "Create a channel in the database.\n\nChannels are NOT pushed to radio on creation. They are loaded to the radio\nautomatically when sending a message (see messages.py send_channel_message).",
@@ -6988,9 +6568,7 @@
           }
         },
         "summary": "Create Channel",
-        "tags": [
-          "channels"
-        ]
+        "tags": ["channels"]
       }
     },
     "/api/channels/bulk-hashtag": {
@@ -7253,9 +6831,7 @@
           }
         },
         "summary": "Bulk Create Hashtag Channels",
-        "tags": [
-          "channels"
-        ]
+        "tags": ["channels"]
       }
     },
     "/api/channels/{key}": {
@@ -7520,9 +7096,7 @@
           }
         },
         "summary": "Delete Channel",
-        "tags": [
-          "channels"
-        ]
+        "tags": ["channels"]
       }
     },
     "/api/channels/{key}/detail": {
@@ -7787,9 +7361,7 @@
           }
         },
         "summary": "Get Channel Detail",
-        "tags": [
-          "channels"
-        ]
+        "tags": ["channels"]
       }
     },
     "/api/channels/{key}/flood-scope-override": {
@@ -8064,9 +7636,7 @@
           }
         },
         "summary": "Set Channel Flood Scope Override",
-        "tags": [
-          "channels"
-        ]
+        "tags": ["channels"]
       }
     },
     "/api/channels/{key}/mark-read": {
@@ -8347,9 +7917,7 @@
           }
         },
         "summary": "Mark Channel Read",
-        "tags": [
-          "channels"
-        ]
+        "tags": ["channels"]
       }
     },
     "/api/channels/{key}/path-hash-mode-override": {
@@ -8624,9 +8192,7 @@
           }
         },
         "summary": "Set Channel Path Hash Mode Override",
-        "tags": [
-          "channels"
-        ]
+        "tags": ["channels"]
       }
     },
     "/api/contacts": {
@@ -8909,9 +8475,7 @@
           }
         },
         "summary": "List Contacts",
-        "tags": [
-          "contacts"
-        ]
+        "tags": ["contacts"]
       },
       "post": {
         "description": "Create a new contact in the database.\n\nIf the contact already exists, updates the name (if provided).\nIf try_historical is True, attempts to decrypt historical DM packets.",
@@ -9173,9 +8737,7 @@
           }
         },
         "summary": "Create Contact",
-        "tags": [
-          "contacts"
-        ]
+        "tags": ["contacts"]
       }
     },
     "/api/contacts/analytics": {
@@ -9465,9 +9027,7 @@
           }
         },
         "summary": "Get Contact Analytics",
-        "tags": [
-          "contacts"
-        ]
+        "tags": ["contacts"]
       }
     },
     "/api/contacts/bulk-delete": {
@@ -9731,9 +9291,7 @@
           }
         },
         "summary": "Bulk Delete Contacts",
-        "tags": [
-          "contacts"
-        ]
+        "tags": ["contacts"]
       }
     },
     "/api/contacts/repeaters/advert-paths": {
@@ -10005,9 +9563,7 @@
           }
         },
         "summary": "List Repeater Advert Paths",
-        "tags": [
-          "contacts"
-        ]
+        "tags": ["contacts"]
       }
     },
     "/api/contacts/{public_key}": {
@@ -10272,9 +9828,7 @@
           }
         },
         "summary": "Delete Contact",
-        "tags": [
-          "contacts"
-        ]
+        "tags": ["contacts"]
       }
     },
     "/api/contacts/{public_key}/command": {
@@ -10549,9 +10103,7 @@
           }
         },
         "summary": "Send Repeater Command",
-        "tags": [
-          "repeaters"
-        ]
+        "tags": ["repeaters"]
       }
     },
     "/api/contacts/{public_key}/mark-read": {
@@ -10832,9 +10384,7 @@
           }
         },
         "summary": "Mark Contact Read",
-        "tags": [
-          "contacts"
-        ]
+        "tags": ["contacts"]
       }
     },
     "/api/contacts/{public_key}/path-discovery": {
@@ -11099,9 +10649,7 @@
           }
         },
         "summary": "Request Path Discovery",
-        "tags": [
-          "contacts"
-        ]
+        "tags": ["contacts"]
       }
     },
     "/api/contacts/{public_key}/repeater/acl": {
@@ -11366,9 +10914,7 @@
           }
         },
         "summary": "Repeater Acl",
-        "tags": [
-          "repeaters"
-        ]
+        "tags": ["repeaters"]
       }
     },
     "/api/contacts/{public_key}/repeater/advert-intervals": {
@@ -11633,9 +11179,7 @@
           }
         },
         "summary": "Repeater Advert Intervals",
-        "tags": [
-          "repeaters"
-        ]
+        "tags": ["repeaters"]
       }
     },
     "/api/contacts/{public_key}/repeater/login": {
@@ -11910,9 +11454,7 @@
           }
         },
         "summary": "Repeater Login",
-        "tags": [
-          "repeaters"
-        ]
+        "tags": ["repeaters"]
       }
     },
     "/api/contacts/{public_key}/repeater/lpp-telemetry": {
@@ -12177,9 +11719,7 @@
           }
         },
         "summary": "Repeater Lpp Telemetry",
-        "tags": [
-          "repeaters"
-        ]
+        "tags": ["repeaters"]
       }
     },
     "/api/contacts/{public_key}/repeater/neighbors": {
@@ -12444,9 +11984,7 @@
           }
         },
         "summary": "Repeater Neighbors",
-        "tags": [
-          "repeaters"
-        ]
+        "tags": ["repeaters"]
       }
     },
     "/api/contacts/{public_key}/repeater/node-info": {
@@ -12711,9 +12249,7 @@
           }
         },
         "summary": "Repeater Node Info",
-        "tags": [
-          "repeaters"
-        ]
+        "tags": ["repeaters"]
       }
     },
     "/api/contacts/{public_key}/repeater/owner-info": {
@@ -12978,9 +12514,7 @@
           }
         },
         "summary": "Repeater Owner Info",
-        "tags": [
-          "repeaters"
-        ]
+        "tags": ["repeaters"]
       }
     },
     "/api/contacts/{public_key}/repeater/radio-settings": {
@@ -13245,9 +12779,7 @@
           }
         },
         "summary": "Repeater Radio Settings",
-        "tags": [
-          "repeaters"
-        ]
+        "tags": ["repeaters"]
       }
     },
     "/api/contacts/{public_key}/repeater/regions": {
@@ -13512,9 +13044,7 @@
           }
         },
         "summary": "Repeater Regions",
-        "tags": [
-          "repeaters"
-        ]
+        "tags": ["repeaters"]
       }
     },
     "/api/contacts/{public_key}/repeater/status": {
@@ -13779,9 +13309,7 @@
           }
         },
         "summary": "Repeater Status",
-        "tags": [
-          "repeaters"
-        ]
+        "tags": ["repeaters"]
       }
     },
     "/api/contacts/{public_key}/repeater/telemetry-history": {
@@ -14050,9 +13578,7 @@
           }
         },
         "summary": "Repeater Telemetry History",
-        "tags": [
-          "repeaters"
-        ]
+        "tags": ["repeaters"]
       }
     },
     "/api/contacts/{public_key}/room/acl": {
@@ -14317,9 +13843,7 @@
           }
         },
         "summary": "Room Acl",
-        "tags": [
-          "rooms"
-        ]
+        "tags": ["rooms"]
       }
     },
     "/api/contacts/{public_key}/room/login": {
@@ -14594,9 +14118,7 @@
           }
         },
         "summary": "Room Login",
-        "tags": [
-          "rooms"
-        ]
+        "tags": ["rooms"]
       }
     },
     "/api/contacts/{public_key}/room/lpp-telemetry": {
@@ -14861,9 +14383,7 @@
           }
         },
         "summary": "Room Lpp Telemetry",
-        "tags": [
-          "rooms"
-        ]
+        "tags": ["rooms"]
       }
     },
     "/api/contacts/{public_key}/room/status": {
@@ -15128,9 +14648,7 @@
           }
         },
         "summary": "Room Status",
-        "tags": [
-          "rooms"
-        ]
+        "tags": ["rooms"]
       }
     },
     "/api/contacts/{public_key}/routing-override": {
@@ -15405,9 +14923,7 @@
           }
         },
         "summary": "Set Contact Routing Override",
-        "tags": [
-          "contacts"
-        ]
+        "tags": ["contacts"]
       }
     },
     "/api/contacts/{public_key}/telemetry": {
@@ -15672,9 +15188,7 @@
           }
         },
         "summary": "Request Contact Telemetry",
-        "tags": [
-          "contacts"
-        ]
+        "tags": ["contacts"]
       }
     },
     "/api/contacts/{public_key}/telemetry-history": {
@@ -15943,9 +15457,7 @@
           }
         },
         "summary": "Get Contact Telemetry History",
-        "tags": [
-          "contacts"
-        ]
+        "tags": ["contacts"]
       }
     },
     "/api/contacts/{public_key}/trace": {
@@ -16210,9 +15722,7 @@
           }
         },
         "summary": "Request Trace",
-        "tags": [
-          "contacts"
-        ]
+        "tags": ["contacts"]
       }
     },
     "/api/debug": {
@@ -16484,9 +15994,7 @@
           }
         },
         "summary": "Debug Support Snapshot",
-        "tags": [
-          "debug"
-        ]
+        "tags": ["debug"]
       }
     },
     "/api/fanout": {
@@ -16762,9 +16270,7 @@
           }
         },
         "summary": "List Fanout Configs",
-        "tags": [
-          "fanout"
-        ]
+        "tags": ["fanout"]
       },
       "post": {
         "description": "Create a new fanout config.",
@@ -17026,9 +16532,7 @@
           }
         },
         "summary": "Create Fanout Config",
-        "tags": [
-          "fanout"
-        ]
+        "tags": ["fanout"]
       }
     },
     "/api/fanout/bots/disable-until-restart": {
@@ -17302,9 +16806,7 @@
           }
         },
         "summary": "Disable Bots Until Restart",
-        "tags": [
-          "fanout"
-        ]
+        "tags": ["fanout"]
       }
     },
     "/api/fanout/{config_id}": {
@@ -17571,9 +17073,7 @@
           }
         },
         "summary": "Delete Fanout Config",
-        "tags": [
-          "fanout"
-        ]
+        "tags": ["fanout"]
       },
       "patch": {
         "description": "Update a fanout config. Triggers module reload.",
@@ -17846,9 +17346,7 @@
           }
         },
         "summary": "Update Fanout Config",
-        "tags": [
-          "fanout"
-        ]
+        "tags": ["fanout"]
       }
     },
     "/api/health": {
@@ -18120,9 +17618,7 @@
           }
         },
         "summary": "Healthcheck",
-        "tags": [
-          "health"
-        ]
+        "tags": ["health"]
       }
     },
     "/api/messages": {
@@ -18161,10 +17657,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "enum": [
-                    "PRIV",
-                    "CHAN"
-                  ],
+                  "enum": ["PRIV", "CHAN"],
                   "type": "string"
                 },
                 {
@@ -18535,9 +18028,7 @@
           }
         },
         "summary": "List Messages",
-        "tags": [
-          "messages"
-        ]
+        "tags": ["messages"]
       }
     },
     "/api/messages/around/{message_id}": {
@@ -18562,10 +18053,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "enum": [
-                    "PRIV",
-                    "CHAN"
-                  ],
+                  "enum": ["PRIV", "CHAN"],
                   "type": "string"
                 },
                 {
@@ -18856,9 +18344,7 @@
           }
         },
         "summary": "Get Messages Around",
-        "tags": [
-          "messages"
-        ]
+        "tags": ["messages"]
       }
     },
     "/api/messages/channel": {
@@ -19122,9 +18608,7 @@
           }
         },
         "summary": "Send Channel Message",
-        "tags": [
-          "messages"
-        ]
+        "tags": ["messages"]
       }
     },
     "/api/messages/channel/{message_id}/resend": {
@@ -19399,9 +18883,7 @@
           }
         },
         "summary": "Resend Channel Message",
-        "tags": [
-          "messages"
-        ]
+        "tags": ["messages"]
       }
     },
     "/api/messages/direct": {
@@ -19665,9 +19147,7 @@
           }
         },
         "summary": "Send Direct Message",
-        "tags": [
-          "messages"
-        ]
+        "tags": ["messages"]
       }
     },
     "/api/packets/decrypt/historical": {
@@ -19931,9 +19411,7 @@
           }
         },
         "summary": "Decrypt Historical Packets",
-        "tags": [
-          "packets"
-        ]
+        "tags": ["packets"]
       }
     },
     "/api/packets/maintenance": {
@@ -20197,9 +19675,7 @@
           }
         },
         "summary": "Run Maintenance",
-        "tags": [
-          "packets"
-        ]
+        "tags": ["packets"]
       }
     },
     "/api/packets/region-backfill": {
@@ -20473,9 +19949,7 @@
           }
         },
         "summary": "Backfill Regions",
-        "tags": [
-          "packets"
-        ]
+        "tags": ["packets"]
       }
     },
     "/api/packets/undecrypted/count": {
@@ -20749,9 +20223,7 @@
           }
         },
         "summary": "Get Undecrypted Count",
-        "tags": [
-          "packets"
-        ]
+        "tags": ["packets"]
       }
     },
     "/api/packets/{packet_id}": {
@@ -21016,9 +20488,7 @@
           }
         },
         "summary": "Get Raw Packet",
-        "tags": [
-          "packets"
-        ]
+        "tags": ["packets"]
       }
     },
     "/api/push/conversations": {
@@ -21294,9 +20764,7 @@
           }
         },
         "summary": "Get Push Conversations",
-        "tags": [
-          "push"
-        ]
+        "tags": ["push"]
       }
     },
     "/api/push/conversations/toggle": {
@@ -21564,9 +21032,7 @@
           }
         },
         "summary": "Toggle Push Conversation",
-        "tags": [
-          "push"
-        ]
+        "tags": ["push"]
       }
     },
     "/api/push/subscribe": {
@@ -21832,9 +21298,7 @@
           }
         },
         "summary": "Subscribe",
-        "tags": [
-          "push"
-        ]
+        "tags": ["push"]
       }
     },
     "/api/push/subscriptions": {
@@ -22111,9 +21575,7 @@
           }
         },
         "summary": "List Subscriptions",
-        "tags": [
-          "push"
-        ]
+        "tags": ["push"]
       }
     },
     "/api/push/subscriptions/{subscription_id}": {
@@ -22380,9 +21842,7 @@
           }
         },
         "summary": "Unsubscribe",
-        "tags": [
-          "push"
-        ]
+        "tags": ["push"]
       },
       "patch": {
         "description": "Update a subscription's label.",
@@ -22657,9 +22117,7 @@
           }
         },
         "summary": "Update Subscription",
-        "tags": [
-          "push"
-        ]
+        "tags": ["push"]
       }
     },
     "/api/push/subscriptions/{subscription_id}/test": {
@@ -22926,9 +22384,7 @@
           }
         },
         "summary": "Test Push",
-        "tags": [
-          "push"
-        ]
+        "tags": ["push"]
       }
     },
     "/api/push/vapid-public-key": {
@@ -23200,9 +22656,7 @@
           }
         },
         "summary": "Vapid Public Key",
-        "tags": [
-          "push"
-        ]
+        "tags": ["push"]
       }
     },
     "/api/radio/activity": {
@@ -23487,9 +22941,7 @@
           }
         },
         "summary": "List Radio Activity",
-        "tags": [
-          "radio-jobs"
-        ]
+        "tags": ["radio-jobs"]
       }
     },
     "/api/radio/advertise": {
@@ -23762,9 +23214,7 @@
           }
         },
         "summary": "Send Advertisement",
-        "tags": [
-          "radio"
-        ]
+        "tags": ["radio"]
       }
     },
     "/api/radio/config": {
@@ -24036,9 +23486,7 @@
           }
         },
         "summary": "Get Radio Config",
-        "tags": [
-          "radio"
-        ]
+        "tags": ["radio"]
       },
       "patch": {
         "description": "Update radio configuration. Only provided fields will be updated.",
@@ -24300,9 +23748,7 @@
           }
         },
         "summary": "Update Radio Config",
-        "tags": [
-          "radio"
-        ]
+        "tags": ["radio"]
       }
     },
     "/api/radio/disconnect": {
@@ -24576,9 +24022,7 @@
           }
         },
         "summary": "Disconnect Radio",
-        "tags": [
-          "radio"
-        ]
+        "tags": ["radio"]
       }
     },
     "/api/radio/discover": {
@@ -24842,9 +24286,7 @@
           }
         },
         "summary": "Discover Mesh",
-        "tags": [
-          "radio"
-        ]
+        "tags": ["radio"]
       }
     },
     "/api/radio/discover-regions": {
@@ -25108,9 +24550,7 @@
           }
         },
         "summary": "Discover Regions",
-        "tags": [
-          "radio"
-        ]
+        "tags": ["radio"]
       }
     },
     "/api/radio/jobs": {
@@ -25411,9 +24851,7 @@
           }
         },
         "summary": "List Radio Jobs",
-        "tags": [
-          "radio-jobs"
-        ]
+        "tags": ["radio-jobs"]
       }
     },
     "/api/radio/jobs/advertise": {
@@ -25690,9 +25128,7 @@
           }
         },
         "summary": "Enqueue Advertisement",
-        "tags": [
-          "radio-jobs"
-        ]
+        "tags": ["radio-jobs"]
       }
     },
     "/api/radio/jobs/send/channel": {
@@ -25969,9 +25405,7 @@
           }
         },
         "summary": "Enqueue Channel Message",
-        "tags": [
-          "radio-jobs"
-        ]
+        "tags": ["radio-jobs"]
       }
     },
     "/api/radio/jobs/send/direct": {
@@ -26248,9 +25682,7 @@
           }
         },
         "summary": "Enqueue Direct Message",
-        "tags": [
-          "radio-jobs"
-        ]
+        "tags": ["radio-jobs"]
       }
     },
     "/api/radio/jobs/{job_id}": {
@@ -26515,9 +25947,7 @@
           }
         },
         "summary": "Get Radio Job",
-        "tags": [
-          "radio-jobs"
-        ]
+        "tags": ["radio-jobs"]
       }
     },
     "/api/radio/jobs/{job_id}/cancel": {
@@ -26782,9 +26212,7 @@
           }
         },
         "summary": "Cancel Radio Job",
-        "tags": [
-          "radio-jobs"
-        ]
+        "tags": ["radio-jobs"]
       }
     },
     "/api/radio/private-key": {
@@ -27058,9 +26486,7 @@
           }
         },
         "summary": "Get Private Key",
-        "tags": [
-          "radio"
-        ]
+        "tags": ["radio"]
       },
       "put": {
         "description": "Set the radio's private key. This is write-only.",
@@ -27324,9 +26750,7 @@
           }
         },
         "summary": "Set Private Key",
-        "tags": [
-          "radio"
-        ]
+        "tags": ["radio"]
       }
     },
     "/api/radio/reboot": {
@@ -27600,9 +27024,7 @@
           }
         },
         "summary": "Reboot Radio",
-        "tags": [
-          "radio"
-        ]
+        "tags": ["radio"]
       }
     },
     "/api/radio/reconnect": {
@@ -27876,9 +27298,7 @@
           }
         },
         "summary": "Reconnect Radio",
-        "tags": [
-          "radio"
-        ]
+        "tags": ["radio"]
       }
     },
     "/api/radio/trace": {
@@ -28142,9 +27562,7 @@
           }
         },
         "summary": "Trace Path",
-        "tags": [
-          "radio"
-        ]
+        "tags": ["radio"]
       }
     },
     "/api/read-state/mark-all-read": {
@@ -28416,9 +27834,7 @@
           }
         },
         "summary": "Mark All Read",
-        "tags": [
-          "read-state"
-        ]
+        "tags": ["read-state"]
       }
     },
     "/api/read-state/unreads": {
@@ -28690,9 +28106,7 @@
           }
         },
         "summary": "Get Unreads",
-        "tags": [
-          "read-state"
-        ]
+        "tags": ["read-state"]
       }
     },
     "/api/settings": {
@@ -28964,9 +28378,7 @@
           }
         },
         "summary": "Get Settings",
-        "tags": [
-          "settings"
-        ]
+        "tags": ["settings"]
       },
       "patch": {
         "description": "Update application settings.\n\nSettings are persisted to the database and survive restarts.",
@@ -29228,9 +28640,7 @@
           }
         },
         "summary": "Update Settings",
-        "tags": [
-          "settings"
-        ]
+        "tags": ["settings"]
       }
     },
     "/api/settings/blocked-keys/toggle": {
@@ -29494,9 +28904,7 @@
           }
         },
         "summary": "Toggle Blocked Key",
-        "tags": [
-          "settings"
-        ]
+        "tags": ["settings"]
       }
     },
     "/api/settings/blocked-names/toggle": {
@@ -29760,9 +29168,7 @@
           }
         },
         "summary": "Toggle Blocked Name",
-        "tags": [
-          "settings"
-        ]
+        "tags": ["settings"]
       }
     },
     "/api/settings/favorites/toggle": {
@@ -30026,9 +29432,7 @@
           }
         },
         "summary": "Toggle Favorite",
-        "tags": [
-          "settings"
-        ]
+        "tags": ["settings"]
       }
     },
     "/api/settings/muted-channels/toggle": {
@@ -30292,9 +29696,7 @@
           }
         },
         "summary": "Toggle Muted Channel",
-        "tags": [
-          "settings"
-        ]
+        "tags": ["settings"]
       }
     },
     "/api/settings/tracked-telemetry-contacts/schedule": {
@@ -30566,9 +29968,7 @@
           }
         },
         "summary": "Get Contact Telemetry Schedule",
-        "tags": [
-          "settings"
-        ]
+        "tags": ["settings"]
       }
     },
     "/api/settings/tracked-telemetry-contacts/toggle": {
@@ -30832,9 +30232,7 @@
           }
         },
         "summary": "Toggle Tracked Telemetry Contact",
-        "tags": [
-          "settings"
-        ]
+        "tags": ["settings"]
       }
     },
     "/api/settings/tracked-telemetry/schedule": {
@@ -31106,9 +30504,7 @@
           }
         },
         "summary": "Get Telemetry Schedule",
-        "tags": [
-          "settings"
-        ]
+        "tags": ["settings"]
       }
     },
     "/api/settings/tracked-telemetry/toggle": {
@@ -31372,9 +30768,7 @@
           }
         },
         "summary": "Toggle Tracked Telemetry",
-        "tags": [
-          "settings"
-        ]
+        "tags": ["settings"]
       }
     },
     "/api/statistics": {
@@ -31645,9 +31039,7 @@
           }
         },
         "summary": "Get Statistics",
-        "tags": [
-          "statistics"
-        ]
+        "tags": ["statistics"]
       }
     }
   },

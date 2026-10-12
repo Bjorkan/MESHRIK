@@ -4,37 +4,37 @@ Radio lifecycle operations use **the same single in-process RadioJobWorker** as
 ordinary radio commands. `RadioManager` alone creates/tears down the physical
 transport; a second MeshCore session or separate initialization worker must
 never be created. `radio_lifecycle.run_post_connect_setup()` owns a
-*generation-fenced workflow*, with separate bounded worker jobs for each
+_generation-fenced workflow_, with separate bounded worker jobs for each
 command stage. The manager's underlying operation lock remains a final
 transport guard, not an alternative production scheduler.
 
 ## Startup policies
 
 `MESHCORE_STARTUP_POLICY` accepts `passive`, `sync` or `full` (default:
-`sync`). These are *startup policies*, not an authorization boundary for
+`sync`). These are _startup policies_, not an authorization boundary for
 manual REST/API radio commands. All production policies bootstrap device
 metadata and clock **by reading**, register receive handlers and start
 incoming auto-fetch. Transport establishment and teardown remain manager-owned.
 
-| Policy | Startup work | Radio writes and on-air traffic |
-| --- | --- | --- |
-| `passive` | Read firmware/device info and current clock, enable inbound packet reception | **None** |
-| `sync` (default) | Passive work, read radio contact/channel snapshots into SQLite | **None**; do not offload/remove radio-resident contacts/channels |
-| `full` | Sync work plus *individually enabled* maintenance stages | Only stages explicitly enabled below; `full` by itself is not consent |
+| Policy           | Startup work                                                                 | Radio writes and on-air traffic                                       |
+| ---------------- | ---------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `passive`        | Read firmware/device info and current clock, enable inbound packet reception | **None**                                                              |
+| `sync` (default) | Passive work, read radio contact/channel snapshots into SQLite               | **None**; do not offload/remove radio-resident contacts/channels      |
+| `full`           | Sync work plus _individually enabled_ maintenance stages                     | Only stages explicitly enabled below; `full` by itself is not consent |
 
 All maintenance opt-ins default to `false`:
 
-| Configuration env var | Effect when policy is `full` |
-| --- | --- |
-| `MESHCORE_STARTUP_EXPORT_PRIVATE_KEY` | Read/export key into the authorized local keystore; **sensitive** (never emit in job snapshots) |
-| `MESHCORE_STARTUP_SYNC_CLOCK` | Write device clock; may trigger later periodic clock sync |
-| `MESHCORE_STARTUP_APPLY_FLOOD_SCOPE` | Write configured flood scope |
-| `MESHCORE_STARTUP_SEND_ADVERTISEMENT` | Send a startup advertisement and enable configured periodic adverts (**RF**) |
-| `MESHCORE_STARTUP_DRAIN_MESSAGES` | Drain pending device messages and enable configured message polling; review downstream semantics before enabling |
-| `MESHCORE_STARTUP_RECONCILE_CONTACTS` | Begin configured contact reconciliation (application state and possible downstream effects) |
-| `MESHCORE_STARTUP_CLEAR_CHANNEL_SLOTS` | Offload/clear physical channel slots; **destructive to radio residency** |
-| `MESHCORE_STARTUP_ALLOW_PERIODIC_OFFLOAD` | Enable recurring contact/channel offload and slot removal; **destructive**, independent of clock sync |
-| `MESHCORE_STARTUP_ENABLE_TELEMETRY_COLLECTION` | Start telemetry collection |
+| Configuration env var                          | Effect when policy is `full`                                                                                     |
+| ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `MESHCORE_STARTUP_EXPORT_PRIVATE_KEY`          | Read/export key into the authorized local keystore; **sensitive** (never emit in job snapshots)                  |
+| `MESHCORE_STARTUP_SYNC_CLOCK`                  | Write device clock; may trigger later periodic clock sync                                                        |
+| `MESHCORE_STARTUP_APPLY_FLOOD_SCOPE`           | Write configured flood scope                                                                                     |
+| `MESHCORE_STARTUP_SEND_ADVERTISEMENT`          | Send a startup advertisement and enable configured periodic adverts (**RF**)                                     |
+| `MESHCORE_STARTUP_DRAIN_MESSAGES`              | Drain pending device messages and enable configured message polling; review downstream semantics before enabling |
+| `MESHCORE_STARTUP_RECONCILE_CONTACTS`          | Begin configured contact reconciliation (application state and possible downstream effects)                      |
+| `MESHCORE_STARTUP_CLEAR_CHANNEL_SLOTS`         | Offload/clear physical channel slots; **destructive to radio residency**                                         |
+| `MESHCORE_STARTUP_ALLOW_PERIODIC_OFFLOAD`      | Enable recurring contact/channel offload and slot removal; **destructive**, independent of clock sync            |
+| `MESHCORE_STARTUP_ENABLE_TELEMETRY_COLLECTION` | Start telemetry collection                                                                                       |
 
 A `full` startup with every flag unset has the same device-write and
 RF-transmission budget as `sync`. Key export may change application storage

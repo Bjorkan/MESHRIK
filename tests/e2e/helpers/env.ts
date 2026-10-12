@@ -17,8 +17,7 @@
  * mesh-traffic tests can observe. The channel is created automatically if
  * it doesn't exist in the test database.
  */
-export const E2E_ECHO_CHANNEL =
-  process.env.E2E_ECHO_CHANNEL ?? '#flightless';
+export const E2E_ECHO_CHANNEL = process.env.E2E_ECHO_CHANNEL ?? "#flightless";
 
 /**
  * Message sent to the echo channel to nudge the bot into replying.
@@ -26,7 +25,7 @@ export const E2E_ECHO_CHANNEL =
  * doesn't matter as long as the bot doesn't filter it out.
  */
 export const E2E_ECHO_TRIGGER_MESSAGE =
-  process.env.E2E_ECHO_TRIGGER_MESSAGE ?? '!echo please give incoming message';
+  process.env.E2E_ECHO_TRIGGER_MESSAGE ?? "!echo please give incoming message";
 
 /**
  * Public key (64-char hex) of a nearby node that will ACK direct messages
@@ -35,12 +34,11 @@ export const E2E_ECHO_TRIGGER_MESSAGE =
  */
 export const E2E_PARTNER_RADIO_PUBKEY =
   process.env.E2E_PARTNER_RADIO_PUBKEY ??
-  'ae92577bae6c269a1da3c87b5333e1bdb007e372b66e94204b9f92a6b52a62b1';
+  "ae92577bae6c269a1da3c87b5333e1bdb007e372b66e94204b9f92a6b52a62b1";
 
 /**
  * Display name for the partner radio node above. Used in UI assertions
  * (searching the sidebar, verifying the conversation header, etc.).
  */
 export const E2E_PARTNER_RADIO_NAME =
-  process.env.E2E_PARTNER_RADIO_NAME ?? 'FlightlessDt\u{1F95D}';
-
+  process.env.E2E_PARTNER_RADIO_NAME ?? "FlightlessDt\u{1F95D}";

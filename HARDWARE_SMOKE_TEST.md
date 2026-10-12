@@ -27,7 +27,7 @@ an application default and should not be committed to runtime config.
   quarantine, or unexpected changes to contact/channel slots. Do **not**
   automatically retry an uncertain transmission.
 
-## Phase A: passive *startup* / observation
+## Phase A: passive _startup_ / observation
 
 Run from the repo root with a fresh test database and no other owner of the
 radio's TCP port. `MESHCORE_STARTUP_POLICY=passive` intentionally skips key

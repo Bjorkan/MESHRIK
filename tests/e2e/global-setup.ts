@@ -1,6 +1,6 @@
-import type { FullConfig } from '@playwright/test';
+import type { FullConfig } from "@playwright/test";
 
-const BASE_URL = 'http://localhost:8001';
+const BASE_URL = "http://localhost:8001";
 // Post-connect sync (contact offload, channel sync, key export) can take
 // 30-60s on a radio with many contacts, so allow generous polling here.
 const MAX_RETRIES = 60;
@@ -26,12 +26,12 @@ export default async function globalSetup(_config: FullConfig) {
 
       if (!health.radio_connected) {
         throw new Error(
-          'Radio not connected — E2E tests require hardware. ' +
-            'Set MESHCORE_SERIAL_PORT if auto-detection fails.'
+          "Radio not connected — E2E tests require hardware. " +
+            "Set MESHCORE_SERIAL_PORT if auto-detection fails.",
         );
       }
       if (health.radio_initializing) {
-        throw new Error('Radio connected but still initializing');
+        throw new Error("Radio connected but still initializing");
       }
 
       console.log(`Radio ready on ${health.connection_info}`);
@@ -39,11 +39,15 @@ export default async function globalSetup(_config: FullConfig) {
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));
       if (attempt < MAX_RETRIES) {
-        console.log(`Waiting for backend (attempt ${attempt}/${MAX_RETRIES})...`);
+        console.log(
+          `Waiting for backend (attempt ${attempt}/${MAX_RETRIES})...`,
+        );
         await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
       }
     }
   }
 
-  throw new Error(`Backend not ready after ${MAX_RETRIES} attempts: ${lastError?.message}`);
+  throw new Error(
+    `Backend not ready after ${MAX_RETRIES} attempts: ${lastError?.message}`,
+  );
 }
