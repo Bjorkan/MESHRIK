@@ -1,5 +1,4 @@
 import type { Conversation } from '../types';
-import { parseHashConversation } from './urlHash';
 
 export const REOPEN_LAST_CONVERSATION_KEY = 'meshrik-reopen-last-conversation';
 export const LAST_VIEWED_CONVERSATION_KEY = 'meshrik-last-viewed-conversation';
@@ -79,45 +78,4 @@ export function getLastViewedConversation(): Conversation | null {
   } catch {
     return null;
   }
-}
-
-export function captureLastViewedConversationFromHash(): void {
-  const hashConversation = parseHashConversation();
-  if (!hashConversation) return;
-
-  if (hashConversation.type === 'raw') {
-    saveLastViewedConversation({ type: 'raw', id: 'raw', name: 'Raw Packet Feed' });
-    return;
-  }
-  if (hashConversation.type === 'map') {
-    saveLastViewedConversation({
-      type: 'map',
-      id: 'map',
-      name: 'Node Map',
-      ...(hashConversation.mapFocusKey && { mapFocusKey: hashConversation.mapFocusKey }),
-    });
-    return;
-  }
-  if (hashConversation.type === 'radio-activity') {
-    saveLastViewedConversation({
-      type: 'radio-activity',
-      id: 'radio-activity',
-      name: 'Radio Activity',
-    });
-    return;
-  }
-  if (hashConversation.type === 'visualizer') {
-    saveLastViewedConversation({ type: 'visualizer', id: 'visualizer', name: 'Mesh Visualizer' });
-    return;
-  }
-  if (hashConversation.type === 'trace') {
-    saveLastViewedConversation({ type: 'trace', id: 'trace', name: 'Trace' });
-    return;
-  }
-
-  saveLastViewedConversation({
-    type: hashConversation.type,
-    id: hashConversation.name,
-    name: hashConversation.label || hashConversation.name,
-  });
 }

@@ -31,39 +31,42 @@ export function RoutedApp() {
   }
 
   const handleNavigateConversation = useCallback(
-    (conversation: Conversation) => {
+    (conversation: Conversation, options?: { replace?: boolean }) => {
       switch (conversation.type) {
         case 'raw':
-          void navigate({ to: '/raw' });
+          void navigate({ to: '/raw', replace: options?.replace });
           return;
         case 'map':
           void navigate({
             to: '/map',
             search: conversation.mapFocusKey ? { focus: conversation.mapFocusKey } : {},
+            replace: options?.replace,
           });
           return;
         case 'visualizer':
-          void navigate({ to: '/visualizer' });
+          void navigate({ to: '/visualizer', replace: options?.replace });
           return;
         case 'search':
-          void navigate({ to: '/search' });
+          void navigate({ to: '/search', replace: options?.replace });
           return;
         case 'trace':
-          void navigate({ to: '/trace' });
+          void navigate({ to: '/trace', replace: options?.replace });
           return;
         case 'radio-activity':
-          void navigate({ to: '/radio-activity' });
+          void navigate({ to: '/radio-activity', replace: options?.replace });
           return;
         case 'channel':
           void navigate({
             to: '/channel/$channelId',
             params: { channelId: conversation.id },
+            replace: options?.replace,
           });
           return;
         case 'contact':
           void navigate({
             to: '/contact/$publicKey',
             params: { publicKey: conversation.id },
+            replace: options?.replace,
           });
       }
     },

@@ -84,7 +84,10 @@ interface AppProps {
   routeConversation?: Conversation | null;
   routeEntity?: EntityRoute | null;
   routeIsRoot?: boolean;
-  onNavigateConversation?: (conversation: Conversation) => void;
+  onNavigateConversation?: (
+    conversation: Conversation,
+    options?: { replace?: boolean }
+  ) => void;
   routeSettingsSection?: SettingsSection | null;
   onNavigateSettings?: (section: SettingsSection) => void;
   onCloseSettingsRoute?: () => void;
@@ -340,6 +343,7 @@ function AppContent({
     handleSelectConversation,
   } = useConversationRouter({
     channels,
+    channelsLoaded,
     contacts,
     contactsLoaded,
     setSidebarOpen,

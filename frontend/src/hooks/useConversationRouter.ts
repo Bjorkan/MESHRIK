@@ -7,7 +7,6 @@ import {
 } from '../utils/lastViewedConversation';
 import { findPublicChannel } from '../utils/publicChannel';
 import { getContactDisplayName } from '../utils/pubkey';
-import { resolveChannelFromHashToken, resolveContactFromHashToken } from '../utils/urlHash';
 import type { EntityRoute } from '../routing/entityRoutes';
 import type { Channel, Contact, Conversation } from '../types';
 
@@ -20,6 +19,7 @@ function resolvePublicFromChannels(channels: Channel[]): Conversation | null {
 
 interface UseConversationRouterArgs {
   channels: Channel[];
+  channelsLoaded: boolean;
   contacts: Contact[];
   contactsLoaded: boolean;
   setSidebarOpen: (open: boolean) => void;
@@ -28,11 +28,15 @@ interface UseConversationRouterArgs {
   routeConversation?: Conversation | null;
   routeEntity?: EntityRoute | null;
   routeIsRoot?: boolean;
-  onNavigateConversation?: (conversation: Conversation) => void;
+  onNavigateConversation?: (
+    conversation: Conversation,
+    options?: { replace?: boolean }
+  ) => void;
 }
 
 export function useConversationRouter({
   channels,
+  channelsLoaded,
   contacts,
   contactsLoaded,
   setSidebarOpen,
@@ -52,8 +56,8 @@ export function useConversationRouter({
   const previousRouteIsRootRef = useRef(routeIsRoot);
 
   const setActiveConversation = useCallback(
-    (conversation: Conversation | null) => {
-      if (conversation) onNavigateConversation?.(conversation);
+    (conversation: Conversation | null, options?: { replace?: boolean }) => {
+      if (conversation) onNavigateConversation?.(conversation, options);
       setStoredConversation(conversation);
     },
     [onNavigateConversation]
@@ -105,17 +109,21 @@ export function useConversationRouter({
           lastViewed.type === 'trace' ||
           lastViewed.type === 'radio-activity')
       ) {
-        setActiveConversation(lastViewed);
+        setActiveConversation(lastViewed, { replace: true });
         hasSetDefaultConversation.current = true;
         return;
       }
 
       if (lastViewed?.type === 'channel') {
-        const channel =
-          channels.find((candidate) => candidate.key.toLowerCase() === lastViewed.id.toLowerCase()) ??
-          resolveChannelFromHashToken(lastViewed.id, channels);
+        if (!channelsLoaded) return;
+        const channel = channels.find(
+          (candidate) => candidate.key.toLowerCase() === lastViewed.id.toLowerCase()
+        );
         if (channel) {
-          setActiveConversation({ type: 'channel', id: channel.key, name: channel.name });
+          setActiveConversation(
+            { type: 'channel', id: channel.key, name: channel.name },
+            { replace: true }
+          );
           hasSetDefaultConversation.current = true;
           return;
         }
@@ -123,6 +131,7 @@ export function useConversationRouter({
       if (lastViewed?.type === 'contact') return;
     }
 
+    if (!channelsLoaded) return;
     const publicConversation = getPublicChannelConversation();
     if (publicConversation) {
       setStoredConversation(publicConversation);
@@ -130,6 +139,7 @@ export function useConversationRouter({
     }
   }, [
     channels,
+    channelsLoaded,
     getPublicChannelConversation,
     hasSetDefaultConversation,
     routeConversation,
@@ -148,20 +158,23 @@ export function useConversationRouter({
     const lastViewed = getLastViewedConversation();
     if (lastViewed?.type !== 'contact' || !contactsLoaded) return;
 
-    const contact =
-      contacts.find(
-        (candidate) => candidate.public_key.toLowerCase() === lastViewed.id.toLowerCase()
-      ) ?? resolveContactFromHashToken(lastViewed.id, contacts);
+    const contact = contacts.find(
+      (candidate) => candidate.public_key.toLowerCase() === lastViewed.id.toLowerCase()
+    );
     if (contact) {
-      setActiveConversation({
-        type: 'contact',
-        id: contact.public_key,
-        name: getContactDisplayName(contact.name, contact.public_key, contact.last_advert),
-      });
+      setActiveConversation(
+        {
+          type: 'contact',
+          id: contact.public_key,
+          name: getContactDisplayName(contact.name, contact.public_key, contact.last_advert),
+        },
+        { replace: true }
+      );
       hasSetDefaultConversation.current = true;
       return;
     }
 
+    if (!channelsLoaded) return;
     const publicConversation = getPublicChannelConversation();
     if (publicConversation) {
       setStoredConversation(publicConversation);
@@ -170,6 +183,7 @@ export function useConversationRouter({
   }, [
     contacts,
     contactsLoaded,
+    channelsLoaded,
     getPublicChannelConversation,
     hasSetDefaultConversation,
     routeConversation,

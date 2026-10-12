@@ -7,7 +7,10 @@ import type { Conversation } from '../types';
 import type { SettingsSection } from '../components/settings/settingsConstants';
 
 interface RoutedAppTestProps {
-  onNavigateConversation?: (conversation: Conversation) => void;
+  onNavigateConversation?: (
+    conversation: Conversation,
+    options?: { replace?: boolean }
+  ) => void;
   onNavigateSettings?: (section: SettingsSection) => void;
   onCloseSettingsRoute?: () => void;
 }
@@ -26,6 +29,17 @@ vi.mock('../App', () => ({
         }
       >
         Open channel
+      </button>
+      <button
+        type="button"
+        onClick={() =>
+          onNavigateConversation?.(
+            { type: 'channel', id: 'restored-channel', name: 'Restored' },
+            { replace: true }
+          )
+        }
+      >
+        Restore channel
       </button>
       <button
         type="button"
@@ -78,5 +92,19 @@ describe('RoutedApp navigation actions', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Close settings' }));
     await waitFor(() => expect(router.state.location.pathname).toBe('/contact/contact-key'));
+  });
+
+  it('replaces the root history entry for automatic startup navigation', async () => {
+    const history = createMemoryHistory({ initialEntries: ['/before', '/'] });
+    const router = createAppRouter(history);
+    await router.load();
+    render(<RouterProvider router={router} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Restore channel' }));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/channel/restored-channel'));
+
+    history.back();
+    await router.load();
+    expect(router.state.location.pathname).toBe('/before');
   });
 });

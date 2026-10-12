@@ -12,7 +12,6 @@ import { Separator } from '../ui/separator';
 import { cn } from '../../lib/utils';
 import { ContactAvatar } from '../ContactAvatar';
 import {
-  captureLastViewedConversationFromHash,
   getReopenLastConversationEnabled,
   setReopenLastConversationEnabled,
 } from '../../utils/lastViewedConversation';
@@ -275,9 +274,6 @@ export function SettingsLocalSection({
   const handleToggleReopenLastConversation = (enabled: boolean) => {
     setReopenLastConversation(enabled);
     setReopenLastConversationEnabled(enabled);
-    if (enabled) {
-      captureLastViewedConversationFromHash();
-    }
   };
 
   return (

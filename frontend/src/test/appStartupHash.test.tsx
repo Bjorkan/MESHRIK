@@ -1,5 +1,5 @@
 import React from 'react';
-import { configure, render, screen, waitFor } from '@testing-library/react';
+import { act, configure, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -326,6 +326,7 @@ describe('App startup route resolution', () => {
   });
 
   it('reopens the last viewed trace tool even when channels are unavailable', async () => {
+    const onNavigateConversation = vi.fn();
     setHash('');
     localStorage.setItem(REOPEN_LAST_CONVERSATION_KEY, '1');
     localStorage.setItem(
@@ -338,13 +339,17 @@ describe('App startup route resolution', () => {
     );
     mocks.api.getChannels.mockResolvedValue([]);
 
-    render(<App />);
+    render(<App routeIsRoot onNavigateConversation={onNavigateConversation} />);
 
     await waitFor(() => {
       for (const node of screen.getAllByTestId('active-conversation')) {
         expect(node).toHaveTextContent('trace:trace:Trace');
       }
     });
+    expect(onNavigateConversation).toHaveBeenCalledWith(
+      { type: 'trace', id: 'trace', name: 'Trace' },
+      { replace: true }
+    );
   });
 
   it('restores last viewed channel when hash is empty and reopen preference is enabled', async () => {
@@ -442,7 +447,7 @@ describe('App startup route resolution', () => {
     expect(localStorage.getItem(LAST_VIEWED_CONVERSATION_KEY)).toContain(publicChannel.key);
   });
 
-  it('restores last viewed contact from legacy name token when hash is empty and reopen is enabled', async () => {
+  it('restores a last viewed contact by stable public key when reopen is enabled', async () => {
     const aliceContact = {
       public_key: 'b'.repeat(64),
       name: 'Alice',
@@ -468,7 +473,7 @@ describe('App startup route resolution', () => {
       LAST_VIEWED_CONVERSATION_KEY,
       JSON.stringify({
         type: 'contact',
-        id: 'Alice',
+        id: aliceContact.public_key,
         name: 'Alice',
       })
     );
@@ -482,6 +487,90 @@ describe('App startup route resolution', () => {
       }
     });
     expect(window.location.hash).toBe('');
+  });
+
+  it('waits for a missing saved contact to resolve before falling back to Public', async () => {
+    let resolveContacts!: (contacts: []) => void;
+    mocks.api.getContacts.mockReturnValue(
+      new Promise<[]>((resolve) => {
+        resolveContacts = resolve;
+      })
+    );
+    localStorage.setItem(REOPEN_LAST_CONVERSATION_KEY, '1');
+    localStorage.setItem(
+      LAST_VIEWED_CONVERSATION_KEY,
+      JSON.stringify({ type: 'contact', id: 'missing-public-key', name: 'Missing' })
+    );
+
+    render(<App routeIsRoot />);
+
+    await waitFor(() => {
+      for (const node of screen.getAllByTestId('active-conversation')) {
+        expect(node).toHaveTextContent('none');
+      }
+    });
+
+    await act(async () => resolveContacts([]));
+
+    await waitFor(() => {
+      for (const node of screen.getAllByTestId('active-conversation')) {
+        expect(node).toHaveTextContent(`channel:${publicChannel.key}:Public`);
+      }
+    });
+  });
+
+  it('waits for channel data before rejecting a missing saved channel', async () => {
+    let resolveChannels!: (channels: (typeof publicChannel)[]) => void;
+    mocks.api.getChannels.mockReturnValue(
+      new Promise<(typeof publicChannel)[]>((resolve) => {
+        resolveChannels = resolve;
+      })
+    );
+    localStorage.setItem(REOPEN_LAST_CONVERSATION_KEY, '1');
+    localStorage.setItem(
+      LAST_VIEWED_CONVERSATION_KEY,
+      JSON.stringify({ type: 'channel', id: 'missing-channel-key', name: 'Missing' })
+    );
+
+    render(<App routeIsRoot />);
+
+    await waitFor(() => {
+      for (const node of screen.getAllByTestId('active-conversation')) {
+        expect(node).toHaveTextContent('none');
+      }
+    });
+
+    await act(async () => resolveChannels([publicChannel]));
+
+    await waitFor(() => {
+      for (const node of screen.getAllByTestId('active-conversation')) {
+        expect(node).toHaveTextContent(`channel:${publicChannel.key}:Public`);
+      }
+    });
+  });
+
+  it('never lets saved-last state replace an explicit route', async () => {
+    localStorage.setItem(REOPEN_LAST_CONVERSATION_KEY, '1');
+    localStorage.setItem(
+      LAST_VIEWED_CONVERSATION_KEY,
+      JSON.stringify({ type: 'raw', id: 'raw', name: 'Raw Packet Feed' })
+    );
+    const onNavigateConversation = vi.fn();
+
+    render(
+      <App
+        routeConversation={{ type: 'trace', id: 'trace', name: 'Trace' }}
+        routeIsRoot={false}
+        onNavigateConversation={onNavigateConversation}
+      />
+    );
+
+    await waitFor(() => {
+      for (const node of screen.getAllByTestId('active-conversation')) {
+        expect(node).toHaveTextContent('trace:trace:Trace');
+      }
+    });
+    expect(onNavigateConversation).not.toHaveBeenCalled();
   });
 
   it('stays on the radio settings route even when radio is disconnected', async () => {

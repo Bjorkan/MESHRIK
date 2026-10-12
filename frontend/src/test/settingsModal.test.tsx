@@ -659,7 +659,12 @@ describe('SettingsModal', () => {
   });
 
   it('stores and clears reopen-last-conversation preference locally', () => {
-    window.location.hash = '#raw';
+    const savedConversation = JSON.stringify({
+      type: 'channel',
+      id: 'stable-channel-key',
+      name: 'Ops',
+    });
+    localStorage.setItem(LAST_VIEWED_CONVERSATION_KEY, savedConversation);
     renderModal();
     openLocalSection();
 
@@ -669,7 +674,7 @@ describe('SettingsModal', () => {
     fireEvent.click(checkbox);
 
     expect(localStorage.getItem(REOPEN_LAST_CONVERSATION_KEY)).toBe('1');
-    expect(localStorage.getItem(LAST_VIEWED_CONVERSATION_KEY)).toContain('"type":"raw"');
+    expect(localStorage.getItem(LAST_VIEWED_CONVERSATION_KEY)).toBe(savedConversation);
 
     fireEvent.click(checkbox);
 
