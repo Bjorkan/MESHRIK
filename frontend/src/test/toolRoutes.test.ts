@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { getMapFocusPath, getToolConversation, validateMapSearch } from '../routing/toolRoutes';
+import { getToolConversation, validateMapSearch } from '../routing/toolRoutes';
 
 describe('tool pathname routing', () => {
   it.each([
@@ -28,10 +28,6 @@ describe('tool pathname routing', () => {
       expect(getToolConversation('/map', search)).not.toHaveProperty('mapFocusKey');
     }
   );
-
-  it('builds an encoded pathname map focus URL', () => {
-    expect(getMapFocusPath('AB CD/12')).toBe('/map?focus=AB%20CD%2F12');
-  });
 
   it('does not invent a tool conversation for an unrelated path', () => {
     expect(getToolConversation('/channel/example', {})).toBeNull();

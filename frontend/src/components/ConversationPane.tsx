@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState, type Ref } from 'react';
+import { Link } from '@tanstack/react-router';
 
 import { ChatHeader } from './ChatHeader';
 import { MessageInput, type MessageInputHandle } from './MessageInput';
@@ -238,9 +239,9 @@ export function ConversationPane({
       return (
         <div className="flex-1 flex flex-col items-center justify-center gap-3 p-6 text-center">
           <p className="text-muted-foreground">{routeResourceState.resource} not found</p>
-          <a href="/" className="text-sm text-primary hover:underline">
+          <Link to="/" className="text-sm text-primary hover:underline">
             Return to MESHRIK
-          </a>
+          </Link>
         </div>
       );
     }

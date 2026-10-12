@@ -8,6 +8,11 @@ import { getSettingsSection } from './routing/settingsRoutes';
 import { getEntityRoute } from './routing/entityRoutes';
 import type { SettingsSection } from './components/settings/settingsConstants';
 
+interface ReturnRoute {
+  conversation: Conversation | null;
+  entity: ReturnType<typeof getEntityRoute>;
+}
+
 export function RoutedApp() {
   const location = useRouterState({ select: (state) => state.location });
   const navigate = useNavigate();
@@ -17,9 +22,12 @@ export function RoutedApp() {
   );
   const routeSettingsSection = getSettingsSection(location.pathname);
   const routeEntity = getEntityRoute(location.pathname);
-  const previousNonSettingsHrefRef = useRef('/');
+  const previousNonSettingsRouteRef = useRef<ReturnRoute>({ conversation: null, entity: null });
   if (routeSettingsSection === null) {
-    previousNonSettingsHrefRef.current = location.href;
+    previousNonSettingsRouteRef.current = {
+      conversation: routeConversation,
+      entity: routeEntity,
+    };
   }
 
   const handleNavigateConversation = useCallback(
@@ -91,8 +99,21 @@ export function RoutedApp() {
   );
 
   const handleCloseSettingsRoute = useCallback(() => {
-    void navigate({ href: previousNonSettingsHrefRef.current });
-  }, [navigate]);
+    const { conversation, entity } = previousNonSettingsRouteRef.current;
+    if (conversation) {
+      handleNavigateConversation(conversation);
+      return;
+    }
+    if (entity?.type === 'channel') {
+      void navigate({ to: '/channel/$channelId', params: { channelId: entity.id } });
+      return;
+    }
+    if (entity?.type === 'contact') {
+      void navigate({ to: '/contact/$publicKey', params: { publicKey: entity.id } });
+      return;
+    }
+    void navigate({ to: '/' });
+  }, [handleNavigateConversation, navigate]);
 
   return (
     <App

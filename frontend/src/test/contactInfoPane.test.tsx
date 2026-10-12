@@ -3,6 +3,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 import { ContactInfoPane } from '../components/ContactInfoPane';
 import type { Contact, ContactAnalytics } from '../types';
+import { renderWithRouter } from './renderWithRouter';
 
 const { getContactAnalytics, contactTelemetryHistory } = vi.hoisted(() => ({
   getContactAnalytics: vi.fn(),
@@ -277,7 +278,7 @@ describe('ContactInfoPane', () => {
     const windowOpen = vi.spyOn(window, 'open');
     getContactAnalytics.mockResolvedValue(createAnalytics(contact));
 
-    render(
+    await renderWithRouter(
       <ContactInfoPane
         {...baseProps}
         contactKey={contact.public_key}

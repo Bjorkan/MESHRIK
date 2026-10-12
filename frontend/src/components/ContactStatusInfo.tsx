@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import { Link } from '@tanstack/react-router';
 import { toast } from './ui/sonner';
 import { formatTime } from '../utils/messageParser';
 import {
@@ -8,7 +9,6 @@ import {
   formatRouteLabel,
   getEffectiveContactRoute,
 } from '../utils/pathUtils';
-import { getMapFocusPath } from '../routing/toolRoutes';
 import { handleKeyboardActivate } from '../utils/a11y';
 import type { Contact } from '../types';
 import { useDistanceUnit } from '../contexts/DistanceUnitContext';
@@ -59,20 +59,17 @@ export function ContactStatusInfo({ contact, ourLat, ourLon }: ContactStatusInfo
         : null;
     parts.push(
       <span key="coords">
-        <span
+        <Link
+          to="/map"
+          search={{ focus: contact.public_key }}
+          target="_blank"
+          rel="noopener noreferrer"
           className="font-mono cursor-pointer hover:text-primary hover:underline"
-          role="button"
-          tabIndex={0}
-          onKeyDown={handleKeyboardActivate}
-          onClick={(e) => {
-            e.stopPropagation();
-            const url = new URL(getMapFocusPath(contact.public_key), window.location.origin);
-            window.open(url.toString(), '_blank');
-          }}
+          onClick={(event) => event.stopPropagation()}
           title="View on map"
         >
           {contact.lat!.toFixed(3)}, {contact.lon!.toFixed(3)}
-        </span>
+        </Link>
         {distFromUs !== null && ` (${formatDistance(distFromUs, distanceUnit)})`}
       </span>
     );

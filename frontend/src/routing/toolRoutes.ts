@@ -9,10 +9,6 @@ export function validateMapSearch(search: Record<string, unknown>): MapSearch {
   return focus ? { focus } : {};
 }
 
-export function getMapFocusPath(publicKey: string): string {
-  return `/map?focus=${encodeURIComponent(publicKey)}`;
-}
-
 export function getToolConversation(
   pathname: string,
   search: Record<string, unknown>

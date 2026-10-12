@@ -1,4 +1,5 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from '@tanstack/react-router';
 import { Activity, Ban, ChevronDown, ChevronRight, Search, Star } from 'lucide-react';
 import {
   AreaChart,
@@ -33,7 +34,6 @@ import {
   parsePathHops,
 } from '../utils/pathUtils';
 import { isPublicChannelKey } from '../utils/publicChannel';
-import { getMapFocusPath } from '../routing/toolRoutes';
 import { handleKeyboardActivate } from '../utils/a11y';
 import { ContactAvatar } from './ContactAvatar';
 import { LppSensorRow, formatLppLabel } from './repeater/repeaterPaneShared';
@@ -407,15 +407,16 @@ export function ContactInfoPane({
             {isValidLocation(contact.lat, contact.lon) && (
               <div className="px-5 py-3 border-b border-border">
                 <SectionLabel>Location</SectionLabel>
-                <a
-                  href={getMapFocusPath(contact.public_key)}
+                <Link
+                  to="/map"
+                  search={{ focus: contact.public_key }}
                   className="text-sm font-mono cursor-pointer hover:text-primary hover:underline transition-colors"
                   onClick={onClose}
                   aria-label={`View ${getContactDisplayName(contact.name, contact.public_key, contact.last_advert)} on map`}
                   title="View on map"
                 >
                   {contact.lat!.toFixed(5)}, {contact.lon!.toFixed(5)}
-                </a>
+                </Link>
               </div>
             )}
 

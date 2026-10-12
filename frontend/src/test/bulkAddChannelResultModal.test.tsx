@@ -1,11 +1,12 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { BulkAddChannelResultModal } from '../components/BulkAddChannelResultModal';
+import { renderWithRouter } from './renderWithRouter';
 
 describe('BulkAddChannelResultModal', () => {
-  it('renders links only for newly created rooms', () => {
-    render(
+  it('renders links only for newly created rooms', async () => {
+    await renderWithRouter(
       <BulkAddChannelResultModal
         open
         onClose={() => {}}
@@ -42,8 +43,8 @@ describe('BulkAddChannelResultModal', () => {
     const opsLink = screen.getByRole('link', { name: '#ops' });
     const meshLink = screen.getByRole('link', { name: '#mesh-room' });
 
-    expect(opsLink.getAttribute('href')).toContain('#channel/');
-    expect(meshLink.getAttribute('href')).toContain('#channel/');
+    expect(opsLink).toHaveAttribute('href', `/channel/${'AA'.repeat(16)}`);
+    expect(meshLink).toHaveAttribute('href', `/channel/${'BB'.repeat(16)}`);
     expect(screen.queryByRole('link', { name: /bad_room/i })).toBeNull();
     expect(screen.getByText(/Ignored invalid channel names: bad_room/)).toBeTruthy();
   });

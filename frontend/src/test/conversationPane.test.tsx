@@ -6,6 +6,7 @@ import { ConversationPane } from '../components/ConversationPane';
 import type { Channel, Contact, Conversation, HealthStatus, Message, RadioConfig } from '../types';
 import type { RawPacketStatsSessionState } from '../utils/rawPacketStats';
 import type { RadioJobFeed } from '../hooks/useRadioActivity';
+import { renderWithRouter } from './renderWithRouter';
 
 const mocks = vi.hoisted(() => ({
   messageList: vi.fn(() => <div data-testid="message-list" />),
@@ -203,8 +204,8 @@ describe('ConversationPane', () => {
     expect(screen.queryByText('Contact not found')).not.toBeInTheDocument();
   });
 
-  it('shows an explicit resource not-found state with a route home', () => {
-    render(
+  it('shows an explicit resource not-found state with a route home', async () => {
+    await renderWithRouter(
       <ConversationPane
         {...createProps({
           routeResourceState: { status: 'not-found', resource: 'Channel' },

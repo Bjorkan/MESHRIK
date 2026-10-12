@@ -1,5 +1,6 @@
-import type { BulkCreateHashtagChannelsResult, Channel } from '../types';
-import { getConversationHash } from '../utils/urlHash';
+import { Link } from '@tanstack/react-router';
+
+import type { BulkCreateHashtagChannelsResult } from '../types';
 import { Button } from './ui/button';
 import {
   Dialog,
@@ -14,18 +15,6 @@ interface BulkAddChannelResultModalProps {
   open: boolean;
   result: BulkCreateHashtagChannelsResult | null;
   onClose: () => void;
-}
-
-function getChannelHref(channel: Channel): string {
-  const hash = getConversationHash({
-    type: 'channel',
-    id: channel.key,
-    name: channel.name,
-  });
-  if (typeof window === 'undefined') {
-    return hash;
-  }
-  return `${window.location.origin}${window.location.pathname}${hash}`;
 }
 
 export function BulkAddChannelResultModal({
@@ -72,12 +61,13 @@ export function BulkAddChannelResultModal({
                 <ul className="divide-y divide-border/70">
                   {createdChannels.map((channel) => (
                     <li key={channel.key}>
-                      <a
-                        href={getChannelHref(channel)}
+                      <Link
+                        to="/channel/$channelId"
+                        params={{ channelId: channel.key }}
                         className="block px-3 py-2 text-sm text-primary hover:bg-accent hover:text-primary"
                       >
                         {channel.name}
-                      </a>
+                      </Link>
                     </li>
                   ))}
                 </ul>

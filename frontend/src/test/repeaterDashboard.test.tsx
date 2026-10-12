@@ -4,6 +4,25 @@ import { RepeaterDashboard } from '../components/RepeaterDashboard';
 import type { UseRepeaterDashboardResult } from '../hooks/useRepeaterDashboard';
 import type { Contact, Conversation } from '../types';
 
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({
+    to,
+    search,
+    children,
+    ...props
+  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & {
+    to: string;
+    search?: Record<string, string>;
+  }) => {
+    const query = search ? `?${new URLSearchParams(search).toString()}` : '';
+    return (
+      <a {...props} href={`${to}${query}`}>
+        {children}
+      </a>
+    );
+  },
+}));
+
 // Mock the hook — typed as mutable version of the return type
 const mockHook: {
   -readonly [K in keyof UseRepeaterDashboardResult]: UseRepeaterDashboardResult[K];

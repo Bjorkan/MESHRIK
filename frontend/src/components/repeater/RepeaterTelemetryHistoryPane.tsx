@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { Link } from '@tanstack/react-router';
 import {
   AreaChart,
   Area,
@@ -589,12 +590,12 @@ export function TelemetryHistoryPane({
             <code className="text-[0.6875rem]">POST /api/contacts/&lt;key&gt;/repeater/status</code>
             ), or when the repeater is opted into interval telemetry polling, in which case the
             repeater will be polled for metrics automatically. Fetch frequency can be configured in{' '}
-            <a
-              href="/settings/radio-app"
+            <Link
+              to="/settings/radio-app"
               className="underline text-primary hover:text-primary/80 transition-colors"
             >
               Settings &rarr; Radio-App Management
-            </a>
+            </Link>
             , where you can also see which repeaters are currently opted in. A maximum of{' '}
             {MAX_TRACKED} repeaters may be opted into this for the sake of keeping mesh congestion
             reasonable.

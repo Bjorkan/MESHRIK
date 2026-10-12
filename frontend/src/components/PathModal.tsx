@@ -1,4 +1,5 @@
 import { useState, lazy, Suspense } from 'react';
+import { Link } from '@tanstack/react-router';
 import type { Contact, RadioConfig, MessagePath } from '../types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 import { Button } from './ui/button';
@@ -13,7 +14,6 @@ import {
   type PathHop,
 } from '../utils/pathUtils';
 import { formatTime } from '../utils/messageParser';
-import { getMapFocusPath } from '../routing/toolRoutes';
 import { useDistanceUnit } from '../contexts/DistanceUnitContext';
 import type { DistanceUnit } from '../utils/distanceUnits';
 
@@ -520,30 +520,18 @@ function HopNode({ hop, hopNumber, prevLocation, distanceUnit }: HopNodeProps) {
  * Render clickable coordinates that open the map focused on the contact
  */
 function CoordinateLink({ lat, lon, publicKey }: { lat: number; lon: number; publicKey: string }) {
-  const handleClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    // Open map in new tab with focus on this contact
-    const url = new URL(getMapFocusPath(publicKey), window.location.origin);
-    window.open(url.toString(), '_blank');
-  };
-
   return (
-    <span
+    <Link
+      to="/map"
+      search={{ focus: publicKey }}
+      target="_blank"
+      rel="noopener noreferrer"
       className="text-xs text-muted-foreground font-mono cursor-pointer hover:text-primary hover:underline ml-1"
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          (e.currentTarget as HTMLElement).click();
-        }
-      }}
-      onClick={handleClick}
+      onClick={(event) => event.stopPropagation()}
       title="View on map"
     >
       ({lat.toFixed(4)}, {lon.toFixed(4)})
-    </span>
+    </Link>
   );
 }
 
