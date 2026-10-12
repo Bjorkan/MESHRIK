@@ -106,7 +106,7 @@ function renderModal(overrides?: {
   desktopSection?: SettingsSection;
   mobile?: boolean;
 }) {
-  setMatchMedia(overrides?.mobile ?? false);
+  const setMobile = setMatchMedia(overrides?.mobile ?? false);
 
   const onSaveAppSettings = overrides?.onSaveAppSettings ?? vi.fn(async () => {});
   const onRefreshAppSettings = overrides?.onRefreshAppSettings ?? vi.fn(async () => {});
@@ -168,24 +168,44 @@ function renderModal(overrides?: {
     onAdvertise,
     onDiscoverMesh,
     onDiscoverRegions,
+    rerenderDesktopSection: (desktopSection: SettingsSection) =>
+      view.rerender(
+        <SettingsModal {...commonProps} externalSidebarNav desktopSection={desktopSection} />
+      ),
+    setMobile,
     view,
   };
 }
 
 function setMatchMedia(matches: boolean) {
+  let currentMatches = matches;
+  const listeners = new Set<(event: MediaQueryListEvent) => void>();
+  const mediaQuery = {
+    get matches() {
+      return currentMatches;
+    },
+    media: '(max-width: 767px)',
+    onchange: null,
+    addEventListener: (_type: string, listener: (event: MediaQueryListEvent) => void) => {
+      listeners.add(listener);
+    },
+    removeEventListener: (_type: string, listener: (event: MediaQueryListEvent) => void) => {
+      listeners.delete(listener);
+    },
+    addListener: (listener: (event: MediaQueryListEvent) => void) => listeners.add(listener),
+    removeListener: (listener: (event: MediaQueryListEvent) => void) => listeners.delete(listener),
+    dispatchEvent: vi.fn(),
+  };
+
   Object.defineProperty(window, 'matchMedia', {
     writable: true,
-    value: vi.fn().mockImplementation(() => ({
-      matches,
-      media: '(max-width: 767px)',
-      onchange: null,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-      dispatchEvent: vi.fn(),
-    })),
+    value: vi.fn().mockImplementation(() => mediaQuery),
   });
+
+  return (nextMatches: boolean) => {
+    currentMatches = nextMatches;
+    listeners.forEach((listener) => listener({ matches: nextMatches } as MediaQueryListEvent));
+  };
 }
 
 function openRadioSection() {
@@ -529,6 +549,81 @@ describe('SettingsModal', () => {
 
     fireEvent.click(localToggle);
     expect(screen.queryByLabelText('Local label text')).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ['radio', 'Radio'],
+    ['local', 'Local Configuration'],
+    ['radio-app', 'Radio-App Management'],
+    ['fanout', 'MQTT & Automation'],
+    ['database', 'Database'],
+    ['statistics', 'Statistics'],
+    ['about', 'About'],
+  ] as const)('opens the routed %s section on mobile', async (desktopSection, accessibleName) => {
+    renderModal({ mobile: true, externalSidebarNav: true, desktopSection });
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: accessibleName })).toHaveAttribute(
+        'aria-expanded',
+        'true'
+      );
+    });
+  });
+
+  it('updates the open mobile section when browser navigation changes the route', async () => {
+    const { rerenderDesktopSection } = renderModal({
+      mobile: true,
+      externalSidebarNav: true,
+      desktopSection: 'radio',
+    });
+
+    const radioToggle = screen.getByRole('button', { name: 'Radio' });
+    await waitFor(() => expect(radioToggle).toHaveAttribute('aria-expanded', 'true'));
+
+    rerenderDesktopSection('fanout');
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'MQTT & Automation' })).toHaveAttribute(
+        'aria-expanded',
+        'true'
+      );
+      expect(radioToggle).toHaveAttribute('aria-expanded', 'false');
+    });
+  });
+
+  it('keeps an intentional mobile collapse until the route or layout changes', async () => {
+    const { rerenderDesktopSection } = renderModal({
+      mobile: true,
+      externalSidebarNav: true,
+      desktopSection: 'local',
+    });
+    const localToggle = screen.getByRole('button', { name: 'Local Configuration' });
+    await waitFor(() => expect(localToggle).toHaveAttribute('aria-expanded', 'true'));
+
+    localToggle.focus();
+    fireEvent.click(localToggle);
+    expect(localToggle).toHaveAttribute('aria-expanded', 'false');
+    expect(localToggle).toHaveFocus();
+
+    rerenderDesktopSection('local');
+    expect(localToggle).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('opens the routed section when resizing from desktop to mobile', async () => {
+    const { setMobile } = renderModal({
+      externalSidebarNav: true,
+      desktopSection: 'database',
+    });
+
+    expect(screen.queryByRole('button', { name: 'Database' })).not.toBeInTheDocument();
+    setMobile(true);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Database' })).toHaveAttribute(
+        'aria-expanded',
+        'true'
+      );
+    });
   });
 
   it('lists the new Windows 95 and iPhone themes', () => {

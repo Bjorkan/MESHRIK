@@ -151,6 +151,22 @@ export function SettingsModal(props: SettingsModalProps) {
     return () => query.removeListener(onChange);
   }, []);
 
+  useEffect(() => {
+    if (!externalSidebarNav || !isMobileLayout || !desktopSection) return;
+
+    setExpandedSections((previous) => {
+      const next = Object.fromEntries(
+        Object.keys(previous).map((section) => [section, section === desktopSection])
+      ) as Record<SettingsSection, boolean>;
+
+      return Object.keys(previous).every(
+        (section) => previous[section as SettingsSection] === next[section as SettingsSection]
+      )
+        ? previous
+        : next;
+    });
+  }, [desktopSection, externalSidebarNav, isMobileLayout]);
+
   const toggleSection = (section: SettingsSection) => {
     setExpandedSections((prev) => ({
       ...prev,

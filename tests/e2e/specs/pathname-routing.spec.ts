@@ -126,6 +126,37 @@ test.describe("Canonical pathname routing", () => {
     expect(new URL(page.url()).pathname).toBe(`/contact/${contactKey}`);
   });
 
+  test("keeps mobile settings accordions synchronized with pathname history", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    const sections = [
+      ["radio", "Radio"],
+      ["local", "Local Configuration"],
+      ["radio-app", "Radio-App Management"],
+      ["fanout", "MQTT & Automation"],
+      ["database", "Database"],
+      ["statistics", "Statistics"],
+      ["about", "About"],
+    ] as const;
+
+    for (const [path, accessibleName] of sections) {
+      await page.goto(`/settings/${path}`);
+      await expect(
+        page.getByRole("button", { name: accessibleName, exact: true }),
+      ).toHaveAttribute("aria-expanded", "true");
+    }
+
+    await page.goBack();
+    await expect(
+      page.getByRole("button", { name: "Statistics", exact: true }),
+    ).toHaveAttribute("aria-expanded", "true");
+    await page.goForward();
+    await expect(
+      page.getByRole("button", { name: "About", exact: true }),
+    ).toHaveAttribute("aria-expanded", "true");
+  });
+
   test("shows the application 404 for an unknown pathname", async ({
     page,
   }) => {
