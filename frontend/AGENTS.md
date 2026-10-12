@@ -43,6 +43,9 @@ Keep it aligned with `frontend/src` source code.
   backend identifiers, and receive both REST refreshes and WebSocket cache patches through
   that one synchronization path. Components consume entity arrays from `useLiveQuery`;
   TanStack Query remains the transport/cache layer rather than a competing UI snapshot.
+- TanStack Store owns the high-frequency raw-packet buffer and its session statistics.
+  Producers update one immutable store state; packet consumers subscribe through narrow
+  selectors so an RF observation does not re-render unrelated application state.
 
 ## Frontend Map
 
@@ -71,7 +74,7 @@ frontend/src/
 ├── networkGraph/
 │   └── packetNetworkGraph.ts # Packet→network graph construction shared by visualizer surfaces
 ├── stores/
-│   └── rawPacketStore.ts   # Overheard packet stream + session stats, outside React
+│   └── rawPacketStore.ts   # TanStack Store for overheard packets + session stats
 ├── hooks/
 │   ├── index.ts            # Central re-export of all hooks
 │   ├── useConversationActions.ts   # Send/resend/trace/block conversation actions

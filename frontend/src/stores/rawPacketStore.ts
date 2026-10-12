@@ -1,4 +1,5 @@
-import { useSyncExternalStore } from 'react';
+import { useStore } from '@tanstack/react-store';
+import { Store } from '@tanstack/store';
 
 import type { RawPacket } from '../types';
 import { appendRawPacketUnique } from '../utils/rawPacketIdentity';
@@ -29,22 +30,15 @@ function createStatsSession(): RawPacketStatsSessionState {
   };
 }
 
-let packets: RawPacket[] = [];
-let statsSession: RawPacketStatsSessionState = createStatsSession();
-const listeners = new Set<() => void>();
-
-function subscribe(listener: () => void): () => void {
-  listeners.add(listener);
-  return () => {
-    listeners.delete(listener);
-  };
+interface RawPacketStoreState {
+  packets: RawPacket[];
+  statsSession: RawPacketStatsSessionState;
 }
 
-function emit(): void {
-  for (const listener of listeners) {
-    listener();
-  }
-}
+export const rawPacketStore = new Store<RawPacketStoreState>({
+  packets: [],
+  statsSession: createStatsSession(),
+});
 
 function observePacket(
   session: RawPacketStatsSessionState,
@@ -79,15 +73,13 @@ function observePacket(
 
 /** Record one observed packet into both the rolling buffer and the session stats. */
 export function recordRawPacket(packet: RawPacket, maxPackets: number = MAX_RAW_PACKETS): void {
-  const nextPackets = appendRawPacketUnique(packets, packet, maxPackets);
-  const nextStats = observePacket(statsSession, packet);
-  if (nextPackets === packets && nextStats === statsSession) {
-    return;
-  }
-
-  packets = nextPackets;
-  statsSession = nextStats;
-  emit();
+  rawPacketStore.setState((state) => {
+    const packets = appendRawPacketUnique(state.packets, packet, maxPackets);
+    const statsSession = observePacket(state.statsSession, packet);
+    return packets === state.packets && statsSession === state.statsSession
+      ? state
+      : { packets, statsSession };
+  });
 }
 
 /**
@@ -95,18 +87,14 @@ export function recordRawPacket(packet: RawPacket, maxPackets: number = MAX_RAW_
  * Session stats deliberately survive: they describe the whole observation session.
  */
 export function clearRawPackets(): void {
-  if (packets.length === 0) {
-    return;
-  }
-  packets = [];
-  emit();
+  rawPacketStore.setState((state) =>
+    state.packets.length === 0 ? state : { ...state, packets: [] }
+  );
 }
 
 /** Full reset, including session stats. Used by tests to isolate cases. */
 export function resetRawPacketStore(): void {
-  packets = [];
-  statsSession = createStatsSession();
-  emit();
+  rawPacketStore.setState(() => ({ packets: [], statsSession: createStatsSession() }));
 }
 
 /**
@@ -120,33 +108,31 @@ export function seedRawPacketStore(next: {
 }): void {
   // Copy rather than alias. The whole store rests on "a snapshot is immutable, and its
   // identity changes only when its contents do". Holding the caller's array would let
-  // them mutate the live snapshot in place, and because useSyncExternalStore compares
-  // snapshots with Object.is, React would then bail out of every subsequent render —
-  // leaving the UI permanently disagreeing with getRawPackets() and no way to tell why.
-  if (next.packets) {
-    packets = [...next.packets];
-  }
-  if (next.statsSession) {
-    statsSession = {
-      ...next.statsSession,
-      observations: [...next.statsSession.observations],
-    };
-  }
-  emit();
+  // them mutate the live snapshot in place. TanStack Store selectors compare snapshot
+  // identity, so an aliased mutation could otherwise leave the UI on a stale selection.
+  rawPacketStore.setState((state) => ({
+    packets: next.packets ? [...next.packets] : state.packets,
+    statsSession: next.statsSession
+      ? {
+          ...next.statsSession,
+          observations: [...next.statsSession.observations],
+        }
+      : state.statsSession,
+  }));
 }
 
 export function getRawPackets(): RawPacket[] {
-  return packets;
+  return rawPacketStore.state.packets;
 }
 
 export function getRawPacketStatsSession(): RawPacketStatsSessionState {
-  return statsSession;
+  return rawPacketStore.state.statsSession;
 }
 
 export function useRawPackets(): RawPacket[] {
-  return useSyncExternalStore(subscribe, getRawPackets);
+  return useStore(rawPacketStore, (state) => state.packets);
 }
 
 export function useRawPacketStatsSession(): RawPacketStatsSessionState {
-  return useSyncExternalStore(subscribe, getRawPacketStatsSession);
+  return useStore(rawPacketStore, (state) => state.statsSession);
 }
