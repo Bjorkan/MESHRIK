@@ -1,5 +1,5 @@
 import React from 'react';
-import { act, configure, render, screen, waitFor } from '@testing-library/react';
+import { act, configure, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -159,21 +159,15 @@ const publicChannel = {
 vi.setConfig({ testTimeout: 15000 });
 configure({ asyncUtilTimeout: 5000 });
 
-// Set the URL hash the way the app reads it, WITHOUT the jsdom side effect that
-// makes this suite flaky. Assigning `window.location.hash = ...` queues an
-// *asynchronous* popstate in jsdom (real browsers only fire hashchange); those
-// stray popstates drain during a later test and reset the App's resolved
-// conversation to null via the popstate handler, permanently stranding it.
-// history.replaceState updates the hash without ever queuing a popstate.
-function setHash(hash: string) {
-  window.history.replaceState(null, '', hash || window.location.pathname);
+function resetUrl() {
+  window.history.replaceState(null, '', '/');
 }
 
 describe('App startup route resolution', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
-    setHash(`#contact/${'a'.repeat(64)}/Alice`);
+    resetUrl();
 
     mocks.api.getRadioConfig.mockResolvedValue({
       public_key: 'aa'.repeat(32),
@@ -220,9 +214,7 @@ describe('App startup route resolution', () => {
   });
 
   afterEach(() => {
-    // Reset via replaceState (never queues a popstate) so no hash state leaks
-    // into the next test. beforeEach also sets a known hash before each render.
-    setHash('');
+    resetUrl();
     localStorage.clear();
   });
 
@@ -234,6 +226,17 @@ describe('App startup route resolution', () => {
         expect(node).toHaveTextContent(`channel:${publicChannel.key}:Public`);
       }
     });
+  });
+
+  it('focuses main content without changing the pathname route', async () => {
+    render(<App routeIsRoot />);
+    const pathname = window.location.pathname;
+
+    fireEvent.click(screen.getByRole('link', { name: 'Skip to content' }));
+
+    expect(window.location.pathname).toBe(pathname);
+    expect(window.location.hash).toBe('');
+    expect(document.activeElement).toBe(document.getElementById('main-content'));
   });
 
   it('resolves a channel pathname by its exact stable key', async () => {
@@ -327,7 +330,6 @@ describe('App startup route resolution', () => {
 
   it('reopens the last viewed trace tool even when channels are unavailable', async () => {
     const onNavigateConversation = vi.fn();
-    setHash('');
     localStorage.setItem(REOPEN_LAST_CONVERSATION_KEY, '1');
     localStorage.setItem(
       LAST_VIEWED_CONVERSATION_KEY,
@@ -352,7 +354,7 @@ describe('App startup route resolution', () => {
     );
   });
 
-  it('restores last viewed channel when hash is empty and reopen preference is enabled', async () => {
+  it('restores last viewed channel when reopen preference is enabled', async () => {
     const chatChannel = {
       key: '11111111111111111111111111111111',
       name: 'Ops',
@@ -362,7 +364,6 @@ describe('App startup route resolution', () => {
       favorite: false,
     };
 
-    setHash('');
     localStorage.setItem(REOPEN_LAST_CONVERSATION_KEY, '1');
     localStorage.setItem(
       LAST_VIEWED_CONVERSATION_KEY,
@@ -381,10 +382,9 @@ describe('App startup route resolution', () => {
         expect(node).toHaveTextContent(`channel:${chatChannel.key}:${chatChannel.name}`);
       }
     });
-    expect(window.location.hash).toBe('');
   });
 
-  it('uses Public channel when hash is empty and reopen preference is disabled', async () => {
+  it('uses Public channel when reopen preference is disabled', async () => {
     const chatChannel = {
       key: '11111111111111111111111111111111',
       name: 'Ops',
@@ -394,7 +394,6 @@ describe('App startup route resolution', () => {
       favorite: false,
     };
 
-    setHash('');
     localStorage.setItem(
       LAST_VIEWED_CONVERSATION_KEY,
       JSON.stringify({
@@ -412,7 +411,6 @@ describe('App startup route resolution', () => {
         expect(node).toHaveTextContent(`channel:${publicChannel.key}:Public`);
       }
     });
-    expect(window.location.hash).toBe('');
   });
 
   it('tracks the current conversation in local storage even before reopen is enabled', async () => {
@@ -425,7 +423,6 @@ describe('App startup route resolution', () => {
       favorite: false,
     };
 
-    setHash('');
     mocks.api.getChannels.mockResolvedValue([publicChannel, chatChannel]);
     localStorage.setItem(
       LAST_VIEWED_CONVERSATION_KEY,
@@ -467,7 +464,6 @@ describe('App startup route resolution', () => {
       first_seen: null,
     };
 
-    setHash('');
     localStorage.setItem(REOPEN_LAST_CONVERSATION_KEY, '1');
     localStorage.setItem(
       LAST_VIEWED_CONVERSATION_KEY,
@@ -486,7 +482,6 @@ describe('App startup route resolution', () => {
         expect(node).toHaveTextContent(`contact:${aliceContact.public_key}:Alice`);
       }
     });
-    expect(window.location.hash).toBe('');
   });
 
   it('waits for a missing saved contact to resolve before falling back to Public', async () => {
@@ -574,7 +569,6 @@ describe('App startup route resolution', () => {
   });
 
   it('stays on the radio settings route even when radio is disconnected', async () => {
-    setHash('');
     mocks.api.getRadioConfig.mockRejectedValue(new Error('radio offline'));
 
     render(<App routeSettingsSection="radio" />);
@@ -583,6 +577,5 @@ describe('App startup route resolution', () => {
       expect(screen.getByTestId('settings-modal-section')).toHaveTextContent('radio');
     });
 
-    expect(window.location.hash).toBe('');
   });
 });

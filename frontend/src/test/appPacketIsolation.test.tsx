@@ -115,12 +115,6 @@ vi.mock('../components/ui/sonner', () => ({
   Toaster: () => null,
   toast: { success: vi.fn(), error: vi.fn() },
 }));
-vi.mock('../utils/urlHash', () => ({
-  parseHashConversation: () => null,
-  updateUrlHash: vi.fn(),
-  pushUrlHash: vi.fn(),
-}));
-
 import { App } from '../App';
 import {
   getRawPackets,

@@ -231,6 +231,10 @@ export function AppShell({
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-2 focus:bg-primary focus:text-primary-foreground"
+        onClick={(event) => {
+          event.preventDefault();
+          document.getElementById('main-content')?.focus();
+        }}
       >
         Skip to content
       </a>
@@ -277,7 +281,11 @@ export function AppShell({
           </SheetContent>
         </Sheet>
 
-        <main id="main-content" className="flex-1 flex flex-col bg-background min-w-0">
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className="flex-1 flex flex-col bg-background min-w-0"
+      >
           <div
             className={cn(
               'flex-1 flex flex-col min-h-0',

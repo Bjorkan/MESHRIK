@@ -189,12 +189,6 @@ vi.mock('../components/ui/sonner', () => ({
   toast: mocks.toast,
 }));
 
-vi.mock('../utils/urlHash', () => ({
-  parseHashConversation: () => null,
-  updateUrlHash: vi.fn(),
-  pushUrlHash: vi.fn(),
-}));
-
 import { App } from '../App';
 import { useWebSocket } from '../useWebSocket';
 

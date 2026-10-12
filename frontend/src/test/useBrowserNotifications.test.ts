@@ -40,7 +40,6 @@ describe('useBrowserNotifications', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     window.localStorage.clear();
-    window.location.hash = '';
     vi.spyOn(window, 'open').mockReturnValue(null);
 
     Object.defineProperty(document, 'visibilityState', {

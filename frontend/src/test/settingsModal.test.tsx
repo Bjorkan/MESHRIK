@@ -211,7 +211,6 @@ describe('SettingsModal', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     localStorage.clear();
-    window.location.hash = '';
     document.documentElement.style.fontSize = '';
   });
 
