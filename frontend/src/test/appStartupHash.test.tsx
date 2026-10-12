@@ -137,7 +137,6 @@ vi.mock('../components/ui/sonner', () => ({
   },
 }));
 
-import { act } from '@testing-library/react';
 import { App } from '../App';
 import {
   LAST_VIEWED_CONVERSATION_KEY,
@@ -170,7 +169,7 @@ function setHash(hash: string) {
   window.history.replaceState(null, '', hash || window.location.pathname);
 }
 
-describe('App startup hash resolution', () => {
+describe('App startup route resolution', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
@@ -227,12 +226,61 @@ describe('App startup hash resolution', () => {
     localStorage.clear();
   });
 
-  it('falls back to Public when contact hash is unresolvable and contacts are empty', async () => {
+  it('uses Public for the root route when contacts are empty', async () => {
     render(<App />);
 
     await waitFor(() => {
       for (const node of screen.getAllByTestId('active-conversation')) {
         expect(node).toHaveTextContent(`channel:${publicChannel.key}:Public`);
+      }
+    });
+  });
+
+  it('resolves a channel pathname by its exact stable key', async () => {
+    const opsChannel = {
+      ...publicChannel,
+      key: 'CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC',
+      name: 'Ops',
+    };
+    mocks.api.getChannels.mockResolvedValue([publicChannel, opsChannel]);
+
+    render(<App routeEntity={{ type: 'channel', id: opsChannel.key }} routeIsRoot={false} />);
+
+    await waitFor(() => {
+      for (const node of screen.getAllByTestId('active-conversation')) {
+        expect(node).toHaveTextContent(`channel:${opsChannel.key}:Ops`);
+      }
+    });
+  });
+
+  it('resolves a contact pathname by its exact public key', async () => {
+    const aliceContact = {
+      public_key: 'b'.repeat(64),
+      name: 'Alice',
+      type: 1,
+      flags: 0,
+      direct_path: null,
+      direct_path_len: -1,
+      direct_path_hash_mode: 0,
+      last_advert: null,
+      lat: null,
+      lon: null,
+      last_seen: null,
+      on_radio: false,
+      favorite: false,
+      last_contacted: null,
+      last_read_at: null,
+      first_seen: null,
+    };
+    mocks.api.getContacts.mockResolvedValue([aliceContact]);
+
+    render(
+      <App routeEntity={{ type: 'contact', id: aliceContact.public_key }} routeIsRoot={false} />
+    );
+
+    await waitFor(() => {
+      for (const node of screen.getAllByTestId('active-conversation')) {
+        expect(node).toHaveTextContent(`contact:${aliceContact.public_key}:Alice`);
       }
     });
   });
@@ -434,115 +482,6 @@ describe('App startup hash resolution', () => {
       }
     });
     expect(window.location.hash).toBe('');
-  });
-
-  describe('Browser back/forward navigation', () => {
-    it('navigates to a channel conversation when popstate fires', async () => {
-      const opsChannel = {
-        key: 'CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC',
-        name: 'Ops',
-        is_hashtag: false,
-        on_radio: false,
-        last_read_at: null,
-        favorite: false,
-      };
-
-      setHash(`#channel/${opsChannel.key}/Ops`);
-      mocks.api.getChannels.mockResolvedValue([publicChannel, opsChannel]);
-
-      render(<App />);
-
-      await waitFor(() => {
-        for (const node of screen.getAllByTestId('active-conversation')) {
-          expect(node).toHaveTextContent(`channel:${opsChannel.key}:Ops`);
-        }
-      });
-
-      act(() => {
-        setHash(`#channel/${publicChannel.key}/Public`);
-        window.dispatchEvent(new PopStateEvent('popstate', { state: null }));
-      });
-
-      await waitFor(() => {
-        for (const node of screen.getAllByTestId('active-conversation')) {
-          expect(node).toHaveTextContent(`channel:${publicChannel.key}:Public`);
-        }
-      });
-    });
-
-    it('navigates to a contact conversation when popstate fires with a contact hash', async () => {
-      const aliceContact = {
-        public_key: 'b'.repeat(64),
-        name: 'Alice',
-        type: 1,
-        flags: 0,
-        direct_path: null,
-        direct_path_len: -1,
-        last_advert: null,
-        lat: null,
-        lon: null,
-        last_seen: null,
-        on_radio: false,
-        favorite: false,
-        last_contacted: null,
-        last_read_at: null,
-        first_seen: null,
-      };
-
-      setHash('');
-      mocks.api.getContacts.mockResolvedValue([aliceContact]);
-
-      render(<App />);
-
-      await waitFor(() => {
-        for (const node of screen.getAllByTestId('active-conversation')) {
-          expect(node).toHaveTextContent(`channel:${publicChannel.key}:Public`);
-        }
-      });
-
-      // Flush any pending React work (contacts render + its effects) so that
-      // contactsRef.current is populated before the popstate handler reads it.
-      // waitFor may resolve after the channels render commits but before the
-      // contacts render commits, leaving contactsRef.current=[].
-      await act(async () => {});
-
-      act(() => {
-        setHash(`#contact/${aliceContact.public_key}/Alice`);
-        window.dispatchEvent(new PopStateEvent('popstate', { state: null }));
-      });
-
-      await waitFor(() => {
-        for (const node of screen.getAllByTestId('active-conversation')) {
-          expect(node).toHaveTextContent(`contact:${aliceContact.public_key}:Alice`);
-        }
-      });
-    });
-
-    it('recovers to Public when a popstate lands on an empty/unresolvable hash', async () => {
-      setHash('');
-      render(<App />);
-
-      await waitFor(() => {
-        for (const node of screen.getAllByTestId('active-conversation')) {
-          expect(node).toHaveTextContent(`channel:${publicChannel.key}:Public`);
-        }
-      });
-
-      // A back/forward navigation to the bare URL (empty hash) must not strand
-      // the app on a blank conversation: the initial-load phases are gated by
-      // hasSetDefaultConversation and won't re-resolve, so the popstate handler
-      // itself has to fall back to Public rather than clearing to null.
-      act(() => {
-        setHash('');
-        window.dispatchEvent(new PopStateEvent('popstate', { state: null }));
-      });
-
-      await waitFor(() => {
-        for (const node of screen.getAllByTestId('active-conversation')) {
-          expect(node).toHaveTextContent(`channel:${publicChannel.key}:Public`);
-        }
-      });
-    });
   });
 
   it('stays on the radio settings route even when radio is disconnected', async () => {

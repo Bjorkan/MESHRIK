@@ -3,9 +3,9 @@ import { useNavigate, useRouterState } from '@tanstack/react-router';
 
 import { App } from './App';
 import type { Conversation } from './types';
-import { getConversationHash } from './utils/urlHash';
 import { getToolConversation } from './routing/toolRoutes';
 import { getSettingsSection } from './routing/settingsRoutes';
+import { getEntityRoute } from './routing/entityRoutes';
 import type { SettingsSection } from './components/settings/settingsConstants';
 
 export function RoutedApp() {
@@ -16,6 +16,7 @@ export function RoutedApp() {
     [location.pathname, location.search]
   );
   const routeSettingsSection = getSettingsSection(location.pathname);
+  const routeEntity = getEntityRoute(location.pathname);
   const previousNonSettingsHrefRef = useRef('/');
   if (routeSettingsSection === null) {
     previousNonSettingsHrefRef.current = location.href;
@@ -46,10 +47,16 @@ export function RoutedApp() {
           void navigate({ to: '/radio-activity' });
           return;
         case 'channel':
+          void navigate({
+            to: '/channel/$channelId',
+            params: { channelId: conversation.id },
+          });
+          return;
         case 'contact':
-          // Dynamic routes are introduced in #80. Keep their existing identity
-          // during this intermediate migration while moving back to the app root.
-          void navigate({ to: '/', hash: getConversationHash(conversation).slice(1) });
+          void navigate({
+            to: '/contact/$publicKey',
+            params: { publicKey: conversation.id },
+          });
       }
     },
     [navigate]
@@ -90,6 +97,8 @@ export function RoutedApp() {
   return (
     <App
       routeConversation={routeConversation}
+      routeEntity={routeEntity}
+      routeIsRoot={location.pathname === '/'}
       onNavigateConversation={handleNavigateConversation}
       routeSettingsSection={routeSettingsSection}
       onNavigateSettings={handleNavigateSettings}

@@ -38,8 +38,15 @@ const RawPacketFeedView = lazy(() =>
   import('./RawPacketFeedView').then((m) => ({ default: m.RawPacketFeedView }))
 );
 
+export interface RouteResourceState {
+  status: 'loading' | 'error' | 'not-found';
+  resource: 'Channel' | 'Contact';
+  onRetry?: () => void;
+}
+
 interface ConversationPaneProps {
   activeConversation: Conversation | null;
+  routeResourceState?: RouteResourceState | null;
   contacts: Contact[];
   channels: Channel[];
   config: RadioConfig | null;
@@ -128,6 +135,7 @@ function ContactResolutionBanner({ variant }: { variant: 'unknown-full-key' | 'p
 
 export function ConversationPane({
   activeConversation,
+  routeResourceState,
   contacts,
   channels,
   config,
@@ -205,6 +213,37 @@ export function ConversationPane({
     isUnknownFullKeyContact(activeContact.public_key, activeContact.last_advert);
 
   if (!activeConversation) {
+    if (routeResourceState?.status === 'loading') {
+      return <LoadingPane label={`Loading ${routeResourceState.resource.toLowerCase()}...`} />;
+    }
+    if (routeResourceState?.status === 'error') {
+      return (
+        <div className="flex-1 flex flex-col items-center justify-center gap-3 p-6 text-center">
+          <p className="text-destructive">
+            Failed to load {routeResourceState.resource.toLowerCase()} data.
+          </p>
+          {routeResourceState.onRetry && (
+            <button
+              type="button"
+              className="text-sm text-primary hover:underline"
+              onClick={routeResourceState.onRetry}
+            >
+              Retry
+            </button>
+          )}
+        </div>
+      );
+    }
+    if (routeResourceState?.status === 'not-found') {
+      return (
+        <div className="flex-1 flex flex-col items-center justify-center gap-3 p-6 text-center">
+          <p className="text-muted-foreground">{routeResourceState.resource} not found</p>
+          <a href="/" className="text-sm text-primary hover:underline">
+            Return to MESHRIK
+          </a>
+        </div>
+      );
+    }
     return (
       <div className="flex-1 flex items-center justify-center text-muted-foreground">
         Select a conversation or start a new one

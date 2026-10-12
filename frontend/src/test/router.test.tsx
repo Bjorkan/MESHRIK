@@ -87,6 +87,33 @@ describe('application router', () => {
     expect(router.state.location.pathname).toBe('/settings/radio');
   });
 
+  it.each([
+    ['/channel/ABCDEF0123456789', '/_app/channel/$channelId'],
+    ['/contact/' + 'ab'.repeat(32), '/_app/contact/$publicKey'],
+  ])('matches the %s entity route directly', async (pathname, routeId) => {
+    const router = createAppRouter(createMemoryHistory({ initialEntries: [pathname] }));
+
+    await router.load();
+
+    expect(router.state.matches[router.state.matches.length - 1]?.routeId).toBe(routeId);
+  });
+
+  it('uses router history between entity routes', async () => {
+    const router = createAppRouter(
+      createMemoryHistory({ initialEntries: ['/channel/channel-a'] })
+    );
+    await router.load();
+    await router.navigate({ to: '/contact/$publicKey', params: { publicKey: 'contact-b' } });
+
+    router.history.back();
+    await router.load();
+    expect(router.state.location.pathname).toBe('/channel/channel-a');
+
+    router.history.forward();
+    await router.load();
+    expect(router.state.location.pathname).toBe('/contact/contact-b');
+  });
+
   it('renders the application not-found UI for an unknown pathname', async () => {
     const router = createAppRouter(createMemoryHistory({ initialEntries: ['/does-not-exist'] }));
 

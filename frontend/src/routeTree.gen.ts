@@ -18,6 +18,8 @@ import { Route as AppSearchRouteImport } from './routes/_app.search'
 import { Route as AppSettingsRouteImport } from './routes/_app.settings'
 import { Route as AppTraceRouteImport } from './routes/_app.trace'
 import { Route as AppVisualizerRouteImport } from './routes/_app.visualizer'
+import { Route as AppChannelChannelIdRouteImport } from './routes/_app.channel.$channelId'
+import { Route as AppContactPublicKeyRouteImport } from './routes/_app.contact.$publicKey'
 import { Route as AppSettingsAboutRouteImport } from './routes/_app.settings.about'
 import { Route as AppSettingsDatabaseRouteImport } from './routes/_app.settings.database'
 import { Route as AppSettingsFanoutRouteImport } from './routes/_app.settings.fanout'
@@ -70,6 +72,16 @@ const AppVisualizerRoute = AppVisualizerRouteImport.update({
   path: '/visualizer',
   getParentRoute: () => AppRoute,
 } as any)
+const AppChannelChannelIdRoute = AppChannelChannelIdRouteImport.update({
+  id: '/channel/$channelId',
+  path: '/channel/$channelId',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppContactPublicKeyRoute = AppContactPublicKeyRouteImport.update({
+  id: '/contact/$publicKey',
+  path: '/contact/$publicKey',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppSettingsAboutRoute = AppSettingsAboutRouteImport.update({
   id: '/about',
   path: '/about',
@@ -115,6 +127,8 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AppSettingsRouteWithChildren
   '/trace': typeof AppTraceRoute
   '/visualizer': typeof AppVisualizerRoute
+  '/channel/$channelId': typeof AppChannelChannelIdRoute
+  '/contact/$publicKey': typeof AppContactPublicKeyRoute
   '/settings/about': typeof AppSettingsAboutRoute
   '/settings/database': typeof AppSettingsDatabaseRoute
   '/settings/fanout': typeof AppSettingsFanoutRoute
@@ -132,6 +146,8 @@ export interface FileRoutesByTo {
   '/trace': typeof AppTraceRoute
   '/visualizer': typeof AppVisualizerRoute
   '/': typeof AppIndexRoute
+  '/channel/$channelId': typeof AppChannelChannelIdRoute
+  '/contact/$publicKey': typeof AppContactPublicKeyRoute
   '/settings/about': typeof AppSettingsAboutRoute
   '/settings/database': typeof AppSettingsDatabaseRoute
   '/settings/fanout': typeof AppSettingsFanoutRoute
@@ -151,6 +167,8 @@ export interface FileRoutesById {
   '/_app/trace': typeof AppTraceRoute
   '/_app/visualizer': typeof AppVisualizerRoute
   '/_app/': typeof AppIndexRoute
+  '/_app/channel/$channelId': typeof AppChannelChannelIdRoute
+  '/_app/contact/$publicKey': typeof AppContactPublicKeyRoute
   '/_app/settings/about': typeof AppSettingsAboutRoute
   '/_app/settings/database': typeof AppSettingsDatabaseRoute
   '/_app/settings/fanout': typeof AppSettingsFanoutRoute
@@ -170,6 +188,8 @@ export interface FileRouteTypes {
     | '/settings'
     | '/trace'
     | '/visualizer'
+    | '/channel/$channelId'
+    | '/contact/$publicKey'
     | '/settings/about'
     | '/settings/database'
     | '/settings/fanout'
@@ -187,6 +207,8 @@ export interface FileRouteTypes {
     | '/trace'
     | '/visualizer'
     | '/'
+    | '/channel/$channelId'
+    | '/contact/$publicKey'
     | '/settings/about'
     | '/settings/database'
     | '/settings/fanout'
@@ -205,6 +227,8 @@ export interface FileRouteTypes {
     | '/_app/trace'
     | '/_app/visualizer'
     | '/_app/'
+    | '/_app/channel/$channelId'
+    | '/_app/contact/$publicKey'
     | '/_app/settings/about'
     | '/_app/settings/database'
     | '/_app/settings/fanout'
@@ -281,6 +305,20 @@ declare module '@tanstack/react-router' {
       path: '/visualizer'
       fullPath: '/visualizer'
       preLoaderRoute: typeof AppVisualizerRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/channel/$channelId': {
+      id: '/_app/channel/$channelId'
+      path: '/channel/$channelId'
+      fullPath: '/channel/$channelId'
+      preLoaderRoute: typeof AppChannelChannelIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/contact/$publicKey': {
+      id: '/_app/contact/$publicKey'
+      path: '/contact/$publicKey'
+      fullPath: '/contact/$publicKey'
+      preLoaderRoute: typeof AppContactPublicKeyRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/settings/about': {
@@ -368,6 +406,8 @@ interface AppRouteChildren {
   AppTraceRoute: typeof AppTraceRoute
   AppVisualizerRoute: typeof AppVisualizerRoute
   AppIndexRoute: typeof AppIndexRoute
+  AppChannelChannelIdRoute: typeof AppChannelChannelIdRoute
+  AppContactPublicKeyRoute: typeof AppContactPublicKeyRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -379,6 +419,8 @@ const AppRouteChildren: AppRouteChildren = {
   AppTraceRoute: AppTraceRoute,
   AppVisualizerRoute: AppVisualizerRoute,
   AppIndexRoute: AppIndexRoute,
+  AppChannelChannelIdRoute: AppChannelChannelIdRoute,
+  AppContactPublicKeyRoute: AppContactPublicKeyRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

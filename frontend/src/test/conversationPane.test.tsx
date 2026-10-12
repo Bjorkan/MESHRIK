@@ -190,6 +190,46 @@ describe('ConversationPane', () => {
     expect(screen.getByText('Select a conversation or start a new one')).toBeInTheDocument();
   });
 
+  it('keeps a dynamic route in loading state instead of showing not-found', () => {
+    render(
+      <ConversationPane
+        {...createProps({
+          routeResourceState: { status: 'loading', resource: 'Contact' },
+        })}
+      />
+    );
+
+    expect(screen.getByText('Loading contact...')).toBeInTheDocument();
+    expect(screen.queryByText('Contact not found')).not.toBeInTheDocument();
+  });
+
+  it('shows an explicit resource not-found state with a route home', () => {
+    render(
+      <ConversationPane
+        {...createProps({
+          routeResourceState: { status: 'not-found', resource: 'Channel' },
+        })}
+      />
+    );
+
+    expect(screen.getByText('Channel not found')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Return to MESHRIK' })).toHaveAttribute('href', '/');
+  });
+
+  it('shows query errors with a retry action', () => {
+    const onRetry = vi.fn();
+    render(
+      <ConversationPane
+        {...createProps({
+          routeResourceState: { status: 'error', resource: 'Contact', onRetry },
+        })}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(onRetry).toHaveBeenCalledOnce();
+  });
+
   it('renders repeater dashboard instead of chat chrome for repeater contacts', async () => {
     render(
       <ConversationPane

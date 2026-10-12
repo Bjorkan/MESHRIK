@@ -19,6 +19,7 @@ import {
 } from './hooks';
 import { toast } from './components/ui/sonner';
 import { AppShell } from './components/AppShell';
+import type { RouteResourceState } from './components/ConversationPane';
 import type { MessageInputHandle } from './components/MessageInput';
 import { DistanceUnitProvider } from './contexts/DistanceUnitContext';
 import { PathHopWidthProvider } from './contexts/PathHopWidthContext';
@@ -34,6 +35,10 @@ import { queryKeys } from './queryClient';
 import { primePrefetchCache } from './prefetch';
 import { useRadioJobFeed } from './hooks/useRadioJobFeed';
 import type { SettingsSection } from './components/settings/settingsConstants';
+import {
+  resolveEntityConversation,
+  type EntityRoute,
+} from './routing/entityRoutes';
 
 interface ChannelUnreadMarker {
   channelId: string;
@@ -77,6 +82,8 @@ export function resolveUnreadMarkerId(
 
 interface AppProps {
   routeConversation?: Conversation | null;
+  routeEntity?: EntityRoute | null;
+  routeIsRoot?: boolean;
   onNavigateConversation?: (conversation: Conversation) => void;
   routeSettingsSection?: SettingsSection | null;
   onNavigateSettings?: (section: SettingsSection) => void;
@@ -99,6 +106,8 @@ export function App(props: AppProps = {}) {
 
 function AppContent({
   routeConversation,
+  routeEntity,
+  routeIsRoot,
   onNavigateConversation,
   routeSettingsSection,
   onNavigateSettings,
@@ -221,7 +230,12 @@ function AppContent({
   const {
     contacts,
     contactsLoaded,
+    contactsError,
+    retryContacts,
     channels,
+    channelsLoaded,
+    channelsError,
+    retryChannels,
     undecryptedCount,
     setContacts,
     setChannels,
@@ -241,6 +255,44 @@ function AppContent({
     removeConversationMessages: (conversationId) =>
       removeConversationMessagesRef.current(conversationId),
   });
+
+  const entityRouteConversation = useMemo(
+    () => (routeEntity ? resolveEntityConversation(routeEntity, channels, contacts) : null),
+    [channels, contacts, routeEntity]
+  );
+  const effectiveRouteConversation = routeEntity ? entityRouteConversation : routeConversation;
+  const routeResourceState = useMemo<RouteResourceState | null>(() => {
+    if (!routeEntity || entityRouteConversation) return null;
+    if (routeEntity.type === 'channel') {
+      if (!channelsLoaded) return { status: 'loading', resource: 'Channel' };
+      if (channelsError) {
+        return {
+          status: 'error',
+          resource: 'Channel',
+          onRetry: () => void retryChannels(),
+        };
+      }
+      return { status: 'not-found', resource: 'Channel' };
+    }
+    if (!contactsLoaded) return { status: 'loading', resource: 'Contact' };
+    if (contactsError) {
+      return {
+        status: 'error',
+        resource: 'Contact',
+        onRetry: () => void retryContacts(),
+      };
+    }
+    return { status: 'not-found', resource: 'Contact' };
+  }, [
+    channelsError,
+    channelsLoaded,
+    contactsError,
+    contactsLoaded,
+    entityRouteConversation,
+    retryChannels,
+    retryContacts,
+    routeEntity,
+  ]);
 
   // Keep channels in a ref for WS callback mute filtering
   const channelsRef = useRef<Channel[]>([]);
@@ -290,11 +342,12 @@ function AppContent({
     channels,
     contacts,
     contactsLoaded,
-    suspendHashSync: showSettings,
     setSidebarOpen,
     pendingDeleteFallbackRef,
     hasSetDefaultConversation,
-    routeConversation,
+    routeConversation: effectiveRouteConversation,
+    routeEntity,
+    routeIsRoot,
     onNavigateConversation,
   });
 
@@ -598,6 +651,7 @@ function AppContent({
   };
   const conversationPaneProps = {
     activeConversation,
+    routeResourceState,
     contacts,
     channels,
     config,

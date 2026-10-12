@@ -50,6 +50,7 @@ export function useContactsAndChannels({
   const contacts = contactsQuery.data ?? [];
   const contactsLoaded = !contactsQuery.isPending;
   const channels = channelsQuery.data ?? [];
+  const channelsLoaded = !channelsQuery.isPending;
   const undecryptedCount = undecryptedCountQuery.data?.count ?? 0;
 
   useEffect(() => {
@@ -256,7 +257,12 @@ export function useContactsAndChannels({
   return {
     contacts,
     contactsLoaded,
+    contactsError: contactsQuery.error,
+    retryContacts: contactsQuery.refetch,
     channels,
+    channelsLoaded,
+    channelsError: channelsQuery.error,
+    retryChannels: channelsQuery.refetch,
     undecryptedCount,
     setContacts,
     setChannels,
