@@ -64,6 +64,26 @@ export function buildServerLoginAttemptFromResponse(
     };
   }
 
+  if (
+    result.reason === 'send_failed' ||
+    result.reason === 'target_busy' ||
+    result.reason === 'radio_busy' ||
+    result.reason === 'queue_full' ||
+    result.reason === 'transport_unavailable'
+  ) {
+    return {
+      method,
+      outcome: 'request_failed',
+      summary:
+        result.reason === 'target_busy' || result.reason === 'radio_busy'
+          ? `Login is blocked by an active radio operation.`
+          : `We couldn't start the login request.`,
+      details: result.message,
+      heardBack: false,
+      at,
+    };
+  }
+
   if (result.status === 'timeout') {
     return {
       method,

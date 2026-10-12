@@ -2,7 +2,9 @@
 
 import asyncio
 from contextlib import asynccontextmanager
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
+from uuid import uuid4
 
 import pytest
 from meshcore import EventType
@@ -212,6 +214,63 @@ def _result(event_type=EventType.OK):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("error", "expected_reason"),
+    [
+        ("queue_full", "queue_full"),
+        ("transport_unavailable", "transport_unavailable"),
+        ("radio_busy", "radio_busy"),
+        ("target_busy", "target_busy"),
+    ],
+)
+async def test_login_admission_returns_structured_blocker_reason(
+    monkeypatch, error, expected_reason
+):
+    import app.routers.server_control as server_control
+    import app.services.radio_job_worker as worker_module
+    import app.services.radio_response_tracker as tracker_module
+    from app.models import CONTACT_TYPE_REPEATER
+    from app.services.radio_job_scheduler import (
+        RadioAdmissionError,
+        RadioQueueFullError,
+        RadioQueueUnavailableError,
+    )
+    from app.services.radio_response_tracker import ResponseReservationConflict
+
+    worker = MagicMock()
+    tracker = MagicMock()
+    if error == "queue_full":
+        worker.submit.side_effect = RadioQueueFullError("full")
+    elif error == "transport_unavailable":
+        worker.submit.side_effect = RadioQueueUnavailableError("stopped")
+    elif error == "radio_busy":
+        worker.submit.side_effect = RadioAdmissionError("busy")
+    else:
+        worker.submit.return_value = SimpleNamespace(id=uuid4())
+        tracker.reserve.side_effect = ResponseReservationConflict(
+            "Conflicting target response session"
+        )
+
+    monkeypatch.setattr(worker_module, "radio_job_worker", worker)
+    monkeypatch.setattr(tracker_module, "radio_response_tracker", tracker)
+    contact = SimpleNamespace(
+        type=CONTACT_TYPE_REPEATER,
+        public_key="ab" * 32,
+        effective_route_source="flood",
+    )
+
+    response = await server_control.scheduled_authenticated_contact_login(
+        contact, "private-password", label="repeater"
+    )
+
+    assert response.authenticated is False
+    assert response.reason == expected_reason
+    assert "private-password" not in str(response.model_dump())
+    if error == "target_busy":
+        worker.cancel.assert_called_once()
+
+
+@pytest.mark.asyncio
 async def test_config_transaction_restores_original_values_after_partial_failure():
     mc = MagicMock()
     mc.self_info = {"name": "Old", "tx_power": 12}
@@ -320,6 +379,7 @@ async def test_login_waiter_does_not_hold_worker_permit(monkeypatch):
         rt.meshcore.emit(EventType.LOGIN_SUCCESS)
         reply = await asyncio.wait_for(login, 2)
         assert reply.authenticated is True
+        assert reply.reason == "confirmed"
         assert rt.peak == 1
         assert any(
             j.state == RadioJobState.COMPLETED and j.kind == RadioJobKind.REPEATER_LOGIN
@@ -330,6 +390,7 @@ async def test_login_waiter_does_not_hold_worker_permit(monkeypatch):
             contact, "private-password", label="repeater", response_timeout=0.01
         )
         assert again.authenticated is False  # a real second attempt may time out
+        assert again.reason == "not_confirmed"
     finally:
         if not login.done():
             login.cancel()

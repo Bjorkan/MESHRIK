@@ -415,6 +415,16 @@ export interface CommandResponse {
 export interface RepeaterLoginResponse {
   status: string;
   authenticated: boolean;
+  reason?:
+    | 'confirmed'
+    | 'rejected'
+    | 'not_confirmed'
+    | 'send_failed'
+    | 'target_busy'
+    | 'radio_busy'
+    | 'queue_full'
+    | 'transport_unavailable'
+    | null;
   message: string | null;
 }
 

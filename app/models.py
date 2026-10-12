@@ -579,6 +579,22 @@ class RepeaterLoginResponse(BaseModel):
 
     status: str = Field(description="Login result status")
     authenticated: bool = Field(description="Whether repeater authentication was confirmed")
+    reason: (
+        Literal[
+            "confirmed",
+            "rejected",
+            "not_confirmed",
+            "send_failed",
+            "target_busy",
+            "radio_busy",
+            "queue_full",
+            "transport_unavailable",
+        ]
+        | None
+    ) = Field(
+        default=None,
+        description="Structured, privacy-safe reason for the login result",
+    )
     message: str | None = Field(
         default=None,
         description="Optional warning or error message when authentication was not confirmed",

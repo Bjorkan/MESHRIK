@@ -655,7 +655,11 @@ async def scheduled_authenticated_contact_login(
     retry (if a direct attempt receives *no* response) remains inside the same
     correlation session. No raw password, key or reply enters the job snapshot.
     """
-    from app.services.radio_job_scheduler import RadioAdmissionError
+    from app.services.radio_job_scheduler import (
+        RadioAdmissionError,
+        RadioQueueFullError,
+        RadioQueueUnavailableError,
+    )
     from app.services.radio_job_worker import (
         RadioCommandOutcome,
         radio_job_scheduler,
@@ -712,13 +716,44 @@ async def scheduled_authenticated_contact_login(
             target=contact.public_key[:12].lower(),
             meshcore=radio_manager.meshcore,
         )
-    except (RadioAdmissionError, ResponseReservationConflict):
+    except (RadioAdmissionError, ResponseReservationConflict) as exc:
         if first_job_id is not None:
             radio_job_worker.cancel(first_job_id)
+        if isinstance(exc, RadioQueueFullError):
+            reason = "queue_full"
+            message = (
+                "The radio queue is full. Wait for an ongoing operation to finish, then retry."
+            )
+        elif isinstance(exc, RadioQueueUnavailableError):
+            reason = "transport_unavailable"
+            message = "The radio worker is unavailable. Check the radio connection, then retry."
+        elif isinstance(exc, ResponseReservationConflict):
+            conflict = str(exc)
+            if conflict == "Conflicting target response session":
+                reason = "target_busy"
+                message = (
+                    f"Another login or response wait is active for this {label}. "
+                    "Wait for it to finish, then retry."
+                )
+            elif conflict in {
+                "Radio session is changing",
+                "Job already reserved or radio session changed",
+            }:
+                reason = "transport_unavailable"
+                message = (
+                    "The radio connection changed while login was starting. Retry when it is ready."
+                )
+            else:
+                reason = "radio_busy"
+                message = "Another response operation is using the radio. Wait for it to finish, then retry."
+        else:
+            reason = "radio_busy"
+            message = "Another operation is using the radio. Wait for it to finish, then retry."
         return RepeaterLoginResponse(
             status="error",
             authenticated=False,
-            message="Another operation is still using this radio or repeater. Wait for it to finish, then retry.",
+            reason=reason,
+            message=message,
         )
 
     # A transport failure can finish a job without the callback ever yielding a
@@ -742,7 +777,10 @@ async def scheduled_authenticated_contact_login(
         done, _ = await asyncio.wait({sent, transport_failed}, return_when=asyncio.FIRST_COMPLETED)
         if sent not in done:
             return RepeaterLoginResponse(
-                status="error", authenticated=False, message=_login_send_failed_message(label)
+                status="error",
+                authenticated=False,
+                reason="send_failed",
+                message=_login_send_failed_message(label),
             )
         result = sent.result()
         if result is None or result.type == EventType.ERROR:
@@ -754,7 +792,10 @@ async def scheduled_authenticated_contact_login(
                     job.id, RadioJobState.FAILED, result=RadioJobResult.REJECTED
                 )
             return RepeaterLoginResponse(
-                status="error", authenticated=False, message=_login_send_failed_message(label)
+                status="error",
+                authenticated=False,
+                reason="send_failed",
+                message=_login_send_failed_message(label),
             )
 
         try:
@@ -847,14 +888,18 @@ async def scheduled_authenticated_contact_login(
                 outcome = pending.future.result()
 
         if outcome == RadioJobResult.RESPONSE_RECEIVED:
-            return RepeaterLoginResponse(status="ok", authenticated=True)
+            return RepeaterLoginResponse(status="ok", authenticated=True, reason="confirmed")
         if outcome == RadioJobResult.REJECTED:
             return RepeaterLoginResponse(
-                status="error", authenticated=False, message=_login_rejected_message(label)
+                status="error",
+                authenticated=False,
+                reason="rejected",
+                message=_login_rejected_message(label),
             )
         return RepeaterLoginResponse(
             status="timeout",
             authenticated=False,
+            reason="not_confirmed",
             message=(
                 _login_flood_retry_timeout_message(label)
                 if retry_dispatched

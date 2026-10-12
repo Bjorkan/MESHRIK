@@ -4426,6 +4426,22 @@ export interface components {
        */
       message?: string | null;
       /**
+       * Reason
+       * @description Structured, privacy-safe reason for the login result
+       */
+      reason?:
+        | (
+            | 'confirmed'
+            | 'rejected'
+            | 'not_confirmed'
+            | 'send_failed'
+            | 'target_busy'
+            | 'radio_busy'
+            | 'queue_full'
+            | 'transport_unavailable'
+          )
+        | null;
+      /**
        * Status
        * @description Login result status
        */

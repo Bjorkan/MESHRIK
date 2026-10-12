@@ -5481,6 +5481,28 @@
             "description": "Optional warning or error message when authentication was not confirmed",
             "title": "Message"
           },
+          "reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "confirmed",
+                  "rejected",
+                  "not_confirmed",
+                  "send_failed",
+                  "target_busy",
+                  "radio_busy",
+                  "queue_full",
+                  "transport_unavailable"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Structured, privacy-safe reason for the login result",
+            "title": "Reason"
+          },
           "status": {
             "description": "Login result status",
             "title": "Status",

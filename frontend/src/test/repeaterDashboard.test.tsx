@@ -163,6 +163,7 @@ describe('RepeaterDashboard', () => {
     mockHook.loggedIn = false;
     mockHook.loginLoading = false;
     mockHook.loginError = null;
+    mockHook.lastLoginAttempt = null;
     mockHook.paneData = {
       status: null,
       nodeInfo: null,
@@ -264,6 +265,31 @@ describe('RepeaterDashboard', () => {
     render(<RepeaterDashboard {...defaultProps} />);
 
     expect(screen.getByText('Invalid password')).toBeInTheDocument();
+  });
+
+  it('disables retry while the current login operation is active and re-enables it afterward', async () => {
+    localStorage.setItem(
+      `meshrik-server-password:repeater:${REPEATER_KEY}`,
+      JSON.stringify({ password: 'confirmed-password' })
+    );
+    mockHook.loggedIn = true;
+    mockHook.loginLoading = true;
+    mockHook.lastLoginAttempt = {
+      method: 'password',
+      outcome: 'not_confirmed',
+      summary: "We couldn't confirm the login.",
+      details: 'No reply heard.',
+      heardBack: false,
+      at: Date.now(),
+    };
+
+    const view = render(<RepeaterDashboard {...defaultProps} />);
+    const retry = await screen.findByRole('button', { name: 'Retry Password Login' });
+    expect(retry).toBeDisabled();
+
+    mockHook.loginLoading = false;
+    view.rerender(<RepeaterDashboard {...defaultProps} />);
+    await waitFor(() => expect(retry).toBeEnabled());
   });
 
   it('only replaces a remembered repeater password after confirmed authentication', async () => {
