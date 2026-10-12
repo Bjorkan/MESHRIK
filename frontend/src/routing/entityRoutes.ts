@@ -6,6 +6,10 @@ export interface EntityRoute {
   id: string;
 }
 
+export function getEntityPath(route: EntityRoute): string {
+  return `/${route.type}/${encodeURIComponent(route.id)}`;
+}
+
 export function getEntityRoute(pathname: string): EntityRoute | null {
   const match = /^\/(channel|contact)\/([^/]+)$/.exec(pathname);
   if (!match) return null;

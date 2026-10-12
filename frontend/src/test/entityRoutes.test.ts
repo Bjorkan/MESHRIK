@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { getEntityRoute, resolveEntityConversation } from '../routing/entityRoutes';
+import {
+  getEntityPath,
+  getEntityRoute,
+  resolveEntityConversation,
+} from '../routing/entityRoutes';
 import type { Channel, Contact } from '../types';
 
 const channel: Channel = {
@@ -33,6 +37,13 @@ const contact: Contact = {
 };
 
 describe('entity pathname routing', () => {
+  it('builds encoded canonical entity paths', () => {
+    expect(getEntityPath({ type: 'channel', id: 'AB CD/12' })).toBe('/channel/AB%20CD%2F12');
+    expect(getEntityPath({ type: 'contact', id: contact.public_key })).toBe(
+      `/contact/${contact.public_key}`
+    );
+  });
+
   it('parses stable channel and contact identities without display-name segments', () => {
     expect(getEntityRoute(`/channel/${channel.key}`)).toEqual({
       type: 'channel',

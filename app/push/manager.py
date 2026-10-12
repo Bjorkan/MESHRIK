@@ -9,6 +9,7 @@ import asyncio
 import json
 import logging
 from dataclasses import dataclass
+from urllib.parse import quote
 
 from pywebpush import WebPushException
 
@@ -49,9 +50,9 @@ def _build_payload(data: dict) -> str:
     conversation_key = data.get("conversation_key", "")
     state_key = _state_key_for_message(data)
     if msg_type == "PRIV":
-        url_hash = f"#contact/{conversation_key}"
+        url_path = f"/contact/{quote(conversation_key, safe='')}"
     else:
-        url_hash = f"#channel/{conversation_key}"
+        url_path = f"/channel/{quote(conversation_key, safe='')}"
 
     return json.dumps(
         {
@@ -61,7 +62,7 @@ def _build_payload(data: dict) -> str:
             # notification tray, while repeated messages in the same
             # conversation replace each other.
             "tag": f"meshcore-{state_key}",
-            "url_hash": url_hash,
+            "url_path": url_path,
         }
     )
 

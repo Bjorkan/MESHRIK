@@ -4,11 +4,52 @@ import { resolve } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 
 type ServiceWorkerHandler = (event: {
-  notification: { close: () => void; data?: { url_hash?: string } };
+  notification: { close: () => void; data?: { url_path?: string } };
   waitUntil: (promise: Promise<unknown>) => void;
 }) => void;
 
 describe('service worker notification clicks', () => {
+  it('stores the canonical pathname from a push payload', async () => {
+    type PushHandler = (event: {
+      data: { json: () => Record<string, string> };
+      waitUntil: (promise: Promise<unknown>) => void;
+    }) => void;
+    const handlers = new Map<string, PushHandler>();
+    const showNotification = vi.fn(async () => undefined);
+    const clients = { claim: vi.fn() };
+    const worker = {
+      location: { origin: 'https://example.test' },
+      registration: { scope: 'https://example.test/', showNotification },
+      clients,
+      skipWaiting: vi.fn(),
+      addEventListener: vi.fn((type: string, handler: PushHandler) => {
+        handlers.set(type, handler);
+      }),
+    };
+    const source = readFileSync(resolve(process.cwd(), 'public/sw.js'), 'utf8');
+    new Function('self', 'clients', source)(worker, clients);
+
+    let lifetime: Promise<unknown> | undefined;
+    handlers.get('push')?.({
+      data: {
+        json: () => ({
+          title: 'New message',
+          body: 'hello',
+          url_path: '/contact/alice',
+        }),
+      },
+      waitUntil: (promise) => {
+        lifetime = promise;
+      },
+    });
+
+    await lifetime;
+    expect(showNotification).toHaveBeenCalledWith(
+      'New message',
+      expect.objectContaining({ data: { url_path: '/contact/alice' } })
+    );
+  });
+
   it('keeps the worker alive through focus and navigation', async () => {
     const handlers = new Map<string, ServiceWorkerHandler>();
     const scope = 'https://example.test/meshrik/';
@@ -38,6 +79,7 @@ describe('service worker notification clicks', () => {
       openWindow: vi.fn(),
     };
     const worker = {
+      location: { origin: 'https://example.test' },
       registration: { scope, showNotification: vi.fn() },
       clients,
       skipWaiting: vi.fn(),
@@ -50,7 +92,7 @@ describe('service worker notification clicks', () => {
 
     let lifetime: Promise<unknown> | undefined;
     handlers.get('notificationclick')?.({
-      notification: { close: vi.fn(), data: { url_hash: '#contact/alice' } },
+      notification: { close: vi.fn(), data: { url_path: '/contact/alice' } },
       waitUntil: (promise) => {
         lifetime = promise;
       },
@@ -74,7 +116,41 @@ describe('service worker notification clicks', () => {
     resolveNavigate();
     await lifetime;
     expect(lifetimeSettled).toBe(true);
-    expect(client.navigate).toHaveBeenCalledWith(`${scope}#contact/alice`);
+    expect(client.navigate).toHaveBeenCalledWith('https://example.test/contact/alice');
     expect(clients.openWindow).not.toHaveBeenCalled();
+  });
+
+  it('opens the canonical root path when no app window exists', async () => {
+    const handlers = new Map<string, ServiceWorkerHandler>();
+    const clients = {
+      claim: vi.fn(),
+      matchAll: vi.fn(async () => []),
+      openWindow: vi.fn(async () => undefined),
+    };
+    const worker = {
+      location: { origin: 'https://example.test' },
+      registration: {
+        scope: 'https://example.test/meshrik/',
+        showNotification: vi.fn(),
+      },
+      clients,
+      skipWaiting: vi.fn(),
+      addEventListener: vi.fn((type: string, handler: ServiceWorkerHandler) => {
+        handlers.set(type, handler);
+      }),
+    };
+    const source = readFileSync(resolve(process.cwd(), 'public/sw.js'), 'utf8');
+    new Function('self', 'clients', source)(worker, clients);
+
+    let lifetime: Promise<unknown> | undefined;
+    handlers.get('notificationclick')?.({
+      notification: { close: vi.fn(), data: { url_path: '/channel/ops' } },
+      waitUntil: (promise) => {
+        lifetime = promise;
+      },
+    });
+
+    await lifetime;
+    expect(clients.openWindow).toHaveBeenCalledWith('https://example.test/channel/ops');
   });
 });

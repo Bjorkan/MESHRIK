@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { toast } from '../components/ui/sonner';
 import type { Message } from '../types';
 import { getStateKey } from '../utils/conversationState';
+import { getEntityPath } from '../routing/entityRoutes';
 
 const STORAGE_KEY = 'meshcore_browser_notifications_enabled_by_conversation';
 const NOTIFICATION_ICON_PATH = '/favicon-256x256.png';
@@ -91,14 +92,12 @@ function buildPreviewNotificationTitle(type: 'channel' | 'contact', label: strin
   return type === 'contact' ? `New message from ${label}` : `New message in ${label}`;
 }
 
-function buildMessageNotificationHash(message: Message): string | null {
+function buildMessageNotificationPath(message: Message): string | null {
   if (message.type === 'PRIV' && message.conversation_key) {
-    const label = message.sender_name || message.conversation_key.slice(0, 12);
-    return `#contact/${encodeURIComponent(message.conversation_key)}/${encodeURIComponent(label)}`;
+    return getEntityPath({ type: 'contact', id: message.conversation_key });
   }
   if (message.type === 'CHAN' && message.conversation_key) {
-    const label = message.channel_name || message.conversation_key.slice(0, 8);
-    return `#channel/${encodeURIComponent(message.conversation_key)}/${encodeURIComponent(label)}`;
+    return getEntityPath({ type: 'channel', id: message.conversation_key });
   }
   return null;
 }
@@ -243,9 +242,9 @@ export function useBrowserNotifications() {
       });
 
       notification.onclick = () => {
-        const hash = buildMessageNotificationHash(message);
-        if (hash) {
-          window.open(`${window.location.origin}${window.location.pathname}${hash}`, '_self');
+        const path = buildMessageNotificationPath(message);
+        if (path) {
+          window.open(path, '_self');
         }
         window.focus();
         notification.close();

@@ -127,7 +127,7 @@ describe('useBrowserNotifications', () => {
     });
   });
 
-  it('notification click deep-links to the conversation hash', async () => {
+  it('notification click deep-links to the canonical conversation path', async () => {
     const focusSpy = vi.spyOn(window, 'focus').mockImplementation(() => {});
     const { result } = renderHook(() => useBrowserNotifications());
 
@@ -154,7 +154,7 @@ describe('useBrowserNotifications', () => {
     });
 
     expect(window.open).toHaveBeenCalledWith(
-      `${window.location.origin}${window.location.pathname}#channel/${incomingChannelMessage.conversation_key}/%23flightless`,
+      `/channel/${incomingChannelMessage.conversation_key}`,
       '_self'
     );
     expect(focusSpy).toHaveBeenCalledTimes(1);

@@ -110,7 +110,7 @@ async def test_push(subscription_id: str) -> dict:
             "title": "MESHRIK Test",
             "body": "Push notifications are working!",
             "tag": "meshcore-test",
-            "url_hash": "",
+            "url_path": "/",
         }
     )
 

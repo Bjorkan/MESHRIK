@@ -26,7 +26,7 @@ self.addEventListener("push", (event) => {
     icon: "/favicon-256x256.png",
     badge: "/favicon-96x96.png",
     tag: data.tag || "meshcore-push",
-    data: { url_hash: data.url_hash || "" },
+    data: { url_path: data.url_path || "/" },
   };
 
   event.waitUntil(self.registration.showNotification(title, options));
@@ -34,10 +34,10 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const urlHash = event.notification.data?.url_hash || "";
-  // Use the SW registration scope as the base URL so subpath deployments
-  // (e.g. archworks.co/meshcore/) navigate correctly.
-  const base = self.registration.scope;
+  const rawUrlPath = event.notification.data?.url_path;
+  const urlPath = typeof rawUrlPath === "string" && rawUrlPath.startsWith("/") ? rawUrlPath : "/";
+  const appOrigin = `${self.location.origin}/`;
+  const targetUrl = new URL(urlPath, appOrigin).href;
 
   event.waitUntil(
     clients
@@ -45,16 +45,14 @@ self.addEventListener("notificationclick", (event) => {
       .then(async (windowClients) => {
         // Focus an existing tab if one is open
         for (const client of windowClients) {
-          if (client.url.startsWith(base)) {
+          if (client.url.startsWith(appOrigin)) {
             await client.focus();
-            if (urlHash) {
-              await client.navigate(base + urlHash);
-            }
+            await client.navigate(targetUrl);
             return;
           }
         }
         // Otherwise open a new tab
-        return clients.openWindow(base + (urlHash || ""));
+        return clients.openWindow(targetUrl);
       })
   );
 });
