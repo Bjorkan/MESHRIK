@@ -464,8 +464,6 @@ function AppContent({
     }
 
     const activeChannelId = activeConversation.id;
-    const activeChannelUnreadCount = unreadCounts[getStateKey('channel', activeChannelId)] ?? 0;
-
     const boundaryId = firstUnreadIds[getStateKey('channel', activeChannelId)] ?? null;
 
     setChannelUnreadMarker((prev) => {
@@ -479,12 +477,9 @@ function AppContent({
         }
         return prev;
       }
-      if (activeChannelUnreadCount <= 0) {
-        return null;
-      }
-      return { channelId: activeChannelId, messageId: boundaryId };
+      return boundaryId === null ? null : { channelId: activeChannelId, messageId: boundaryId };
     });
-  }, [activeConversation, unreadCounts, firstUnreadIds]);
+  }, [activeConversation, firstUnreadIds]);
 
   const wsHandlers = useRealtimeAppState({
     prevHealthRef,

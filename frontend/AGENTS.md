@@ -32,6 +32,12 @@ Keep it aligned with `frontend/src` source code.
   not maintain a second selected-conversation state. Settings return destinations live
   in Router history state. Entity route loaders prewarm the same QueryClient consumed by
   React; they must not create a route-specific cache.
+- TanStack Query is the sole owner of HTTP request state, server cache, invalidation,
+  mutation rollback, and message page/cursor lifecycles. WebSocket handlers reconcile
+  typed events into Query data; they do not maintain a parallel server snapshot. Message
+  history uses directional Infinite Query page parameters and Query fetching flags.
+  Unread badges are read-only selectors from one Query snapshot (the active badge is
+  suppressed without deleting its first-unread boundary).
 
 ## Frontend Map
 

@@ -108,7 +108,7 @@ export function RoutedApp() {
           void navigate({ to: '/settings/about', ...options });
       }
     },
-    [location.state, navigate, routeConversation, routeEntity, routeSettingsSection]
+    [location, navigate, routeConversation, routeEntity, routeSettingsSection]
   );
 
   const handleCloseSettingsRoute = useCallback(() => {

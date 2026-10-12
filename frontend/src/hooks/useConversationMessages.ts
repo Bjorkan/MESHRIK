@@ -218,19 +218,8 @@ export function useConversationMessages(
   const pendingAcksRef = useRef<Map<number, PendingAckUpdate>>(new Map());
   const activeConversationRef = useRef(activeConversation);
   activeConversationRef.current = activeConversation;
-  const reconcileRequestRef = useRef(0);
-  const loadingOlderRef = useRef(false);
-  const loadingNewerRef = useRef(false);
-  const olderControllerRef = useRef<AbortController | null>(null);
-  const newerControllerRef = useRef<AbortController | null>(null);
   const pendingReconnectRef = useRef(false);
   const lastHandledTargetRef = useRef(targetMessageId ?? null);
-  const resetForAnchorRef = useRef(false);
-  const reconcileLatestRef = useRef<() => void>(() => {});
-  const [, setCacheVersion] = useState(0);
-  const [loadingOlder, setLoadingOlder] = useState(false);
-  const [loadingNewer, setLoadingNewer] = useState(false);
-  const [jumpLoading, setJumpLoading] = useState(false);
   const [anchor, setAnchor] = useState<{ conversationId: string | null; target: number | null }>(
     () => ({
       conversationId: activeConversation?.id ?? null,
@@ -245,9 +234,13 @@ export function useConversationMessages(
   const queryKey = useMemo(
     () =>
       conversation
-        ? queryKeys.conversation(conversationKind(conversation), conversation.id)
+        ? queryKeys.conversationView(
+            conversationKind(conversation),
+            conversation.id,
+            effectiveTarget
+          )
         : (['messages', 'conversation', 'inactive'] as const),
-    [conversation]
+    [conversation, effectiveTarget]
   );
 
   useEffect(() => {
@@ -256,27 +249,9 @@ export function useConversationMessages(
       setAnchor({ conversationId, target: targetMessageId ?? null });
     } else if (targetMessageId != null && targetMessageId !== lastHandledTargetRef.current) {
       lastHandledTargetRef.current = targetMessageId;
-      resetForAnchorRef.current = true;
       setAnchor({ conversationId, target: targetMessageId });
     }
   }, [anchor.conversationId, conversationId, targetMessageId]);
-
-  useEffect(() => {
-    if (!resetForAnchorRef.current || anchor.conversationId !== conversationId) return;
-    resetForAnchorRef.current = false;
-    void queryClient.resetQueries({ queryKey, exact: true });
-  }, [anchor, conversationId, queryClient, queryKey]);
-
-  useEffect(() => {
-    setLoadingOlder(false);
-    setLoadingNewer(false);
-    return () => {
-      olderControllerRef.current?.abort();
-      newerControllerRef.current?.abort();
-      loadingOlderRef.current = false;
-      loadingNewerRef.current = false;
-    };
-  }, [conversationId]);
 
   const applyPendingAck = useCallback((message: Message): Message => {
     const pending = pendingAcksRef.current.get(message.id);
@@ -361,16 +336,36 @@ export function useConversationMessages(
         hasNewer: pageParam.direction === 'newer' ? fetched.length >= MESSAGE_PAGE_SIZE : true,
       };
     },
-    getNextPageParam: () => undefined,
-    getPreviousPageParam: () => undefined,
+    getNextPageParam: (lastPage) => {
+      if (!lastPage.hasOlder || lastPage.messages.length === 0) return undefined;
+      const oldest = lastPage.messages.reduce((candidate, message) =>
+        compareMessagePosition(message, candidate) < 0 ? message : candidate
+      );
+      return {
+        direction: 'older',
+        receivedAt: oldest.received_at,
+        messageId: oldest.id,
+      };
+    },
+    getPreviousPageParam: (firstPage) => {
+      if (!firstPage.hasNewer || firstPage.messages.length === 0) return undefined;
+      const newest = firstPage.messages.reduce((candidate, message) =>
+        compareMessagePosition(message, candidate) > 0 ? message : candidate
+      );
+      return {
+        direction: 'newer',
+        receivedAt: newest.received_at,
+        messageId: newest.id,
+      };
+    },
   });
 
   const messages = useMemo(
     () => flattenMessages(query.data).map(applyPendingAck),
     [applyPendingAck, query.data]
   );
-  const hasOlderMessages = query.data?.pages[query.data.pages.length - 1]?.hasOlder ?? false;
-  const hasNewerMessages = query.data?.pages[0]?.hasNewer ?? false;
+  const hasOlderMessages = query.hasNextPage;
+  const hasNewerMessages = query.hasPreviousPage;
 
   useEffect(() => {
     if (!query.error || isAbortError(query.error)) return;
@@ -397,131 +392,36 @@ export function useConversationMessages(
   }, [conversation, query.data, queryClient, queryKey]);
 
   const fetchOlderMessages = useCallback(async () => {
-    if (!conversation || loadingOlderRef.current || !hasOlderMessages) return;
-    const oldest = messages[0];
-    if (!oldest) return;
-    loadingOlderRef.current = true;
-    setLoadingOlder(true);
-    const controller = new AbortController();
-    olderControllerRef.current = controller;
+    if (!conversation || query.isFetchingNextPage || !query.hasNextPage) return;
     try {
-      const fetched = await api.getMessages(
-        {
-          type: conversation.type === 'channel' ? 'CHAN' : 'PRIV',
-          conversation_key: conversation.id,
-          limit: MESSAGE_PAGE_SIZE,
-          before: oldest.received_at,
-          before_id: oldest.id,
-        },
-        controller.signal
-      );
-      queryClient.setQueryData<ConversationInfiniteData>(queryKey, (data) => {
-        if (!data) return replaceWithSinglePage(fetched, fetched.length >= MESSAGE_PAGE_SIZE);
-        return {
-          ...data,
-          pages: [
-            ...data.pages,
-            {
-              messages: fetched.map(applyPendingAck),
-              hasOlder: fetched.length >= MESSAGE_PAGE_SIZE,
-              hasNewer: true,
-            },
-          ],
-          pageParams: [
-            ...data.pageParams,
-            { direction: 'older', receivedAt: oldest.received_at, messageId: oldest.id },
-          ],
-        };
-      });
-      setCacheVersion((version) => version + 1);
+      await query.fetchNextPage({ cancelRefetch: false });
     } catch (error) {
       if (!isAbortError(error)) {
         toast.error('Failed to load older messages');
       }
-    } finally {
-      if (olderControllerRef.current === controller) olderControllerRef.current = null;
-      loadingOlderRef.current = false;
-      setLoadingOlder(false);
     }
-  }, [applyPendingAck, conversation, hasOlderMessages, messages, queryClient, queryKey]);
+  }, [conversation, query]);
 
   const fetchNewerMessages = useCallback(async () => {
-    if (!conversation || loadingNewerRef.current || !hasNewerMessages) return;
-    const newest = messages[messages.length - 1];
-    if (!newest) return;
-    loadingNewerRef.current = true;
-    setLoadingNewer(true);
-    const controller = new AbortController();
-    newerControllerRef.current = controller;
+    if (!conversation || query.isFetchingPreviousPage || !query.hasPreviousPage) return;
     try {
-      const fetched = await api.getMessages(
-        {
-          type: conversation.type === 'channel' ? 'CHAN' : 'PRIV',
-          conversation_key: conversation.id,
-          limit: MESSAGE_PAGE_SIZE,
-          after: newest.received_at,
-          after_id: newest.id,
-        },
-        controller.signal
-      );
-      const stillHasNewer = fetched.length >= MESSAGE_PAGE_SIZE;
-      queryClient.setQueryData<ConversationInfiniteData>(queryKey, (data) => {
-        if (!data) return replaceWithSinglePage(fetched, true, stillHasNewer);
-        return {
-          ...data,
-          pages: [
-            {
-              messages: fetched.map(applyPendingAck),
-              hasOlder: true,
-              hasNewer: stillHasNewer,
-            },
-            ...data.pages,
-          ],
-          pageParams: [
-            { direction: 'newer', receivedAt: newest.received_at, messageId: newest.id },
-            ...data.pageParams,
-          ],
-        };
-      });
-      setCacheVersion((version) => version + 1);
-      if (!stillHasNewer && pendingReconnectRef.current) {
+      const result = await query.fetchPreviousPage({ cancelRefetch: false });
+      if (!result.hasPreviousPage && pendingReconnectRef.current) {
         pendingReconnectRef.current = false;
-        queueMicrotask(() => reconcileLatestRef.current());
+        await queryClient.invalidateQueries({ queryKey, exact: true });
       }
     } catch (error) {
       if (!isAbortError(error)) {
         toast.error('Failed to load newer messages');
       }
-    } finally {
-      if (newerControllerRef.current === controller) newerControllerRef.current = null;
-      loadingNewerRef.current = false;
-      setLoadingNewer(false);
     }
-  }, [applyPendingAck, conversation, hasNewerMessages, messages, queryClient, queryKey]);
+  }, [conversation, query, queryClient, queryKey]);
 
   const jumpToBottom = useCallback(() => {
     if (!conversation) return;
     pendingReconnectRef.current = false;
     setAnchor({ conversationId: conversation.id, target: null });
-    setJumpLoading(true);
-    void api
-      .getMessages({
-        type: conversation.type === 'channel' ? 'CHAN' : 'PRIV',
-        conversation_key: conversation.id,
-        limit: MESSAGE_PAGE_SIZE,
-      })
-      .then((fetched) => {
-        queryClient.setQueryData(
-          queryKey,
-          replaceWithSinglePage(fetched.map(applyPendingAck), fetched.length >= MESSAGE_PAGE_SIZE)
-        );
-        setCacheVersion((version) => version + 1);
-      })
-      .catch((error) => {
-        if (!isAbortError(error)) toast.error('Failed to load latest messages');
-      })
-      .finally(() => setJumpLoading(false));
-  }, [applyPendingAck, conversation, queryClient, queryKey]);
+  }, [conversation]);
 
   const reloadCurrentConversation = useCallback(() => {
     if (!conversation) return;
@@ -532,31 +432,44 @@ export function useConversationMessages(
     (message: Message): { added: boolean; activeConversation: boolean } => {
       const withAck = applyPendingAck(message);
       const active = isActiveConversationMessage(activeConversationRef.current, withAck);
-      const targetKey = queryKeys.conversation(
+      const targetPrefix = queryKeys.conversation(
         messageConversationKind(withAck),
         withAck.conversation_key
       );
-      const existing = queryClient.getQueryData<ConversationInfiniteData>(targetKey);
+      const matchingQueries = queryClient
+        .getQueryCache()
+        .findAll({ queryKey: targetPrefix })
+        .filter((candidate) => candidate.state.data !== undefined);
       if (active && hasNewerMessages) return { added: false, activeConversation: true };
 
-      const current = flattenMessages(existing);
       const contentKey = getMessageContentKey(withAck);
-      if (
-        current.some(
+      if (matchingQueries.some((candidate) =>
+        flattenMessages(candidate.state.data as ConversationInfiniteData).some(
           (candidate) =>
             candidate.id === withAck.id || getMessageContentKey(candidate) === contentKey
         )
-      ) {
+      )) {
         return { added: false, activeConversation: active };
       }
-      queryClient.setQueryData<ConversationInfiniteData>(targetKey, (data) => {
-        if (!data) return replaceWithSinglePage([withAck], true);
-        const pages = [...data.pages];
-        const index = pages.length - 1;
-        pages[index] = { ...pages[index], messages: [...pages[index].messages, withAck] };
-        return { ...data, pages };
-      });
-      setCacheVersion((version) => version + 1);
+      const targets =
+        matchingQueries.length > 0
+          ? matchingQueries.map((candidate) => candidate.queryKey)
+          : [
+              queryKeys.conversationView(
+                messageConversationKind(withAck),
+                withAck.conversation_key,
+                null
+              ),
+            ];
+      for (const targetKey of targets) {
+        queryClient.setQueryData<ConversationInfiniteData>(targetKey, (data) => {
+          if (!data) return replaceWithSinglePage([withAck], true);
+          const pages = [...data.pages];
+          const index = pages.length - 1;
+          pages[index] = { ...pages[index], messages: [...pages[index].messages, withAck] };
+          return { ...data, pages };
+        });
+      }
       return { added: true, activeConversation: active };
     },
     [applyPendingAck, hasNewerMessages, queryClient]
@@ -583,7 +496,6 @@ export function useConversationMessages(
       }
       if (found) {
         pendingAcksRef.current.delete(messageId);
-        setCacheVersion((version) => version + 1);
         return;
       }
       const pending = mergePendingAck(
@@ -601,68 +513,32 @@ export function useConversationMessages(
     [queryClient]
   );
 
-  const reconcileLatest = useCallback(() => {
-    const current = activeConversationRef.current;
-    if (!isMessageConversation(current)) return;
-    const requestId = ++reconcileRequestRef.current;
-    const key = queryKeys.conversation(conversationKind(current), current.id);
-    const idsAtStart = new Set(
-      flattenMessages(queryClient.getQueryData<ConversationInfiniteData>(key)).map(
-        (message) => message.id
-      )
-    );
-    void api
-      .getMessages({
-        type: current.type === 'channel' ? 'CHAN' : 'PRIV',
-        conversation_key: current.id,
-        limit: MESSAGE_PAGE_SIZE,
-      })
-      .then((fetched) => {
-        if (requestId !== reconcileRequestRef.current) return;
-        const currentData = queryClient.getQueryData<ConversationInfiniteData>(key);
-        const merged = reconcileConversationMessages(
-          flattenMessages(currentData),
-          fetched.map(applyPendingAck),
-          fetched.length >= MESSAGE_PAGE_SIZE,
-          idsAtStart
-        );
-        if (merged) {
-          queryClient.setQueryData(
-            key,
-            replaceWithSinglePage(merged, fetched.length >= MESSAGE_PAGE_SIZE)
-          );
-          setCacheVersion((version) => version + 1);
-        }
-      })
-      .catch((error) => {
-        if (!isAbortError(error)) console.debug('Background reconciliation failed:', error);
-      });
-  }, [applyPendingAck, queryClient]);
-
-  reconcileLatestRef.current = reconcileLatest;
-
   const reconcileOnReconnect = useCallback(() => {
+    if (!conversation) return;
     if (hasNewerMessages) {
       pendingReconnectRef.current = true;
       return;
     }
     pendingReconnectRef.current = false;
-    reconcileLatest();
-  }, [hasNewerMessages, reconcileLatest]);
+    void queryClient.invalidateQueries({ queryKey, exact: true });
+  }, [conversation, hasNewerMessages, queryClient, queryKey]);
 
   const renameConversationMessages = useCallback(
     (oldId: string, newId: string) => {
       for (const kind of ['contact', 'channel'] as const) {
-        const oldKey = queryKeys.conversation(kind, oldId);
-        const oldData = queryClient.getQueryData<ConversationInfiniteData>(oldKey);
-        if (!oldData) continue;
-        const newKey = queryKeys.conversation(kind, newId);
-        const merged = [
-          ...flattenMessages(queryClient.getQueryData<ConversationInfiniteData>(newKey)),
-          ...flattenMessages(oldData),
-        ];
-        queryClient.setQueryData(newKey, replaceWithSinglePage(merged, true));
-        queryClient.removeQueries({ queryKey: oldKey, exact: true });
+        const oldPrefix = queryKeys.conversation(kind, oldId);
+        for (const oldQuery of queryClient.getQueryCache().findAll({ queryKey: oldPrefix })) {
+          const oldData = oldQuery.state.data as ConversationInfiniteData | undefined;
+          if (!oldData) continue;
+          const suffix = oldQuery.queryKey.slice(oldPrefix.length);
+          const newKey = [...queryKeys.conversation(kind, newId), ...suffix];
+          const merged = [
+            ...flattenMessages(queryClient.getQueryData<ConversationInfiniteData>(newKey)),
+            ...flattenMessages(oldData),
+          ];
+          queryClient.setQueryData(newKey, replaceWithSinglePage(merged, true));
+        }
+        queryClient.removeQueries({ queryKey: oldPrefix });
       }
     },
     [queryClient]
@@ -673,7 +549,6 @@ export function useConversationMessages(
       for (const kind of ['contact', 'channel'] as const) {
         queryClient.removeQueries({
           queryKey: queryKeys.conversation(kind, conversationIdToRemove),
-          exact: true,
         });
       }
     },
@@ -686,11 +561,11 @@ export function useConversationMessages(
 
   return {
     messages,
-    messagesLoading: conversation !== null && (query.isPending || jumpLoading),
-    loadingOlder,
+    messagesLoading: conversation !== null && query.isPending,
+    loadingOlder: query.isFetchingNextPage,
     hasOlderMessages,
     hasNewerMessages,
-    loadingNewer,
+    loadingNewer: query.isFetchingPreviousPage,
     fetchOlderMessages,
     fetchNewerMessages,
     jumpToBottom,

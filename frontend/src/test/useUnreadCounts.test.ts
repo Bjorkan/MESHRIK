@@ -8,7 +8,7 @@
 
 import { act, renderHook } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, notifyManager } from '@tanstack/react-query';
 import { createElement, type ReactNode } from 'react';
 
 import { useUnreadCounts } from '../hooks/useUnreadCounts';
@@ -24,6 +24,11 @@ vi.mock('../api', () => ({
     markContactRead: vi.fn().mockResolvedValue({ status: 'ok', public_key: '' }),
     markAllRead: vi.fn().mockResolvedValue({ status: 'ok' }),
   },
+}));
+
+const toastError = vi.fn();
+vi.mock('../components/ui/sonner', () => ({
+  toast: { error: (...args: unknown[]) => toastError(...args) },
 }));
 
 // Mock prefetch — takePrefetchOrFetch calls the fetcher directly
@@ -99,7 +104,9 @@ async function getMockedApi() {
 
 describe('useUnreadCounts', () => {
   beforeEach(async () => {
+    notifyManager.setScheduler((callback) => callback());
     vi.clearAllMocks();
+    toastError.mockReset();
     const mocks = await getMockedApi();
     // Re-establish default resolvers (clearAllMocks wipes them)
     mocks.getUnreads.mockResolvedValue({
@@ -115,6 +122,7 @@ describe('useUnreadCounts', () => {
   });
 
   afterEach(() => {
+    notifyManager.setScheduler((callback) => setTimeout(callback, 0));
     vi.restoreAllMocks();
   });
 
@@ -647,7 +655,7 @@ describe('useUnreadCounts', () => {
         activeConversation: null,
       });
 
-      expect(mocks.markContactRead).toHaveBeenCalledTimes(1);
+      await vi.waitFor(() => expect(mocks.markContactRead).toHaveBeenCalledTimes(1));
       expect(mocks.markContactRead).toHaveBeenCalledWith(CONTACT_KEY, 52);
     } finally {
       vi.useRealTimers();
@@ -722,5 +730,33 @@ describe('useUnreadCounts', () => {
       await result.current.markAllRead();
     });
     expect(result.current.firstUnreadIds).toEqual({});
+  });
+
+  it('rolls the Query snapshot back and reports an error when mark-all-read fails', async () => {
+    const mocks = await getMockedApi();
+    const key = getStateKey('channel', CHANNEL_KEY);
+    mocks.getUnreads.mockResolvedValue({
+      counts: { [key]: 2 },
+      mentions: { [key]: true },
+      last_message_times: { [key]: 1700000000 },
+      first_unread_ids: { [key]: 10 },
+      last_read_ats: { [key]: 1699999999 },
+    });
+    mocks.markAllRead.mockRejectedValueOnce(new Error('offline'));
+
+    const { result } = renderWith({ channels: [makeChannel(CHANNEL_KEY, 'Test')] });
+    await vi.waitFor(() => expect(result.current.unreadCounts[key]).toBe(2));
+
+    await act(async () => {
+      await expect(result.current.markAllRead()).rejects.toThrow('offline');
+    });
+
+    expect(result.current.unreadCounts[key]).toBe(2);
+    expect(result.current.mentions[key]).toBe(true);
+    expect(result.current.firstUnreadIds[key]).toBe(10);
+    expect(toastError).toHaveBeenCalledWith(
+      'Failed to mark all messages as read',
+      expect.objectContaining({ description: 'offline' })
+    );
   });
 });

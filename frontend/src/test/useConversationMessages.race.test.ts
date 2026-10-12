@@ -95,7 +95,7 @@ describe('useConversationMessages ACK ordering', () => {
       expect(added).toBe(true);
     });
 
-    expect(result.current.messages).toHaveLength(1);
+    await waitFor(() => expect(result.current.messages).toHaveLength(1));
     expect(result.current.messages[0].acked).toBe(2);
     expect(result.current.messages[0].paths).toEqual(paths);
   });
@@ -176,7 +176,7 @@ describe('useConversationMessages ACK ordering', () => {
       result.current.receiveMessageAck(42, 2, staleAckPaths);
     });
 
-    expect(result.current.messages[0].acked).toBe(3);
+    await waitFor(() => expect(result.current.messages[0]?.acked).toBe(3));
     expect(result.current.messages[0].paths).toEqual(highAckPaths);
   });
 });
@@ -220,7 +220,7 @@ describe('useConversationMessages conversation switch', () => {
       result.current.fetchOlderMessages();
     });
 
-    expect(result.current.loadingOlder).toBe(true);
+    await waitFor(() => expect(result.current.loadingOlder).toBe(true));
 
     // Switch to conv B while older-messages fetch is still pending
     mockGetMessages.mockResolvedValueOnce([createMessage({ id: 999, conversation_key: 'conv_b' })]);
@@ -354,7 +354,7 @@ describe('useConversationMessages background reconcile ordering', () => {
     const conv = createConversation();
     const cachedMessage = createMessage({ id: 42, text: 'cached snapshot' });
 
-    queryClient.setQueryData(queryKeys.conversation('contact', conv.id), {
+    queryClient.setQueryData(queryKeys.conversationView('contact', conv.id, null), {
       pages: [{ messages: [cachedMessage], hasOlder: true, hasNewer: false }],
       pageParams: [{ direction: 'latest' }],
     });
@@ -461,9 +461,11 @@ describe('useConversationMessages older-page dedup and reentry', () => {
       await result.current.fetchOlderMessages();
     });
 
-    expect(result.current.messages.filter((msg) => msg.id === 1)).toHaveLength(1);
-    expect(result.current.messages.filter((msg) => msg.id === 0)).toHaveLength(1);
-    expect(result.current.messages).toHaveLength(201);
+    await waitFor(() => {
+      expect(result.current.messages.filter((msg) => msg.id === 1)).toHaveLength(1);
+      expect(result.current.messages.filter((msg) => msg.id === 0)).toHaveLength(1);
+      expect(result.current.messages).toHaveLength(201);
+    });
   });
 
   it('aborts stale older-page requests on conversation switch without toasting', async () => {
@@ -571,9 +573,11 @@ describe('useConversationMessages forward pagination', () => {
       await result.current.fetchNewerMessages();
     });
 
-    expect(result.current.messages).toHaveLength(4);
-    // Less than page size → no more newer messages
-    expect(result.current.hasNewerMessages).toBe(false);
+    await waitFor(() => {
+      expect(result.current.messages).toHaveLength(4);
+      // Less than page size → no more newer messages
+      expect(result.current.hasNewerMessages).toBe(false);
+    });
   });
 
   it('fetchNewerMessages deduplicates against seen messages', async () => {
@@ -632,8 +636,10 @@ describe('useConversationMessages forward pagination', () => {
     });
 
     // Should not have a duplicate
-    const dupes = result.current.messages.filter((m) => m.text === 'duplicate-content');
-    expect(dupes).toHaveLength(1);
+    await waitFor(() => {
+      const dupes = result.current.messages.filter((m) => m.text === 'duplicate-content');
+      expect(dupes).toHaveLength(1);
+    });
   });
 
   it('defers reconnect reconcile until forward pagination reaches the live tail', async () => {
@@ -687,13 +693,22 @@ describe('useConversationMessages forward pagination', () => {
           received_at: 1700000001,
           acked: 3,
         }),
+      ])
+      .mockResolvedValueOnce([
+        createMessage({
+          id: 1,
+          conversation_key: 'ch1',
+          text: 'older-context',
+          sender_timestamp: 1700000000,
+          received_at: 1700000000,
+        }),
       ]);
 
     await act(async () => {
       await result.current.fetchNewerMessages();
     });
 
-    await waitFor(() => expect(mockGetMessages).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(mockGetMessages).toHaveBeenCalledTimes(3));
     await waitFor(() =>
       expect(result.current.messages.find((message) => message.id === 2)?.acked).toBe(3)
     );
@@ -744,10 +759,13 @@ describe('useConversationMessages forward pagination', () => {
       result.current.jumpToBottom();
     });
 
-    await waitFor(() => expect(result.current.messagesLoading).toBe(false));
-    expect(result.current.hasNewerMessages).toBe(false);
-    expect(result.current.messages).toHaveLength(1);
-    expect(result.current.messages[0].text).toBe('latest-msg');
+    await waitFor(() => expect(mockGetMessages).toHaveBeenCalledTimes(1));
+    await waitFor(() => {
+      expect(result.current.messagesLoading).toBe(false);
+      expect(result.current.hasNewerMessages).toBe(false);
+      expect(result.current.messages).toHaveLength(1);
+      expect(result.current.messages[0].text).toBe('latest-msg');
+    });
   });
 
   it('jumpToBottom clears deferred reconnect reconcile without an extra reconcile fetch', async () => {
@@ -793,10 +811,12 @@ describe('useConversationMessages forward pagination', () => {
       result.current.jumpToBottom();
     });
 
-    await waitFor(() => expect(result.current.messagesLoading).toBe(false));
     await waitFor(() => expect(mockGetMessages).toHaveBeenCalledTimes(1));
-    expect(result.current.messages[0].text).toBe('latest-msg');
-    expect(result.current.hasNewerMessages).toBe(false);
+    await waitFor(() => {
+      expect(result.current.messagesLoading).toBe(false);
+      expect(result.current.messages[0].text).toBe('latest-msg');
+      expect(result.current.hasNewerMessages).toBe(false);
+    });
   });
 
   it('aborts stale newer-page requests on conversation switch without toasting', async () => {
