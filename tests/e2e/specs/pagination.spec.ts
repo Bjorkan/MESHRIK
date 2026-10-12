@@ -14,8 +14,8 @@ test.describe('Message pagination ordering/dedup', () => {
       includePaths: true,
     });
 
-    // Directly open the channel via URL hash to avoid sidebar filtering
-    await page.goto(`/#channel/${seeded.key}/${CHANNEL_NAME.replace('#', '')}`);
+    // Directly open the canonical channel pathname to avoid sidebar filtering
+    await page.goto(`/channel/${seeded.key}`);
     await expect(page.getByPlaceholder(/message/i)).toBeVisible({ timeout: 15_000 });
 
     // Latest message should be visible

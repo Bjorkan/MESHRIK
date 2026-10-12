@@ -99,15 +99,56 @@ describe('application router', () => {
   });
 
   it('uses router history between entity routes', async () => {
-    const router = createAppRouter(
-      createMemoryHistory({ initialEntries: ['/channel/channel-a'] })
-    );
+    const router = createAppRouter(createMemoryHistory({ initialEntries: ['/channel/channel-a'] }));
     await router.load();
     await router.navigate({ to: '/contact/$publicKey', params: { publicKey: 'contact-b' } });
 
     router.history.back();
     await router.load();
     expect(router.state.location.pathname).toBe('/channel/channel-a');
+
+    router.history.forward();
+    await router.load();
+    expect(router.state.location.pathname).toBe('/contact/contact-b');
+  });
+
+  it('preserves validated map focus on a direct route load', async () => {
+    const router = createAppRouter(
+      createMemoryHistory({ initialEntries: ['/map?focus=contact-key'] })
+    );
+
+    await router.load();
+
+    expect(router.state.location.pathname).toBe('/map');
+    expect(router.state.location.search).toEqual({ focus: 'contact-key' });
+  });
+
+  it('uses native multi-step history across entity, settings, and tool routes', async () => {
+    const router = createAppRouter(createMemoryHistory({ initialEntries: ['/channel/channel-a'] }));
+    await router.load();
+    await router.navigate({ to: '/settings/local' });
+    await router.navigate({ to: '/raw' });
+    await router.navigate({ to: '/contact/$publicKey', params: { publicKey: 'contact-b' } });
+
+    router.history.back();
+    await router.load();
+    expect(router.state.location.pathname).toBe('/raw');
+
+    router.history.back();
+    await router.load();
+    expect(router.state.location.pathname).toBe('/settings/local');
+
+    router.history.back();
+    await router.load();
+    expect(router.state.location.pathname).toBe('/channel/channel-a');
+
+    router.history.forward();
+    await router.load();
+    expect(router.state.location.pathname).toBe('/settings/local');
+
+    router.history.forward();
+    await router.load();
+    expect(router.state.location.pathname).toBe('/raw');
 
     router.history.forward();
     await router.load();

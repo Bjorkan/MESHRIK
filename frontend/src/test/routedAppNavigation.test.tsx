@@ -7,10 +7,7 @@ import type { Conversation } from '../types';
 import type { SettingsSection } from '../components/settings/settingsConstants';
 
 interface RoutedAppTestProps {
-  onNavigateConversation?: (
-    conversation: Conversation,
-    options?: { replace?: boolean }
-  ) => void;
+  onNavigateConversation?: (conversation: Conversation, options?: { replace?: boolean }) => void;
   onNavigateSettings?: (section: SettingsSection) => void;
   onCloseSettingsRoute?: () => void;
 }

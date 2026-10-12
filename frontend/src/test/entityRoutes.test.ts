@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  getEntityPath,
-  getEntityRoute,
-  resolveEntityConversation,
-} from '../routing/entityRoutes';
+import { getEntityPath, getEntityRoute, resolveEntityConversation } from '../routing/entityRoutes';
 import type { Channel, Contact } from '../types';
 
 const channel: Channel = {
@@ -67,7 +63,11 @@ describe('entity pathname routing', () => {
     ).toMatchObject({ type: 'contact', id: contact.public_key, name: 'Alice' });
     expect(resolveEntityConversation({ type: 'contact', id: 'Alice' }, [], [contact])).toBeNull();
     expect(
-      resolveEntityConversation({ type: 'contact', id: contact.public_key.slice(0, 12) }, [], [contact])
+      resolveEntityConversation(
+        { type: 'contact', id: contact.public_key.slice(0, 12) },
+        [],
+        [contact]
+      )
     ).toBeNull();
   });
 

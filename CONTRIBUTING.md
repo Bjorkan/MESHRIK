@@ -149,6 +149,7 @@ E2E tests exercise the full stack (backend + frontend + real radio hardware) via
 ```bash
 cd tests/e2e
 npm install
+npm run typecheck             # hardware-free TypeScript validation
 npx playwright install chromium  # first time only
 npx playwright test              # headless
 npx playwright test --headed     # watch it run

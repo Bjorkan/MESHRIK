@@ -29,7 +29,7 @@ test.describe('Reopen last conversation (device-local)', () => {
   test('reopens last viewed conversation on startup when enabled', async ({ page }) => {
     await page.goto('/');
     await expect(page.getByRole('status', { name: 'Radio OK' })).toBeVisible();
-    await expect.poll(() => new URL(page.url()).hash).toBe('');
+    await expect.poll(() => new URL(page.url()).pathname).toBe('/');
 
     await page.getByText(channelName, { exact: true }).first().click();
     await expect(
@@ -41,12 +41,12 @@ test.describe('Reopen last conversation (device-local)', () => {
     await page.getByLabel('Reopen Last Conversation').check();
     await page.getByRole('button', { name: 'Back to Chat' }).click();
 
-    // Fresh launch path without hash should restore the saved conversation.
+    // A fresh root launch should replace to the saved canonical route.
     await page.goto('/');
     await expect(
       page.getByPlaceholder(new RegExp(`message\\s+${escapeRegex(channelName)}`, 'i'))
     ).toBeVisible();
-    await expect.poll(() => new URL(page.url()).hash).toBe('');
+    await expect.poll(() => new URL(page.url()).pathname).toBe(`/channel/${channelKey}`);
   });
 
   test('clears local storage and falls back to default when disabled', async ({ page }) => {
@@ -78,6 +78,6 @@ test.describe('Reopen last conversation (device-local)', () => {
     await page.getByRole('button', { name: 'Back to Chat' }).click();
     await page.goto('/');
     await expect(page.getByPlaceholder(/message\s+Public/i)).toBeVisible();
-    await expect.poll(() => new URL(page.url()).hash).toBe('');
+    await expect.poll(() => new URL(page.url()).pathname).toBe('/');
   });
 });

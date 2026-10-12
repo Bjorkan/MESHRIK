@@ -229,14 +229,7 @@ export function Sidebar({
 
   const isActive = (
     type:
-      | 'contact'
-      | 'channel'
-      | 'raw'
-      | 'map'
-      | 'visualizer'
-      | 'search'
-      | 'trace'
-      | 'radio-activity',
+      'contact' | 'channel' | 'raw' | 'map' | 'visualizer' | 'search' | 'trace' | 'radio-activity',
     id: string
   ) => activeConversation?.type === type && activeConversation?.id === id;
 

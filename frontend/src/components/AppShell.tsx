@@ -281,11 +281,11 @@ export function AppShell({
           </SheetContent>
         </Sheet>
 
-      <main
-        id="main-content"
-        tabIndex={-1}
-        className="flex-1 flex flex-col bg-background min-w-0"
-      >
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="flex-1 flex flex-col bg-background min-w-0"
+        >
           <div
             className={cn(
               'flex-1 flex flex-col min-h-0',

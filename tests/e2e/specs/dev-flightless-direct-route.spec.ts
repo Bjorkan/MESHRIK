@@ -50,7 +50,7 @@ test.describe('Partner-radio direct-route learning via DM ACK', () => {
       )
       .toBe(-1);
 
-    await page.goto('/#settings/radio');
+    await page.goto('/settings/radio');
     await expect(page.getByRole('status', { name: 'Radio OK' })).toBeVisible();
 
     const zeroHopButton = page.getByRole('button', { name: 'Send Zero-Hop Advertisement' });
@@ -80,7 +80,7 @@ test.describe('Partner-radio direct-route learning via DM ACK', () => {
         timeout: 15_000,
         message: 'Waiting for partner contact conversation route to load',
       })
-      .toContain(`#contact/${encodeURIComponent(E2E_PARTNER_RADIO_PUBKEY)}`);
+      .toContain(`/contact/${encodeURIComponent(E2E_PARTNER_RADIO_PUBKEY)}`);
     await expect(
       page.getByPlaceholder(new RegExp(`message\\s+${escapeRegex(E2E_PARTNER_RADIO_NAME)}`, 'i'))
     ).toBeVisible({ timeout: 15_000 });

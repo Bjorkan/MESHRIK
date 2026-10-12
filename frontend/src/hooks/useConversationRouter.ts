@@ -28,10 +28,7 @@ interface UseConversationRouterArgs {
   routeConversation?: Conversation | null;
   routeEntity?: EntityRoute | null;
   routeIsRoot?: boolean;
-  onNavigateConversation?: (
-    conversation: Conversation,
-    options?: { replace?: boolean }
-  ) => void;
+  onNavigateConversation?: (conversation: Conversation, options?: { replace?: boolean }) => void;
 }
 
 export function useConversationRouter({
@@ -51,7 +48,9 @@ export function useConversationRouter({
     routeConversation ?? null
   );
   const routeOwnsConversation = Boolean(routeConversation || routeEntity);
-  const activeConversation = routeOwnsConversation ? routeConversation ?? null : storedConversation;
+  const activeConversation = routeOwnsConversation
+    ? (routeConversation ?? null)
+    : storedConversation;
   const activeConversationRef = useRef<Conversation | null>(activeConversation);
   const previousRouteIsRootRef = useRef(routeIsRoot);
 

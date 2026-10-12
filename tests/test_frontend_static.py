@@ -41,6 +41,11 @@ def test_missing_index_skips_frontend_routes(tmp_path):
 
 def test_valid_dist_serves_static_and_spa_fallback(tmp_path):
     app = FastAPI()
+
+    @app.get("/api/health")
+    async def health():
+        return {"status": "ok"}
+
     dist_dir = tmp_path / "frontend" / "dist"
     assets_dir = dist_dir / "assets"
     dist_dir.mkdir(parents=True)
@@ -86,10 +91,33 @@ def test_valid_dist_serves_static_and_spa_fallback(tmp_path):
         assert "index page" in explicit_index_response.text
         assert explicit_index_response.headers["cache-control"] == INDEX_CACHE_CONTROL
 
-        missing_response = client.get("/channel/some-route")
-        assert missing_response.status_code == 200
-        assert "index page" in missing_response.text
-        assert missing_response.headers["cache-control"] == INDEX_CACHE_CONTROL
+        frontend_routes = [
+            "/channel/known-channel",
+            "/contact/known-contact",
+            "/raw",
+            "/map",
+            "/map?focus=known-contact",
+            "/visualizer",
+            "/search",
+            "/trace",
+            "/radio-activity",
+            "/settings/radio",
+            "/settings/local",
+            "/settings/radio-app",
+            "/settings/fanout",
+            "/settings/database",
+            "/settings/statistics",
+            "/settings/about",
+        ]
+        for frontend_route in frontend_routes:
+            route_response = client.get(frontend_route)
+            assert route_response.status_code == 200, frontend_route
+            assert "index page" in route_response.text, frontend_route
+            assert route_response.headers["cache-control"] == INDEX_CACHE_CONTROL
+
+        health_response = client.get("/api/health")
+        assert health_response.status_code == 200
+        assert health_response.json() == {"status": "ok"}
 
         missing_api_response = client.get("/api/not-a-real-endpoint")
         assert missing_api_response.status_code == 404
@@ -100,6 +128,14 @@ def test_valid_dist_serves_static_and_spa_fallback(tmp_path):
                 "versa. A full update is suggested."
             )
         }
+
+        docs_response = client.get("/docs")
+        assert docs_response.status_code == 200
+        assert "swagger-ui" in docs_response.text.lower()
+
+        openapi_response = client.get("/openapi.json")
+        assert openapi_response.status_code == 200
+        assert openapi_response.json()["openapi"].startswith("3.")
 
         asset_response = client.get("/assets/app.js")
         assert asset_response.status_code == 200

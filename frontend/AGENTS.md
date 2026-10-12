@@ -63,7 +63,7 @@ frontend/src/
 │   ├── useRepeaterDashboard.ts      # Repeater dashboard state (login, panes, console, retries)
 │   ├── useRadioControl.ts          # Radio health/config state, reconnection, mesh discovery sweeps
 │   ├── useAppSettings.ts           # Settings, favorites, preferences migration
-│   ├── useConversationRouter.ts    # URL hash → active conversation routing
+│   ├── useConversationRouter.ts    # Route-aware active/default conversation state
 │   ├── useContactsAndChannels.ts   # Contact/channel loading, creation, deletion
 │   ├── useBrowserNotifications.ts  # Per-conversation browser notification preferences + dispatch
 │   ├── usePushSubscription.ts      # Web Push subscription lifecycle, per-conversation filters
@@ -81,7 +81,6 @@ frontend/src/
 │   │   └── shared.ts                # Graph node/link types and shared rendering helpers
 │   └── ...
 ├── utils/
-│   ├── urlHash.ts              # Hash parsing and encoding
 │   ├── conversationState.ts    # State keys, in-memory + localStorage helpers
 │   ├── messageParser.ts        # Message text → rendered segments
 │   ├── pathUtils.ts            # Distance/validation helpers for paths + map
@@ -102,7 +101,7 @@ frontend/src/
 │   ├── contactMerge.ts            # Merge WS contact updates into list
 │   ├── localLabel.ts              # Local label (text + color) in localStorage
 │   ├── radioPresets.ts            # LoRa radio preset configurations
-│   ├── publicChannel.ts           # Public-channel resolution helpers for routing/hash defaults
+│   ├── publicChannel.ts           # Public-channel resolution helpers for route defaults
 │   ├── fontScale.ts               # Browser-local relative font scale persistence/application
 │   ├── theme.ts                   # Theme switching helpers
 │   ├── autoFocusInput.ts          # Auto-focus input helper
@@ -209,7 +208,8 @@ frontend/src/
     ├── statusBar.test.tsx
     ├── tracePane.test.tsx
     ├── unreadCounts.test.ts
-    ├── urlHash.test.ts
+    ├── router.test.tsx
+    ├── entityRoutes.test.ts
     ├── appSearchJump.test.tsx
     ├── channelInfoKeyVisibility.test.tsx
     ├── chatHeaderKeyVisibility.test.tsx
@@ -252,7 +252,7 @@ High-level state is delegated to hooks:
 - `useRadioControl`: radio health/config state, reconnect/reboot polling
 - `useAppSettings`: settings CRUD, favorites, preferences migration
 - `useContactsAndChannels`: contact/channel lists, creation, deletion
-- `useConversationRouter`: URL hash → active conversation routing
+- `useConversationRouter`: route-aware active conversation, root default, and reopen-last behavior
 - `useConversationNavigation`: search target, conversation selection reset, and info-pane state
 - `useConversationActions`: send/resend/trace/path-discovery/block handlers and channel override updates
 - `useConversationMessages`: conversation switch loading, embedded conversation-scoped cache, jump-target loading, pagination, dedup/update helpers, reconnect reconciliation, and pending ACK buffering
@@ -350,24 +350,15 @@ jsdom has no layout engine, so none of this is observable from the vitest suite 
 - Event handlers: `health`, `message`, `contact`, `contact_resolved`, `channel`, `raw_packet`, `message_acked`, `contact_deleted`, `channel_deleted`, `error`, `success`, `pong` (ignored).
 - For `raw_packet` events, use `observation_id` as event identity; `id` is a storage reference and may repeat.
 
-## URL Hash Navigation (`utils/urlHash.ts`)
+## Pathname Navigation
 
-Supported routes:
-- `#raw`
-- `#map`
-- `#map/focus/{pubkey_or_prefix}`
-- `#visualizer`
-- `#search`
-- `#trace`
-- `#settings/{section}`
-- `#channel/{channelKey}`
-- `#channel/{channelKey}/{label}`
-- `#contact/{publicKey}`
-- `#contact/{publicKey}/{label}`
+TanStack Router owns application navigation. Canonical routes are:
 
-Where `{section}` is one of `radio`, `local`, `radio-app`, `database`, `fanout`, `statistics`, or `about`.
+- tools: `/raw`, `/map`, `/map?focus={publicKey}`, `/visualizer`, `/search`, `/trace`, `/radio-activity`
+- settings: `/settings/{section}`, where `{section}` is `radio`, `local`, `radio-app`, `fanout`, `database`, `statistics`, or `about`
+- entities: `/channel/{channelKey}` and `/contact/{publicKey}`
 
-Legacy name-based channel/contact hashes are still accepted for compatibility.
+Entity routes use stable IDs only; display names are presentation data and never part of route identity. Internal React navigation uses typed `Link`/`navigate` calls. Notification and other non-React entry points emit the same root-relative pathnames. Root `/` is the supported deployment base; old application hash routes are intentionally unsupported.
 
 ## Conversation State Keys (`utils/conversationState.ts`)
 
@@ -576,10 +567,10 @@ This is intentional. In the sidebar, unread direct messages for actual contact c
 ## Editing Checklist
 
 1. If API/WS payloads change, update `types.ts`, handlers, and tests.
-2. If URL/hash behavior changes, update `utils/urlHash.ts` tests.
+2. If route behavior changes, update router, direct-load, history, and SPA-fallback tests.
 3. If read/unread semantics change, update `useUnreadCounts` tests.
 4. Keep this file concise; prefer source links over speculative detail.
 
 ## Radio Activity dashboard (#45)
 
-`#radio-activity` opens `RadioActivityPage` through the existing sidebar/conversation navigation. `useRadioJobFeed` in `App.tsx` merges typed `radio_job` and `radio_activity` deltas into Query snapshots; the *existing* `useWebSocket` connection owns reconnects and refetches those snapshots. `useRadioActivity` owns cursor-paginated history and non-retried cancellation. The command-slot label is **not** physical TX/RX; firmware RF activity is marked unavailable. Queued cancellation prevents dispatch, whereas post-send **Stop waiting** only stops RF response tracking. Until #42–#44 migrate producers, legacy direct radio commands are not visible as scheduler jobs.
+`/radio-activity` opens `RadioActivityPage` through the existing sidebar/conversation navigation. `useRadioJobFeed` in `App.tsx` merges typed `radio_job` and `radio_activity` deltas into Query snapshots; the *existing* `useWebSocket` connection owns reconnects and refetches those snapshots. `useRadioActivity` owns cursor-paginated history and non-retried cancellation. The command-slot label is **not** physical TX/RX; firmware RF activity is marked unavailable. Queued cancellation prevents dispatch, whereas post-send **Stop waiting** only stops RF response tracking. Until #42–#44 migrate producers, legacy direct radio commands are not visible as scheduler jobs.

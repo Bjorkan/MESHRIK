@@ -35,10 +35,7 @@ import { queryKeys } from './queryClient';
 import { primePrefetchCache } from './prefetch';
 import { useRadioJobFeed } from './hooks/useRadioJobFeed';
 import type { SettingsSection } from './components/settings/settingsConstants';
-import {
-  resolveEntityConversation,
-  type EntityRoute,
-} from './routing/entityRoutes';
+import { resolveEntityConversation, type EntityRoute } from './routing/entityRoutes';
 
 interface ChannelUnreadMarker {
   channelId: string;
@@ -84,10 +81,7 @@ interface AppProps {
   routeConversation?: Conversation | null;
   routeEntity?: EntityRoute | null;
   routeIsRoot?: boolean;
-  onNavigateConversation?: (
-    conversation: Conversation,
-    options?: { replace?: boolean }
-  ) => void;
+  onNavigateConversation?: (conversation: Conversation, options?: { replace?: boolean }) => void;
   routeSettingsSection?: SettingsSection | null;
   onNavigateSettings?: (section: SettingsSection) => void;
   onCloseSettingsRoute?: () => void;

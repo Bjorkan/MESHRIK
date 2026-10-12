@@ -2,7 +2,7 @@ import { test, expect, nudgeEchoBot } from '../helpers/meshTrafficTest';
 
 test.describe('Packet Feed page', () => {
   test('packet feed page loads and shows header', async ({ page }) => {
-    await page.goto('/#raw');
+    await page.goto('/raw');
 
     await expect(page.getByText('Raw Packet Feed')).toBeVisible({ timeout: 10_000 });
   });
@@ -14,7 +14,7 @@ test.describe('Packet Feed page', () => {
     // Nudge echo bot on #flightless — may generate a packet quickly
     await nudgeEchoBot();
 
-    await page.goto('/#raw');
+    await page.goto('/raw');
     await expect(page.getByText('Raw Packet Feed')).toBeVisible({ timeout: 10_000 });
 
     // Wait for any route-type badge to appear, confirming a packet rendered

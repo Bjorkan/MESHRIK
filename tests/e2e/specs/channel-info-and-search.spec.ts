@@ -34,7 +34,7 @@ test.describe('Channel info pane', () => {
   });
 
   test('opens channel info pane and shows message activity', async ({ page }) => {
-    await page.goto(`/#channel/${channelKey}/flightless`);
+    await page.goto(`/channel/${channelKey}`);
     await expect(page.getByRole('status', { name: 'Radio OK' })).toBeVisible();
 
     // Wait for messages to load. Assert on the newest seeded message, not the

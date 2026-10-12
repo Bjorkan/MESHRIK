@@ -1,8 +1,4 @@
-import {
-  createBrowserHistory,
-  createRouter,
-  type RouterHistory,
-} from '@tanstack/react-router';
+import { createBrowserHistory, createRouter, type RouterHistory } from '@tanstack/react-router';
 
 import { routeTree } from './routeTree.gen';
 

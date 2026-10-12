@@ -278,10 +278,7 @@ export interface BulkCreateHashtagChannelsResult {
 export type PathHashWidthStats = ApiSchemas['PathHashWidthStats'];
 
 type ChannelDetailDefaults =
-  | 'message_counts'
-  | 'first_message_at'
-  | 'top_senders_24h'
-  | 'path_hash_width_24h';
+  'message_counts' | 'first_message_at' | 'top_senders_24h' | 'path_hash_width_24h';
 
 export type ChannelDetail = Omit<
   RequireFields<ApiSchemas['ChannelDetail'], ChannelDetailDefaults>,
@@ -296,11 +293,7 @@ export type ChannelDetail = Omit<
 export type MessagePath = ApiSchemas['MessagePath'];
 
 type MessageViewRequiredFields =
-  | 'sender_timestamp'
-  | 'paths'
-  | 'signature'
-  | 'sender_key'
-  | 'sender_name';
+  'sender_timestamp' | 'paths' | 'signature' | 'sender_key' | 'sender_name';
 
 /** REST message contract refined for known message kinds and legacy WebSocket payloads. */
 export type Message = Omit<
@@ -323,14 +316,7 @@ export type ResendChannelMessageResponse = Omit<
 };
 
 type ConversationType =
-  | 'contact'
-  | 'channel'
-  | 'raw'
-  | 'map'
-  | 'visualizer'
-  | 'search'
-  | 'trace'
-  | 'radio-activity';
+  'contact' | 'channel' | 'raw' | 'map' | 'visualizer' | 'search' | 'trace' | 'radio-activity';
 
 export interface Conversation {
   type: ConversationType;

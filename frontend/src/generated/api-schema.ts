@@ -3446,8 +3446,7 @@ export interface components {
       kind: components['schemas']['RadioActivityKind'];
       /** Packet Type */
       packet_type?:
-        | ('channel' | 'direct' | 'advertisement' | 'ack' | 'path' | 'control' | 'other')
-        | null;
+        ('channel' | 'direct' | 'advertisement' | 'ack' | 'path' | 'control' | 'other') | null;
       /** Radio Generation */
       radio_generation: number;
       /** Rssi */

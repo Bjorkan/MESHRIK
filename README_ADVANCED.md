@@ -66,14 +66,17 @@ Setting `MESHCORE_LOAD_WITH_AUTOEVICT=true` enables an alternative contact loadi
 
 **Trade-off:** Contacts loaded by the app are not marked as radio-side favorites, so they are eviction candidates if the radio receives a new advertisement while full. In practice, freshly-loaded contacts have a recent `lastmod` timestamp and will be among the last to be evicted. If you disconnect the radio from MESHRIK and use it standalone, your contacts will not be protected from eviction by newer advertisements.
 
-## Sub-Path Reverse Proxy
+## Routes and Reverse Proxies
 
-MESHRIK works behind a reverse proxy that serves it under a sub-path (e.g. `/meshcore/` or Home Assistant ingress). All frontend asset and API paths are relative, so they resolve correctly under any prefix.
+MESHRIK supports deployment at the origin root (`https://mesh.example.com/`). A reverse proxy must expose the application, `/api/*`, `/api/ws`, `/sw.js`, the web manifest, and built assets at that root. Hosting MESHRIK below a path prefix such as `/meshcore/` or Home Assistant ingress is not currently supported; future base-path support is tracked in [GitHub issue #72](https://github.com/Bjorkan/MESHRIK/issues/72).
 
-**Requirements:**
+Canonical deep links use pathnames:
 
-- The proxy must ensure the sub-path URL has a **trailing slash**. If a user visits `/meshcore` (no slash), relative paths break. Most proxies handle this automatically; for Nginx, a `location /meshcore/ { ... }` block (note the trailing slash) does the right thing.
-- For correct PWA install behavior, the proxy should forward `X-Forwarded-Prefix` (set to the sub-path, e.g. `/meshcore`) so the web manifest generates correct `start_url` and `scope` values. `X-Forwarded-Proto` and `X-Forwarded-Host` are also respected for origin resolution.
+- `/channel/<channel-key>` and `/contact/<public-key>`
+- `/raw`, `/map?focus=<public-key>`, `/visualizer`, `/search`, `/trace`, and `/radio-activity`
+- `/settings/radio`, `/settings/local`, `/settings/radio-app`, `/settings/fanout`, `/settings/database`, `/settings/statistics`, and `/settings/about`
+
+The backend serves the SPA entry document for these paths, so direct loads and browser refreshes work when the proxy forwards unknown frontend paths to MESHRIK. Old `#channel/...`, `#contact/...`, and other hash-route bookmarks are intentionally unsupported and must be replaced with canonical pathname links.
 
 ## HTTPS
 

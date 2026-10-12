@@ -15,9 +15,7 @@ export function NotFoundPage() {
       <div className="max-w-md text-center space-y-3">
         <p className="text-sm font-medium text-muted-foreground">404</p>
         <h1 className="text-2xl font-semibold">Page not found</h1>
-        <p className="text-sm text-muted-foreground">
-          The requested MESHRIK page does not exist.
-        </p>
+        <p className="text-sm text-muted-foreground">The requested MESHRIK page does not exist.</p>
         <Link to="/" className="inline-flex text-sm text-primary hover:underline">
           Return to MESHRIK
         </Link>

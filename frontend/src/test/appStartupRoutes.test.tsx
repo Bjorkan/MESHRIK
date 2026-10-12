@@ -142,6 +142,7 @@ import {
   LAST_VIEWED_CONVERSATION_KEY,
   REOPEN_LAST_CONVERSATION_KEY,
 } from '../utils/lastViewedConversation';
+import { renderWithRouter } from './renderWithRouter';
 
 const publicChannel = {
   key: '8B3387E9C5CDEA6AC9E5EDBAA115CD72',
@@ -286,6 +287,46 @@ describe('App startup route resolution', () => {
         expect(node).toHaveTextContent(`contact:${aliceContact.public_key}:Alice`);
       }
     });
+  });
+
+  it('keeps a direct contact route loading until contact data resolves', async () => {
+    let resolveContacts!: (contacts: []) => void;
+    mocks.api.getContacts.mockReturnValue(
+      new Promise<[]>((resolve) => {
+        resolveContacts = resolve;
+      })
+    );
+
+    await renderWithRouter(
+      <App routeEntity={{ type: 'contact', id: 'pending-contact' }} routeIsRoot={false} />
+    );
+
+    expect(await screen.findByText('Loading contact...')).toBeInTheDocument();
+    expect(screen.queryByText('Contact not found')).not.toBeInTheDocument();
+
+    await act(async () => resolveContacts([]));
+    expect(await screen.findByText('Contact not found')).toBeInTheDocument();
+  });
+
+  it('shows explicit not-found after channel data resolves', async () => {
+    await renderWithRouter(
+      <App routeEntity={{ type: 'channel', id: 'missing-channel' }} routeIsRoot={false} />
+    );
+
+    expect(await screen.findByText('Channel not found')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Return to MESHRIK' })).toHaveAttribute('href', '/');
+  });
+
+  it('shows a retry action when direct-route contact loading fails', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mocks.api.getContacts.mockRejectedValue(new Error('contacts unavailable'));
+
+    render(<App routeEntity={{ type: 'contact', id: 'failed-contact' }} routeIsRoot={false} />);
+
+    expect(await screen.findByText('Failed to load contact data.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    await waitFor(() => expect(mocks.api.getContacts.mock.calls.length).toBeGreaterThan(2));
+    consoleError.mockRestore();
   });
 
   it('resolves Radio Activity from route state even when channels have not loaded', async () => {
@@ -576,6 +617,5 @@ describe('App startup route resolution', () => {
     await waitFor(() => {
       expect(screen.getByTestId('settings-modal-section')).toHaveTextContent('radio');
     });
-
   });
 });
