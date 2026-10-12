@@ -1,0 +1,65 @@
+name: autofix.ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# autofix.ci uses its installed GitHub App to push fixes, including to fork PRs.
+# The workflow itself needs only read access.
+permissions:
+  contents: read
+
+jobs:
+  autofix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      # ESLint can report errors that --fix cannot correct. Other fixes should
+      # still be committed; the existing All Quality workflow checks lint.
+      - name: Autofix frontend ESLint issues
+        working-directory: frontend
+        run: npm run lint:fix
+        continue-on-error: true
+
+      - name: Format frontend with Prettier
+        working-directory: frontend
+        run: npm run format
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Install backend dependencies
+        run: uv sync --dev --frozen
+
+      - name: Autofix backend Ruff lint issues
+        run: uv run ruff check --fix-only app/ tests/
+
+      - name: Format backend with Ruff
+        run: uv run ruff format app/ tests/
+
+      # Files in .github/ are intentionally left alone: autofix.ci rejects
+      # patches containing changes to that directory.
+      - name: Apply automatic fixes
+        uses: autofix-ci/action@c5b2d67aa2274e7b5a18224e8171550871fc7e4a # v1.3.4
