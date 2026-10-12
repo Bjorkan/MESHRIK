@@ -443,12 +443,14 @@ export function useConversationMessages(
       if (active && hasNewerMessages) return { added: false, activeConversation: true };
 
       const contentKey = getMessageContentKey(withAck);
-      if (matchingQueries.some((candidate) =>
-        flattenMessages(candidate.state.data as ConversationInfiniteData).some(
-          (candidate) =>
-            candidate.id === withAck.id || getMessageContentKey(candidate) === contentKey
+      if (
+        matchingQueries.some((candidate) =>
+          flattenMessages(candidate.state.data as ConversationInfiniteData).some(
+            (candidate) =>
+              candidate.id === withAck.id || getMessageContentKey(candidate) === contentKey
+          )
         )
-      )) {
+      ) {
         return { added: false, activeConversation: active };
       }
       const targets =

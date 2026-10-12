@@ -26,11 +26,7 @@ export const queryKeys = {
   unreads: () => ['unreads'] as const,
   conversation: (type: 'contact' | 'channel', id: string) =>
     ['messages', 'conversation', type, id] as const,
-  conversationView: (
-    type: 'contact' | 'channel',
-    id: string,
-    targetMessageId: number | null
-  ) =>
+  conversationView: (type: 'contact' | 'channel', id: string, targetMessageId: number | null) =>
     [
       ...queryKeys.conversation(type, id),
       targetMessageId === null ? 'latest' : `around-${targetMessageId}`,
