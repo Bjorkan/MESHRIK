@@ -1,4 +1,11 @@
-import { useMemo, useState, useCallback, lazy, Suspense } from 'react';
+import { useMemo, lazy, Suspense } from 'react';
+import {
+  createSortedRowModel,
+  rowSortingFeature,
+  tableFeatures,
+  useTable,
+  type ColumnDef,
+} from '@tanstack/react-table';
 import { cn } from '@/lib/utils';
 import { RepeaterPane, NotFetched, formatDuration } from './repeaterPaneShared';
 import { isValidLocation, calculateDistance, formatDistance } from '../../utils/pathUtils';
@@ -15,48 +22,36 @@ const NeighborsMiniMap = lazy(() =>
   import('../NeighborsMiniMap').then((m) => ({ default: m.NeighborsMiniMap }))
 );
 
-type SortField = 'name' | 'snr' | 'distance' | 'last_heard';
-type SortDir = 'asc' | 'desc';
+type EnrichedNeighbor = NeighborInfo & { distance: string | null; distanceKm: number | null };
 
-// Direction applied when a column is first selected. Name reads naturally A→Z
-// and nearest-first/most-recent-first are the intuitive starting points; SNR
-// leads with the strongest signal to preserve the previous default ordering.
-const DEFAULT_DIR: Record<SortField, SortDir> = {
-  name: 'asc',
-  snr: 'desc',
-  distance: 'asc',
-  last_heard: 'asc',
-};
+const neighborTableFeatures = tableFeatures({
+  rowSortingFeature,
+  sortedRowModel: createSortedRowModel(),
+});
 
-function SortableHeader({
-  label,
-  field,
-  sortField,
-  sortDir,
-  onSort,
-  className,
-}: {
-  label: string;
-  field: SortField;
-  sortField: SortField;
-  sortDir: SortDir;
-  onSort: (field: SortField) => void;
-  className?: string;
-}) {
-  const active = sortField === field;
-  return (
-    <th
-      className={cn(
-        'pb-1 font-medium cursor-pointer select-none hover:text-foreground transition-colors',
-        className
-      )}
-      onClick={() => onSort(field)}
-      aria-sort={active ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
-    >
-      {label} {active ? (sortDir === 'asc' ? '▲' : '▼') : ''}
-    </th>
-  );
-}
+const neighborColumns = [
+  {
+    id: 'name',
+    header: 'Name',
+    accessorFn: (neighbor: EnrichedNeighbor) =>
+      (neighbor.name || neighbor.pubkey_prefix).toLowerCase(),
+    sortDescFirst: false,
+  },
+  { accessorKey: 'snr', header: 'SNR', sortDescFirst: true },
+  {
+    id: 'distance',
+    header: 'Dist',
+    accessorFn: (neighbor: EnrichedNeighbor) => neighbor.distanceKm ?? undefined,
+    sortDescFirst: false,
+    sortUndefined: 'last',
+  },
+  {
+    accessorKey: 'last_heard_seconds',
+    id: 'last_heard',
+    header: 'Last Heard',
+    sortDescFirst: false,
+  },
+] satisfies Array<ColumnDef<typeof neighborTableFeatures, EnrichedNeighbor>>;
 
 export function NeighborsPane({
   data,
@@ -114,21 +109,6 @@ export function NeighborsPane({
           ? 'Waiting for repeater position'
           : 'No repeater position available';
 
-  const [sortField, setSortField] = useState<SortField>('snr');
-  const [sortDir, setSortDir] = useState<SortDir>('desc');
-
-  const handleSort = useCallback(
-    (field: SortField) => {
-      if (sortField === field) {
-        setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
-      } else {
-        setSortField(field);
-        setSortDir(DEFAULT_DIR[field]);
-      }
-    },
-    [sortField]
-  );
-
   // Resolve contact data for each neighbor in a single pass — used for coords
   // (mini-map) and distances (table column + distance sort). The formatted
   // string drives display; the raw km drives numeric distance sorting.
@@ -136,15 +116,13 @@ export function NeighborsPane({
     if (!data) {
       return {
         neighborsWithCoords: [] as Array<NeighborInfo & { lat: number | null; lon: number | null }>,
-        enriched: [] as Array<
-          NeighborInfo & { distance: string | null; distanceKm: number | null }
-        >,
+        enriched: [] as EnrichedNeighbor[],
         hasDistances: false,
       };
     }
 
     const withCoords: Array<NeighborInfo & { lat: number | null; lon: number | null }> = [];
-    const list: Array<NeighborInfo & { distance: string | null; distanceKm: number | null }> = [];
+    const list: EnrichedNeighbor[] = [];
     let anyDist = false;
 
     for (const n of data.neighbors) {
@@ -176,30 +154,13 @@ export function NeighborsPane({
     };
   }, [contacts, data, distanceUnit, hasValidRepeaterGps, positionSource.lat, positionSource.lon]);
 
-  const sorted = useMemo(() => {
-    const dir = sortDir === 'asc' ? 1 : -1;
-    return [...enriched].sort((a, b) => {
-      switch (sortField) {
-        case 'name': {
-          const an = (a.name || a.pubkey_prefix).toLowerCase();
-          const bn = (b.name || b.pubkey_prefix).toLowerCase();
-          return an.localeCompare(bn) * dir;
-        }
-        case 'distance': {
-          // Neighbors without a known distance always sort last, regardless of direction.
-          if (a.distanceKm == null && b.distanceKm == null) return 0;
-          if (a.distanceKm == null) return 1;
-          if (b.distanceKm == null) return -1;
-          return (a.distanceKm - b.distanceKm) * dir;
-        }
-        case 'last_heard':
-          return (a.last_heard_seconds - b.last_heard_seconds) * dir;
-        case 'snr':
-        default:
-          return (a.snr - b.snr) * dir;
-      }
-    });
-  }, [enriched, sortField, sortDir]);
+  const table = useTable({
+    features: neighborTableFeatures,
+    columns: neighborColumns,
+    data: enriched,
+    initialState: { sorting: [{ id: 'snr', desc: true }] },
+  });
+  const rows = table.getRowModel().rows;
 
   return (
     <RepeaterPane
@@ -214,62 +175,53 @@ export function NeighborsPane({
       state={state}
       onRefresh={onRefresh}
       disabled={disabled}
-      className={sorted.length > 0 ? 'flex min-h-0 flex-col' : undefined}
-      contentClassName={sorted.length > 0 ? 'flex min-h-0 flex-col' : undefined}
+      className={rows.length > 0 ? 'flex min-h-0 flex-col' : undefined}
+      contentClassName={rows.length > 0 ? 'flex min-h-0 flex-col' : undefined}
     >
       {!data ? (
         <NotFetched />
-      ) : sorted.length === 0 ? (
+      ) : rows.length === 0 ? (
         <p className="text-sm text-muted-foreground">No neighbors reported</p>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col gap-2">
           <div className="shrink-0 overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-muted-foreground text-xs">
-                  <SortableHeader
-                    label="Name"
-                    field="name"
-                    sortField={sortField}
-                    sortDir={sortDir}
-                    onSort={handleSort}
-                  />
-                  <SortableHeader
-                    label="SNR"
-                    field="snr"
-                    sortField={sortField}
-                    sortDir={sortDir}
-                    onSort={handleSort}
-                    className="text-right"
-                  />
-                  {hasDistances && (
-                    <SortableHeader
-                      label="Dist"
-                      field="distance"
-                      sortField={sortField}
-                      sortDir={sortDir}
-                      onSort={handleSort}
-                      className="text-right"
-                    />
-                  )}
-                  <SortableHeader
-                    label="Last Heard"
-                    field="last_heard"
-                    sortField={sortField}
-                    sortDir={sortDir}
-                    onSort={handleSort}
-                    className="text-right"
-                  />
-                </tr>
+                {table.getHeaderGroups().map((group) => (
+                  <tr key={group.id} className="text-left text-muted-foreground text-xs">
+                    {group.headers
+                      .filter((header) => hasDistances || header.id !== 'distance')
+                      .map((header) => {
+                        const sorted = header.column.getIsSorted();
+                        return (
+                          <th
+                            key={header.id}
+                            className={cn(
+                              'pb-1 font-medium cursor-pointer select-none hover:text-foreground transition-colors',
+                              header.id !== 'name' && 'text-right'
+                            )}
+                            onClick={header.column.getToggleSortingHandler()}
+                            aria-sort={
+                              sorted ? (sorted === 'asc' ? 'ascending' : 'descending') : 'none'
+                            }
+                          >
+                            <table.FlexRender header={header} />{' '}
+                            {sorted ? (sorted === 'asc' ? '▲' : '▼') : ''}
+                          </th>
+                        );
+                      })}
+                  </tr>
+                ))}
               </thead>
               <tbody>
-                {sorted.map((n, i) => {
+                {rows.map((row) => {
+                  const n = row.original;
                   const dist = n.distance;
                   const snrStr = n.snr >= 0 ? `+${n.snr.toFixed(1)}` : n.snr.toFixed(1);
                   const snrColor =
                     n.snr >= 6 ? 'text-success' : n.snr >= 0 ? 'text-warning' : 'text-destructive';
                   return (
-                    <tr key={i} className="border-t border-border/50">
+                    <tr key={row.id} className="border-t border-border/50">
                       <td className="py-1">
                         {n.name || n.pubkey_prefix}
                         {n.name && (

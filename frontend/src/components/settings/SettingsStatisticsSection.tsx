@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { tableFeatures, useTable, type ColumnDef } from '@tanstack/react-table';
 import {
   BarChart,
   Bar,
@@ -15,6 +16,21 @@ import { Separator } from '../ui/separator';
 import { api } from '../../api';
 import type { RegionScopeStats, StatisticsResponse } from '../../types';
 import { formatLocaleNumber } from '@/utils/localeNumber';
+
+interface ActivityRow {
+  label: string;
+  lastHour: number;
+  last24Hours: number;
+  lastWeek: number;
+}
+
+const activityTableFeatures = tableFeatures({});
+const activityColumns = [
+  { accessorKey: 'label', header: '' },
+  { accessorKey: 'lastHour', header: '1h' },
+  { accessorKey: 'last24Hours', header: '24h' },
+  { accessorKey: 'lastWeek', header: '7d' },
+] satisfies Array<ColumnDef<typeof activityTableFeatures, ActivityRow>>;
 
 function formatPercent(value: number): string {
   return `${value.toFixed(1)}%`;
@@ -258,6 +274,37 @@ export function SettingsStatisticsSection({ className }: { className?: string })
   const [stats, setStats] = useState<StatisticsResponse | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
   const [statsError, setStatsError] = useState(false);
+  const activityRows = useMemo<ActivityRow[]>(
+    () =>
+      stats
+        ? [
+            {
+              label: 'Contacts heard',
+              lastHour: stats.contacts_heard.last_hour,
+              last24Hours: stats.contacts_heard.last_24_hours,
+              lastWeek: stats.contacts_heard.last_week,
+            },
+            {
+              label: 'Repeaters heard',
+              lastHour: stats.repeaters_heard.last_hour,
+              last24Hours: stats.repeaters_heard.last_24_hours,
+              lastWeek: stats.repeaters_heard.last_week,
+            },
+            {
+              label: 'Known-channels active',
+              lastHour: stats.known_channels_active.last_hour,
+              last24Hours: stats.known_channels_active.last_24_hours,
+              lastWeek: stats.known_channels_active.last_week,
+            },
+          ]
+        : [],
+    [stats]
+  );
+  const activityTable = useTable({
+    features: activityTableFeatures,
+    columns: activityColumns,
+    data: activityRows,
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -337,32 +384,32 @@ export function SettingsStatisticsSection({ className }: { className?: string })
             <h3 className="text-base font-semibold tracking-tight mb-2">Activity</h3>
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-muted-foreground">
-                  <th className="text-left font-normal pb-1"></th>
-                  <th className="text-right font-normal pb-1">1h</th>
-                  <th className="text-right font-normal pb-1">24h</th>
-                  <th className="text-right font-normal pb-1">7d</th>
-                </tr>
+                {activityTable.getHeaderGroups().map((group) => (
+                  <tr key={group.id} className="text-muted-foreground">
+                    {group.headers.map((header) => (
+                      <th
+                        key={header.id}
+                        className={`${header.id === 'label' ? 'text-left' : 'text-right'} font-normal pb-1`}
+                      >
+                        <activityTable.FlexRender header={header} />
+                      </th>
+                    ))}
+                  </tr>
+                ))}
               </thead>
               <tbody>
-                <tr>
-                  <td className="py-1">Contacts heard</td>
-                  <td className="text-right py-1">{stats.contacts_heard.last_hour}</td>
-                  <td className="text-right py-1">{stats.contacts_heard.last_24_hours}</td>
-                  <td className="text-right py-1">{stats.contacts_heard.last_week}</td>
-                </tr>
-                <tr>
-                  <td className="py-1">Repeaters heard</td>
-                  <td className="text-right py-1">{stats.repeaters_heard.last_hour}</td>
-                  <td className="text-right py-1">{stats.repeaters_heard.last_24_hours}</td>
-                  <td className="text-right py-1">{stats.repeaters_heard.last_week}</td>
-                </tr>
-                <tr>
-                  <td className="py-1">Known-channels active</td>
-                  <td className="text-right py-1">{stats.known_channels_active.last_hour}</td>
-                  <td className="text-right py-1">{stats.known_channels_active.last_24_hours}</td>
-                  <td className="text-right py-1">{stats.known_channels_active.last_week}</td>
-                </tr>
+                {activityTable.getRowModel().rows.map((row) => (
+                  <tr key={row.id}>
+                    {row.getAllCells().map((cell) => (
+                      <td
+                        key={cell.id}
+                        className={`${cell.column.id === 'label' ? '' : 'text-right'} py-1`}
+                      >
+                        <activityTable.FlexRender cell={cell} />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>

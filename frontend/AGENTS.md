@@ -46,6 +46,9 @@ Keep it aligned with `frontend/src` source code.
 - TanStack Store owns the high-frequency raw-packet buffer and its session statistics.
   Producers update one immutable store state; packet consumers subscribe through narrow
   selectors so an RF observation does not re-render unrelated application state.
+- TanStack Table owns column definitions and row models for every semantic table. Interactive
+  neighbor and bulk-contact tables delegate sorting/filtering to Table state; read-only ACL,
+  confirmation, and statistics tables use the same schema-driven rendering path.
 
 ## Frontend Map
 

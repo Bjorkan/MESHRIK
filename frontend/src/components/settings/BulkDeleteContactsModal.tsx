@@ -1,4 +1,15 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import {
+  createFilteredRowModel,
+  createSortedRowModel,
+  columnFilteringFeature,
+  globalFilteringFeature,
+  rowSelectionFeature,
+  rowSortingFeature,
+  tableFeatures,
+  useTable,
+  type ColumnDef,
+} from '@tanstack/react-table';
 import { api } from '../../api';
 import { getContactDisplayName } from '../../utils/pubkey';
 import { Button } from '../ui/button';
@@ -15,8 +26,47 @@ const CONTACT_TYPE_LABELS: Record<number, string> = {
   4: 'Sensor',
 };
 
-type SortField = 'name' | 'type' | 'key' | 'first_seen' | 'last_seen';
-type SortDir = 'asc' | 'desc';
+interface ContactFilters {
+  startDate: string;
+  endDate: string;
+  lastHeardAfter: string;
+  lastHeardBefore: string;
+  type: number | 'all';
+}
+
+const contactTableFeatures = tableFeatures({
+  columnFilteringFeature,
+  globalFilteringFeature,
+  filteredRowModel: createFilteredRowModel(),
+  rowSelectionFeature,
+  rowSortingFeature,
+  sortedRowModel: createSortedRowModel(),
+});
+
+const contactColumns = [
+  { id: 'select', header: '', enableSorting: false },
+  {
+    id: 'name',
+    header: 'Name',
+    accessorFn: (contact: Contact) =>
+      getContactDisplayName(contact.name, contact.public_key, contact.last_advert).toLowerCase(),
+    sortDescFirst: false,
+  },
+  { accessorKey: 'type', header: 'Type', sortDescFirst: true },
+  { accessorKey: 'public_key', id: 'key', header: 'Key', sortDescFirst: false },
+  {
+    accessorFn: (contact: Contact) => contact.first_seen ?? 0,
+    id: 'first_seen',
+    header: 'Created',
+    sortDescFirst: true,
+  },
+  {
+    accessorFn: (contact: Contact) => contact.last_seen ?? 0,
+    id: 'last_seen',
+    header: 'Last heard',
+    sortDescFirst: true,
+  },
+] satisfies Array<ColumnDef<typeof contactTableFeatures, Contact>>;
 
 function formatDate(ts: number): string {
   return new Date(ts * 1000).toLocaleDateString([], {
@@ -35,32 +85,6 @@ function datetimeToUnix(datetimeStr: string): number {
   return Math.floor(d.getTime() / 1000);
 }
 
-function SortableHeader({
-  label,
-  field,
-  sortField,
-  sortDir,
-  onSort,
-  className,
-}: {
-  label: string;
-  field: SortField;
-  sortField: SortField;
-  sortDir: SortDir;
-  onSort: (field: SortField) => void;
-  className?: string;
-}) {
-  const active = sortField === field;
-  return (
-    <th
-      className={`px-3 py-1.5 cursor-pointer select-none hover:text-foreground transition-colors ${className ?? ''}`}
-      onClick={() => onSort(field)}
-    >
-      {label} {active ? (sortDir === 'asc' ? '▲' : '▼') : ''}
-    </th>
-  );
-}
-
 interface BulkDeleteContactsModalProps {
   open: boolean;
   onClose: () => void;
@@ -75,134 +99,69 @@ export function BulkDeleteContactsModal({
   onDeleted,
 }: BulkDeleteContactsModalProps) {
   const [step, setStep] = useState<'select' | 'confirm'>('select');
-  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [lastHeardAfter, setLastHeardAfter] = useState('');
   const [lastHeardBefore, setLastHeardBefore] = useState('');
   const [typeFilter, setTypeFilter] = useState<number | 'all'>('all');
-  const [sortField, setSortField] = useState<SortField>('first_seen');
-  const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [deleting, setDeleting] = useState(false);
-  const lastClickedKeyRef = useRef<string | null>(null);
 
-  const handleSort = useCallback(
-    (field: SortField) => {
-      if (sortField === field) {
-        setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
-      } else {
-        setSortField(field);
-        setSortDir(field === 'name' || field === 'key' ? 'asc' : 'desc');
-      }
-    },
-    [sortField]
+  const filters = useMemo<ContactFilters>(
+    () => ({ startDate, endDate, lastHeardAfter, lastHeardBefore, type: typeFilter }),
+    [endDate, lastHeardAfter, lastHeardBefore, startDate, typeFilter]
   );
+  const table = useTable({
+    features: contactTableFeatures,
+    columns: contactColumns,
+    data: contacts,
+    initialState: { sorting: [{ id: 'first_seen', desc: true }] },
+    state: { globalFilter: filters },
+    getRowId: (contact) => contact.public_key,
+    enableRowSelection: true,
+    enableRowRangeSelection: true,
+    globalFilterFn: (row, _columnId, value: ContactFilters) => {
+      const contact = row.original;
+      if (value.type !== 'all' && contact.type !== value.type) return false;
+      if (value.startDate && (contact.first_seen ?? 0) < datetimeToUnix(value.startDate))
+        return false;
+      if (value.endDate && (contact.first_seen ?? 0) > datetimeToUnix(value.endDate)) return false;
+      if (value.lastHeardAfter && (contact.last_seen ?? 0) < datetimeToUnix(value.lastHeardAfter))
+        return false;
+      if (value.lastHeardBefore && (contact.last_seen ?? 0) > datetimeToUnix(value.lastHeardBefore))
+        return false;
+      return true;
+    },
+  });
+  const filteredRows = table.getRowModel().rows;
+  const filteredContacts = filteredRows.map((row) => row.original);
+  const selectedKeys = new Set(table.getSelectedRowIds());
 
   const resetAndClose = useCallback(() => {
     setStep('select');
-    setSelectedKeys(new Set());
     setStartDate('');
     setEndDate('');
     setLastHeardAfter('');
     setLastHeardBefore('');
     setTypeFilter('all');
-    setSortField('first_seen');
-    setSortDir('desc');
-    lastClickedKeyRef.current = null;
+    table.resetRowSelection(true);
+    table.resetSorting();
     onClose();
-  }, [onClose]);
-
-  const filteredContacts = useMemo(() => {
-    let list = [...contacts];
-    if (typeFilter !== 'all') {
-      list = list.filter((c) => c.type === typeFilter);
-    }
-    if (startDate) {
-      const start = datetimeToUnix(startDate);
-      list = list.filter((c) => (c.first_seen ?? 0) >= start);
-    }
-    if (endDate) {
-      const end = datetimeToUnix(endDate);
-      list = list.filter((c) => (c.first_seen ?? 0) <= end);
-    }
-    if (lastHeardAfter) {
-      const after = datetimeToUnix(lastHeardAfter);
-      list = list.filter((c) => (c.last_seen ?? 0) >= after);
-    }
-    if (lastHeardBefore) {
-      const before = datetimeToUnix(lastHeardBefore);
-      list = list.filter((c) => (c.last_seen ?? 0) <= before);
-    }
-
-    const dir = sortDir === 'asc' ? 1 : -1;
-    list.sort((a, b) => {
-      switch (sortField) {
-        case 'name': {
-          const an = getContactDisplayName(a.name, a.public_key, a.last_advert).toLowerCase();
-          const bn = getContactDisplayName(b.name, b.public_key, b.last_advert).toLowerCase();
-          return an < bn ? -dir : an > bn ? dir : 0;
-        }
-        case 'type':
-          return (a.type - b.type) * dir;
-        case 'key':
-          return a.public_key < b.public_key ? -dir : a.public_key > b.public_key ? dir : 0;
-        case 'first_seen':
-          return ((a.first_seen ?? 0) - (b.first_seen ?? 0)) * dir;
-        case 'last_seen':
-          return ((a.last_seen ?? 0) - (b.last_seen ?? 0)) * dir;
-      }
-    });
-    return list;
-  }, [
-    contacts,
-    typeFilter,
-    startDate,
-    endDate,
-    lastHeardAfter,
-    lastHeardBefore,
-    sortField,
-    sortDir,
-  ]);
-
-  const handleToggle = (key: string, shiftKey: boolean) => {
-    if (shiftKey && lastClickedKeyRef.current && lastClickedKeyRef.current !== key) {
-      const keys = filteredContacts.map((c) => c.public_key);
-      const lastIdx = keys.indexOf(lastClickedKeyRef.current);
-      const curIdx = keys.indexOf(key);
-      if (lastIdx >= 0 && curIdx >= 0) {
-        const from = Math.min(lastIdx, curIdx);
-        const to = Math.max(lastIdx, curIdx);
-        const rangeKeys = keys.slice(from, to + 1);
-        setSelectedKeys((prev) => {
-          const next = new Set(prev);
-          for (const k of rangeKeys) next.add(k);
-          return next;
-        });
-        lastClickedKeyRef.current = key;
-        return;
-      }
-    }
-    setSelectedKeys((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-    lastClickedKeyRef.current = key;
-  };
+  }, [onClose, table]);
 
   const handleSelectAll = () => {
-    setSelectedKeys(new Set(filteredContacts.map((c) => c.public_key)));
+    table.setRowSelection(Object.fromEntries(filteredRows.map((row) => [row.id, true] as const)));
   };
 
   const handleSelectNone = () => {
-    setSelectedKeys(new Set());
+    table.resetRowSelection(true);
   };
 
-  const selectedContacts = useMemo(
-    () => contacts.filter((c) => selectedKeys.has(c.public_key)),
-    [contacts, selectedKeys]
-  );
+  const selectedContacts = table.getSelectedRowModel().rows.map((row) => row.original);
+  const confirmationTable = useTable({
+    features: contactTableFeatures,
+    columns: contactColumns.slice(1),
+    data: selectedContacts,
+  });
 
   const contactCount = selectedContacts.filter((c) => c.type === 1 || c.type === 0).length;
   const repeaterCount = selectedContacts.filter((c) => c.type === 2).length;
@@ -342,86 +301,63 @@ export function BulkDeleteContactsModal({
               ) : (
                 <table className="w-full text-sm">
                   <thead className="sticky top-0 bg-muted/90 backdrop-blur-sm">
-                    <tr className="text-left text-xs text-muted-foreground">
-                      <th className="px-3 py-1.5 w-8" />
-                      <SortableHeader
-                        label="Name"
-                        field="name"
-                        sortField={sortField}
-                        sortDir={sortDir}
-                        onSort={handleSort}
-                      />
-                      <SortableHeader
-                        label="Type"
-                        field="type"
-                        sortField={sortField}
-                        sortDir={sortDir}
-                        onSort={handleSort}
-                        className="hidden sm:table-cell"
-                      />
-                      <SortableHeader
-                        label="Key"
-                        field="key"
-                        sortField={sortField}
-                        sortDir={sortDir}
-                        onSort={handleSort}
-                      />
-                      <SortableHeader
-                        label="Created"
-                        field="first_seen"
-                        sortField={sortField}
-                        sortDir={sortDir}
-                        onSort={handleSort}
-                        className="hidden sm:table-cell"
-                      />
-                      <SortableHeader
-                        label="Last heard"
-                        field="last_seen"
-                        sortField={sortField}
-                        sortDir={sortDir}
-                        onSort={handleSort}
-                        className="hidden sm:table-cell"
-                      />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredContacts.map((c) => (
-                      <tr
-                        key={c.public_key}
-                        className="border-t border-border hover:bg-accent/50 cursor-pointer"
-                        onClick={(e) => handleToggle(c.public_key, e.shiftKey)}
-                      >
-                        <td className="px-3 py-1.5">
-                          <input
-                            type="checkbox"
-                            checked={selectedKeys.has(c.public_key)}
-                            onChange={(e) =>
-                              handleToggle(
-                                c.public_key,
-                                e.nativeEvent instanceof MouseEvent && e.nativeEvent.shiftKey
-                              )
-                            }
-                            onClick={(e) => e.stopPropagation()}
-                            className="rounded border-input"
-                          />
-                        </td>
-                        <td className="px-3 py-1.5 truncate max-w-[10rem]">
-                          {getContactDisplayName(c.name, c.public_key, c.last_advert)}
-                        </td>
-                        <td className="px-3 py-1.5 hidden sm:table-cell text-xs text-muted-foreground">
-                          {CONTACT_TYPE_LABELS[c.type] ?? 'Unknown'}
-                        </td>
-                        <td className="px-3 py-1.5 font-mono text-xs text-muted-foreground truncate max-w-[8rem]">
-                          {c.public_key.slice(0, 12)}
-                        </td>
-                        <td className="px-3 py-1.5 hidden sm:table-cell text-xs text-muted-foreground">
-                          {c.first_seen ? formatDate(c.first_seen) : '—'}
-                        </td>
-                        <td className="px-3 py-1.5 hidden sm:table-cell text-xs text-muted-foreground">
-                          {c.last_seen ? formatDate(c.last_seen) : '—'}
-                        </td>
+                    {table.getHeaderGroups().map((group) => (
+                      <tr key={group.id} className="text-left text-xs text-muted-foreground">
+                        {group.headers.map((header) => {
+                          const sorted = header.column.getIsSorted();
+                          return (
+                            <th
+                              key={header.id}
+                              className={`px-3 py-1.5 ${header.id === 'select' ? 'w-8' : ''} ${header.id === 'type' || header.id === 'first_seen' || header.id === 'last_seen' ? 'hidden sm:table-cell' : ''} ${header.column.getCanSort() ? 'cursor-pointer select-none hover:text-foreground transition-colors' : ''}`}
+                              onClick={header.column.getToggleSortingHandler()}
+                              aria-sort={
+                                sorted ? (sorted === 'asc' ? 'ascending' : 'descending') : 'none'
+                              }
+                            >
+                              <table.FlexRender header={header} />{' '}
+                              {sorted ? (sorted === 'asc' ? '▲' : '▼') : ''}
+                            </th>
+                          );
+                        })}
                       </tr>
                     ))}
+                  </thead>
+                  <tbody>
+                    {filteredRows.map((row) => {
+                      const c = row.original;
+                      return (
+                        <tr
+                          key={row.id}
+                          className="border-t border-border hover:bg-accent/50 cursor-pointer"
+                          onClick={row.getToggleSelectedHandler()}
+                        >
+                          <td className="px-3 py-1.5">
+                            <input
+                              type="checkbox"
+                              checked={row.getIsSelected()}
+                              onChange={row.getToggleSelectedHandler()}
+                              onClick={(e) => e.stopPropagation()}
+                              className="rounded border-input"
+                            />
+                          </td>
+                          <td className="px-3 py-1.5 truncate max-w-[10rem]">
+                            {getContactDisplayName(c.name, c.public_key, c.last_advert)}
+                          </td>
+                          <td className="px-3 py-1.5 hidden sm:table-cell text-xs text-muted-foreground">
+                            {CONTACT_TYPE_LABELS[c.type] ?? 'Unknown'}
+                          </td>
+                          <td className="px-3 py-1.5 font-mono text-xs text-muted-foreground truncate max-w-[8rem]">
+                            {c.public_key.slice(0, 12)}
+                          </td>
+                          <td className="px-3 py-1.5 hidden sm:table-cell text-xs text-muted-foreground">
+                            {c.first_seen ? formatDate(c.first_seen) : '—'}
+                          </td>
+                          <td className="px-3 py-1.5 hidden sm:table-cell text-xs text-muted-foreground">
+                            {c.last_seen ? formatDate(c.last_seen) : '—'}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               )}
@@ -448,34 +384,42 @@ export function BulkDeleteContactsModal({
             <div className="flex-1 overflow-y-auto min-h-0 border border-border rounded-md">
               <table className="w-full text-sm">
                 <thead className="sticky top-0 bg-muted/90 backdrop-blur-sm">
-                  <tr className="text-left text-xs text-muted-foreground">
-                    <th className="px-3 py-1.5">Name</th>
-                    <th className="px-3 py-1.5">Type</th>
-                    <th className="px-3 py-1.5">Key</th>
-                    <th className="px-3 py-1.5 hidden sm:table-cell">Created</th>
-                    <th className="px-3 py-1.5 hidden sm:table-cell">Last heard</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selectedContacts.map((c) => (
-                    <tr key={c.public_key} className="border-t border-border">
-                      <td className="px-3 py-1.5 truncate max-w-[12rem]">
-                        {getContactDisplayName(c.name, c.public_key, c.last_advert)}
-                      </td>
-                      <td className="px-3 py-1.5 text-xs text-muted-foreground">
-                        {CONTACT_TYPE_LABELS[c.type] ?? 'Unknown'}
-                      </td>
-                      <td className="px-3 py-1.5 font-mono text-xs text-muted-foreground truncate max-w-[8rem]">
-                        {c.public_key.slice(0, 12)}
-                      </td>
-                      <td className="px-3 py-1.5 hidden sm:table-cell text-xs text-muted-foreground">
-                        {c.first_seen ? formatDate(c.first_seen) : '—'}
-                      </td>
-                      <td className="px-3 py-1.5 hidden sm:table-cell text-xs text-muted-foreground">
-                        {c.last_seen ? formatDate(c.last_seen) : '—'}
-                      </td>
+                  {confirmationTable.getHeaderGroups().map((group) => (
+                    <tr key={group.id} className="text-left text-xs text-muted-foreground">
+                      {group.headers.map((header) => (
+                        <th
+                          key={header.id}
+                          className={`px-3 py-1.5 ${header.id === 'first_seen' || header.id === 'last_seen' ? 'hidden sm:table-cell' : ''}`}
+                        >
+                          <confirmationTable.FlexRender header={header} />
+                        </th>
+                      ))}
                     </tr>
                   ))}
+                </thead>
+                <tbody>
+                  {confirmationTable.getRowModel().rows.map((row) => {
+                    const c = row.original;
+                    return (
+                      <tr key={row.id} className="border-t border-border">
+                        <td className="px-3 py-1.5 truncate max-w-[12rem]">
+                          {getContactDisplayName(c.name, c.public_key, c.last_advert)}
+                        </td>
+                        <td className="px-3 py-1.5 text-xs text-muted-foreground">
+                          {CONTACT_TYPE_LABELS[c.type] ?? 'Unknown'}
+                        </td>
+                        <td className="px-3 py-1.5 font-mono text-xs text-muted-foreground truncate max-w-[8rem]">
+                          {c.public_key.slice(0, 12)}
+                        </td>
+                        <td className="px-3 py-1.5 hidden sm:table-cell text-xs text-muted-foreground">
+                          {c.first_seen ? formatDate(c.first_seen) : '—'}
+                        </td>
+                        <td className="px-3 py-1.5 hidden sm:table-cell text-xs text-muted-foreground">
+                          {c.last_seen ? formatDate(c.last_seen) : '—'}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
