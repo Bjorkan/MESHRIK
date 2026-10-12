@@ -7,8 +7,8 @@ import {
 } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api';
-import { fetchAllContacts } from '../prefetch';
 import { queryKeys } from '../queryClient';
+import { channelsQueryOptions, contactsQueryOptions } from '../entityQueries';
 import { toast } from '../components/ui/sonner';
 import { getContactDisplayName } from '../utils/pubkey';
 import { findPublicChannel, PUBLIC_CHANNEL_KEY, PUBLIC_CHANNEL_NAME } from '../utils/publicChannel';
@@ -34,14 +34,8 @@ export function useContactsAndChannels({
   removeConversationMessages,
 }: UseContactsAndChannelsArgs) {
   const queryClient = useQueryClient();
-  const contactsQuery = useQuery({
-    queryKey: queryKeys.contacts(),
-    queryFn: ({ signal }) => fetchAllContacts(signal),
-  });
-  const channelsQuery = useQuery({
-    queryKey: queryKeys.channels(),
-    queryFn: ({ signal }) => api.getChannels(signal),
-  });
+  const contactsQuery = useQuery(contactsQueryOptions());
+  const channelsQuery = useQuery(channelsQueryOptions());
   const undecryptedCountQuery = useQuery({
     queryKey: queryKeys.undecryptedCount(),
     queryFn: () => api.getUndecryptedPacketCount(),

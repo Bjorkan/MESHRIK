@@ -25,6 +25,14 @@ Keep it aligned with `frontend/src` source code.
 - For this repo, "locally dense but semantically obvious" is better than indirection-heavy "clean architecture".
 - When refactoring, preserve behavior first and add tests around the seam being moved.
 
+## TanStack ownership
+
+- TanStack Router is the sole owner of navigation, route identity, route/search params,
+  and browser history. Root startup preferences may choose a redirect target, but must
+  not maintain a second selected-conversation state. Settings return destinations live
+  in Router history state. Entity route loaders prewarm the same QueryClient consumed by
+  React; they must not create a route-specific cache.
+
 ## Frontend Map
 
 ```text

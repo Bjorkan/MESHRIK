@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useRef } from 'react';
-import { useNavigate, useRouterState } from '@tanstack/react-router';
+import { useCallback, useMemo } from 'react';
+import { useNavigate, useRouter, useRouterState } from '@tanstack/react-router';
 
 import { App } from './App';
 import type { Conversation } from './types';
@@ -8,12 +8,19 @@ import { getSettingsSection } from './routing/settingsRoutes';
 import { getEntityRoute } from './routing/entityRoutes';
 import type { SettingsSection } from './components/settings/settingsConstants';
 
-interface ReturnRoute {
+export interface SettingsReturnRoute {
   conversation: Conversation | null;
   entity: ReturnType<typeof getEntityRoute>;
 }
 
+declare module '@tanstack/history' {
+  interface HistoryState {
+    settingsReturnRoute?: SettingsReturnRoute;
+  }
+}
+
 export function RoutedApp() {
+  const router = useRouter();
   const location = useRouterState({ select: (state) => state.location });
   const navigate = useNavigate();
   const routeConversation = useMemo(
@@ -22,13 +29,6 @@ export function RoutedApp() {
   );
   const routeSettingsSection = getSettingsSection(location.pathname);
   const routeEntity = getEntityRoute(location.pathname);
-  const previousNonSettingsRouteRef = useRef<ReturnRoute>({ conversation: null, entity: null });
-  if (routeSettingsSection === null) {
-    previousNonSettingsRouteRef.current = {
-      conversation: routeConversation,
-      entity: routeEntity,
-    };
-  }
 
   const handleNavigateConversation = useCallback(
     (conversation: Conversation, options?: { replace?: boolean }) => {
@@ -75,34 +75,47 @@ export function RoutedApp() {
 
   const handleNavigateSettings = useCallback(
     (section: SettingsSection) => {
+      const settingsReturnRoute =
+        routeSettingsSection === null
+          ? { conversation: routeConversation, entity: routeEntity }
+          : location.state.settingsReturnRoute;
+      const options = {
+        state: (previous: typeof location.state) => ({
+          ...previous,
+          ...(settingsReturnRoute ? { settingsReturnRoute } : {}),
+        }),
+      };
       switch (section) {
         case 'radio':
-          void navigate({ to: '/settings/radio' });
+          void navigate({ to: '/settings/radio', ...options });
           return;
         case 'local':
-          void navigate({ to: '/settings/local' });
+          void navigate({ to: '/settings/local', ...options });
           return;
         case 'radio-app':
-          void navigate({ to: '/settings/radio-app' });
+          void navigate({ to: '/settings/radio-app', ...options });
           return;
         case 'fanout':
-          void navigate({ to: '/settings/fanout' });
+          void navigate({ to: '/settings/fanout', ...options });
           return;
         case 'database':
-          void navigate({ to: '/settings/database' });
+          void navigate({ to: '/settings/database', ...options });
           return;
         case 'statistics':
-          void navigate({ to: '/settings/statistics' });
+          void navigate({ to: '/settings/statistics', ...options });
           return;
         case 'about':
-          void navigate({ to: '/settings/about' });
+          void navigate({ to: '/settings/about', ...options });
       }
     },
-    [navigate]
+    [location.state, navigate, routeConversation, routeEntity, routeSettingsSection]
   );
 
   const handleCloseSettingsRoute = useCallback(() => {
-    const { conversation, entity } = previousNonSettingsRouteRef.current;
+    const { conversation, entity } = location.state.settingsReturnRoute ?? {
+      conversation: null,
+      entity: null,
+    };
     if (conversation) {
       handleNavigateConversation(conversation);
       return;
@@ -116,10 +129,11 @@ export function RoutedApp() {
       return;
     }
     void navigate({ to: '/' });
-  }, [handleNavigateConversation, navigate]);
+  }, [handleNavigateConversation, location.state.settingsReturnRoute, navigate]);
 
   return (
     <App
+      queryClient={router.options.context.queryClient}
       routeConversation={routeConversation}
       routeEntity={routeEntity}
       routeIsRoot={location.pathname === '/'}

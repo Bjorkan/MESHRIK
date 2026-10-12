@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react';
+import { useCallback, useEffect, useMemo, useRef, type MutableRefObject } from 'react';
 
 import {
   getLastViewedConversation,
@@ -44,59 +44,8 @@ export function useConversationRouter({
   routeIsRoot,
   onNavigateConversation,
 }: UseConversationRouterArgs) {
-  const [storedConversation, setStoredConversation] = useState<Conversation | null>(
-    routeConversation ?? null
-  );
-  const routeOwnsConversation = Boolean(routeConversation || routeEntity);
-  const activeConversation = routeOwnsConversation
-    ? (routeConversation ?? null)
-    : storedConversation;
-  const activeConversationRef = useRef<Conversation | null>(activeConversation);
-  const previousRouteIsRootRef = useRef(routeIsRoot);
-
-  const setActiveConversation = useCallback(
-    (conversation: Conversation | null, options?: { replace?: boolean }) => {
-      if (conversation) onNavigateConversation?.(conversation, options);
-      setStoredConversation(conversation);
-    },
-    [onNavigateConversation]
-  );
-
-  const getPublicChannelConversation = useCallback(
-    (): Conversation | null => resolvePublicFromChannels(channels),
-    [channels]
-  );
-
-  // Route-backed tools and entities are authoritative. Keep a copy only so the
-  // underlying conversation remains available while a settings route is open.
-  useEffect(() => {
-    if (!routeConversation) return;
-    hasSetDefaultConversation.current = true;
-    setStoredConversation((current) =>
-      current?.type === routeConversation.type &&
-      current.id === routeConversation.id &&
-      current.mapFocusKey === routeConversation.mapFocusKey
-        ? current
-        : routeConversation
-    );
-  }, [hasSetDefaultConversation, routeConversation]);
-
-  // Returning explicitly to `/` means the normal Public/default experience.
-  useEffect(() => {
-    const enteredRoot = routeIsRoot === true && previousRouteIsRootRef.current === false;
-    previousRouteIsRootRef.current = routeIsRoot;
-    if (!enteredRoot) return;
-
-    const publicConversation = getPublicChannelConversation();
-    if (!publicConversation) return;
-    hasSetDefaultConversation.current = true;
-    setStoredConversation(publicConversation);
-  }, [getPublicChannelConversation, hasSetDefaultConversation, routeIsRoot]);
-
-  // Resolve startup/default behavior only at `/` (or in standalone hook tests).
-  useEffect(() => {
-    if (routeEntity || routeConversation || routeIsRoot === false) return;
-    if (hasSetDefaultConversation.current || storedConversation) return;
+  const rootConversation = useMemo(() => {
+    if (routeEntity || routeConversation || routeIsRoot === false) return null;
 
     if (getReopenLastConversationEnabled()) {
       const lastViewed = getLastViewedConversation();
@@ -108,89 +57,62 @@ export function useConversationRouter({
           lastViewed.type === 'trace' ||
           lastViewed.type === 'radio-activity')
       ) {
-        setActiveConversation(lastViewed, { replace: true });
-        hasSetDefaultConversation.current = true;
-        return;
+        return lastViewed;
       }
-
-      if (lastViewed?.type === 'channel') {
-        if (!channelsLoaded) return;
+      if (lastViewed?.type === 'channel' && channelsLoaded) {
         const channel = channels.find(
           (candidate) => candidate.key.toLowerCase() === lastViewed.id.toLowerCase()
         );
-        if (channel) {
-          setActiveConversation(
-            { type: 'channel', id: channel.key, name: channel.name },
-            { replace: true }
-          );
-          hasSetDefaultConversation.current = true;
-          return;
+        if (channel) return { type: 'channel', id: channel.key, name: channel.name } as const;
+      }
+      if (lastViewed?.type === 'contact' && contactsLoaded) {
+        const contact = contacts.find(
+          (candidate) => candidate.public_key.toLowerCase() === lastViewed.id.toLowerCase()
+        );
+        if (contact) {
+          return {
+            type: 'contact',
+            id: contact.public_key,
+            name: getContactDisplayName(contact.name, contact.public_key, contact.last_advert),
+          } as const;
         }
       }
-      if (lastViewed?.type === 'contact') return;
+      if (
+        (lastViewed?.type === 'channel' && !channelsLoaded) ||
+        (lastViewed?.type === 'contact' && !contactsLoaded)
+      ) {
+        return null;
+      }
     }
 
-    if (!channelsLoaded) return;
-    const publicConversation = getPublicChannelConversation();
-    if (publicConversation) {
-      setStoredConversation(publicConversation);
-      hasSetDefaultConversation.current = true;
-    }
+    return channelsLoaded ? resolvePublicFromChannels(channels) : null;
   }, [
     channels,
     channelsLoaded,
-    getPublicChannelConversation,
-    hasSetDefaultConversation,
-    routeConversation,
-    routeEntity,
-    routeIsRoot,
-    setActiveConversation,
-    storedConversation,
-  ]);
-
-  // A saved contact can only be resolved after the contacts query settles.
-  useEffect(() => {
-    if (routeEntity || routeConversation || routeIsRoot === false) return;
-    if (hasSetDefaultConversation.current || storedConversation) return;
-    if (!getReopenLastConversationEnabled()) return;
-
-    const lastViewed = getLastViewedConversation();
-    if (lastViewed?.type !== 'contact' || !contactsLoaded) return;
-
-    const contact = contacts.find(
-      (candidate) => candidate.public_key.toLowerCase() === lastViewed.id.toLowerCase()
-    );
-    if (contact) {
-      setActiveConversation(
-        {
-          type: 'contact',
-          id: contact.public_key,
-          name: getContactDisplayName(contact.name, contact.public_key, contact.last_advert),
-        },
-        { replace: true }
-      );
-      hasSetDefaultConversation.current = true;
-      return;
-    }
-
-    if (!channelsLoaded) return;
-    const publicConversation = getPublicChannelConversation();
-    if (publicConversation) {
-      setStoredConversation(publicConversation);
-      hasSetDefaultConversation.current = true;
-    }
-  }, [
     contacts,
     contactsLoaded,
-    channelsLoaded,
-    getPublicChannelConversation,
-    hasSetDefaultConversation,
     routeConversation,
     routeEntity,
     routeIsRoot,
-    setActiveConversation,
-    storedConversation,
   ]);
+  const activeConversation = routeConversation ?? rootConversation;
+  const activeConversationRef = useRef<Conversation | null>(activeConversation);
+
+  const setActiveConversation = useCallback(
+    (conversation: Conversation | null, options?: { replace?: boolean }) => {
+      const target = conversation ?? resolvePublicFromChannels(channels);
+      if (target) onNavigateConversation?.(target, options);
+    },
+    [channels, onNavigateConversation]
+  );
+
+  // The root route has no independently writable selected conversation. Once its
+  // Query-backed entities settle, replace it with the canonical entity/tool URL.
+  useEffect(() => {
+    if (routeIsRoot !== true || !rootConversation || !onNavigateConversation) return;
+    hasSetDefaultConversation.current = true;
+    onNavigateConversation(rootConversation, { replace: true });
+  }, [hasSetDefaultConversation, onNavigateConversation, rootConversation, routeIsRoot]);
 
   useEffect(() => {
     activeConversationRef.current = activeConversation;
@@ -199,31 +121,7 @@ export function useConversationRouter({
     }
   }, [activeConversation]);
 
-  // If a delete action left us without an active conversation, recover to Public.
-  useEffect(() => {
-    if (!pendingDeleteFallbackRef.current) return;
-    if (activeConversation) {
-      pendingDeleteFallbackRef.current = false;
-      return;
-    }
-
-    const publicChannel = findPublicChannel(channels);
-    if (!publicChannel) return;
-
-    hasSetDefaultConversation.current = true;
-    pendingDeleteFallbackRef.current = false;
-    setActiveConversation({
-      type: 'channel',
-      id: publicChannel.key,
-      name: publicChannel.name,
-    });
-  }, [
-    activeConversation,
-    channels,
-    hasSetDefaultConversation,
-    pendingDeleteFallbackRef,
-    setActiveConversation,
-  ]);
+  pendingDeleteFallbackRef.current = false;
 
   const handleSelectConversation = useCallback(
     (conversation: Conversation) => {

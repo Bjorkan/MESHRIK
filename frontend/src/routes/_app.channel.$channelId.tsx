@@ -1,3 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router';
 
-export const Route = createFileRoute('/_app/channel/$channelId')({});
+import { channelsQueryOptions } from '../entityQueries';
+
+export const Route = createFileRoute('/_app/channel/$channelId')({
+  loader: ({ context }) =>
+    context.queryClient.ensureQueryData(channelsQueryOptions()).catch(() => undefined),
+});

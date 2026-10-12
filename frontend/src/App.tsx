@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useRef, useState, useMemo, type MouseEvent } from 'react';
-import { QueryClientProvider, useQueryClient } from '@tanstack/react-query';
+import { QueryClientProvider, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { api } from './api';
 import { useWebSocket } from './useWebSocket';
 import {
@@ -78,6 +78,7 @@ export function resolveUnreadMarkerId(
 }
 
 interface AppProps {
+  queryClient?: QueryClient;
   routeConversation?: Conversation | null;
   routeEntity?: EntityRoute | null;
   routeIsRoot?: boolean;
@@ -88,11 +89,12 @@ interface AppProps {
 }
 
 export function App(props: AppProps = {}) {
-  const [queryClient] = useState(() => {
+  const [fallbackQueryClient] = useState(() => {
     const client = createAppQueryClient();
     primePrefetchCache(client);
     return client;
   });
+  const queryClient = props.queryClient ?? fallbackQueryClient;
 
   return (
     <QueryClientProvider client={queryClient}>

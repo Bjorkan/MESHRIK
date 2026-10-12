@@ -1,11 +1,21 @@
 import { createBrowserHistory, createRouter, type RouterHistory } from '@tanstack/react-router';
+import type { QueryClient } from '@tanstack/react-query';
 
 import { routeTree } from './routeTree.gen';
+import { createAppQueryClient } from './queryClient';
 
-export function createAppRouter(history: RouterHistory = createBrowserHistory()) {
+export interface AppRouterContext {
+  queryClient: QueryClient;
+}
+
+export function createAppRouter(
+  history: RouterHistory = createBrowserHistory(),
+  queryClient: QueryClient = createAppQueryClient()
+) {
   return createRouter({
     routeTree,
     history,
+    context: { queryClient },
     defaultPreload: 'intent',
   });
 }
