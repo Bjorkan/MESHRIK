@@ -263,8 +263,16 @@ export interface ContactAnalytics {
   weekly_activity: ContactAnalyticsWeeklyBucket[];
 }
 
-/** REST channel contract with the default-emitted read cursor required by the view layer. */
-export type Channel = RequireFields<ApiSchemas['Channel'], 'last_read_at'>;
+/**
+ * REST channel contract with the default-emitted read cursor required by the view layer.
+ * Residency stays optional client-side for rolling upgrades and legacy WebSocket snapshots.
+ */
+export type Channel = Omit<
+  RequireFields<ApiSchemas['Channel'], 'last_read_at'>,
+  'radio_residency'
+> & {
+  radio_residency?: ApiSchemas['Channel']['radio_residency'];
+};
 
 export type ChannelMessageCounts = ApiSchemas['ChannelMessageCounts'];
 

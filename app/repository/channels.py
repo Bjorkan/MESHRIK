@@ -1,4 +1,5 @@
 import time
+from typing import Literal
 
 from app.database import db
 from app.models import Channel
@@ -6,21 +7,57 @@ from app.models import Channel
 
 class ChannelRepository:
     @staticmethod
-    async def upsert(key: str, name: str, is_hashtag: bool = False, on_radio: bool = False) -> None:
-        """Upsert a channel. Key is 32-char hex string."""
+    async def upsert(
+        key: str,
+        name: str,
+        is_hashtag: bool = False,
+        on_radio: bool | None = None,
+    ) -> None:
+        """Upsert a channel without erasing residency unless explicitly supplied."""
         async with db.tx() as conn:
             async with conn.execute(
                 """
                 INSERT INTO channels (key, name, is_hashtag, on_radio, flood_scope_override)
-                VALUES (?, ?, ?, ?, NULL)
+                VALUES (?, ?, ?, COALESCE(?, 0), NULL)
                 ON CONFLICT(key) DO UPDATE SET
                     name = excluded.name,
                     is_hashtag = excluded.is_hashtag,
-                    on_radio = excluded.on_radio
+                    on_radio = COALESCE(?, channels.on_radio)
                 """,
-                (key.upper(), name, is_hashtag, on_radio),
+                (key.upper(), name, is_hashtag, on_radio, on_radio),
             ):
                 pass
+
+    @staticmethod
+    def _radio_residency(
+        key: str, on_radio: bool
+    ) -> Literal["database_only", "confirmed", "stale"]:
+        if not on_radio:
+            return "database_only"
+
+        # Runtime slot knowledge is generation-scoped and cleared on reconnect.
+        # Import lazily to avoid an import cycle during application startup.
+        from app.services.radio_runtime import radio_runtime
+
+        if radio_runtime.get_confirmed_channel_slot(key) is not None:
+            return "confirmed"
+        return "stale"
+
+    @classmethod
+    def _from_row(cls, row) -> Channel:
+        on_radio = bool(row["on_radio"])
+        return Channel(
+            key=row["key"],
+            name=row["name"],
+            is_hashtag=bool(row["is_hashtag"]),
+            on_radio=on_radio,
+            radio_residency=cls._radio_residency(row["key"], on_radio),
+            flood_scope_override=row["flood_scope_override"],
+            path_hash_mode_override=row["path_hash_mode_override"],
+            last_read_at=row["last_read_at"],
+            favorite=bool(row["favorite"]),
+            muted=bool(row["muted"]),
+        )
 
     @staticmethod
     async def get_by_key(key: str) -> Channel | None:
@@ -36,17 +73,7 @@ class ChannelRepository:
             ) as cursor:
                 row = await cursor.fetchone()
         if row:
-            return Channel(
-                key=row["key"],
-                name=row["name"],
-                is_hashtag=bool(row["is_hashtag"]),
-                on_radio=bool(row["on_radio"]),
-                flood_scope_override=row["flood_scope_override"],
-                path_hash_mode_override=row["path_hash_mode_override"],
-                last_read_at=row["last_read_at"],
-                favorite=bool(row["favorite"]),
-                muted=bool(row["muted"]),
-            )
+            return ChannelRepository._from_row(row)
         return None
 
     @staticmethod
@@ -60,20 +87,32 @@ class ChannelRepository:
                 """
             ) as cursor:
                 rows = await cursor.fetchall()
-        return [
-            Channel(
-                key=row["key"],
-                name=row["name"],
-                is_hashtag=bool(row["is_hashtag"]),
-                on_radio=bool(row["on_radio"]),
-                flood_scope_override=row["flood_scope_override"],
-                path_hash_mode_override=row["path_hash_mode_override"],
-                last_read_at=row["last_read_at"],
-                favorite=bool(row["favorite"]),
-                muted=bool(row["muted"]),
+        return [ChannelRepository._from_row(row) for row in rows]
+
+    @staticmethod
+    async def set_on_radio(key: str, value: bool) -> bool:
+        """Persist a confirmed channel-residency transition."""
+        async with db.tx() as conn:
+            async with conn.execute(
+                "UPDATE channels SET on_radio = ? WHERE key = ?",
+                (1 if value else 0, key.upper()),
+            ) as cursor:
+                rowcount = cursor.rowcount
+        return rowcount > 0
+
+    @staticmethod
+    async def clear_on_radio_except(keep_keys: list[str]) -> None:
+        """Clear stale residency flags after a complete radio-slot snapshot."""
+        async with db.tx() as conn:
+            if not keep_keys:
+                await conn.execute("UPDATE channels SET on_radio = 0 WHERE on_radio = 1")
+                return
+            normalized = [key.upper() for key in keep_keys]
+            placeholders = ",".join("?" for _ in normalized)
+            await conn.execute(
+                f"UPDATE channels SET on_radio = 0 WHERE on_radio = 1 AND key NOT IN ({placeholders})",
+                normalized,
             )
-            for row in rows
-        ]
 
     @staticmethod
     async def set_favorite(key: str, value: bool) -> bool:

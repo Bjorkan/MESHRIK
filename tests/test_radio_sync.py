@@ -1458,6 +1458,37 @@ class TestSyncAndOffloadChannels:
 
         assert radio_manager.get_pending_message_channel_key(0) == channel_key.upper()
 
+    @pytest.mark.asyncio
+    async def test_channel_snapshot_reconciles_residency_and_generation_staleness(self, test_db):
+        from app.radio_sync import sync_channels_from_radio
+
+        old_key = "33" * 16
+        current_key = "44" * 16
+        await ChannelRepository.upsert(key=old_key, name="#old", on_radio=True)
+
+        channel_result = MagicMock()
+        channel_result.type = EventType.CHANNEL_INFO
+        channel_result.payload = {
+            "channel_name": "#current",
+            "channel_secret": bytes.fromhex(current_key),
+        }
+        empty_result = MagicMock(type=EventType.ERROR)
+        mock_mc = MagicMock()
+        mock_mc.commands.get_channel = AsyncMock(side_effect=[channel_result, empty_result])
+
+        await sync_channels_from_radio(mock_mc, max_channels=2)
+
+        old_channel = await ChannelRepository.get_by_key(old_key)
+        current_channel = await ChannelRepository.get_by_key(current_key)
+        assert old_channel is not None and old_channel.radio_residency == "database_only"
+        assert current_channel is not None and current_channel.radio_residency == "confirmed"
+
+        radio_manager.reset_channel_send_cache()
+        current_channel = await ChannelRepository.get_by_key(current_key)
+        assert current_channel is not None
+        assert current_channel.on_radio is True
+        assert current_channel.radio_residency == "stale"
+
 
 class TestPendingChannelMessageFallback:
     """Queued CHANNEL_MSG_RECV events should be persisted instead of dropped."""

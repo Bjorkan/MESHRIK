@@ -569,7 +569,9 @@ class TestMessagesEndpoint:
         mock_mc = MagicMock()
         mock_mc.self_info = {"name": "TestNode"}
         ok_result = MagicMock(type=EventType.MSG_SENT, payload={})
-        mock_mc.commands.set_channel = AsyncMock(return_value=ok_result)
+        mock_mc.commands.set_channel = AsyncMock(
+            return_value=MagicMock(type=EventType.OK, payload={})
+        )
         mock_mc.commands.send_chan_msg = AsyncMock(return_value=ok_result)
 
         radio_manager._meshcore = mock_mc
@@ -583,8 +585,13 @@ class TestMessagesEndpoint:
             )
 
             assert response.status_code == 200
-            mock_broadcast.assert_called_once()
-            event_type, payload = mock_broadcast.call_args.args
+            message_broadcasts = [
+                call_args
+                for call_args in mock_broadcast.call_args_list
+                if call_args.args[0] == "message"
+            ]
+            assert len(message_broadcasts) == 1
+            event_type, payload = message_broadcasts[0].args
             assert event_type == "message"
             assert payload["type"] == "CHAN"
 

@@ -360,6 +360,14 @@ class Channel(BaseModel):
     name: str
     is_hashtag: bool = False
     on_radio: bool = False
+    radio_residency: Literal["database_only", "confirmed", "stale"] = Field(
+        default="database_only",
+        description=(
+            "Current confidence in radio residency: database_only when the channel is local, "
+            "confirmed when its slot was verified in this radio generation, and stale when a "
+            "previous residency claim has not been verified in the current generation."
+        ),
+    )
     flood_scope_override: str | None = Field(
         default=None,
         description=(

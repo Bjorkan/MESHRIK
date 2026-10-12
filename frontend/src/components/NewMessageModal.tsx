@@ -443,6 +443,13 @@ export function NewMessageModal({
           )}
         </Tabs>
 
+        {tab !== 'new-contact' && (
+          <p className="text-xs text-muted-foreground" role="note">
+            Creating a channel saves it to the app database only. It is written to a radio slot when
+            needed for sending; creation itself does not change the radio.
+          </p>
+        )}
+
         {showHistoricalOption && (
           <div className="space-y-1">
             <div className="flex items-center justify-end space-x-2">

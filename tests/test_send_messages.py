@@ -73,7 +73,7 @@ def _make_mc(name="TestNode"):
     mc.commands.send_chan_msg = AsyncMock(return_value=_make_radio_result())
     mc.commands.add_contact = AsyncMock(return_value=_make_radio_result())
     mc.commands.reset_path = AsyncMock(return_value=MagicMock(type=EventType.OK, payload={}))
-    mc.commands.set_channel = AsyncMock(return_value=_make_radio_result())
+    mc.commands.set_channel = AsyncMock(return_value=MagicMock(type=EventType.OK, payload={}))
     mc.get_contact_by_key_prefix = MagicMock(return_value=None)
     return mc
 
@@ -779,6 +779,10 @@ class TestOutgoingChannelBroadcast:
         assert mc.commands.set_channel.await_count == 1
         assert mc.commands.send_chan_msg.await_count == 2
         assert [call.kwargs["chan"] for call in mc.commands.send_chan_msg.await_args_list] == [0, 0]
+        channel = await ChannelRepository.get_by_key(chan_key)
+        assert channel is not None
+        assert channel.on_radio is True
+        assert channel.radio_residency == "confirmed"
 
     @pytest.mark.asyncio
     async def test_send_channel_msg_uses_lru_slot_eviction(self, test_db):
@@ -824,6 +828,12 @@ class TestOutgoingChannelBroadcast:
         assert radio_manager.get_cached_channel_slot(chan_key_a) == 0
         assert radio_manager.get_cached_channel_slot(chan_key_b) is None
         assert radio_manager.get_cached_channel_slot(chan_key_c) == 1
+        channel_a = await ChannelRepository.get_by_key(chan_key_a)
+        channel_b = await ChannelRepository.get_by_key(chan_key_b)
+        channel_c = await ChannelRepository.get_by_key(chan_key_c)
+        assert channel_a is not None and channel_a.radio_residency == "confirmed"
+        assert channel_b is not None and channel_b.radio_residency == "database_only"
+        assert channel_c is not None and channel_c.radio_residency == "confirmed"
 
     @pytest.mark.asyncio
     async def test_send_channel_msg_tcp_always_reconfigures_slot(self, test_db):
@@ -848,6 +858,37 @@ class TestOutgoingChannelBroadcast:
         assert mc.commands.set_channel.await_count == 2
         assert mc.commands.send_chan_msg.await_count == 2
         assert radio_manager.get_cached_channel_slot(chan_key) is None
+        channel = await ChannelRepository.get_by_key(chan_key)
+        assert channel is not None
+        assert channel.on_radio is True
+        assert channel.radio_residency == "confirmed"
+
+    @pytest.mark.asyncio
+    async def test_tcp_slot_overwrite_clears_displaced_channel_residency(self, test_db):
+        mc = _make_mc(name="MyNode")
+        first_key = "d2" * 16
+        second_key = "d3" * 16
+        await ChannelRepository.upsert(key=first_key, name="#first")
+        await ChannelRepository.upsert(key=second_key, name="#second")
+        radio_manager._connection_info = "TCP: 127.0.0.1:4000"
+
+        with (
+            patch("app.routers.messages.radio_manager.require_connected", return_value=mc),
+            patch.object(radio_manager, "_meshcore", mc),
+            patch("app.routers.messages.broadcast_event"),
+        ):
+            await send_channel_message(
+                SendChannelMessageRequest(channel_key=first_key, text="first")
+            )
+            await send_channel_message(
+                SendChannelMessageRequest(channel_key=second_key, text="second")
+            )
+
+        first = await ChannelRepository.get_by_key(first_key)
+        second = await ChannelRepository.get_by_key(second_key)
+        assert first is not None and first.radio_residency == "database_only"
+        assert second is not None and second.radio_residency == "confirmed"
+        assert radio_manager.get_cached_channel_slot(second_key) is None
 
     @pytest.mark.asyncio
     async def test_send_channel_msg_force_reconfigure_env_disables_reuse(self, test_db):
@@ -1351,8 +1392,13 @@ class TestResendChannelMessage:
         ):
             result = await resend_channel_message(msg_id, new_timestamp=True)
 
-        mock_broadcast.assert_called_once()
-        event_type, event_data = mock_broadcast.call_args.args
+        message_broadcasts = [
+            call_args
+            for call_args in mock_broadcast.call_args_list
+            if call_args.args[0] == "message"
+        ]
+        assert len(message_broadcasts) == 1
+        event_type, event_data = message_broadcasts[0].args
         assert event_type == "message"
         assert event_data["id"] == result.message_id
         assert event_data["outgoing"] is True
@@ -1917,6 +1963,33 @@ class TestRadioExceptionMidSend:
             msg_type="CHAN", conversation_key=chan_key.upper(), limit=10
         )
         assert len(messages) == 0
+        channel = await ChannelRepository.get_by_key(chan_key)
+        assert channel is not None
+        assert channel.on_radio is False
+        assert channel.radio_residency == "database_only"
+
+    @pytest.mark.asyncio
+    async def test_channel_send_set_channel_no_response_has_no_false_residency(self, test_db):
+        mc = _make_mc(name="TestNode")
+        chan_key = "ce" * 16
+        await ChannelRepository.upsert(key=chan_key, name="#ambiguous")
+        mc.commands.set_channel = AsyncMock(return_value=None)
+
+        with (
+            patch("app.routers.messages.radio_manager.require_connected", return_value=mc),
+            patch.object(radio_manager, "_meshcore", mc),
+            pytest.raises(HTTPException) as exc_info,
+        ):
+            await send_channel_message(
+                SendChannelMessageRequest(channel_key=chan_key, text="Never sent")
+            )
+
+        assert exc_info.value.status_code == 422
+        mc.commands.send_chan_msg.assert_not_called()
+        channel = await ChannelRepository.get_by_key(chan_key)
+        assert channel is not None
+        assert channel.on_radio is False
+        assert channel.radio_residency == "database_only"
 
     @pytest.mark.asyncio
     async def test_channel_send_set_channel_exception_invalidates_evicted_cached_slot(
@@ -1928,7 +2001,7 @@ class TestRadioExceptionMidSend:
         mc = _make_mc(name="TestNode")
         chan_key_a = "de" * 16
         chan_key_b = "ef" * 16
-        await ChannelRepository.upsert(key=chan_key_a, name="#alpha")
+        await ChannelRepository.upsert(key=chan_key_a, name="#alpha", on_radio=True)
         await ChannelRepository.upsert(key=chan_key_b, name="#bravo")
 
         radio_manager.max_channels = 1
@@ -1949,6 +2022,10 @@ class TestRadioExceptionMidSend:
         assert radio_manager.get_cached_channel_slot(chan_key_a) is None
         assert radio_manager.get_cached_channel_slot(chan_key_b) is None
         mc.commands.send_chan_msg.assert_not_called()
+        channel_a = await ChannelRepository.get_by_key(chan_key_a)
+        channel_b = await ChannelRepository.get_by_key(chan_key_b)
+        assert channel_a is not None and channel_a.radio_residency == "stale"
+        assert channel_b is not None and channel_b.radio_residency == "database_only"
 
     @pytest.mark.asyncio
     async def test_channel_send_set_channel_error_invalidates_evicted_cached_slot(self, test_db):

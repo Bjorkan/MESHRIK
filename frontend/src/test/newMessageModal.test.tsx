@@ -55,6 +55,17 @@ describe('NewMessageModal form reset', () => {
     await user.click(screen.getByRole('tab', { name }));
   }
 
+  it('explains that creating a channel does not write to the radio', async () => {
+    const user = userEvent.setup();
+    renderModal();
+
+    await switchToTab(user, 'Private Channel');
+
+    expect(
+      screen.getByText(/saves it to the app database only.*does not change the radio/i)
+    ).toBeInTheDocument();
+  });
+
   describe('hashtag tab', () => {
     it('prefills the hashtag tab from a linked channel request', async () => {
       renderModal(true, {

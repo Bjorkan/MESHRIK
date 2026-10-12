@@ -386,7 +386,7 @@ class RadioManager:
         Returns `(slot, needs_configure, evicted_channel_key)`.
         """
         if not self.channel_slot_reuse_enabled():
-            return preferred_slot, True, None
+            return preferred_slot, True, self._channel_key_by_slot.get(preferred_slot)
 
         normalized_key = channel_key.upper()
         cached_slot = self._channel_slot_by_key.get(normalized_key)
@@ -401,13 +401,12 @@ class RadioManager:
         evicted_key, slot = next(iter(self._channel_slot_by_key.items()))
         return slot, True, evicted_key
 
-    def note_channel_slot_loaded(self, channel_key: str, slot: int) -> None:
-        """Record that a channel is now resident in the given radio slot."""
-        if not self.channel_slot_reuse_enabled():
-            return
-
+    def note_channel_slot_loaded(self, channel_key: str, slot: int) -> str | None:
+        """Record confirmed slot residency and return any displaced channel key."""
         normalized_key = channel_key.upper()
         previous_slot = self._channel_slot_by_key.pop(normalized_key, None)
+        if previous_slot is None:
+            previous_slot = self.get_confirmed_channel_slot(normalized_key)
         if previous_slot is not None and previous_slot != slot:
             self._channel_key_by_slot.pop(previous_slot, None)
 
@@ -416,7 +415,31 @@ class RadioManager:
             self._channel_slot_by_key.pop(displaced_key, None)
 
         self._channel_key_by_slot[slot] = normalized_key
-        self._channel_slot_by_key[normalized_key] = slot
+        if self.channel_slot_reuse_enabled():
+            self._channel_slot_by_key[normalized_key] = slot
+        return displaced_key if displaced_key != normalized_key else None
+
+    def get_confirmed_channel_slot(self, channel_key: str) -> int | None:
+        """Return a slot verified during the current radio generation."""
+        normalized_key = channel_key.upper()
+        cached = self._channel_slot_by_key.get(normalized_key)
+        if cached is not None:
+            return cached
+        return next(
+            (slot for slot, key in self._channel_key_by_slot.items() if key == normalized_key),
+            None,
+        )
+
+    def get_confirmed_channel_keys(self) -> list[str]:
+        """Return unique keys verified during the current radio generation."""
+        return list(dict.fromkeys(self._channel_key_by_slot.values()))
+
+    def invalidate_channel_slot(self, slot: int) -> str | None:
+        """Forget an ambiguous or overwritten slot and return its previous owner."""
+        channel_key = self._channel_key_by_slot.pop(slot, None)
+        if channel_key is not None:
+            self._channel_slot_by_key.pop(channel_key, None)
+        return channel_key
 
     def note_channel_slot_used(self, channel_key: str) -> None:
         """Refresh LRU order for a previously loaded channel slot."""
@@ -431,9 +454,11 @@ class RadioManager:
         self._channel_key_by_slot[slot] = normalized_key
 
     def invalidate_cached_channel_slot(self, channel_key: str) -> None:
-        """Drop any cached slot assignment for a channel key."""
+        """Drop any cached or confirmed slot assignment for a channel key."""
         normalized_key = channel_key.upper()
         slot = self._channel_slot_by_key.pop(normalized_key, None)
+        if slot is None:
+            slot = self.get_confirmed_channel_slot(normalized_key)
         if slot is None:
             return
         if self._channel_key_by_slot.get(slot) == normalized_key:

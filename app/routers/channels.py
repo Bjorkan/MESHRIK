@@ -254,7 +254,6 @@ async def create_channel(request: CreateChannelRequest) -> Channel:
         key=key_hex,
         name=channel_name,
         is_hashtag=is_hashtag,
-        on_radio=False,
     )
 
     stored = await ChannelRepository.get_by_key(key_hex)

@@ -169,6 +169,7 @@ async def send_channel_message_with_effective_scope(
     radio_manager,
     temp_radio_slot: int,
     error_broadcast_fn: BroadcastFn,
+    channel_broadcast_fn: BroadcastFn | None = None,
     flood_scope_override: str | _ScopeUnset = SCOPE_UNSET,
     app_settings_repository=AppSettingsRepository,
 ) -> Any:
@@ -295,23 +296,40 @@ async def send_channel_message_with_effective_scope(
                     channel_secret=key_bytes,
                 )
             except Exception:
-                if evicted_channel_key is not None:
-                    radio_manager.invalidate_cached_channel_slot(evicted_channel_key)
+                stale_key = radio_manager.invalidate_channel_slot(channel_slot)
+                if stale_key is not None and channel_broadcast_fn is not None:
+                    stale_channel = await ChannelRepository.get_by_key(stale_key)
+                    if stale_channel is not None:
+                        channel_broadcast_fn("channel", stale_channel.model_dump())
                 raise
-            if set_result.type == EventType.ERROR:
-                if evicted_channel_key is not None:
-                    radio_manager.invalidate_cached_channel_slot(evicted_channel_key)
+            if set_result is None or set_result.type != EventType.OK:
+                stale_key = radio_manager.invalidate_channel_slot(channel_slot)
+                if stale_key is not None and channel_broadcast_fn is not None:
+                    stale_channel = await ChannelRepository.get_by_key(stale_key)
+                    if stale_channel is not None:
+                        channel_broadcast_fn("channel", stale_channel.model_dump())
                 logger.warning(
                     "Failed to set channel on radio slot %d before %s: %s",
                     channel_slot,
                     action_label,
-                    set_result.payload,
+                    set_result.payload if set_result is not None else "no response",
                 )
                 raise HTTPException(
                     status_code=422,
                     detail=f"Failed to configure channel on radio before {action_label}",
                 )
-            radio_manager.note_channel_slot_loaded(channel_key, channel_slot)
+            displaced_key = radio_manager.note_channel_slot_loaded(channel_key, channel_slot)
+            if displaced_key is not None:
+                await ChannelRepository.set_on_radio(displaced_key, False)
+                if channel_broadcast_fn is not None:
+                    displaced_channel = await ChannelRepository.get_by_key(displaced_key)
+                    if displaced_channel is not None:
+                        channel_broadcast_fn("channel", displaced_channel.model_dump())
+            await ChannelRepository.set_on_radio(channel_key, True)
+            if channel_broadcast_fn is not None:
+                confirmed_channel = await ChannelRepository.get_by_key(channel_key)
+                if confirmed_channel is not None:
+                    channel_broadcast_fn("channel", confirmed_channel.model_dump())
         else:
             logger.debug(
                 "Reusing cached radio slot %d for channel %s before %s",
@@ -340,6 +358,10 @@ async def send_channel_message_with_effective_scope(
                 send_result.payload,
             )
             radio_manager.invalidate_cached_channel_slot(channel_key)
+            if channel_broadcast_fn is not None:
+                stale_channel = await ChannelRepository.get_by_key(channel_key)
+                if stale_channel is not None:
+                    channel_broadcast_fn("channel", stale_channel.model_dump())
         else:
             logger.debug(
                 "Radio send result for %s (%s): %r",
@@ -862,6 +884,7 @@ async def _channel_echo_watchdog(
                 radio_manager=radio_manager,
                 temp_radio_slot=WATCHDOG_TEMP_RADIO_SLOT,
                 error_broadcast_fn=error_broadcast_fn,
+                channel_broadcast_fn=broadcast_fn,
             )
             if result is not None and result.type != EventType.ERROR:
                 logger.info("Echo watchdog: resent message %d successfully", message_id)
@@ -950,6 +973,7 @@ async def send_channel_message_to_channel(
             radio_manager=radio_manager,
             temp_radio_slot=temp_radio_slot,
             error_broadcast_fn=error_broadcast_fn,
+            channel_broadcast_fn=broadcast_fn,
             flood_scope_override=flood_scope_override,
         )
 
@@ -1117,6 +1141,7 @@ async def resend_channel_message_record(
             radio_manager=radio_manager,
             temp_radio_slot=temp_radio_slot,
             error_broadcast_fn=error_broadcast_fn,
+            channel_broadcast_fn=broadcast_fn,
         )
         if result is None:
             logger.warning(

@@ -313,8 +313,10 @@ async def sync_channels_from_radio(
     cleared = 0
 
     try:
-        if clear_slots:
-            radio_manager.reset_channel_send_cache()
+        # Rebuild generation-local residency from the complete snapshot. If the
+        # scan aborts, persisted true flags remain visible as stale rather than
+        # being presented as confirmed.
+        radio_manager.reset_channel_send_cache()
         channel_limit = get_radio_channel_limit(max_channels)
 
         # Check all available channel slots for this firmware variant
@@ -334,6 +336,7 @@ async def sync_channels_from_radio(
             if key_hex is None:
                 continue
 
+            radio_manager.note_channel_slot_loaded(key_hex, idx)
             radio_manager.remember_pending_message_channel_slot(key_hex, idx)
             synced += 1
             logger.debug("Synced channel %s: %s", key_hex[:8], result.payload.get("channel_name"))
@@ -350,18 +353,15 @@ async def sync_channels_from_radio(
                 )
                 if clear_result.type == EventType.OK:
                     # Reflect confirmed device state, not intent to clear.
-                    await ChannelRepository.upsert(
-                        key=key_hex,
-                        name=result.payload["channel_name"],
-                        is_hashtag=result.payload["channel_name"].startswith("#"),
-                        on_radio=False,
-                    )
+                    radio_manager.invalidate_channel_slot(idx)
+                    await ChannelRepository.set_on_radio(key_hex, False)
                     cleared += 1
                 else:
                     logger.warning("Failed to clear channel %d: %s", idx, clear_result.payload)
             except Exception as e:
                 logger.warning("Error clearing channel %d: %s", idx, e)
 
+        await ChannelRepository.clear_on_radio_except(radio_manager.get_confirmed_channel_keys())
         logger.debug("Synced %d channels, cleared %d from radio", synced, cleared)
 
     except Exception as e:

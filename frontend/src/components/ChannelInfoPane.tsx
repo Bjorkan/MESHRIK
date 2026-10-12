@@ -63,6 +63,14 @@ export function ChannelInfoPane({
 
   // Use live channel data where available, fall back to detail snapshot
   const channel = liveChannel ?? detail?.channel ?? null;
+  const radioResidency =
+    channel?.radio_residency ?? (channel?.on_radio ? 'stale' : 'database_only');
+  const radioResidencyLabel =
+    radioResidency === 'confirmed'
+      ? 'Confirmed on radio'
+      : radioResidency === 'stale'
+        ? 'Not verified / stale'
+        : 'App database only';
 
   return (
     <Sheet open={channelKey !== null} onOpenChange={(open) => !open && onClose()}>
@@ -112,11 +120,22 @@ export function ChannelInfoPane({
                 <span className="text-[0.625rem] uppercase tracking-wider px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">
                   {channel.is_hashtag ? 'Hashtag' : 'Private Key'}
                 </span>
-                {channel.on_radio && (
-                  <span className="text-[0.625rem] uppercase tracking-wider px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">
-                    On Radio
-                  </span>
-                )}
+                <span
+                  className={
+                    radioResidency === 'confirmed'
+                      ? 'text-[0.625rem] uppercase tracking-wider px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium'
+                      : 'text-[0.625rem] uppercase tracking-wider px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium'
+                  }
+                  title={
+                    radioResidency === 'confirmed'
+                      ? 'This channel slot was verified during the current radio connection.'
+                      : radioResidency === 'stale'
+                        ? 'The channel was previously reported on the radio but has not been verified during the current connection.'
+                        : 'Creating a channel saves it locally. It is written to a radio slot only when needed for sending.'
+                  }
+                >
+                  {radioResidencyLabel}
+                </span>
               </div>
             </div>
 

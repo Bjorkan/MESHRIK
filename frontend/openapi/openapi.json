@@ -560,6 +560,17 @@
             ],
             "description": "Per-channel path hash mode override (0=1-byte, 1=2-byte, 2=3-byte, null = use radio default)",
             "title": "Path Hash Mode Override"
+          },
+          "radio_residency": {
+            "default": "database_only",
+            "description": "Current confidence in radio residency: database_only when the channel is local, confirmed when its slot was verified in this radio generation, and stale when a previous residency claim has not been verified in the current generation.",
+            "enum": [
+              "database_only",
+              "confirmed",
+              "stale"
+            ],
+            "title": "Radio Residency",
+            "type": "string"
           }
         },
         "required": [

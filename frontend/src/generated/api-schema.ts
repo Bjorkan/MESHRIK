@@ -2103,6 +2103,13 @@ export interface components {
        * @description Per-channel path hash mode override (0=1-byte, 1=2-byte, 2=3-byte, null = use radio default)
        */
       path_hash_mode_override?: number | null;
+      /**
+       * Radio Residency
+       * @description Current confidence in radio residency: database_only when the channel is local, confirmed when its slot was verified in this radio generation, and stale when a previous residency claim has not been verified in the current generation.
+       * @default database_only
+       * @enum {string}
+       */
+      radio_residency: 'database_only' | 'confirmed' | 'stale';
     };
     /**
      * ChannelDetail

@@ -66,6 +66,31 @@ class TestCreateChannel:
         assert mock_broadcast.call_args.args[1]["key"] == result.key
 
     @pytest.mark.asyncio
+    async def test_readding_channel_preserves_residency_and_local_metadata(self, test_db):
+        from app.routers.channels import CreateChannelRequest, create_channel
+
+        key = "AB" * 16
+        await ChannelRepository.upsert(
+            key=key,
+            name="Old name",
+            is_hashtag=False,
+            on_radio=True,
+        )
+        await ChannelRepository.update_flood_scope_override(key, "#Esperance")
+        await ChannelRepository.update_path_hash_mode_override(key, 2)
+        await ChannelRepository.set_favorite(key, True)
+        await ChannelRepository.set_muted(key, True)
+
+        result = await create_channel(CreateChannelRequest(name="Renamed", key=key))
+
+        assert result.name == "Renamed"
+        assert result.on_radio is True
+        assert result.flood_scope_override == "#Esperance"
+        assert result.path_hash_mode_override == 2
+        assert result.favorite is True
+        assert result.muted is True
+
+    @pytest.mark.asyncio
     async def test_existing_hash_is_not_doubled(self, test_db, client):
         key = "CC" * 16
         await ChannelRepository.upsert(key=key, name="#flightless", is_hashtag=True)

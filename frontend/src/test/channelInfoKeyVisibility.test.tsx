@@ -14,12 +14,18 @@ vi.mock('../api', () => ({
 import { api } from '../api';
 const mockGetChannelDetail = vi.mocked(api.getChannelDetail);
 
-function makeChannel(key: string, name: string, isHashtag: boolean): Channel {
+function makeChannel(
+  key: string,
+  name: string,
+  isHashtag: boolean,
+  radioResidency: Channel['radio_residency'] = 'database_only'
+): Channel {
   return {
     key,
     name,
     is_hashtag: isHashtag,
-    on_radio: false,
+    on_radio: radioResidency !== 'database_only',
+    radio_residency: radioResidency,
     last_read_at: null,
     favorite: false,
     muted: false,
@@ -53,6 +59,20 @@ const baseProps = {
 };
 
 describe('ChannelInfoPane key visibility', () => {
+  it.each([
+    ['database_only', 'App database only'],
+    ['confirmed', 'Confirmed on radio'],
+    ['stale', 'Not verified / stale'],
+  ] as const)('shows the explicit %s residency state', async (radioResidency, label) => {
+    const key = '12'.repeat(16);
+    const channel = makeChannel(key, '#residency', true, radioResidency);
+    mockGetChannelDetail.mockResolvedValue(makeDetail(channel));
+
+    render(<ChannelInfoPane {...baseProps} channelKey={key} channels={[channel]} />);
+
+    expect(await screen.findByText(label)).toBeInTheDocument();
+  });
+
   it('shows key directly for hashtag channels', async () => {
     const key = 'AA'.repeat(16);
     const channel = makeChannel(key, '#general', true);
