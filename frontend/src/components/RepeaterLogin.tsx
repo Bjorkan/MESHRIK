@@ -39,7 +39,7 @@ export function RepeaterLogin({
     async (e: FormEvent) => {
       e.preventDefault();
       if (loading) return;
-      await onLogin(password.trim());
+      await onLogin(password);
     },
     [password, loading, onLogin]
   );

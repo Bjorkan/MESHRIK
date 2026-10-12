@@ -35,11 +35,11 @@ describe('RepeaterLogin', () => {
     expect(screen.getByText('Login as Guest / ACLs')).toBeInTheDocument();
   });
 
-  it('calls onLogin with trimmed password on submit', () => {
+  it('preserves the exact password on submit', () => {
     render(<RepeaterLogin {...defaultProps} password="  secret  " />);
     fireEvent.submit(screen.getByText('Login with Password').closest('form')!);
 
-    expect(defaultProps.onLogin).toHaveBeenCalledWith('secret');
+    expect(defaultProps.onLogin).toHaveBeenCalledWith('  secret  ');
   });
 
   it('propagates password changes', () => {

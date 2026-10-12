@@ -94,8 +94,14 @@ export function RepeaterDashboard({
     rebootRepeater,
     syncClock,
   } = useRepeaterDashboard(conversation, { hasAdvertLocation });
-  const { password, setPassword, rememberPassword, setRememberPassword, persistAfterLogin } =
-    useRememberedServerPassword('repeater', conversation.id);
+  const {
+    password,
+    setPassword,
+    rememberPassword,
+    setRememberPassword,
+    recordLoginAttempt,
+    persistConfirmedPassword,
+  } = useRememberedServerPassword('repeater', conversation.id);
 
   // Telemetry history: preload from stored data, refresh from live status
   const [telemetryHistory, setTelemetryHistory] = useState<TelemetryHistoryEntry[]>([]);
@@ -141,12 +147,13 @@ export function RepeaterDashboard({
   const isFav = contact?.favorite ?? false;
 
   const handleRepeaterLogin = async (nextPassword: string) => {
-    await login(nextPassword);
-    persistAfterLogin(nextPassword);
+    recordLoginAttempt(nextPassword);
+    if (await login(nextPassword)) {
+      persistConfirmedPassword(nextPassword);
+    }
   };
   const handleRepeaterGuestLogin = async () => {
     await loginAsGuest();
-    persistAfterLogin('');
   };
 
   // Loading all panes indicator
@@ -320,7 +327,7 @@ export function RepeaterDashboard({
             <ServerLoginStatusBanner
               attempt={lastLoginAttempt}
               loading={loginLoading}
-              canRetryPassword={password.trim().length > 0}
+              canRetryPassword={password.length > 0}
               onRetryPassword={() => handleRepeaterLogin(password)}
               onRetryBlank={handleRepeaterGuestLogin}
               blankRetryLabel="Retry Existing-Access Login"

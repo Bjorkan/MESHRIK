@@ -51,14 +51,21 @@ export function useRememberedServerPassword(kind: ServerLoginKind, publicKey: st
     setRememberPassword(false);
   }, [kind, publicKey, storageKey]);
 
-  const persistAfterLogin = useCallback(
+  const recordLoginAttempt = useCallback(
     (submittedPassword: string) => {
-      const trimmedPassword = submittedPassword.trim();
-      if (!trimmedPassword) {
-        return;
-      }
+      if (submittedPassword.length === 0) return;
 
-      inMemoryPasswords.set(storageKey, { password: trimmedPassword });
+      inMemoryPasswords.set(storageKey, { password: submittedPassword });
+      setPassword(submittedPassword);
+    },
+    [storageKey]
+  );
+
+  const persistConfirmedPassword = useCallback(
+    (submittedPassword: string) => {
+      if (submittedPassword.length === 0) return;
+
+      inMemoryPasswords.set(storageKey, { password: submittedPassword });
 
       if (!rememberPassword) {
         try {
@@ -68,13 +75,13 @@ export function useRememberedServerPassword(kind: ServerLoginKind, publicKey: st
         }
       } else {
         try {
-          localStorage.setItem(storageKey, JSON.stringify({ password: trimmedPassword }));
+          localStorage.setItem(storageKey, JSON.stringify({ password: submittedPassword }));
         } catch {
           // localStorage may be unavailable
         }
       }
 
-      setPassword(trimmedPassword);
+      setPassword(submittedPassword);
     },
     [rememberPassword, storageKey]
   );
@@ -84,6 +91,7 @@ export function useRememberedServerPassword(kind: ServerLoginKind, publicKey: st
     setPassword,
     rememberPassword,
     setRememberPassword,
-    persistAfterLogin,
+    recordLoginAttempt,
+    persistConfirmedPassword,
   };
 }

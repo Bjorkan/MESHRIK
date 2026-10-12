@@ -182,8 +182,8 @@ export interface UseRepeaterDashboardResult {
   paneStates: Record<PaneName, PaneState>;
   consoleHistory: ConsoleEntry[];
   consoleLoading: boolean;
-  login: (password: string) => Promise<void>;
-  loginAsGuest: () => Promise<void>;
+  login: (password: string) => Promise<boolean>;
+  loginAsGuest: () => Promise<boolean>;
   refreshPane: (pane: PaneName) => Promise<void>;
   loadAll: () => Promise<void>;
   sendConsoleCommand: (command: string) => Promise<void>;
@@ -282,15 +282,15 @@ export function useRepeaterDashboard(
   const login = useCallback(
     async (password: string) => {
       const publicKey = getPublicKey();
-      if (!publicKey) return;
+      if (!publicKey) return false;
       const conversationId = publicKey;
-      const method = password.trim().length > 0 ? 'password' : 'blank';
+      const method = password.length > 0 ? 'password' : 'blank';
 
       setLoginLoading(true);
       setLoginError(null);
       try {
         const result = await api.repeaterLogin(publicKey, password);
-        if (activeIdRef.current !== conversationId) return;
+        if (activeIdRef.current !== conversationId) return false;
         setLastLoginAttempt(buildServerLoginAttemptFromResponse(method, result, 'repeater'));
         setLoggedIn(true);
         if (!result.authenticated) {
@@ -299,13 +299,15 @@ export function useRepeaterDashboard(
           // The inline login banner remains visible with a recovery action;
           // don't duplicate the same failure as an unrelated toast.
         }
+        return result.authenticated;
       } catch (err) {
-        if (activeIdRef.current !== conversationId) return;
+        if (activeIdRef.current !== conversationId) return false;
         const msg = err instanceof Error ? err.message : 'Login failed';
         setLastLoginAttempt(buildServerLoginAttemptFromError(method, msg, 'repeater'));
         setLoggedIn(true);
         setLoginError(msg);
         // The retry banner is the single source of visible login failure feedback.
+        return false;
       } finally {
         if (activeIdRef.current === conversationId) {
           setLoginLoading(false);
@@ -316,7 +318,7 @@ export function useRepeaterDashboard(
   );
 
   const loginAsGuest = useCallback(async () => {
-    await login('');
+    return login('');
   }, [login]);
 
   const refreshPane = useCallback(

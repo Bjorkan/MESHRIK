@@ -158,6 +158,7 @@ function createDeferred<T>() {
 describe('RepeaterDashboard', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
     // Reset mock hook state
     mockHook.loggedIn = false;
     mockHook.loginLoading = false;
@@ -263,6 +264,36 @@ describe('RepeaterDashboard', () => {
     render(<RepeaterDashboard {...defaultProps} />);
 
     expect(screen.getByText('Invalid password')).toBeInTheDocument();
+  });
+
+  it('only replaces a remembered repeater password after confirmed authentication', async () => {
+    const storageKey = `meshrik-server-password:repeater:${REPEATER_KEY}`;
+    localStorage.setItem(storageKey, JSON.stringify({ password: 'confirmed-password' }));
+    vi.mocked(mockHook.login).mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+
+    const firstRender = render(<RepeaterDashboard {...defaultProps} />);
+    fireEvent.change(screen.getByLabelText('Repeater password'), {
+      target: { value: 'failed-password' },
+    });
+    fireEvent.click(screen.getByText('Login with Password'));
+
+    await waitFor(() => expect(mockHook.login).toHaveBeenCalledWith('failed-password'));
+    expect(localStorage.getItem(storageKey)).toBe(
+      JSON.stringify({ password: 'confirmed-password' })
+    );
+
+    firstRender.unmount();
+    render(<RepeaterDashboard {...defaultProps} />);
+    fireEvent.change(screen.getByLabelText('Repeater password'), {
+      target: { value: '  confirmed replacement  ' },
+    });
+    fireEvent.click(screen.getByText('Login with Password'));
+
+    await waitFor(() => {
+      expect(localStorage.getItem(storageKey)).toBe(
+        JSON.stringify({ password: '  confirmed replacement  ' })
+      );
+    });
   });
 
   it('shows pane error when fetch fails', () => {

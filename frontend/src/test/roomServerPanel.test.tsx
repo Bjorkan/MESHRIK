@@ -118,6 +118,87 @@ describe('RoomServerPanel', () => {
     });
   });
 
+  it('does not overwrite a remembered password after an unconfirmed attempt', async () => {
+    const storageKey = `meshrik-server-password:room:${roomContact.public_key}`;
+    localStorage.setItem(storageKey, JSON.stringify({ password: 'confirmed-password' }));
+    mockApi.roomLogin
+      .mockResolvedValueOnce({
+        status: 'timeout',
+        authenticated: false,
+        message: 'No reply heard',
+      })
+      .mockResolvedValueOnce({
+        status: 'ok',
+        authenticated: true,
+        message: null,
+      });
+
+    render(<RoomServerPanel contact={roomContact} />);
+    fireEvent.change(screen.getByLabelText('Repeater password'), {
+      target: { value: 'failed-new-password' },
+    });
+    fireEvent.click(screen.getByText('Login with Password'));
+
+    await waitFor(() => expect(screen.getByText('Retry Password Login')).toBeInTheDocument());
+    expect(localStorage.getItem(storageKey)).toBe(
+      JSON.stringify({ password: 'confirmed-password' })
+    );
+
+    fireEvent.click(screen.getByText('Retry Password Login'));
+    await waitFor(() => {
+      expect(mockApi.roomLogin).toHaveBeenLastCalledWith(
+        roomContact.public_key,
+        'failed-new-password'
+      );
+    });
+  });
+
+  it('does not overwrite a remembered password when the login request rejects', async () => {
+    const storageKey = `meshrik-server-password:room:${roomContact.public_key}`;
+    localStorage.setItem(storageKey, JSON.stringify({ password: 'confirmed-password' }));
+    mockApi.roomLogin.mockRejectedValueOnce(new Error('Radio unavailable'));
+
+    render(<RoomServerPanel contact={roomContact} />);
+    fireEvent.change(screen.getByLabelText('Repeater password'), {
+      target: { value: 'rejected-password' },
+    });
+    fireEvent.click(screen.getByText('Login with Password'));
+
+    await waitFor(() => expect(screen.getByText('Retry Password Login')).toBeInTheDocument());
+    expect(localStorage.getItem(storageKey)).toBe(
+      JSON.stringify({ password: 'confirmed-password' })
+    );
+    expect(mockToast.error).toHaveBeenCalledWith('Room login request failed', {
+      description: 'Radio unavailable. You can still open tools and retry the login from here.',
+    });
+  });
+
+  it('stores an exact confirmed password including surrounding spaces', async () => {
+    const storageKey = `meshrik-server-password:room:${roomContact.public_key}`;
+    mockApi.roomLogin.mockResolvedValueOnce({
+      status: 'ok',
+      authenticated: true,
+      message: null,
+    });
+
+    render(<RoomServerPanel contact={roomContact} />);
+    fireEvent.change(screen.getByLabelText('Repeater password'), {
+      target: { value: '  exact room password  ' },
+    });
+    fireEvent.click(screen.getByLabelText('Remember password'));
+    fireEvent.click(screen.getByText('Login with Password'));
+
+    await waitFor(() => {
+      expect(localStorage.getItem(storageKey)).toBe(
+        JSON.stringify({ password: '  exact room password  ' })
+      );
+    });
+    expect(mockApi.roomLogin).toHaveBeenCalledWith(
+      roomContact.public_key,
+      '  exact room password  '
+    );
+  });
+
   it('shows only a success toast after a confirmed login', async () => {
     mockApi.roomLogin.mockResolvedValueOnce({
       status: 'ok',

@@ -122,8 +122,14 @@ export function resetRoomCacheForTests() {
 }
 
 export function RoomServerPanel({ contact, onAuthenticatedChange }: RoomServerPanelProps) {
-  const { password, setPassword, rememberPassword, setRememberPassword, persistAfterLogin } =
-    useRememberedServerPassword('room', contact.public_key);
+  const {
+    password,
+    setPassword,
+    rememberPassword,
+    setRememberPassword,
+    recordLoginAttempt,
+    persistConfirmedPassword,
+  } = useRememberedServerPassword('room', contact.public_key);
 
   const cached = useMemo(() => getCachedRoom(contact.public_key), [contact.public_key]);
 
@@ -207,7 +213,7 @@ export function RoomServerPanel({ contact, onAuthenticatedChange }: RoomServerPa
 
   const performLogin = useCallback(
     async (nextPassword: string, method: 'password' | 'blank') => {
-      if (loginLoading) return;
+      if (loginLoading) return false;
 
       setLoginLoading(true);
       setLoginError(null);
@@ -224,6 +230,7 @@ export function RoomServerPanel({ contact, onAuthenticatedChange }: RoomServerPa
               'No confirmation came back from the room server. You can still open tools and try again.',
           });
         }
+        return result.authenticated;
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Unknown error';
         setLastLoginAttempt(buildServerLoginAttemptFromError(method, message, 'room server'));
@@ -232,6 +239,7 @@ export function RoomServerPanel({ contact, onAuthenticatedChange }: RoomServerPa
         toast.error('Room login request failed', {
           description: `${message}. You can still open tools and retry the login from here.`,
         });
+        return false;
       } finally {
         setLoginLoading(false);
       }
@@ -241,16 +249,17 @@ export function RoomServerPanel({ contact, onAuthenticatedChange }: RoomServerPa
 
   const handleLogin = useCallback(
     async (nextPassword: string) => {
-      await performLogin(nextPassword, 'password');
-      persistAfterLogin(nextPassword);
+      recordLoginAttempt(nextPassword);
+      if (await performLogin(nextPassword, 'password')) {
+        persistConfirmedPassword(nextPassword);
+      }
     },
-    [performLogin, persistAfterLogin]
+    [performLogin, persistConfirmedPassword, recordLoginAttempt]
   );
 
   const handleLoginAsGuest = useCallback(async () => {
     await performLogin('', 'blank');
-    persistAfterLogin('');
-  }, [performLogin, persistAfterLogin]);
+  }, [performLogin]);
 
   const handleConsoleCommand = useCallback(
     async (command: string) => {
@@ -335,7 +344,7 @@ export function RoomServerPanel({ contact, onAuthenticatedChange }: RoomServerPa
           <ServerLoginStatusBanner
             attempt={lastLoginAttempt}
             loading={loginLoading}
-            canRetryPassword={password.trim().length > 0}
+            canRetryPassword={password.length > 0}
             onRetryPassword={() => handleLogin(password)}
             onRetryBlank={handleLoginAsGuest}
             blankRetryLabel="Retry Existing-Access Login"
@@ -350,7 +359,7 @@ export function RoomServerPanel({ contact, onAuthenticatedChange }: RoomServerPa
                 variant="outline"
                 size="sm"
                 onClick={() => void handleLogin(password)}
-                disabled={loginLoading || password.trim().length === 0}
+                disabled={loginLoading || password.length === 0}
               >
                 Retry Password Login
               </Button>
