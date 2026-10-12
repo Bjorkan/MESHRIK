@@ -38,6 +38,11 @@ Keep it aligned with `frontend/src` source code.
   history uses directional Infinite Query page parameters and Query fetching flags.
   Unread badges are read-only selectors from one Query snapshot (the active badge is
   suppressed without deleting its first-unread boundary).
+- TanStack DB is the canonical entity layer for contacts, channels, and the derived
+  repeater view. Query-backed collections share the application QueryClient, use stable
+  backend identifiers, and receive both REST refreshes and WebSocket cache patches through
+  that one synchronization path. Components consume entity arrays from `useLiveQuery`;
+  TanStack Query remains the transport/cache layer rather than a competing UI snapshot.
 
 ## Frontend Map
 
@@ -49,6 +54,7 @@ frontend/src/
 ├── types.ts                # Shared TS contracts
 ├── generated/api-schema.ts # Generated REST contract; never hand-edit
 ├── queryClient.ts          # Query client defaults and typed query-key factories
+├── entityCollections.ts    # Query-backed DB collections + live entity views
 ├── useWebSocket.ts         # WS lifecycle + event dispatch
 ├── wsEvents.ts             # Typed WS event parsing / discriminated union
 ├── prefetch.ts             # Consumes prefetched API promises started in index.html

@@ -202,7 +202,8 @@ describe('useContactsAndChannels', () => {
 
     // The live data set by setContacts must survive the stale resolution.
     // Use waitFor to allow Query to process the stale result internally.
-    await waitFor(() => expect(result.current.contacts).toEqual([liveContact]), { timeout: 1000 });
+    await waitFor(() => expect(result.current.contacts).toHaveLength(1), { timeout: 1000 });
+    expect(result.current.contacts[0]).toMatchObject(liveContact);
   });
 
   describe('bulk hashtag creation', () => {

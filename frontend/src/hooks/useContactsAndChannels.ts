@@ -9,6 +9,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api';
 import { queryKeys } from '../queryClient';
 import { channelsQueryOptions, contactsQueryOptions } from '../entityQueries';
+import { useLiveEntities } from '../entityCollections';
 import { toast } from '../components/ui/sonner';
 import { getContactDisplayName } from '../utils/pubkey';
 import { findPublicChannel, PUBLIC_CHANNEL_KEY, PUBLIC_CHANNEL_NAME } from '../utils/publicChannel';
@@ -36,15 +37,17 @@ export function useContactsAndChannels({
   const queryClient = useQueryClient();
   const contactsQuery = useQuery(contactsQueryOptions());
   const channelsQuery = useQuery(channelsQueryOptions());
+  const entityQueries = useLiveEntities();
   const undecryptedCountQuery = useQuery({
     queryKey: queryKeys.undecryptedCount(),
     queryFn: () => api.getUndecryptedPacketCount(),
   });
 
-  const contacts = contactsQuery.data ?? [];
-  const contactsLoaded = !contactsQuery.isPending;
-  const channels = channelsQuery.data ?? [];
-  const channelsLoaded = !channelsQuery.isPending;
+  const contacts = entityQueries.contacts.data ?? [];
+  const contactsLoaded = entityQueries.contacts.isReady && !contactsQuery.isPending;
+  const channels = entityQueries.channels.data ?? [];
+  const channelsLoaded = entityQueries.channels.isReady && !channelsQuery.isPending;
+  const repeaters = entityQueries.repeaters.data ?? [];
   const undecryptedCount = undecryptedCountQuery.data?.count ?? 0;
 
   useEffect(() => {
@@ -256,6 +259,7 @@ export function useContactsAndChannels({
 
   return {
     contacts,
+    repeaters,
     contactsLoaded,
     contactsError: contactsQuery.error,
     retryContacts: contactsQuery.refetch,
