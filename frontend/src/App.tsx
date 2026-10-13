@@ -263,7 +263,6 @@ function AppContent({
   const routeResourceState = useMemo<RouteResourceState | null>(() => {
     if (!routeEntity || entityRouteConversation) return null;
     if (routeEntity.type === 'channel') {
-      if (!channelsLoaded) return { status: 'loading', resource: 'Channel' };
       if (channelsError) {
         return {
           status: 'error',
@@ -271,9 +270,9 @@ function AppContent({
           onRetry: () => void retryChannels(),
         };
       }
+      if (!channelsLoaded) return { status: 'loading', resource: 'Channel' };
       return { status: 'not-found', resource: 'Channel' };
     }
-    if (!contactsLoaded) return { status: 'loading', resource: 'Contact' };
     if (contactsError) {
       return {
         status: 'error',
@@ -281,6 +280,7 @@ function AppContent({
         onRetry: () => void retryContacts(),
       };
     }
+    if (!contactsLoaded) return { status: 'loading', resource: 'Contact' };
     return { status: 'not-found', resource: 'Contact' };
   }, [
     channelsError,
