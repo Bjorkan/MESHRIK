@@ -13,15 +13,6 @@ logger = logging.getLogger(__name__)
 
 BroadcastFn = Callable[..., Any]
 MessageSendStatus = Literal["pending", "confirmed", "unknown"]
-LOG_MESSAGE_PREVIEW_LEN = 32
-
-
-def truncate_for_log(text: str, max_chars: int = LOG_MESSAGE_PREVIEW_LEN) -> str:
-    """Return a compact single-line message preview for log output."""
-    normalized = " ".join(text.split())
-    if len(normalized) <= max_chars:
-        return normalized
-    return f"{normalized[:max_chars].rstrip()}..."
 
 
 def _format_channel_log_target(channel_name: str | None, channel_key: str) -> str:
@@ -333,10 +324,9 @@ async def create_message_from_decrypted(
         return None
 
     logger.info(
-        'Stored channel message "%s" for %r (msg ID %d in chan ID %s)',
-        truncate_for_log(text),
-        _format_channel_log_target(channel_name, channel_key_normalized),
+        "Stored channel message %d for %r (channel ID %s)",
         msg_id,
+        _format_channel_log_target(channel_name, channel_key_normalized),
         channel_key_normalized,
     )
     await RawPacketRepository.mark_decrypted(packet_id, msg_id)

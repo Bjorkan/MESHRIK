@@ -925,6 +925,7 @@ async def send_channel_message_to_channel(
     our_public_key: str | None = None
     text_with_sender = text
     outgoing_message = None
+    started_at = _time.monotonic()
 
     async def send_channel(mc) -> None:
         nonlocal sent_at, sender_timestamp, radio_name
@@ -932,7 +933,6 @@ async def send_channel_message_to_channel(
         radio_name = mc.self_info.get("name", "") if mc.self_info else ""
         our_public_key = (mc.self_info.get("public_key") or None) if mc.self_info else None
         text_with_sender = f"{radio_name}: {text}" if radio_name else text
-        logger.info("Sending channel message to %s: %s", channel.name, text[:50])
 
         sent_at = int(now_fn())
         sender_timestamp = await allocate_outgoing_sender_timestamp(
@@ -961,6 +961,12 @@ async def send_channel_message_to_channel(
                 status_code=422,
                 detail="Failed to store outgoing message - unexpected duplicate",
             )
+        logger.info(
+            "Sending channel message %d to %s (%d UTF-8 bytes)",
+            outgoing_message.id,
+            channel.name,
+            len(text.encode("utf-8")),
+        )
 
         result = await send_channel_message_with_effective_scope(
             mc=mc,
@@ -991,6 +997,7 @@ async def send_channel_message_to_channel(
     try:
         await _run_radio_command(radio_manager, "send_channel_message", send_channel)
     except HTTPException as exc:
+        message_id = outgoing_message.id if outgoing_message is not None else None
         if outgoing_message is not None and exc.status_code == 408:
             assert sender_timestamp is not None
             assert sent_at is not None
@@ -1011,11 +1018,25 @@ async def send_channel_message_to_channel(
         elif outgoing_message is not None:
             await message_repository.delete_by_id(outgoing_message.id)
             outgoing_message = None
+        logger.warning(
+            "Channel message send %s to %s ended with HTTP %d after %.3fs",
+            message_id if message_id is not None else "unstored",
+            channel.name,
+            exc.status_code,
+            _time.monotonic() - started_at,
+        )
         raise
     except Exception:
+        message_id = outgoing_message.id if outgoing_message is not None else None
         if outgoing_message is not None:
             await message_repository.delete_by_id(outgoing_message.id)
             outgoing_message = None
+        logger.error(
+            "Channel message send %s to %s failed after %.3fs",
+            message_id if message_id is not None else "unstored",
+            channel.name,
+            _time.monotonic() - started_at,
+        )
         raise
     finally:
         if sender_timestamp is not None:
@@ -1041,6 +1062,12 @@ async def send_channel_message_to_channel(
         message_repository=message_repository,
     )
     broadcast_message(message=outgoing_message, broadcast_fn=broadcast_fn)
+    logger.info(
+        "Channel message %d sent to %s in %.3fs",
+        outgoing_message.id,
+        channel.name,
+        _time.monotonic() - started_at,
+    )
 
     # Spawn echo watchdog if auto-resend is enabled
     try:

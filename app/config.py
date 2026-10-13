@@ -245,6 +245,13 @@ def setup_logging() -> None:
                     "handlers": ["uvicorn_access"],
                     "propagate": False,
                 },
+                # aiosqlite DEBUG records include bound SQL parameters, which may
+                # contain message bodies, credentials, or integration secrets.
+                "aiosqlite": {
+                    "level": "WARNING",
+                    "handlers": ["default"],
+                    "propagate": False,
+                },
             },
         }
     )

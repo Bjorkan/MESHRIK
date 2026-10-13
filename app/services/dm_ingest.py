@@ -20,7 +20,6 @@ from app.services.messages import (
     format_contact_log_target,
     handle_duplicate_message,
     reconcile_duplicate_message,
-    truncate_for_log,
 )
 
 if TYPE_CHECKING:
@@ -297,9 +296,8 @@ async def ingest_decrypted_direct_message(
 
     if not outgoing and decrypted.txt_type == 1:
         logger.debug(
-            "Skipping CLI response from %s (txt_type=1): %s",
+            "Skipping CLI response from %s (txt_type=1)",
             conversation_key[:12],
-            (decrypted.message or "")[:50],
         )
         return None
 
@@ -311,9 +309,8 @@ async def ingest_decrypted_direct_message(
         conversation_key, skip_storage = await _prepare_resolved_contact(contact, log=logger)
         if skip_storage:
             logger.debug(
-                "Skipping message from repeater %s (CLI responses not stored): %s",
+                "Skipping message from repeater %s (CLI responses not stored)",
                 conversation_key[:12],
-                (decrypted.message or "")[:50],
             )
             return None
         if not outgoing:
@@ -358,10 +355,9 @@ async def ingest_decrypted_direct_message(
         return None
 
     logger.info(
-        'Stored direct message "%s" for %r (msg ID %d in contact ID %s, outgoing=%s)',
-        truncate_for_log(decrypted.message),
-        format_contact_log_target(contact.name if contact else None, conversation_key),
+        "Stored direct message %d for %r (contact ID %s, outgoing=%s)",
         message.id,
+        format_contact_log_target(contact.name if contact else None, conversation_key),
         conversation_key,
         outgoing,
     )

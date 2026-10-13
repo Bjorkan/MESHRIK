@@ -1,6 +1,7 @@
 """Tests for outgoing message sending via the messages router."""
 
 import asyncio
+import logging
 import time
 from unittest.mock import AsyncMock, MagicMock, call, patch
 
@@ -494,6 +495,57 @@ class TestOutgoingChannelBroadcast:
         assert data["conversation_key"] == chan_key.upper()
         assert data["sender_name"] == "MyNode"
         assert data["channel_name"] == "#general"
+
+    @pytest.mark.asyncio
+    async def test_send_channel_logs_safe_metadata_without_body(self, test_db, caplog):
+        mc = _make_mc(name="MyNode")
+        chan_key = "a1" * 16
+        sentinel = "PRIVATE-SENTINEL-success-7c43"
+        await ChannelRepository.upsert(key=chan_key, name="#private-test")
+        caplog.set_level(logging.DEBUG, logger="app")
+
+        with (
+            patch("app.routers.messages.radio_manager.require_connected", return_value=mc),
+            patch.object(radio_manager, "_meshcore", mc),
+            patch("app.routers.messages.broadcast_event"),
+        ):
+            message = await send_channel_message(
+                SendChannelMessageRequest(channel_key=chan_key, text=sentinel)
+            )
+
+        app_log = "\n".join(
+            record.getMessage() for record in caplog.records if record.name.startswith("app.")
+        )
+        assert sentinel not in app_log
+        assert f"channel message {message.id}" in app_log.lower()
+        assert "UTF-8 bytes" in app_log
+
+    @pytest.mark.asyncio
+    async def test_failed_channel_send_logs_no_body(self, test_db, caplog):
+        mc = _make_mc(name="MyNode")
+        mc.commands.send_chan_msg = AsyncMock(
+            return_value=MagicMock(type=EventType.ERROR, payload="radio rejected send")
+        )
+        chan_key = "a2" * 16
+        sentinel = "PRIVATE-SENTINEL-failure-91ba"
+        await ChannelRepository.upsert(key=chan_key, name="#private-test")
+        caplog.set_level(logging.DEBUG, logger="app")
+
+        with (
+            patch("app.routers.messages.radio_manager.require_connected", return_value=mc),
+            patch.object(radio_manager, "_meshcore", mc),
+            patch("app.routers.messages.broadcast_event"),
+            pytest.raises(HTTPException, match="Failed to send message"),
+        ):
+            await send_channel_message(
+                SendChannelMessageRequest(channel_key=chan_key, text=sentinel)
+            )
+
+        app_log = "\n".join(
+            record.getMessage() for record in caplog.records if record.name.startswith("app.")
+        )
+        assert sentinel not in app_log
+        assert "ended with HTTP 422" in app_log
 
     @pytest.mark.asyncio
     async def test_send_channel_same_second_duplicate_bumps_timestamp(self, test_db):

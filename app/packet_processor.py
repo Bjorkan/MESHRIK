@@ -559,7 +559,7 @@ async def _process_group_text(
             continue
 
         # Successfully decrypted!
-        logger.debug("Decrypted GroupText for channel %s: %s", channel.name, decrypted.message[:50])
+        logger.debug("Decrypted GroupText for channel %s", channel.name)
 
         # Create message (or add path to existing if duplicate)
         # This handles both new messages and echoes of our own outgoing messages

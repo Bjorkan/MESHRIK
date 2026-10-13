@@ -4,10 +4,19 @@ These tests verify transport mutual exclusivity, BLE PIN requirement,
 and connection_type derivation.
 """
 
+import logging
+
 import pytest
 from pydantic import ValidationError
 
-from app.config import Settings
+from app.config import Settings, setup_logging
+
+
+def test_sql_debug_parameters_are_suppressed():
+    """Database-bound values must not leak when application DEBUG logging is enabled."""
+    setup_logging()
+
+    assert logging.getLogger("aiosqlite").getEffectiveLevel() == logging.WARNING
 
 
 class TestTransportExclusivity:
