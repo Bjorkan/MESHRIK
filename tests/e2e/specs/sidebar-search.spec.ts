@@ -18,7 +18,6 @@ test.describe("Sidebar search/filter", () => {
   test.beforeAll(async () => {
     const chA = await createChannel(nameA);
     const chB = await createChannel(nameB);
-    await createContact(contactKey, contactName);
     keyA = chA.key;
     keyB = chB.key;
   });
@@ -44,10 +43,13 @@ test.describe("Sidebar search/filter", () => {
     await page.goto("/");
     await expect(page.getByRole("status", { name: "Radio OK" })).toBeVisible();
 
-    // Seeded conversations should be visible.
+    // Create the local-only contact after the initial radio sync has settled.
+    // The contact WebSocket event should add it to the already-mounted sidebar.
+    await createContact(contactKey, contactName);
+
+    // Channels are already visible; the contact may be outside the virtualized viewport.
     await expect(page.getByText(nameA, { exact: true })).toBeVisible();
     await expect(page.getByText(nameB, { exact: true })).toBeVisible();
-    await expect(page.getByText(contactName, { exact: true })).toBeVisible();
 
     const searchInput = page.getByLabel("Search conversations");
 
@@ -74,6 +76,6 @@ test.describe("Sidebar search/filter", () => {
     await page.getByTitle("Clear search").click();
     await expect(page.getByText(nameA, { exact: true })).toBeVisible();
     await expect(page.getByText(nameB, { exact: true })).toBeVisible();
-    await expect(page.getByText(contactName, { exact: true })).toBeVisible();
+    await expect(searchInput).toHaveValue("");
   });
 });

@@ -9,6 +9,7 @@ import {
 import {
   E2E_PARTNER_RADIO_PUBKEY,
   E2E_PARTNER_RADIO_NAME,
+  E2E_USE_PARTNER_RADIO_FOR_DM_ACK_TEST,
 } from "../helpers/env";
 
 const PARTNER_RADIO_NOTICE =
@@ -22,6 +23,8 @@ function escapeRegex(value: string): string {
 }
 
 test.describe("Partner-radio direct-route learning via DM ACK", () => {
+  test.skip(!E2E_USE_PARTNER_RADIO_FOR_DM_ACK_TEST, PARTNER_RADIO_NOTICE);
+
   test(
     "zero-hop adverts then DM ACK learns a direct route",
     { tag: "@partner-radio" },

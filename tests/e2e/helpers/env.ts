@@ -42,3 +42,10 @@ export const E2E_PARTNER_RADIO_PUBKEY =
  */
 export const E2E_PARTNER_RADIO_NAME =
   process.env.E2E_PARTNER_RADIO_NAME ?? "FlightlessDt\u{1F95D}";
+
+/**
+ * The partner-radio test mutates contacts and sends RF traffic to a specific
+ * second node, so it must only run when that hardware is intentionally enabled.
+ */
+export const E2E_USE_PARTNER_RADIO_FOR_DM_ACK_TEST =
+  process.env.E2E_USE_PARTNER_RADIO_FOR_DM_ACK_TEST === "1";

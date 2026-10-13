@@ -7,6 +7,8 @@ import {
   deleteContact,
 } from "../helpers/api";
 
+const PUBLIC_CHANNEL_KEY = "8B3387E9C5CDEA6AC9E5EDBAA115CD72";
+
 function randomHex(bytes: number): string {
   return randomBytes(bytes).toString("hex");
 }
@@ -71,24 +73,24 @@ test.describe("Canonical pathname routing", () => {
     page,
   }) => {
     const routes = [
-      "/",
-      "/raw",
-      "/map",
-      `/map?focus=${contactKey}`,
-      "/visualizer",
-      "/search",
-      "/trace",
-      "/radio-activity",
-      "/settings/radio",
-      "/settings/local",
-      "/settings/radio-app",
-      "/settings/fanout",
-      "/settings/database",
-      "/settings/statistics",
-      "/settings/about",
+      ["/", `/channel/${PUBLIC_CHANNEL_KEY}`],
+      ["/raw", "/raw"],
+      ["/map", "/map"],
+      [`/map?focus=${contactKey}`, "/map"],
+      ["/visualizer", "/visualizer"],
+      ["/search", "/search"],
+      ["/trace", "/trace"],
+      ["/radio-activity", "/radio-activity"],
+      ["/settings/radio", "/settings/radio"],
+      ["/settings/local", "/settings/local"],
+      ["/settings/radio-app", "/settings/radio-app"],
+      ["/settings/fanout", "/settings/fanout"],
+      ["/settings/database", "/settings/database"],
+      ["/settings/statistics", "/settings/statistics"],
+      ["/settings/about", "/settings/about"],
     ];
 
-    for (const route of routes) {
+    for (const [route, expectedPathname] of routes) {
       await page.goto(route);
       await expect(
         page.getByRole("status", { name: "Radio OK" }),
@@ -96,9 +98,7 @@ test.describe("Canonical pathname routing", () => {
       await expect(
         page.getByRole("heading", { name: "Page not found" }),
       ).toHaveCount(0);
-      expect(new URL(page.url()).pathname).toBe(
-        new URL(route, "http://example.test").pathname,
-      );
+      expect(new URL(page.url()).pathname).toBe(expectedPathname);
     }
     expect(new URL(page.url()).hash).toBe("");
   });

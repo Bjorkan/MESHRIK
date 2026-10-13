@@ -155,6 +155,10 @@ npx playwright test              # headless
 npx playwright test --headed     # watch it run
 ```
 
+If Playwright's pinned browser download is unavailable but a compatible Chromium is already
+installed, set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to its executable. The default remains the
+Playwright-managed browser.
+
 The test harness starts its own uvicorn instance on port 8001 with a fresh temporary database. Your development server (port 8000) is unaffected.
 
 ### Test tiers
@@ -191,18 +195,20 @@ Without the echo bot, `@mesh-traffic` tests rely on organic traffic from other n
 
 All E2E environment configuration is centralized in `tests/e2e/helpers/env.ts` with defaults that work for the maintainer's test rig. Override via environment variables:
 
-| Variable                   | Default                              | Purpose                                                            |
-| -------------------------- | ------------------------------------ | ------------------------------------------------------------------ |
-| `MESHCORE_SERIAL_PORT`     | auto-detect                          | Serial port for the test radio                                     |
-| `E2E_ECHO_CHANNEL`         | `#flightless`                        | Channel the echo bot monitors for traffic generation               |
-| `E2E_ECHO_TRIGGER_MESSAGE` | `!echo please give incoming message` | Message sent to nudge the echo bot                                 |
-| `E2E_PARTNER_RADIO_PUBKEY` | _(maintainer's test node)_           | 64-char hex public key of a node that will ACK DMs from your radio |
-| `E2E_PARTNER_RADIO_NAME`   | _(maintainer's test node)_           | Display name of that node (used in UI assertions)                  |
+| Variable                                    | Default                              | Purpose                                                            |
+| ------------------------------------------- | ------------------------------------ | ------------------------------------------------------------------ |
+| `MESHCORE_SERIAL_PORT`                      | auto-detect                          | Serial port for the test radio                                     |
+| `E2E_ECHO_CHANNEL`                          | `#flightless`                        | Channel the echo bot monitors for traffic generation               |
+| `E2E_ECHO_TRIGGER_MESSAGE`                  | `!echo please give incoming message` | Message sent to nudge the echo bot                                 |
+| `E2E_USE_PARTNER_RADIO_FOR_DM_ACK_TEST`     | unset                                | Set to `1` to enable the partner-radio DM ACK test                 |
+| `E2E_PARTNER_RADIO_PUBKEY`                  | _(maintainer's test node)_           | 64-char hex public key of a node that will ACK DMs from your radio |
+| `E2E_PARTNER_RADIO_NAME`                    | _(maintainer's test node)_           | Display name of that node (used in UI assertions)                  |
 
 Example for a contributor with their own two-radio setup:
 
 ```bash
 E2E_ECHO_CHANNEL="#mytest" \
+E2E_USE_PARTNER_RADIO_FOR_DM_ACK_TEST=1 \
 E2E_PARTNER_RADIO_PUBKEY="abcd1234...full64charhexkey..." \
 E2E_PARTNER_RADIO_NAME="MyTestNode" \
 npx playwright test

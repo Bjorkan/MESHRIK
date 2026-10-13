@@ -3,6 +3,8 @@ import path from "path";
 
 const projectRoot = path.resolve(__dirname, "..", "..");
 const tmpDir = path.resolve(__dirname, ".tmp");
+const chromiumExecutablePath =
+  process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH;
 
 export default defineConfig({
   testDir: "./specs",
@@ -42,7 +44,12 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
-      use: { browserName: "chromium" },
+      use: {
+        browserName: "chromium",
+        ...(chromiumExecutablePath
+          ? { launchOptions: { executablePath: chromiumExecutablePath } }
+          : {}),
+      },
     },
   ],
 

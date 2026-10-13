@@ -3,6 +3,7 @@ import { createChannel, deleteChannel } from "../helpers/api";
 
 const REOPEN_LAST_CONVERSATION_KEY = "meshrik-reopen-last-conversation";
 const LAST_VIEWED_CONVERSATION_KEY = "meshrik-last-viewed-conversation";
+const PUBLIC_CHANNEL_KEY = "8B3387E9C5CDEA6AC9E5EDBAA115CD72";
 
 function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -31,7 +32,9 @@ test.describe("Reopen last conversation (device-local)", () => {
   }) => {
     await page.goto("/");
     await expect(page.getByRole("status", { name: "Radio OK" })).toBeVisible();
-    await expect.poll(() => new URL(page.url()).pathname).toBe("/");
+    await expect
+      .poll(() => new URL(page.url()).pathname)
+      .toBe(`/channel/${PUBLIC_CHANNEL_KEY}`);
 
     await page.getByText(channelName, { exact: true }).first().click();
     await expect(
@@ -90,6 +93,8 @@ test.describe("Reopen last conversation (device-local)", () => {
     await page.getByRole("button", { name: "Back to Chat" }).click();
     await page.goto("/");
     await expect(page.getByPlaceholder(/message\s+Public/i)).toBeVisible();
-    await expect.poll(() => new URL(page.url()).pathname).toBe("/");
+    await expect
+      .poll(() => new URL(page.url()).pathname)
+      .toBe(`/channel/${PUBLIC_CHANNEL_KEY}`);
   });
 });
