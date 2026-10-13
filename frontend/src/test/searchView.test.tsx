@@ -369,6 +369,18 @@ describe('SearchView', () => {
     expect(screen.getByText(/No messages found/)).toBeInTheDocument();
   });
 
+  it('refocuses an already-mounted search input for a new scoped focus request', () => {
+    const { rerender } = render(<SearchView {...defaultProps} focusRequestVersion={0} />);
+    const input = screen.getByLabelText('Search messages');
+    expect(input).toHaveFocus();
+
+    input.blur();
+    expect(input).not.toHaveFocus();
+    rerender(<SearchView {...defaultProps} focusRequestVersion={1} />);
+
+    expect(input).toHaveFocus();
+  });
+
   it('aborts the load-more request on unmount', async () => {
     const pageResults = Array.from({ length: 50 }, (_, i) =>
       createSearchResult({ id: i + 1, text: `result ${i}` })

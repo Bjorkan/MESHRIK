@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { formatForDisplay } from '@tanstack/react-hotkeys';
 import {
   Hash,
   Map,
@@ -30,14 +31,18 @@ import {
 } from './settings/settingsConstants';
 import type { Channel, Contact, Conversation } from '../types';
 import { CONTACT_TYPE_REPEATER, CONTACT_TYPE_ROOM } from '../types';
+import { APP_HOTKEYS } from '../hotkeys';
 
 const MAX_PER_GROUP = 8;
 
 interface CommandPaletteProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   contacts: Contact[];
   channels: Channel[];
   onSelectConversation: (conv: Conversation) => void;
   onOpenSettings: (section: SettingsSection) => void;
+  onOpenShortcutHelp: () => void;
   onRepeaterAutoLogin: (publicKey: string, displayName: string) => void;
 }
 
@@ -118,30 +123,24 @@ function filterList<T extends Searchable>(items: T[], query: string): T[] {
 }
 
 export function CommandPalette({
+  open,
+  onOpenChange,
   contacts,
   channels,
   onSelectConversation,
   onOpenSettings,
+  onOpenShortcutHelp,
   onRepeaterAutoLogin,
 }: CommandPaletteProps) {
-  const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
 
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        setOpen((prev) => !prev);
-      }
-    }
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, []);
-
-  const select = useCallback((action: () => void) => {
-    setOpen(false);
-    action();
-  }, []);
+  const select = useCallback(
+    (action: () => void) => {
+      onOpenChange(false);
+      action();
+    },
+    [onOpenChange]
+  );
 
   const {
     favContacts,
@@ -220,7 +219,7 @@ export function CommandPalette({
     <Dialog
       open={open}
       onOpenChange={(nextOpen) => {
-        setOpen(nextOpen);
+        onOpenChange(nextOpen);
         if (!nextOpen) setQuery('');
       }}
     >
@@ -355,6 +354,24 @@ export function CommandPalette({
               </CommandGroup>
             )}
           </CommandList>
+          <div className="flex items-center justify-between border-t border-border px-3 py-2 text-xs text-muted-foreground">
+            <span>
+              Toggle palette{' '}
+              <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono">
+                {String(formatForDisplay(APP_HOTKEYS.commandPalette.binding))}
+              </kbd>
+            </span>
+            <button
+              type="button"
+              className="rounded px-2 py-1 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              onClick={() => select(onOpenShortcutHelp)}
+            >
+              Keyboard shortcuts{' '}
+              <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono">
+                {String(formatForDisplay(APP_HOTKEYS.shortcutHelp.binding))}
+              </kbd>
+            </button>
+          </div>
         </Command>
       </DialogContent>
     </Dialog>

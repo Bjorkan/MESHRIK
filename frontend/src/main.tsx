@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { RouterProvider } from '@tanstack/react-router';
+import { HotkeysProvider } from '@tanstack/react-hotkeys';
 import './index.css';
 import './themes.css';
 import './styles.css';
@@ -18,9 +19,16 @@ applyFontScale(getSavedFontScale());
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <PushSubscriptionProvider>
-      <RouterProvider router={router} />
-    </PushSubscriptionProvider>
+    <HotkeysProvider
+      defaultOptions={{
+        hotkey: { conflictBehavior: 'error' },
+        hotkeySequence: { conflictBehavior: 'error' },
+      }}
+    >
+      <PushSubscriptionProvider>
+        <RouterProvider router={router} />
+      </PushSubscriptionProvider>
+    </HotkeysProvider>
   </StrictMode>
 );
 

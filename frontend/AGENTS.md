@@ -66,6 +66,10 @@ Keep it aligned with `frontend/src` source code.
   work itself; Pacer decides only when latest-value work, lossless batches, or the next cooperative
   step may run. Protocol clocks, animation frames, workflow delays, and periodic maintenance remain
   plain timers because they are not rate-control state.
+- TanStack Hotkeys is the only application-shortcut registration and dispatch engine. One provider
+  sets the conflict policy, `hotkeys.ts` is the binding/metadata registry, and `useAppHotkeys` owns
+  global and navigation scopes. Native text-entry, IME, and element activation handlers remain local
+  component semantics rather than competing shortcut registrations.
 
 ## Frontend Map
 
@@ -78,6 +82,7 @@ frontend/src/
 ├── generated/api-schema.ts # Generated REST contract; never hand-edit
 ├── queryClient.ts          # Query client defaults and typed query-key factories
 ├── entityCollections.ts    # Query-backed DB collections + live entity views
+├── hotkeys.ts              # Central shortcut bindings and discoverability metadata
 ├── useWebSocket.ts         # WS lifecycle + event dispatch
 ├── wsEvents.ts             # Typed WS event parsing / discriminated union
 ├── prefetch.ts             # Consumes prefetched API promises started in index.html
@@ -112,6 +117,7 @@ frontend/src/
 │   ├── usePushSubscription.ts      # Web Push subscription lifecycle, per-conversation filters
 │   ├── useFaviconBadge.ts          # Browser tab unread badge state
 │   ├── useEntranceSettled.ts       # Defers entrance animation work until layout settles
+│   ├── useAppHotkeys.ts             # TanStack Hotkeys registration, scopes, and dispatch
 │   └── useRememberedServerPassword.ts # Browser-local repeater/room password persistence
 ├── components/
 │   ├── AppShell.tsx            # App-shell layout: status, sidebar, search/settings panes, cracker, modals, security warning
@@ -431,6 +437,26 @@ The Pacer regression tests use fake clocks for the 300 ms search and 250 ms read
 visualizer burst case enqueues 100 distinct keys and asserts that all 100 are published; the unread
 suite also switches conversations inside one debounce window and asserts that both exact boundaries
 reach their respective mutations.
+
+### Keyboard shortcuts
+
+`HotkeysProvider` applies `conflictBehavior: 'error'` to both individual hotkeys and sequences.
+Registrations carry user-facing metadata, and `ShortcutHelpDialog` reads the live TanStack registry
+instead of maintaining a second help map. Disabled route/scope registrations remain visible there.
+
+| Binding | Scope | Action |
+| --- | --- | --- |
+| `Mod+K` | global, including text inputs | Toggle the command palette (`Command` on macOS, `Control` elsewhere) |
+| `/` | navigation, outside editing controls and blocking overlays | Open and focus message search |
+| `G`, then `M` | navigation, outside editing controls and blocking overlays | Open the node map |
+| `G`, then `R` | navigation, outside editing controls and blocking overlays | Open Radio Activity |
+| `?` | global, outside editing controls and blocking overlays | Show the live keyboard-shortcut registry |
+
+Shortcut registrations use `requireReset` where applicable so browser key repeat cannot retrigger an
+action before keyup. Route destinations still belong to TanStack Router through the existing typed
+conversation navigation callback. Radix dialogs retain their accessible Escape-to-close behavior;
+do not register a competing global Escape handler. Local `onKeyDown` remains correct for
+MessageInput Enter-to-send/IME handling and for Enter/Space activation of custom interactive rows.
 
 ### Radio settings behavior
 

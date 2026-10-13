@@ -15,6 +15,7 @@ import { ConversationPane } from './ConversationPane';
 import { NewMessageModal } from './NewMessageModal';
 import { BulkAddChannelResultModal } from './BulkAddChannelResultModal';
 import { CommandPalette } from './CommandPalette';
+import { ShortcutHelpDialog } from './ShortcutHelpDialog';
 import { SecurityWarningModal } from './SecurityWarningModal';
 import { Toaster } from './ui/sonner';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from './ui/sheet';
@@ -29,6 +30,7 @@ import type { CrackerPanelProps } from './CrackerPanel';
 import type { SearchViewProps } from './SearchView';
 import type { SettingsModalProps } from './SettingsModal';
 import { cn } from '@/lib/utils';
+import { useAppHotkeys } from '../hooks/useAppHotkeys';
 
 const SettingsModal = lazy(() =>
   import('./SettingsModal').then((m) => ({ default: m.SettingsModal }))
@@ -118,6 +120,55 @@ export function AppShell({
   channelInfoPaneProps,
   onRepeaterAutoLogin,
 }: AppShellProps) {
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [shortcutHelpOpen, setShortcutHelpOpen] = useState(false);
+  const [searchFocusRequestVersion, setSearchFocusRequestVersion] = useState(0);
+  const { onSelectConversation } = sidebarProps;
+  const hasBlockingOverlay =
+    showNewMessage ||
+    showBulkAddResults ||
+    contactInfoPaneProps.contactKey !== null ||
+    channelInfoPaneProps.channelKey !== null;
+  const openMessageSearch = useCallback(() => {
+    onSelectConversation({
+      type: 'search',
+      id: 'search',
+      name: 'Message Search',
+    });
+    setSearchFocusRequestVersion((version) => version + 1);
+  }, [onSelectConversation]);
+  const openMap = useCallback(
+    () =>
+      onSelectConversation({
+        type: 'map',
+        id: 'map',
+        name: 'Node Map',
+      }),
+    [onSelectConversation]
+  );
+  const openRadioActivity = useCallback(
+    () =>
+      onSelectConversation({
+        type: 'radio-activity',
+        id: 'radio-activity',
+        name: 'Radio Activity',
+      }),
+    [onSelectConversation]
+  );
+  useAppHotkeys({
+    commandPaletteEnabled:
+      commandPaletteOpen || (!hasBlockingOverlay && !shortcutHelpOpen && !sidebarOpen),
+    navigationEnabled:
+      !hasBlockingOverlay && !commandPaletteOpen && !shortcutHelpOpen && !sidebarOpen,
+    shortcutHelpEnabled:
+      shortcutHelpOpen || (!hasBlockingOverlay && !commandPaletteOpen && !sidebarOpen),
+    onToggleCommandPalette: () => setCommandPaletteOpen((current) => !current),
+    onOpenShortcutHelp: () => setShortcutHelpOpen(true),
+    onOpenMessageSearch: openMessageSearch,
+    onOpenMap: openMap,
+    onOpenRadioActivity: openRadioActivity,
+  });
+
   const swipeHandlers = useSwipeable({
     onSwipedRight: ({ initial }) => {
       if (initial[0] < 30 && !sidebarOpen && window.innerWidth < 768) {
@@ -311,7 +362,7 @@ export function AppShell({
                   </div>
                 }
               >
-                <SearchView {...searchProps} />
+                <SearchView {...searchProps} focusRequestVersion={searchFocusRequestVersion} />
               </Suspense>
             </div>
           )}
@@ -377,12 +428,16 @@ export function AppShell({
       />
 
       <CommandPalette
+        open={commandPaletteOpen}
+        onOpenChange={setCommandPaletteOpen}
         contacts={sidebarProps.contacts}
         channels={sidebarProps.channels}
-        onSelectConversation={sidebarProps.onSelectConversation}
+        onSelectConversation={onSelectConversation}
         onOpenSettings={handleOpenSettings}
+        onOpenShortcutHelp={() => setShortcutHelpOpen(true)}
         onRepeaterAutoLogin={onRepeaterAutoLogin}
       />
+      <ShortcutHelpDialog open={shortcutHelpOpen} onOpenChange={setShortcutHelpOpen} />
       <SecurityWarningModal health={statusProps.health} />
       {contactInfoPaneProps.contactKey !== null && (
         <Suspense fallback={null}>

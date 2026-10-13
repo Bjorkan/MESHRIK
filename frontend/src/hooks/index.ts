@@ -11,3 +11,4 @@ export { useConversationActions } from './useConversationActions';
 export { useConversationNavigation } from './useConversationNavigation';
 export { useBrowserNotifications } from './useBrowserNotifications';
 export { useFaviconBadge, useUnreadTitle } from './useFaviconBadge';
+export { useAppHotkeys } from './useAppHotkeys';

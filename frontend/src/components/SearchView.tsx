@@ -39,6 +39,7 @@ export interface SearchViewProps {
   contacts: Contact[];
   channels: Channel[];
   visibilityVersion?: number;
+  focusRequestVersion?: number;
   onNavigateToMessage: (target: SearchNavigateTarget) => void;
   prefillRequest?: {
     query: string;
@@ -93,6 +94,7 @@ export function SearchView({
   contacts,
   channels,
   visibilityVersion = 0,
+  focusRequestVersion = 0,
   onNavigateToMessage,
   prefillRequest = null,
 }: SearchViewProps) {
@@ -254,10 +256,10 @@ export function SearchView({
     [onNavigateToMessage, getConversationName]
   );
 
-  // Focus input on mount
+  // Focus on mount and when the scoped search hotkey targets an already-mounted view.
   useEffect(() => {
     inputRef.current?.focus();
-  }, []);
+  }, [focusRequestVersion]);
 
   return (
     <div className="flex flex-col h-full">
