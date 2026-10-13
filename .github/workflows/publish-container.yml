@@ -1,9 +1,8 @@
-name: Publish container
+name: All Quality
 
 on:
-  workflow_run:
-    workflows: [All Quality]
-    types: [completed]
+  push:
+  pull_request:
   release:
     types: [published]
   workflow_dispatch:
@@ -17,40 +16,146 @@ on:
         required: true
 
 permissions:
-  actions: read
   contents: read
-  packages: write
 
+# Only pushes to main may cancel earlier main pushes. All other runs have unique groups.
 concurrency:
-  group: >-
-    publish-container-${{
-      github.event_name == 'workflow_run' && 'edge' ||
-      github.event.release.tag_name ||
-      inputs.tag
-    }}
-  # A newer quality-approved main push must be the last workflow allowed to move :edge.
-  cancel-in-progress: ${{ github.event_name == 'workflow_run' }}
+  group: ${{ github.workflow }}-${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 'main' || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: bjorkan/meshrik
 
 jobs:
+  # Resolve once so quality gates and publishing always use the exact same commit.
+  source:
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.commit.outputs.sha }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.event_name == 'release' && github.event.release.tag_name || github.sha }}
+
+      - name: Resolve source SHA
+        id: commit
+        shell: bash
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  backend-checks:
+    needs: source
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.source.outputs.sha }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Install backend dependencies
+        run: uv sync --dev
+
+      - name: Set up Node.js for API contract generation
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install API contract generator
+        run: npm ci
+        working-directory: frontend
+
+      - name: Check generated API contract
+        run: npm run api:check
+        working-directory: frontend
+
+      - name: Backend lint
+        run: uv run ruff check app/ tests/
+
+      - name: Backend format check
+        run: uv run ruff format --check app/ tests/
+
+      - name: Backend typecheck
+        run: uv run pyright app/
+
+      - name: Backend tests
+        run: PYTHONPATH=. uv run python -m pytest tests/ -v -m "not contract"
+
+      - name: OpenAPI contract tests
+        run: PYTHONPATH=. uv run python -m pytest tests/ -v -m contract -n 0
+
+  frontend-checks:
+    needs: source
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.source.outputs.sha }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Frontend lint
+        run: npm run lint
+        working-directory: frontend
+
+      - name: Frontend format check
+        run: npm run format:check
+        working-directory: frontend
+
+      - name: Frontend tests
+        run: npm run test:run
+        working-directory: frontend
+        env:
+          NODE_OPTIONS: --no-experimental-webstorage
+
+      - name: Frontend Docker-context typecheck
+        run: npm run docker:typecheck
+        working-directory: frontend
+
+      - name: Frontend build
+        run: npm run build
+        working-directory: frontend
+
   publish:
+    needs: [source, backend-checks, frontend-checks]
     if: >-
       github.repository == 'Bjorkan/MESHRIK' &&
       (
-        (
-          github.event_name == 'workflow_run' &&
-          github.event.workflow_run.conclusion == 'success' &&
-          github.event.workflow_run.head_branch == 'main' &&
-          github.event.workflow_run.event == 'push'
-        ) ||
+        (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
         github.event_name == 'release' ||
         github.event_name == 'workflow_dispatch'
       )
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: write
     env:
       DISPATCH_TOKEN: ${{ secrets.HA_MESHRIK_DISPATCH_TOKEN }}
 
@@ -58,7 +163,7 @@ jobs:
       - name: Check out release source
         uses: actions/checkout@v7
         with:
-          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.event.release.tag_name || inputs.ref }}
+          ref: ${{ needs.source.outputs.sha }}
 
       - name: Protect reserved channel tags
         if: github.event_name == 'workflow_dispatch'
@@ -79,28 +184,6 @@ jobs:
         run: |
           echo "short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
           echo "full=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-
-      - name: Require a successful quality gate for the source commit
-        if: github.event_name != 'workflow_run'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SOURCE_SHA: ${{ steps.commit.outputs.full }}
-        shell: bash
-        run: |
-          gh run list \
-            --repo "${GITHUB_REPOSITORY}" \
-            --workflow all-quality.yml \
-            --commit "${SOURCE_SHA}" \
-            --status completed \
-            --limit 20 \
-            --json conclusion,event,headSha \
-            | jq -e --arg sha "${SOURCE_SHA}" '
-                any(.[];
-                  .headSha == $sha and
-                  .conclusion == "success" and
-                  (.event == "push" or .event == "pull_request")
-                )
-              '
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
@@ -124,7 +207,7 @@ jobs:
             type=semver,pattern={{version}},value=${{ github.event.release.tag_name }},enable=${{ github.event_name == 'release' }}
             type=semver,pattern={{major}}.{{minor}},value=${{ github.event.release.tag_name }},enable=${{ github.event_name == 'release' }}
             type=raw,value=latest,enable=${{ github.event_name == 'release' && !github.event.release.prerelease }}
-            type=raw,value=edge,enable=${{ github.event_name == 'workflow_run' }}
+            type=raw,value=edge,enable=${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
             type=raw,value=${{ inputs.tag }},enable=${{ github.event_name == 'workflow_dispatch' }}
             type=raw,value=sha-${{ steps.commit.outputs.full }}
           labels: |
@@ -183,7 +266,7 @@ jobs:
           gh api --method POST repos/Bjorkan/HA-MESHRIK/dispatches --input - <<<"${payload}"
 
       - name: Notify HA-MESHRIK of edge publication
-        if: github.event_name == 'workflow_run' && env.DISPATCH_TOKEN != ''
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && env.DISPATCH_TOKEN != ''
         env:
           GH_TOKEN: ${{ secrets.HA_MESHRIK_DISPATCH_TOKEN }}
           SOURCE_SHA: ${{ steps.commit.outputs.full }}
