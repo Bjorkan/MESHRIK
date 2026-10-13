@@ -216,6 +216,26 @@ npx playwright test
 - Call out any follow-up work left intentionally undone.
 - Do not treat code review as the place where the app's direction is first introduced or debated
 
+### TanStack frontend ownership review
+
+The ten mandatory frontend owners are Router, Query, DB, Store, Table, Charts, Form, Virtual,
+Pacer, and Hotkeys. Their exact boundaries and documented exceptions live in
+`frontend/AGENTS.md`. When a pull request touches one of those responsibilities, reviewers must
+confirm that:
+
+- the TanStack layer is the single runtime owner rather than a pilot beside a writable fallback;
+- former writers, listeners, caches, state machines, dependencies, and dead tests are removed;
+- Router/Query/DB/Store boundaries remain explicit and backend/radio domain authority is preserved;
+- regressions cover the relevant races, errors, lifecycle cleanup, accessibility, or large-data path;
+- the PR records the removed-owner inventory and relevant bundle/performance comparison; and
+- any exception is narrow, documented, and tested rather than becoming a general second owner.
+
+`./scripts/quality/all_quality.sh` runs `scripts/quality/frontend_architecture.sh` to catch the
+mechanically reliable subset: missing mandatory owner dependencies, Recharts reintroduction,
+direct production history mutation, and manual global keyboard-shortcut listeners. The script is
+deliberately narrower than review; it does not attempt to infer ownership from every local state or
+timer.
+
 ## Notes For Agent-Assisted Work
 
 Before making non-trivial changes, read:

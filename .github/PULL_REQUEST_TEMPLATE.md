@@ -39,6 +39,9 @@ Closes #
 - [ ] Required generated API schema/types updated if FastAPI contracts changed (`cd frontend && npm run api:generate`)
 - [ ] New or changed behavior has appropriate tests (or documented justification)
 - [ ] No new failing lint, typecheck, tests, or build results
+- [ ] Frontend ownership remains single-writer: the relevant TanStack owner is identified, former competing owners/dependencies are removed, and Query/DB/Store/Router boundaries are preserved
+- [ ] Frontend ownership changes include a static inventory of removed owners/readers plus regression and bundle/performance evidence, or explain why those checks are not applicable
+- [ ] Any exception to the TanStack ownership table is narrow, documented in `frontend/AGENTS.md`, and covered by tests
 - [ ] No unintended automated RF traffic or internet-to-mesh ingestion
 - [ ] Relevant documentation / changelog is updated where necessary
 

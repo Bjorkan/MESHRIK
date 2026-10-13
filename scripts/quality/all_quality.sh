@@ -36,6 +36,10 @@ npx --quiet eslint src/ --fix --cache --quiet
 npx --quiet prettier --write --list-different src/ --log-level warn
 echo -e "${GREEN}Passed!${NC}"
 
+echo -ne "${BLUE}[frontend architecture]${NC} "
+"$REPO_ROOT/scripts/quality/frontend_architecture.sh"
+echo -e "${GREEN}Passed!${NC}"
+
 echo -e "${GREEN}=== Phase 1 complete ===${NC}"
 echo
 
