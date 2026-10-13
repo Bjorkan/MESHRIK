@@ -14,8 +14,7 @@ describe('useRememberedServerPassword', () => {
     );
 
     act(() => {
-      result.current.setPassword('room-secret');
-      result.current.recordLoginAttempt('room-secret');
+      result.current.recordLoginAttempt('room-secret', false);
     });
 
     expect(result.current.password).toBe('room-secret');
@@ -35,7 +34,7 @@ describe('useRememberedServerPassword', () => {
     localStorage.setItem(storageKey, JSON.stringify({ password: 'confirmed-secret' }));
     const { result } = renderHook(() => useRememberedServerPassword('room', publicKey));
 
-    act(() => result.current.recordLoginAttempt('failed-new-secret'));
+    act(() => result.current.recordLoginAttempt('failed-new-secret', true));
 
     expect(result.current.password).toBe('failed-new-secret');
     expect(localStorage.getItem(storageKey)).toBe(JSON.stringify({ password: 'confirmed-secret' }));
@@ -46,8 +45,7 @@ describe('useRememberedServerPassword', () => {
     const storageKey = `meshrik-server-password:repeater:${publicKey}`;
     const { result } = renderHook(() => useRememberedServerPassword('repeater', publicKey));
 
-    act(() => result.current.setRememberPassword(true));
-    act(() => result.current.persistConfirmedPassword('  exact secret  '));
+    act(() => result.current.persistConfirmedPassword('  exact secret  ', true));
 
     expect(result.current.password).toBe('  exact secret  ');
     expect(localStorage.getItem(storageKey)).toBe(JSON.stringify({ password: '  exact secret  ' }));
@@ -59,8 +57,7 @@ describe('useRememberedServerPassword', () => {
     localStorage.setItem(storageKey, JSON.stringify({ password: 'old-secret' }));
     const { result } = renderHook(() => useRememberedServerPassword('room', publicKey));
 
-    act(() => result.current.setRememberPassword(false));
-    act(() => result.current.persistConfirmedPassword('new-session-secret'));
+    act(() => result.current.persistConfirmedPassword('new-session-secret', false));
 
     expect(result.current.password).toBe('new-session-secret');
     expect(localStorage.getItem(storageKey)).toBeNull();

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { useForm, useStore } from '@tanstack/react-form';
 import { ChevronDown, Download, MapPinned, Upload } from 'lucide-react';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -29,6 +30,109 @@ import type {
   RadioRegionDiscoveryResponse,
   RadioStatsSnapshot,
 } from '../../types';
+
+interface RadioConfigDraft {
+  name: string;
+  lat: string;
+  lon: string;
+  txPower: string;
+  freq: string;
+  bw: string;
+  sf: string;
+  cr: string;
+  pathHashMode: string;
+  advertLocationSource: 'off' | 'current';
+  multiAcksEnabled: boolean;
+  repeatEnabled: boolean;
+  telemetryModeBase: number;
+  telemetryModeLoc: number;
+  telemetryModeEnv: number;
+  rebootAfterSave: boolean;
+  serverError: string;
+}
+
+function radioDraftFromConfig(config: RadioConfig): RadioConfigDraft {
+  return {
+    name: config.name,
+    lat: String(config.lat),
+    lon: String(config.lon),
+    txPower: String(config.tx_power),
+    freq: String(config.radio.freq),
+    bw: String(config.radio.bw),
+    sf: String(config.radio.sf),
+    cr: String(config.radio.cr),
+    pathHashMode: String(config.path_hash_mode),
+    advertLocationSource: config.advert_location_source ?? 'current',
+    multiAcksEnabled: config.multi_acks_enabled ?? false,
+    repeatEnabled: config.repeat_enabled ?? false,
+    telemetryModeBase: config.telemetry_mode_base ?? 0,
+    telemetryModeLoc: config.telemetry_mode_loc ?? 0,
+    telemetryModeEnv: config.telemetry_mode_env ?? 0,
+    rebootAfterSave: false,
+    serverError: '',
+  };
+}
+
+function parseRequiredNumber(value: string, integer = false): number | null {
+  if (value.trim() === '') return null;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || (integer && !Number.isInteger(parsed))) return null;
+  return parsed;
+}
+
+function buildRadioUpdate(values: RadioConfigDraft, config: RadioConfig): RadioConfigUpdate | null {
+  const parsedLat = parseRequiredNumber(values.lat);
+  const parsedLon = parseRequiredNumber(values.lon);
+  const parsedTxPower = parseRequiredNumber(values.txPower, true);
+  const parsedFreq = parseRequiredNumber(values.freq);
+  const parsedBw = parseRequiredNumber(values.bw);
+  const parsedSf = parseRequiredNumber(values.sf, true);
+  const parsedCr = parseRequiredNumber(values.cr, true);
+  const parsedPathHashMode = parseRequiredNumber(values.pathHashMode, true);
+
+  if (
+    parsedLat === null ||
+    parsedLon === null ||
+    parsedTxPower === null ||
+    parsedFreq === null ||
+    parsedBw === null ||
+    parsedSf === null ||
+    parsedCr === null
+  ) {
+    return null;
+  }
+
+  return {
+    name: values.name,
+    lat: parsedLat,
+    lon: parsedLon,
+    tx_power: parsedTxPower,
+    ...(values.advertLocationSource !== (config.advert_location_source ?? 'current')
+      ? { advert_location_source: values.advertLocationSource }
+      : {}),
+    ...(values.multiAcksEnabled !== (config.multi_acks_enabled ?? false)
+      ? { multi_acks_enabled: values.multiAcksEnabled }
+      : {}),
+    ...(config.repeat_enabled_supported && values.repeatEnabled !== (config.repeat_enabled ?? false)
+      ? { repeat_enabled: values.repeatEnabled }
+      : {}),
+    ...(values.telemetryModeBase !== (config.telemetry_mode_base ?? 0)
+      ? { telemetry_mode_base: values.telemetryModeBase }
+      : {}),
+    ...(values.telemetryModeLoc !== (config.telemetry_mode_loc ?? 0)
+      ? { telemetry_mode_loc: values.telemetryModeLoc }
+      : {}),
+    ...(values.telemetryModeEnv !== (config.telemetry_mode_env ?? 0)
+      ? { telemetry_mode_env: values.telemetryModeEnv }
+      : {}),
+    radio: { freq: parsedFreq, bw: parsedBw, sf: parsedSf, cr: parsedCr },
+    ...(config.path_hash_mode_supported &&
+    parsedPathHashMode !== null &&
+    parsedPathHashMode !== config.path_hash_mode
+      ? { path_hash_mode: parsedPathHashMode }
+      : {}),
+  };
+}
 
 function formatUptime(secs: number): string {
   const days = Math.floor(secs / 86400);
@@ -178,69 +282,225 @@ export function SettingsRadioSection({
   onClose: () => void;
   className?: string;
 }) {
-  // Radio config state
-  const [name, setName] = useState('');
-  const [lat, setLat] = useState('');
-  const [lon, setLon] = useState('');
-  const [txPower, setTxPower] = useState('');
-  const [freq, setFreq] = useState('');
-  const [bw, setBw] = useState('');
-  const [sf, setSf] = useState('');
-  const [cr, setCr] = useState('');
-  const [pathHashMode, setPathHashMode] = useState('0');
-  const [advertLocationSource, setAdvertLocationSource] = useState<'off' | 'current'>('current');
-  const [multiAcksEnabled, setMultiAcksEnabled] = useState(false);
-  const [repeatEnabled, setRepeatEnabled] = useState(false);
-  const [telemetryModeBase, setTelemetryModeBase] = useState(0);
-  const [telemetryModeLoc, setTelemetryModeLoc] = useState(0);
-  const [telemetryModeEnv, setTelemetryModeEnv] = useState(0);
+  const radioForm = useForm({
+    defaultValues: radioDraftFromConfig(config),
+    onSubmit: async ({ value }) => {
+      radioForm.setFieldValue('serverError', '');
+      const update = buildRadioUpdate(value, config);
+      if (!update) {
+        radioForm.setFieldValue(
+          'serverError',
+          'All numeric fields must contain complete, valid values'
+        );
+        return;
+      }
+      try {
+        await onSave(update);
+        if (value.rebootAfterSave) {
+          toast.success('Radio config saved, rebooting...');
+          await onReboot();
+          if (!pageMode) onClose();
+        } else {
+          toast.success('Radio config saved');
+        }
+      } catch (err) {
+        radioForm.setFieldValue(
+          'serverError',
+          err instanceof Error ? err.message : 'Failed to save'
+        );
+      }
+    },
+  });
+  const radioValues = useStore(radioForm.store, (state) => state.values);
+  const radioSubmitting = useStore(radioForm.store, (state) => state.isSubmitting);
+  const {
+    name,
+    lat,
+    lon,
+    txPower,
+    freq,
+    bw,
+    sf,
+    cr,
+    pathHashMode,
+    advertLocationSource,
+    multiAcksEnabled,
+    repeatEnabled,
+    telemetryModeBase,
+    telemetryModeLoc,
+    telemetryModeEnv,
+    serverError: error,
+  } = radioValues;
   const [gettingLocation, setGettingLocation] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [rebooting, setRebooting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  // Identity state
-  const [privateKey, setPrivateKey] = useState('');
-  const [identityBusy, setIdentityBusy] = useState(false);
-  const [identityRebooting, setIdentityRebooting] = useState(false);
-  const [identityError, setIdentityError] = useState<string | null>(null);
+  const identityForm = useForm({
+    defaultValues: { privateKey: '', serverError: '' },
+    onSubmit: async ({ value }) => {
+      if (!value.privateKey.trim()) {
+        identityForm.setFieldValue('serverError', 'Private key is required');
+        return;
+      }
+      identityForm.setFieldValue('serverError', '');
+      try {
+        await onSetPrivateKey(value.privateKey.trim());
+        identityForm.setFieldValue('privateKey', '');
+        toast.success('Private key set, rebooting...');
+        await onReboot();
+        if (!pageMode) onClose();
+      } catch (err) {
+        identityForm.setFieldValue(
+          'serverError',
+          err instanceof Error ? err.message : 'Failed to set private key'
+        );
+      }
+    },
+  });
+  const identityValues = useStore(identityForm.store, (state) => state.values);
+  const identityBusy = useStore(identityForm.store, (state) => state.isSubmitting);
+  const privateKey = identityValues.privateKey;
+  const identityError = identityValues.serverError;
+  const identityRebooting = identityBusy;
 
-  // Flood & advert control state
-  const [advertIntervalHours, setAdvertIntervalHours] = useState('0');
-  const [floodScope, setFloodScope] = useState('');
-  const [knownRegions, setKnownRegions] = useState('');
-  const [maxRadioContacts, setMaxRadioContacts] = useState('');
-  const [floodBusy, setFloodBusy] = useState(false);
-  const [floodError, setFloodError] = useState<string | null>(null);
+  const floodForm = useForm({
+    defaultValues: {
+      floodScope: stripRegionScopePrefix(appSettings.flood_scope),
+      knownRegions: (appSettings.known_regions ?? []).join('\n'),
+      maxRadioContacts: String(appSettings.max_radio_contacts),
+      serverError: '',
+    },
+    onSubmit: async ({ value }) => {
+      floodForm.setFieldValue('serverError', '');
+      const newMaxRadioContacts = parseRequiredNumber(value.maxRadioContacts, true);
+      if (newMaxRadioContacts === null || newMaxRadioContacts < 1) {
+        floodForm.setFieldValue('serverError', 'Maximum radio contacts must be a positive integer');
+        return;
+      }
+      try {
+        const update: AppSettingsUpdate = {};
+        if (value.floodScope !== stripRegionScopePrefix(appSettings.flood_scope)) {
+          update.flood_scope = value.floodScope;
+        }
+        const parsedRegions = value.knownRegions
+          .split(/[\n,]/)
+          .map((region) => region.trim())
+          .filter(Boolean);
+        if (JSON.stringify(parsedRegions) !== JSON.stringify(appSettings.known_regions ?? [])) {
+          update.known_regions = parsedRegions;
+        }
+        if (newMaxRadioContacts !== appSettings.max_radio_contacts) {
+          update.max_radio_contacts = newMaxRadioContacts;
+        }
+        if (Object.keys(update).length > 0) await onSaveAppSettings(update);
+        toast.success('Settings saved');
+      } catch (err) {
+        floodForm.setFieldValue(
+          'serverError',
+          err instanceof Error ? err.message : 'Failed to save'
+        );
+      }
+    },
+  });
+  const floodValues = useStore(floodForm.store, (state) => state.values);
+  const floodBusy = useStore(floodForm.store, (state) => state.isSubmitting);
+  const { floodScope, knownRegions, maxRadioContacts, serverError: floodError } = floodValues;
+
+  const advertIntervalForm = useForm({
+    defaultValues: {
+      hours: String(Math.round(appSettings.advert_interval / 3600)),
+      serverError: '',
+    },
+    onSubmit: async ({ value }) => {
+      advertIntervalForm.setFieldValue('serverError', '');
+      const hours = parseRequiredNumber(value.hours, true);
+      if (hours === null || hours < 0) {
+        advertIntervalForm.setFieldValue(
+          'serverError',
+          'Advertising interval must be a whole number of hours, zero or greater'
+        );
+        return;
+      }
+      try {
+        const newAdvertInterval = hours * 3600;
+        if (newAdvertInterval !== appSettings.advert_interval) {
+          await onSaveAppSettings({ advert_interval: newAdvertInterval });
+        }
+        toast.success('Advertising interval saved');
+      } catch (err) {
+        advertIntervalForm.setFieldValue(
+          'serverError',
+          err instanceof Error ? err.message : 'Failed to save'
+        );
+      }
+    },
+  });
+  const advertIntervalValues = useStore(advertIntervalForm.store, (state) => state.values);
+  const advertIntervalBusy = useStore(advertIntervalForm.store, (state) => state.isSubmitting);
+  const advertIntervalHours = advertIntervalValues.hours;
+  const advertIntervalError = advertIntervalValues.serverError;
+
+  const importForm = useForm({
+    defaultValues: { data: null as Record<string, unknown> | null },
+    onSubmit: async ({ value }) => {
+      if (!value.data) return;
+      const data = value.data;
+      populateFormFromImport(data);
+      const update = buildUpdateFromImport(data);
+      radioForm.setFieldValue('serverError', '');
+      try {
+        if (typeof data.private_key === 'string' && data.private_key) {
+          await onSetPrivateKey(data.private_key);
+          toast.success('Config + private key imported, saving & rebooting...');
+        } else {
+          toast.success('Config imported, saving & rebooting...');
+        }
+        await onSave(update);
+        await onReboot();
+        if (!pageMode) onClose();
+      } catch (err) {
+        radioForm.setFieldValue(
+          'serverError',
+          err instanceof Error ? err.message : 'Failed to import config'
+        );
+      }
+    },
+  });
+  const importBusy = useStore(importForm.store, (state) => state.isSubmitting);
+  const busy = radioSubmitting || importBusy;
+  const rebooting = importBusy || (radioSubmitting && radioValues.rebootAfterSave);
 
   // Advertise state
   const [advertisingMode, setAdvertisingMode] = useState<RadioAdvertMode | null>(null);
   const [discoverError, setDiscoverError] = useState<string | null>(null);
   const [connectionBusy, setConnectionBusy] = useState(false);
 
+  const radioFormRef = useRef(radioForm);
+  const floodFormRef = useRef(floodForm);
+  const advertIntervalFormRef = useRef(advertIntervalForm);
+  radioFormRef.current = radioForm;
+  floodFormRef.current = floodForm;
+  advertIntervalFormRef.current = advertIntervalForm;
+
   useEffect(() => {
-    setName(config.name);
-    setLat(String(config.lat));
-    setLon(String(config.lon));
-    setTxPower(String(config.tx_power));
-    setFreq(String(config.radio.freq));
-    setBw(String(config.radio.bw));
-    setSf(String(config.radio.sf));
-    setCr(String(config.radio.cr));
-    setPathHashMode(String(config.path_hash_mode));
-    setAdvertLocationSource(config.advert_location_source ?? 'current');
-    setMultiAcksEnabled(config.multi_acks_enabled ?? false);
-    setRepeatEnabled(config.repeat_enabled ?? false);
-    setTelemetryModeBase(config.telemetry_mode_base ?? 0);
-    setTelemetryModeLoc(config.telemetry_mode_loc ?? 0);
-    setTelemetryModeEnv(config.telemetry_mode_env ?? 0);
+    if (!radioFormRef.current.state.isDirty) {
+      radioFormRef.current.reset(radioDraftFromConfig(config));
+    }
   }, [config]);
 
   useEffect(() => {
-    setAdvertIntervalHours(String(Math.round(appSettings.advert_interval / 3600)));
-    setFloodScope(stripRegionScopePrefix(appSettings.flood_scope));
-    setKnownRegions((appSettings.known_regions ?? []).join('\n'));
-    setMaxRadioContacts(String(appSettings.max_radio_contacts));
+    if (!floodFormRef.current.state.isDirty) {
+      floodFormRef.current.reset({
+        floodScope: stripRegionScopePrefix(appSettings.flood_scope),
+        knownRegions: (appSettings.known_regions ?? []).join('\n'),
+        maxRadioContacts: String(appSettings.max_radio_contacts),
+        serverError: '',
+      });
+    }
+    if (!advertIntervalFormRef.current.state.isDirty) {
+      advertIntervalFormRef.current.reset({
+        hours: String(Math.round(appSettings.advert_interval / 3600)),
+        serverError: '',
+      });
+    }
   }, [appSettings]);
 
   const currentPreset = useMemo(() => {
@@ -266,10 +526,10 @@ export function SettingsRadioSection({
     if (presetName === 'custom') return;
     const preset = RADIO_PRESETS.find((p) => p.name === presetName);
     if (preset) {
-      setFreq(String(preset.freq));
-      setBw(String(preset.bw));
-      setSf(String(preset.sf));
-      setCr(String(preset.cr));
+      radioForm.setFieldValue('freq', String(preset.freq));
+      radioForm.setFieldValue('bw', String(preset.bw));
+      radioForm.setFieldValue('sf', String(preset.sf));
+      radioForm.setFieldValue('cr', String(preset.cr));
     }
   };
 
@@ -284,8 +544,8 @@ export function SettingsRadioSection({
     setGettingLocation(true);
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        setLat(position.coords.latitude.toFixed(6));
-        setLon(position.coords.longitude.toFixed(6));
+        radioForm.setFieldValue('lat', position.coords.latitude.toFixed(6));
+        radioForm.setFieldValue('lon', position.coords.longitude.toFixed(6));
         setGettingLocation(false);
         toast.success('Location updated');
       },
@@ -299,178 +559,19 @@ export function SettingsRadioSection({
     );
   };
 
-  const buildUpdate = (): RadioConfigUpdate | null => {
-    const parsedLat = parseFloat(lat);
-    const parsedLon = parseFloat(lon);
-    const parsedTxPower = parseInt(txPower, 10);
-    const parsedFreq = parseFloat(freq);
-    const parsedBw = parseFloat(bw);
-    const parsedSf = parseInt(sf, 10);
-    const parsedCr = parseInt(cr, 10);
-
-    if (
-      [parsedLat, parsedLon, parsedTxPower, parsedFreq, parsedBw, parsedSf, parsedCr].some((v) =>
-        isNaN(v)
-      )
-    ) {
-      setError('All numeric fields must have valid values');
-      return null;
-    }
-
-    const parsedPathHashMode = parseInt(pathHashMode, 10);
-
-    return {
-      name,
-      lat: parsedLat,
-      lon: parsedLon,
-      tx_power: parsedTxPower,
-      ...(advertLocationSource !== (config.advert_location_source ?? 'current')
-        ? { advert_location_source: advertLocationSource }
-        : {}),
-      ...(multiAcksEnabled !== (config.multi_acks_enabled ?? false)
-        ? { multi_acks_enabled: multiAcksEnabled }
-        : {}),
-      ...(config.repeat_enabled_supported && repeatEnabled !== (config.repeat_enabled ?? false)
-        ? { repeat_enabled: repeatEnabled }
-        : {}),
-      ...(telemetryModeBase !== (config.telemetry_mode_base ?? 0)
-        ? { telemetry_mode_base: telemetryModeBase }
-        : {}),
-      ...(telemetryModeLoc !== (config.telemetry_mode_loc ?? 0)
-        ? { telemetry_mode_loc: telemetryModeLoc }
-        : {}),
-      ...(telemetryModeEnv !== (config.telemetry_mode_env ?? 0)
-        ? { telemetry_mode_env: telemetryModeEnv }
-        : {}),
-      radio: {
-        freq: parsedFreq,
-        bw: parsedBw,
-        sf: parsedSf,
-        cr: parsedCr,
-      },
-      ...(config.path_hash_mode_supported &&
-      !isNaN(parsedPathHashMode) &&
-      parsedPathHashMode !== config.path_hash_mode
-        ? { path_hash_mode: parsedPathHashMode }
-        : {}),
-    };
+  const handleSave = () => {
+    radioForm.setFieldValue('rebootAfterSave', false);
+    void radioForm.handleSubmit();
   };
 
-  const handleSave = async () => {
-    setError(null);
-    const update = buildUpdate();
-    if (!update) return;
-
-    setBusy(true);
-    try {
-      await onSave(update);
-      toast.success('Radio config saved');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save');
-    } finally {
-      setBusy(false);
-    }
+  const handleSaveAndReboot = () => {
+    radioForm.setFieldValue('rebootAfterSave', true);
+    void radioForm.handleSubmit();
   };
 
-  const handleSaveAndReboot = async () => {
-    setError(null);
-    const update = buildUpdate();
-    if (!update) return;
-
-    setBusy(true);
-    try {
-      await onSave(update);
-      toast.success('Radio config saved, rebooting...');
-      setRebooting(true);
-      await onReboot();
-      if (!pageMode) {
-        onClose();
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save');
-    } finally {
-      setRebooting(false);
-      setBusy(false);
-    }
-  };
-
-  const handleSetPrivateKey = async () => {
-    if (!privateKey.trim()) {
-      setIdentityError('Private key is required');
-      return;
-    }
-    setIdentityError(null);
-    setIdentityBusy(true);
-
-    try {
-      await onSetPrivateKey(privateKey.trim());
-      setPrivateKey('');
-      toast.success('Private key set, rebooting...');
-      setIdentityRebooting(true);
-      await onReboot();
-      if (!pageMode) {
-        onClose();
-      }
-    } catch (err) {
-      setIdentityError(err instanceof Error ? err.message : 'Failed to set private key');
-    } finally {
-      setIdentityRebooting(false);
-      setIdentityBusy(false);
-    }
-  };
-
-  const handleSaveFloodSettings = async () => {
-    setFloodError(null);
-    setFloodBusy(true);
-
-    try {
-      const update: AppSettingsUpdate = {};
-      if (floodScope !== stripRegionScopePrefix(appSettings.flood_scope)) {
-        update.flood_scope = floodScope;
-      }
-      // Known regions: one per line (commas also accepted), trimmed, blanks dropped.
-      const parsedRegions = knownRegions
-        .split(/[\n,]/)
-        .map((r) => r.trim())
-        .filter((r) => r.length > 0);
-      if (JSON.stringify(parsedRegions) !== JSON.stringify(appSettings.known_regions ?? [])) {
-        update.known_regions = parsedRegions;
-      }
-      const newMaxRadioContacts = parseInt(maxRadioContacts, 10);
-      if (!isNaN(newMaxRadioContacts) && newMaxRadioContacts !== appSettings.max_radio_contacts) {
-        update.max_radio_contacts = newMaxRadioContacts;
-      }
-      if (Object.keys(update).length > 0) {
-        await onSaveAppSettings(update);
-      }
-      toast.success('Settings saved');
-    } catch (err) {
-      setFloodError(err instanceof Error ? err.message : 'Failed to save');
-    } finally {
-      setFloodBusy(false);
-    }
-  };
-
-  const [advertIntervalBusy, setAdvertIntervalBusy] = useState(false);
-  const [advertIntervalError, setAdvertIntervalError] = useState<string | null>(null);
-
-  const handleSaveAdvertInterval = async () => {
-    setAdvertIntervalError(null);
-    setAdvertIntervalBusy(true);
-
-    try {
-      const hours = parseInt(advertIntervalHours, 10);
-      const newAdvertInterval = isNaN(hours) ? 0 : hours * 3600;
-      if (newAdvertInterval !== appSettings.advert_interval) {
-        await onSaveAppSettings({ advert_interval: newAdvertInterval });
-      }
-      toast.success('Advertising interval saved');
-    } catch (err) {
-      setAdvertIntervalError(err instanceof Error ? err.message : 'Failed to save');
-    } finally {
-      setAdvertIntervalBusy(false);
-    }
-  };
+  const handleSetPrivateKey = () => void identityForm.handleSubmit();
+  const handleSaveFloodSettings = () => void floodForm.handleSubmit();
+  const handleSaveAdvertInterval = () => void advertIntervalForm.handleSubmit();
 
   const handleAdvertise = async (mode: RadioAdvertMode) => {
     setAdvertisingMode(mode);
@@ -512,7 +613,7 @@ export function SettingsRadioSection({
       toast.info('All discovered regions are already listed');
       return;
     }
-    setKnownRegions([...existing, ...additions].join('\n'));
+    floodForm.setFieldValue('knownRegions', [...existing, ...additions].join('\n'));
     toast.success(
       `Added ${additions.length} region${additions.length === 1 ? '' : 's'} — review and Save Messaging Settings`
     );
@@ -596,24 +697,29 @@ export function SettingsRadioSection({
 
   const populateFormFromImport = (data: Record<string, unknown>) => {
     const radio = data.radio as { freq: number; bw: number; sf: number; cr: number };
-    setName(data.name as string);
-    if (typeof data.lat === 'number') setLat(String(data.lat));
-    if (typeof data.lon === 'number') setLon(String(data.lon));
-    if (typeof data.tx_power === 'number') setTxPower(String(data.tx_power));
-    setFreq(String(radio.freq));
-    setBw(String(radio.bw));
-    setSf(String(radio.sf));
-    setCr(String(radio.cr));
-    if (typeof data.path_hash_mode === 'number') setPathHashMode(String(data.path_hash_mode));
+    radioForm.setFieldValue('name', data.name as string);
+    if (typeof data.lat === 'number') radioForm.setFieldValue('lat', String(data.lat));
+    if (typeof data.lon === 'number') radioForm.setFieldValue('lon', String(data.lon));
+    if (typeof data.tx_power === 'number')
+      radioForm.setFieldValue('txPower', String(data.tx_power));
+    radioForm.setFieldValue('freq', String(radio.freq));
+    radioForm.setFieldValue('bw', String(radio.bw));
+    radioForm.setFieldValue('sf', String(radio.sf));
+    radioForm.setFieldValue('cr', String(radio.cr));
+    if (typeof data.path_hash_mode === 'number')
+      radioForm.setFieldValue('pathHashMode', String(data.path_hash_mode));
     if (data.advert_location_source === 'off' || data.advert_location_source === 'current')
-      setAdvertLocationSource(data.advert_location_source);
-    if (typeof data.multi_acks_enabled === 'boolean') setMultiAcksEnabled(data.multi_acks_enabled);
+      radioForm.setFieldValue('advertLocationSource', data.advert_location_source);
+    if (typeof data.multi_acks_enabled === 'boolean')
+      radioForm.setFieldValue('multiAcksEnabled', data.multi_acks_enabled);
     if (config.repeat_enabled_supported && typeof data.repeat_enabled === 'boolean')
-      setRepeatEnabled(data.repeat_enabled);
+      radioForm.setFieldValue('repeatEnabled', data.repeat_enabled);
     if (typeof data.telemetry_mode_base === 'number')
-      setTelemetryModeBase(data.telemetry_mode_base);
-    if (typeof data.telemetry_mode_loc === 'number') setTelemetryModeLoc(data.telemetry_mode_loc);
-    if (typeof data.telemetry_mode_env === 'number') setTelemetryModeEnv(data.telemetry_mode_env);
+      radioForm.setFieldValue('telemetryModeBase', data.telemetry_mode_base);
+    if (typeof data.telemetry_mode_loc === 'number')
+      radioForm.setFieldValue('telemetryModeLoc', data.telemetry_mode_loc);
+    if (typeof data.telemetry_mode_env === 'number')
+      radioForm.setFieldValue('telemetryModeEnv', data.telemetry_mode_env);
   };
 
   const buildUpdateFromImport = (data: Record<string, unknown>): RadioConfigUpdate => {
@@ -643,27 +749,8 @@ export function SettingsRadioSection({
   };
 
   const applyImport = async (data: Record<string, unknown>) => {
-    populateFormFromImport(data);
-    const update = buildUpdateFromImport(data);
-
-    setBusy(true);
-    setRebooting(true);
-    try {
-      if (typeof data.private_key === 'string' && data.private_key) {
-        await onSetPrivateKey(data.private_key);
-        toast.success('Config + private key imported, saving & rebooting...');
-      } else {
-        toast.success('Config imported, saving & rebooting...');
-      }
-      await onSave(update);
-      await onReboot();
-      if (!pageMode) onClose();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to import config');
-    } finally {
-      setRebooting(false);
-      setBusy(false);
-    }
+    importForm.setFieldValue('data', data);
+    await importForm.handleSubmit();
   };
 
   const handleImportConfig = async (file: File) => {
@@ -686,7 +773,10 @@ export function SettingsRadioSection({
         await applyImport(data);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to import config');
+      radioForm.setFieldValue(
+        'serverError',
+        err instanceof Error ? err.message : 'Failed to import config'
+      );
     } finally {
       if (importInputRef.current) importInputRef.current.value = '';
     }
@@ -819,7 +909,11 @@ export function SettingsRadioSection({
 
       <div className="space-y-2">
         <Label htmlFor="name">Radio Name</Label>
-        <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
+        <Input
+          id="name"
+          value={name}
+          onChange={(e) => radioForm.setFieldValue('name', e.target.value)}
+        />
       </div>
 
       <div className="space-y-2">
@@ -834,7 +928,7 @@ export function SettingsRadioSection({
           type="password"
           autoComplete="off"
           value={privateKey}
-          onChange={(e) => setPrivateKey(e.target.value)}
+          onChange={(e) => identityForm.setFieldValue('privateKey', e.target.value)}
           placeholder="64-character hex private key"
         />
         <Button
@@ -887,7 +981,7 @@ export function SettingsRadioSection({
             type="number"
             step="any"
             value={freq}
-            onChange={(e) => setFreq(e.target.value)}
+            onChange={(e) => radioForm.setFieldValue('freq', e.target.value)}
           />
         </div>
         <div className="space-y-2">
@@ -897,7 +991,7 @@ export function SettingsRadioSection({
             type="number"
             step="any"
             value={bw}
-            onChange={(e) => setBw(e.target.value)}
+            onChange={(e) => radioForm.setFieldValue('bw', e.target.value)}
           />
         </div>
       </div>
@@ -911,7 +1005,7 @@ export function SettingsRadioSection({
             min="7"
             max="12"
             value={sf}
-            onChange={(e) => setSf(e.target.value)}
+            onChange={(e) => radioForm.setFieldValue('sf', e.target.value)}
           />
         </div>
         <div className="space-y-2">
@@ -922,7 +1016,7 @@ export function SettingsRadioSection({
             min="5"
             max="8"
             value={cr}
-            onChange={(e) => setCr(e.target.value)}
+            onChange={(e) => radioForm.setFieldValue('cr', e.target.value)}
           />
         </div>
       </div>
@@ -934,7 +1028,7 @@ export function SettingsRadioSection({
             id="tx-power"
             type="number"
             value={txPower}
-            onChange={(e) => setTxPower(e.target.value)}
+            onChange={(e) => radioForm.setFieldValue('txPower', e.target.value)}
           />
         </div>
         <div className="space-y-2">
@@ -948,7 +1042,9 @@ export function SettingsRadioSection({
           <Checkbox
             id="repeat-enabled"
             checked={repeatEnabled}
-            onCheckedChange={(checked) => setRepeatEnabled(checked === true)}
+            onCheckedChange={(checked) =>
+              radioForm.setFieldValue('repeatEnabled', checked === true)
+            }
           />
           <div className="space-y-1">
             <Label htmlFor="repeat-enabled">Companion Repeat Mode</Label>
@@ -966,7 +1062,7 @@ export function SettingsRadioSection({
           <select
             id="path-hash-mode"
             value={pathHashMode}
-            onChange={(e) => setPathHashMode(e.target.value)}
+            onChange={(e) => radioForm.setFieldValue('pathHashMode', e.target.value)}
             className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
           >
             <option value="0">1 byte — up to 63 hops (default)</option>
@@ -1017,7 +1113,7 @@ export function SettingsRadioSection({
               type="number"
               step="any"
               value={lat}
-              onChange={(e) => setLat(e.target.value)}
+              onChange={(e) => radioForm.setFieldValue('lat', e.target.value)}
             />
           </div>
           <div className="space-y-2">
@@ -1029,7 +1125,7 @@ export function SettingsRadioSection({
               type="number"
               step="any"
               value={lon}
-              onChange={(e) => setLon(e.target.value)}
+              onChange={(e) => radioForm.setFieldValue('lon', e.target.value)}
             />
           </div>
         </div>
@@ -1038,7 +1134,9 @@ export function SettingsRadioSection({
           <select
             id="advert-location-source"
             value={advertLocationSource}
-            onChange={(e) => setAdvertLocationSource(e.target.value as 'off' | 'current')}
+            onChange={(e) =>
+              radioForm.setFieldValue('advertLocationSource', e.target.value as 'off' | 'current')
+            }
             className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
           >
             <option value="off">Off</option>
@@ -1073,7 +1171,7 @@ export function SettingsRadioSection({
             <select
               id="telemetry-mode-base"
               value={telemetryModeBase}
-              onChange={(e) => setTelemetryModeBase(Number(e.target.value))}
+              onChange={(e) => radioForm.setFieldValue('telemetryModeBase', Number(e.target.value))}
               className="w-full h-9 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
             >
               <option value={0}>Deny</option>
@@ -1088,7 +1186,7 @@ export function SettingsRadioSection({
             <select
               id="telemetry-mode-loc"
               value={telemetryModeLoc}
-              onChange={(e) => setTelemetryModeLoc(Number(e.target.value))}
+              onChange={(e) => radioForm.setFieldValue('telemetryModeLoc', Number(e.target.value))}
               className="w-full h-9 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
             >
               <option value={0}>Deny</option>
@@ -1103,7 +1201,7 @@ export function SettingsRadioSection({
             <select
               id="telemetry-mode-env"
               value={telemetryModeEnv}
-              onChange={(e) => setTelemetryModeEnv(Number(e.target.value))}
+              onChange={(e) => radioForm.setFieldValue('telemetryModeEnv', Number(e.target.value))}
               className="w-full h-9 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
             >
               <option value={0}>Deny</option>
@@ -1180,7 +1278,9 @@ export function SettingsRadioSection({
           <Checkbox
             id="multi-acks-enabled"
             checked={multiAcksEnabled}
-            onCheckedChange={(checked) => setMultiAcksEnabled(checked === true)}
+            onCheckedChange={(checked) =>
+              radioForm.setFieldValue('multiAcksEnabled', checked === true)
+            }
             className="mt-0.5"
           />
           <div className="space-y-1">
@@ -1219,7 +1319,7 @@ export function SettingsRadioSection({
         <Input
           id="flood-scope"
           value={floodScope}
-          onChange={(e) => setFloodScope(e.target.value)}
+          onChange={(e) => floodForm.setFieldValue('floodScope', e.target.value)}
           placeholder="MyRegion"
         />
         <p className="text-[0.8125rem] text-muted-foreground">
@@ -1236,7 +1336,7 @@ export function SettingsRadioSection({
         <textarea
           id="known-regions"
           value={knownRegions}
-          onChange={(e) => setKnownRegions(e.target.value)}
+          onChange={(e) => floodForm.setFieldValue('knownRegions', e.target.value)}
           rows={4}
           placeholder={'nl-gr\nde-by\nMyRegion'}
           spellCheck={false}
@@ -1324,7 +1424,7 @@ export function SettingsRadioSection({
           min="1"
           max="1000"
           value={maxRadioContacts}
-          onChange={(e) => setMaxRadioContacts(e.target.value)}
+          onChange={(e) => floodForm.setFieldValue('maxRadioContacts', e.target.value)}
         />
         <p className="text-[0.8125rem] text-muted-foreground">
           Configured radio contact capacity. Favorites reload first, then background maintenance
@@ -1363,7 +1463,7 @@ export function SettingsRadioSection({
               type="number"
               min="0"
               value={advertIntervalHours}
-              onChange={(e) => setAdvertIntervalHours(e.target.value)}
+              onChange={(e) => advertIntervalForm.setFieldValue('hours', e.target.value)}
               className="w-28"
             />
             <span className="text-sm text-muted-foreground">hours (0 = off)</span>

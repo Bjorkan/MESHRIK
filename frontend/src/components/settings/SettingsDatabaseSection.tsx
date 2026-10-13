@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
+import { useForm, useStore } from '@tanstack/react-form';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Button } from '../ui/button';
@@ -21,62 +22,63 @@ export function SettingsDatabaseSection({
   onHealthRefresh: () => Promise<void>;
   className?: string;
 }) {
-  const [retentionDays, setRetentionDays] = useState('14');
-  const [cleaning, setCleaning] = useState(false);
-  const [purgingDecryptedRaw, setPurgingDecryptedRaw] = useState(false);
-  const [autoDecryptOnAdvert, setAutoDecryptOnAdvert] = useState(false);
-
   const saveChainRef = useRef<Promise<void>>(Promise.resolve());
+  const form = useForm({
+    defaultValues: {
+      retentionDays: '14',
+      autoDecryptOnAdvert: appSettings.auto_decrypt_dm_on_advert,
+      action: null as 'cleanup' | 'purge' | null,
+      retentionError: '',
+    },
+    onSubmit: async ({ value }) => {
+      if (value.action === 'cleanup') {
+        const days = Number(value.retentionDays);
+        if (!Number.isInteger(days) || days < 1 || days > 365) {
+          form.setFieldValue('retentionError', 'Retention days must be a whole number from 1–365');
+          return;
+        }
+        form.setFieldValue('retentionError', '');
+        try {
+          const result = await api.runMaintenance({ pruneUndecryptedDays: days });
+          toast.success('Database cleanup complete', {
+            description: `Deleted ${result.packets_deleted} old packet${result.packets_deleted === 1 ? '' : 's'}`,
+          });
+          await onHealthRefresh();
+        } catch (err) {
+          console.error('Failed to run maintenance:', err);
+          toast.error('Database cleanup failed', {
+            description: err instanceof Error ? err.message : 'Unknown error',
+          });
+        }
+        return;
+      }
+
+      if (value.action === 'purge') {
+        try {
+          const result = await api.runMaintenance({ purgeLinkedRawPackets: true });
+          toast.success('Decrypted raw packets purged', {
+            description: `Deleted ${result.packets_deleted} raw packet${result.packets_deleted === 1 ? '' : 's'}`,
+          });
+          await onHealthRefresh();
+        } catch (err) {
+          console.error('Failed to purge decrypted raw packets:', err);
+          toast.error('Failed to purge decrypted raw packets', {
+            description: err instanceof Error ? err.message : 'Unknown error',
+          });
+        }
+      }
+    },
+  });
+  const values = useStore(form.store, (state) => state.values);
+  const isSubmitting = useStore(form.store, (state) => state.isSubmitting);
+  const { retentionDays, autoDecryptOnAdvert, retentionError } = values;
+  const cleaning = isSubmitting && values.action === 'cleanup';
+  const purgingDecryptedRaw = isSubmitting && values.action === 'purge';
 
   useEffect(() => {
-    setAutoDecryptOnAdvert(appSettings.auto_decrypt_dm_on_advert);
-  }, [appSettings]);
-
-  const handleCleanup = async () => {
-    const days = parseInt(retentionDays, 10);
-    if (isNaN(days) || days < 1) {
-      toast.error('Invalid retention days', {
-        description: 'Retention days must be at least 1',
-      });
-      return;
-    }
-
-    setCleaning(true);
-
-    try {
-      const result = await api.runMaintenance({ pruneUndecryptedDays: days });
-      toast.success('Database cleanup complete', {
-        description: `Deleted ${result.packets_deleted} old packet${result.packets_deleted === 1 ? '' : 's'}`,
-      });
-      await onHealthRefresh();
-    } catch (err) {
-      console.error('Failed to run maintenance:', err);
-      toast.error('Database cleanup failed', {
-        description: err instanceof Error ? err.message : 'Unknown error',
-      });
-    } finally {
-      setCleaning(false);
-    }
-  };
-
-  const handlePurgeDecryptedRawPackets = async () => {
-    setPurgingDecryptedRaw(true);
-
-    try {
-      const result = await api.runMaintenance({ purgeLinkedRawPackets: true });
-      toast.success('Decrypted raw packets purged', {
-        description: `Deleted ${result.packets_deleted} raw packet${result.packets_deleted === 1 ? '' : 's'}`,
-      });
-      await onHealthRefresh();
-    } catch (err) {
-      console.error('Failed to purge decrypted raw packets:', err);
-      toast.error('Failed to purge decrypted raw packets', {
-        description: err instanceof Error ? err.message : 'Unknown error',
-      });
-    } finally {
-      setPurgingDecryptedRaw(false);
-    }
-  };
+    if (form.getFieldMeta('autoDecryptOnAdvert')?.isDirty) return;
+    form.setFieldValue('autoDecryptOnAdvert', appSettings.auto_decrypt_dm_on_advert);
+  }, [appSettings.auto_decrypt_dm_on_advert, form]);
 
   const persistAppSettings = (update: AppSettingsUpdate, revert: () => void): Promise<void> => {
     const chained = saveChainRef.current.then(async () => {
@@ -145,19 +147,27 @@ export function SettingsDatabaseSection({
                 min="1"
                 max="365"
                 value={retentionDays}
-                onChange={(e) => setRetentionDays(e.target.value)}
+                onChange={(e) => form.setFieldValue('retentionDays', e.target.value)}
                 className="w-24"
               />
             </div>
             <Button
               variant="outline"
-              onClick={handleCleanup}
+              onClick={() => {
+                form.setFieldValue('action', 'cleanup');
+                void form.handleSubmit();
+              }}
               disabled={cleaning}
               className="border-destructive/50 text-destructive hover:bg-destructive/10"
             >
               {cleaning ? 'Deleting...' : 'Delete'}
             </Button>
           </div>
+          {retentionError && (
+            <p className="text-xs text-destructive" role="alert">
+              {retentionError}
+            </p>
+          )}
         </div>
 
         <div className="rounded-md border border-border p-3 space-y-2">
@@ -169,7 +179,10 @@ export function SettingsDatabaseSection({
           </p>
           <Button
             variant="outline"
-            onClick={handlePurgeDecryptedRawPackets}
+            onClick={() => {
+              form.setFieldValue('action', 'purge');
+              void form.handleSubmit();
+            }}
             disabled={purgingDecryptedRaw}
             className="w-full border-warning/50 text-warning hover:bg-warning/10"
           >
@@ -190,9 +203,9 @@ export function SettingsDatabaseSection({
             onChange={(e) => {
               const next = e.target.checked;
               const prev = autoDecryptOnAdvert;
-              setAutoDecryptOnAdvert(next);
+              form.setFieldValue('autoDecryptOnAdvert', next);
               void persistAppSettings({ auto_decrypt_dm_on_advert: next }, () =>
-                setAutoDecryptOnAdvert(prev)
+                form.setFieldValue('autoDecryptOnAdvert', prev)
               );
             }}
             className="w-4 h-4 rounded border-input accent-primary"

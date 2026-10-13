@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useForm, useStore } from '@tanstack/react-form';
 import { ChevronRight, Logs, MessageSquare, Send, Settings, X } from 'lucide-react';
 import { toast } from '../ui/sonner';
 import { usePush } from '../../contexts/PushSubscriptionContext';
@@ -235,36 +236,58 @@ export function SettingsLocalSection({
   const { distanceUnit, setDistanceUnit } = useDistanceUnit();
   const { renderRichPayloads, setRenderRichPayloads } = useRichPayloads();
   const { showPathHopWidth, setShowPathHopWidth } = usePathHopWidth();
-  const [reopenLastConversation, setReopenLastConversation] = useState(
-    getReopenLastConversationEnabled
-  );
-  const [localLabelText, setLocalLabelText] = useState(() => getLocalLabel().text);
-  const [localLabelColor, setLocalLabelColor] = useState(() => getLocalLabel().color);
-  const [autoFocusInput, setAutoFocusInput] = useState(getAutoFocusInputEnabled);
-  const [batteryPercent, setBatteryPercent] = useState(getShowBatteryPercent);
-  const [batteryVoltage, setBatteryVoltage] = useState(getShowBatteryVoltage);
-  const [statusDotPulse, setStatusDotPulse] = useState(getStatusDotPulseEnabled);
-  const [textReplaceEnabled, setTextReplaceEnabled] = useState(getTextReplaceEnabled);
-  const [textReplaceJson, setTextReplaceJson] = useState(getTextReplaceMapJson);
-  const [textReplaceError, setTextReplaceError] = useState<string | null>(null);
-  const [fontScale, setFontScale] = useState(getSavedFontScale);
-  const [fontScaleSlider, setFontScaleSlider] = useState(getSavedFontScale);
-  const [fontScaleInput, setFontScaleInput] = useState(() => String(getSavedFontScale()));
+  const form = useForm({
+    defaultValues: {
+      reopenLastConversation: getReopenLastConversationEnabled(),
+      localLabelText: getLocalLabel().text,
+      localLabelColor: getLocalLabel().color,
+      autoFocusInput: getAutoFocusInputEnabled(),
+      batteryPercent: getShowBatteryPercent(),
+      batteryVoltage: getShowBatteryVoltage(),
+      statusDotPulse: getStatusDotPulseEnabled(),
+      textReplaceEnabled: getTextReplaceEnabled(),
+      textReplaceJson: getTextReplaceMapJson(),
+      textReplaceError: null as string | null,
+      fontScale: getSavedFontScale(),
+      fontScaleInput: String(getSavedFontScale()),
+      distanceUnit,
+      renderRichPayloads,
+      showPathHopWidth,
+    },
+  });
+  const values = useStore(form.store, (state) => state.values);
+  const {
+    reopenLastConversation,
+    localLabelText,
+    localLabelColor,
+    autoFocusInput,
+    batteryPercent,
+    batteryVoltage,
+    statusDotPulse,
+    textReplaceEnabled,
+    textReplaceJson,
+    textReplaceError,
+    fontScale,
+    fontScaleInput,
+    distanceUnit: distanceUnitDraft,
+    renderRichPayloads: renderRichPayloadsDraft,
+    showPathHopWidth: showPathHopWidthDraft,
+  } = values;
+  const parsedFontScaleInput = Number.parseFloat(fontScaleInput);
+  const fontScaleSlider = Number.isFinite(parsedFontScaleInput) ? parsedFontScaleInput : fontScale;
 
   const commitFontScale = (nextScale: number) => {
     const normalized = setSavedFontScale(nextScale);
-    setFontScale(normalized);
-    setFontScaleSlider(normalized);
-    setFontScaleInput(String(normalized));
+    form.setFieldValue('fontScale', normalized);
+    form.setFieldValue('fontScaleInput', String(normalized));
   };
 
   const restoreFontScaleInput = () => {
-    setFontScaleInput(String(fontScale));
+    form.setFieldValue('fontScaleInput', String(fontScale));
   };
 
   const handleSliderChange = (nextScale: number) => {
-    setFontScaleSlider(nextScale);
-    setFontScaleInput(String(nextScale));
+    form.setFieldValue('fontScaleInput', String(nextScale));
   };
 
   const handleSliderCommit = (nextScale: number) => {
@@ -272,7 +295,7 @@ export function SettingsLocalSection({
   };
 
   const handleToggleReopenLastConversation = (enabled: boolean) => {
-    setReopenLastConversation(enabled);
+    form.setFieldValue('reopenLastConversation', enabled);
     setReopenLastConversationEnabled(enabled);
   };
 
@@ -297,7 +320,7 @@ export function SettingsLocalSection({
             value={localLabelText}
             onChange={(e) => {
               const text = e.target.value;
-              setLocalLabelText(text);
+              form.setFieldValue('localLabelText', text);
               setLocalLabel(text, localLabelColor);
               onLocalLabelChange?.({ text, color: localLabelColor });
             }}
@@ -310,7 +333,7 @@ export function SettingsLocalSection({
             value={localLabelColor}
             onChange={(e) => {
               const color = e.target.value;
-              setLocalLabelColor(color);
+              form.setFieldValue('localLabelColor', color);
               setLocalLabel(localLabelText, color);
               onLocalLabelChange?.({ text: localLabelText, color });
             }}
@@ -329,9 +352,10 @@ export function SettingsLocalSection({
         <Label htmlFor="distance-units">Distance Units</Label>
         <select
           id="distance-units"
-          value={distanceUnit}
+          value={distanceUnitDraft}
           onChange={(event) => {
             const nextUnit = event.target.value as (typeof DISTANCE_UNITS)[number];
+            form.setFieldValue('distanceUnit', nextUnit);
             setSavedDistanceUnit(nextUnit);
             setDistanceUnit(nextUnit);
           }}
@@ -376,7 +400,7 @@ export function SettingsLocalSection({
               checked={autoFocusInput}
               onCheckedChange={(checked) => {
                 const v = checked === true;
-                setAutoFocusInput(v);
+                form.setFieldValue('autoFocusInput', v);
                 setAutoFocusInputEnabled(v);
               }}
               className="mt-0.5"
@@ -395,7 +419,7 @@ export function SettingsLocalSection({
               checked={batteryPercent}
               onCheckedChange={(checked) => {
                 const v = checked === true;
-                setBatteryPercent(v);
+                form.setFieldValue('batteryPercent', v);
                 saveBatteryPercent(v);
                 window.dispatchEvent(new Event(BATTERY_DISPLAY_CHANGE_EVENT));
               }}
@@ -416,7 +440,7 @@ export function SettingsLocalSection({
               checked={batteryVoltage}
               onCheckedChange={(checked) => {
                 const v = checked === true;
-                setBatteryVoltage(v);
+                form.setFieldValue('batteryVoltage', v);
                 saveBatteryVoltage(v);
                 window.dispatchEvent(new Event(BATTERY_DISPLAY_CHANGE_EVENT));
               }}
@@ -437,7 +461,7 @@ export function SettingsLocalSection({
               checked={statusDotPulse}
               onCheckedChange={(checked) => {
                 const v = checked === true;
-                setStatusDotPulse(v);
+                form.setFieldValue('statusDotPulse', v);
                 saveStatusDotPulse(v);
                 window.dispatchEvent(new Event(STATUS_DOT_PULSE_CHANGE_EVENT));
               }}
@@ -455,9 +479,10 @@ export function SettingsLocalSection({
           <div className="flex items-start gap-3 rounded-md border border-border/60 p-3">
             <Checkbox
               id="render-rich-payloads"
-              checked={renderRichPayloads}
+              checked={renderRichPayloadsDraft}
               onCheckedChange={(checked) => {
                 const v = checked === true;
+                form.setFieldValue('renderRichPayloads', v);
                 setRenderRichPayloads(v);
                 setSavedRenderRichPayloads(v);
               }}
@@ -482,9 +507,10 @@ export function SettingsLocalSection({
           <div className="flex items-start gap-3 rounded-md border border-border/60 p-3">
             <Checkbox
               id="show-path-hop-width"
-              checked={showPathHopWidth}
+              checked={showPathHopWidthDraft}
               onCheckedChange={(checked) => {
                 const v = checked === true;
+                form.setFieldValue('showPathHopWidth', v);
                 setShowPathHopWidth(v);
                 setSavedShowPathHopWidth(v);
               }}
@@ -507,7 +533,7 @@ export function SettingsLocalSection({
                 checked={textReplaceEnabled}
                 onCheckedChange={(checked) => {
                   const v = checked === true;
-                  setTextReplaceEnabled(v);
+                  form.setFieldValue('textReplaceEnabled', v);
                   saveTextReplaceEnabled(v);
                 }}
                 className="mt-0.5"
@@ -526,8 +552,8 @@ export function SettingsLocalSection({
                   value={textReplaceJson}
                   onChange={(e) => {
                     const val = e.target.value;
-                    setTextReplaceJson(val);
-                    setTextReplaceError(setTextReplaceMapJson(val));
+                    form.setFieldValue('textReplaceJson', val);
+                    form.setFieldValue('textReplaceError', setTextReplaceMapJson(val));
                   }}
                   spellCheck={false}
                   rows={10}
@@ -538,16 +564,16 @@ export function SettingsLocalSection({
                   aria-label="Text replacement map (JSON)"
                 />
                 {textReplaceError && (
-                  <p className="text-xs text-destructive">
+                  <p className="text-xs text-destructive" role="alert">
                     {textReplaceError} Changes are not saved until this is resolved.
                   </p>
                 )}
                 <button
                   type="button"
                   onClick={() => {
-                    setTextReplaceJson(DEFAULT_MAP_JSON);
+                    form.setFieldValue('textReplaceJson', DEFAULT_MAP_JSON);
                     setTextReplaceMapJson(DEFAULT_MAP_JSON);
-                    setTextReplaceError(null);
+                    form.setFieldValue('textReplaceError', null);
                   }}
                   className="inline-flex h-8 items-center justify-center rounded-md border border-input px-3 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
@@ -586,7 +612,7 @@ export function SettingsLocalSection({
                 value={fontScaleInput}
                 onChange={(event) => {
                   const nextValue = event.target.value;
-                  setFontScaleInput(nextValue);
+                  form.setFieldValue('fontScaleInput', nextValue);
 
                   if (nextValue === '') {
                     return;

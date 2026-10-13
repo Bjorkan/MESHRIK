@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useForm, useStore } from '@tanstack/react-form';
 import { ChevronDown, Info } from 'lucide-react';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -2769,21 +2770,26 @@ function WebhookConfigEditor({
   onScopeChange: (scope: Record<string, unknown>) => void;
 }) {
   const headersStr = JSON.stringify(config.headers ?? {}, null, 2);
-  const [headersText, setHeadersText] = useState(headersStr);
-  const [headersError, setHeadersError] = useState<string | null>(null);
+  const headersForm = useForm({
+    defaultValues: { text: headersStr, error: null as string | null },
+  });
+  const { text: headersText, error: headersError } = useStore(
+    headersForm.store,
+    (state) => state.values
+  );
 
   const handleHeadersChange = (text: string) => {
-    setHeadersText(text);
+    headersForm.setFieldValue('text', text);
     try {
       const parsed = JSON.parse(text);
       if (typeof parsed !== 'object' || Array.isArray(parsed)) {
-        setHeadersError('Must be a JSON object');
+        headersForm.setFieldValue('error', 'Must be a JSON object');
         return;
       }
-      setHeadersError(null);
+      headersForm.setFieldValue('error', null);
       onChange({ ...config, headers: parsed });
     } catch {
-      setHeadersError('Invalid JSON');
+      headersForm.setFieldValue('error', 'Invalid JSON');
     }
   };
 
@@ -2992,19 +2998,106 @@ export function SettingsFanoutSection({
 }) {
   const [configs, setConfigs] = useState<FanoutConfig[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [draftType, setDraftType] = useState<DraftType | null>(null);
-  const [editConfig, setEditConfig] = useState<Record<string, unknown>>({});
-  const [editScope, setEditScope] = useState<Record<string, unknown>>({});
-  const [editName, setEditName] = useState('');
   const [inlineEditingId, setInlineEditingId] = useState<string | null>(null);
-  const [inlineEditName, setInlineEditName] = useState('');
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [selectedCreateType, setSelectedCreateType] = useState<DraftType | null>(null);
   const [errorDialogState, setErrorDialogState] = useState<{
     integrationName: string;
     error: string;
   } | null>(null);
-  const [busy, setBusy] = useState(false);
+  const editForm = useForm({
+    defaultValues: {
+      draftType: null as DraftType | null,
+      config: {} as Record<string, unknown>,
+      scope: {} as Record<string, unknown>,
+      name: '',
+      enabled: true,
+    },
+    onSubmit: async ({ value }) => {
+      if (!editingId && !value.draftType) return;
+      if (!value.name.trim()) {
+        toast.error('Name cannot be empty');
+        return;
+      }
+      try {
+        if (value.draftType) {
+          const recipe = getCreateIntegrationDefinition(value.draftType);
+          await api.createFanoutConfig({
+            type: recipe.savedType,
+            name: normalizeDraftName(value.draftType, value.name.trim(), configs),
+            config: normalizeDraftConfig(value.draftType, value.config),
+            scope: normalizeDraftScope(value.draftType, value.scope),
+            enabled: value.enabled,
+          });
+        } else {
+          if (!editingId) throw new Error('Missing fanout config id for update');
+          const editingType = configs.find((cfg) => cfg.id === editingId)?.type ?? '';
+          await api.updateFanoutConfig(editingId, {
+            name: value.name,
+            config: normalizeIntegrationConfigForSave(editingType, value.config),
+            scope: value.scope,
+            enabled: value.enabled,
+          });
+        }
+        editForm.reset();
+        setEditingId(null);
+        await loadConfigs();
+        if (onHealthRefresh) {
+          try {
+            await onHealthRefresh();
+          } catch (err) {
+            console.error('Failed to refresh health after saving fanout config:', err);
+          }
+        }
+        toast.success(value.enabled ? 'Integration saved and enabled' : 'Integration saved');
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Failed to save');
+      }
+    },
+  });
+  const editValues = useStore(editForm.store, (state) => state.values);
+  const busy = useStore(editForm.store, (state) => state.isSubmitting);
+  const draftType = editValues.draftType;
+  const editConfig = editValues.config;
+  const editScope = editValues.scope;
+  const editName = editValues.name;
+  const setEditConfig = (config: Record<string, unknown>) =>
+    editForm.setFieldValue('config', config);
+  const setEditScope = (scope: Record<string, unknown>) => editForm.setFieldValue('scope', scope);
+
+  const inlineNameForm = useForm({
+    defaultValues: { targetId: null as string | null, name: '' },
+    onSubmit: async ({ value }) => {
+      if (!value.targetId) return;
+      const cfg = configs.find((candidate) => candidate.id === value.targetId);
+      if (!cfg) return;
+      const nextName = value.name.trim();
+      if (!nextName) {
+        toast.error('Name cannot be empty');
+        handleCancelInlineEdit();
+        return;
+      }
+      if (nextName === cfg.name) {
+        handleCancelInlineEdit();
+        return;
+      }
+      try {
+        await api.updateFanoutConfig(cfg.id, { name: nextName });
+        if (editingId === cfg.id) editForm.setFieldValue('name', nextName);
+        await loadConfigs();
+        toast.success('Name updated');
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Failed to update name');
+      } finally {
+        handleCancelInlineEdit();
+      }
+    },
+  });
+  const inlineEditName = useStore(inlineNameForm.store, (state) => state.values.name);
+
+  const createForm = useForm({
+    defaultValues: { selectedType: null as DraftType | null },
+  });
+  const selectedCreateType = useStore(createForm.store, (state) => state.values.selectedType);
 
   const loadConfigs = useCallback(async () => {
     try {
@@ -3030,7 +3123,7 @@ export function SettingsFanoutSection({
   useEffect(() => {
     if (!createDialogOpen) return;
     if (availableCreateOptions.length === 0) {
-      setSelectedCreateType(null);
+      createForm.setFieldValue('selectedType', null);
       return;
     }
     if (
@@ -3039,8 +3132,8 @@ export function SettingsFanoutSection({
     ) {
       return;
     }
-    setSelectedCreateType(availableCreateOptions[0].value);
-  }, [createDialogOpen, availableCreateOptions, selectedCreateType]);
+    createForm.setFieldValue('selectedType', availableCreateOptions[0].value);
+  }, [createDialogOpen, availableCreateOptions, createForm, selectedCreateType]);
 
   const handleToggleEnabled = async (cfg: FanoutConfig) => {
     try {
@@ -3056,23 +3149,26 @@ export function SettingsFanoutSection({
   const handleEdit = (cfg: FanoutConfig) => {
     setCreateDialogOpen(false);
     setInlineEditingId(null);
-    setInlineEditName('');
-    setDraftType(null);
+    inlineNameForm.reset();
     setEditingId(cfg.id);
-    setEditConfig(cfg.config);
-    setEditScope(cfg.scope);
-    setEditName(cfg.name);
+    editForm.reset();
+    editForm.setFieldValue('config', cfg.config);
+    editForm.setFieldValue('scope', cfg.scope);
+    editForm.setFieldValue('name', cfg.name);
+    editForm.setFieldValue('enabled', cfg.enabled);
   };
 
   const handleStartInlineEdit = (cfg: FanoutConfig) => {
     setCreateDialogOpen(false);
     setInlineEditingId(cfg.id);
-    setInlineEditName(cfg.name);
+    inlineNameForm.reset();
+    inlineNameForm.setFieldValue('targetId', cfg.id);
+    inlineNameForm.setFieldValue('name', cfg.name);
   };
 
   const handleCancelInlineEdit = () => {
     setInlineEditingId(null);
-    setInlineEditName('');
+    inlineNameForm.reset();
   };
 
   const handleBackToList = () => {
@@ -3088,79 +3184,17 @@ export function SettingsFanoutSection({
       );
     if (shouldConfirm && !confirm('Leave without saving?')) return;
     setEditingId(null);
-    setDraftType(null);
+    editForm.reset();
   };
 
   const handleInlineNameSave = async (cfg: FanoutConfig) => {
-    const nextName = inlineEditName.trim();
     if (inlineEditingId !== cfg.id) return;
-    if (!nextName) {
-      toast.error('Name cannot be empty');
-      handleCancelInlineEdit();
-      return;
-    }
-    if (nextName === cfg.name) {
-      handleCancelInlineEdit();
-      return;
-    }
-    try {
-      await api.updateFanoutConfig(cfg.id, { name: nextName });
-      if (editingId === cfg.id) {
-        setEditName(nextName);
-      }
-      await loadConfigs();
-      toast.success('Name updated');
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to update name');
-    } finally {
-      handleCancelInlineEdit();
-    }
+    await inlineNameForm.handleSubmit();
   };
 
-  const handleSave = async (enabled?: boolean) => {
-    const currentDraftType = draftType;
-    const currentEditingId = editingId;
-    if (!currentEditingId && !currentDraftType) return;
-    setBusy(true);
-    try {
-      if (currentDraftType) {
-        const recipe = getCreateIntegrationDefinition(currentDraftType);
-        await api.createFanoutConfig({
-          type: recipe.savedType,
-          name: normalizeDraftName(currentDraftType, editName.trim(), configs),
-          config: normalizeDraftConfig(currentDraftType, editConfig),
-          scope: normalizeDraftScope(currentDraftType, editScope),
-          enabled: enabled ?? true,
-        });
-      } else {
-        if (!currentEditingId) {
-          throw new Error('Missing fanout config id for update');
-        }
-        const editingType = configs.find((cfg) => cfg.id === currentEditingId)?.type ?? '';
-        const update: Record<string, unknown> = {
-          name: editName,
-          config: normalizeIntegrationConfigForSave(editingType, editConfig),
-          scope: editScope,
-        };
-        if (enabled !== undefined) update.enabled = enabled;
-        await api.updateFanoutConfig(currentEditingId, update);
-      }
-      setDraftType(null);
-      setEditingId(null);
-      await loadConfigs();
-      if (onHealthRefresh) {
-        try {
-          await onHealthRefresh();
-        } catch (err) {
-          console.error('Failed to refresh health after saving fanout config:', err);
-        }
-      }
-      toast.success(enabled ? 'Integration saved and enabled' : 'Integration saved');
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to save');
-    } finally {
-      setBusy(false);
-    }
+  const handleSave = (enabled: boolean) => {
+    editForm.setFieldValue('enabled', enabled);
+    void editForm.handleSubmit();
   };
 
   const handleDelete = async (id: string) => {
@@ -3182,14 +3216,16 @@ export function SettingsFanoutSection({
     const defaults = cloneDraftDefaults(type);
     setCreateDialogOpen(false);
     setEditingId(null);
-    setDraftType(type);
-    setEditName(
+    editForm.reset();
+    editForm.setFieldValue('draftType', type);
+    editForm.setFieldValue(
+      'name',
       definition.nameMode === 'fixed'
         ? definition.defaultName
         : getDefaultIntegrationName(definition.savedType, configs)
     );
-    setEditConfig(defaults.config);
-    setEditScope(defaults.scope);
+    editForm.setFieldValue('config', defaults.config);
+    editForm.setFieldValue('scope', defaults.scope);
   };
 
   const editingConfig = editingId ? configs.find((c) => c.id === editingId) : null;
@@ -3223,7 +3259,7 @@ export function SettingsFanoutSection({
             id="fanout-edit-name"
             type="text"
             value={editName}
-            onChange={(e) => setEditName(e.target.value)}
+            onChange={(e) => editForm.setFieldValue('name', e.target.value)}
           />
         </div>
 
@@ -3361,7 +3397,7 @@ export function SettingsFanoutSection({
         options={availableCreateOptions}
         selectedType={selectedCreateType}
         onOpenChange={setCreateDialogOpen}
-        onSelect={setSelectedCreateType}
+        onSelect={(type) => createForm.setFieldValue('selectedType', type)}
         onCreate={() => {
           if (selectedCreateType) {
             handleAddCreate(selectedCreateType);
@@ -3435,7 +3471,7 @@ export function SettingsFanoutSection({
                             <Input
                               value={inlineEditName}
                               autoFocus
-                              onChange={(e) => setInlineEditName(e.target.value)}
+                              onChange={(e) => inlineNameForm.setFieldValue('name', e.target.value)}
                               onFocus={(e) => e.currentTarget.select()}
                               onBlur={() => void handleInlineNameSave(cfg)}
                               onKeyDown={(e) => {

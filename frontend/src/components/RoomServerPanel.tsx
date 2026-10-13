@@ -122,14 +122,8 @@ export function resetRoomCacheForTests() {
 }
 
 export function RoomServerPanel({ contact, onAuthenticatedChange }: RoomServerPanelProps) {
-  const {
-    password,
-    setPassword,
-    rememberPassword,
-    setRememberPassword,
-    recordLoginAttempt,
-    persistConfirmedPassword,
-  } = useRememberedServerPassword('room', contact.public_key);
+  const { password, rememberPassword, recordLoginAttempt, persistConfirmedPassword } =
+    useRememberedServerPassword('room', contact.public_key);
 
   const cached = useMemo(() => getCachedRoom(contact.public_key), [contact.public_key]);
 
@@ -248,13 +242,13 @@ export function RoomServerPanel({ contact, onAuthenticatedChange }: RoomServerPa
   );
 
   const handleLogin = useCallback(
-    async (nextPassword: string) => {
-      recordLoginAttempt(nextPassword);
+    async (nextPassword: string, shouldRemember = rememberPassword) => {
+      recordLoginAttempt(nextPassword, shouldRemember);
       if (await performLogin(nextPassword, 'password')) {
-        persistConfirmedPassword(nextPassword);
+        persistConfirmedPassword(nextPassword, shouldRemember);
       }
     },
-    [performLogin, persistConfirmedPassword, recordLoginAttempt]
+    [performLogin, persistConfirmedPassword, recordLoginAttempt, rememberPassword]
   );
 
   const handleLoginAsGuest = useCallback(async () => {
@@ -322,10 +316,8 @@ export function RoomServerPanel({ contact, onAuthenticatedChange }: RoomServerPa
             repeaterName={panelTitle}
             loading={loginLoading}
             error={loginError}
-            password={password}
-            onPasswordChange={setPassword}
-            rememberPassword={rememberPassword}
-            onRememberPasswordChange={setRememberPassword}
+            initialPassword={password}
+            initialRememberPassword={rememberPassword}
             onLogin={handleLogin}
             onLoginAsGuest={handleLoginAsGuest}
             description="Log in with the room password or use ACL/guest access to enter this room server"

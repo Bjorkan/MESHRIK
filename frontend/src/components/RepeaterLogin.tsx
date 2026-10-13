@@ -1,4 +1,5 @@
-import { useCallback, type FormEvent } from 'react';
+import { useCallback, useEffect, type FormEvent } from 'react';
+import { useForm, useStore } from '@tanstack/react-form';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { Checkbox } from './ui/checkbox';
@@ -8,11 +9,9 @@ interface RepeaterLoginProps {
   repeaterName: string;
   loading: boolean;
   error: string | null;
-  password: string;
-  onPasswordChange: (password: string) => void;
-  rememberPassword: boolean;
-  onRememberPasswordChange: (checked: boolean) => void;
-  onLogin: (password: string) => Promise<void>;
+  initialPassword: string;
+  initialRememberPassword: boolean;
+  onLogin: (password: string, rememberPassword: boolean) => Promise<void>;
   onLoginAsGuest: () => Promise<void>;
   description?: string;
   passwordPlaceholder?: string;
@@ -24,10 +23,8 @@ export function RepeaterLogin({
   repeaterName,
   loading,
   error,
-  password,
-  onPasswordChange,
-  rememberPassword,
-  onRememberPasswordChange,
+  initialPassword,
+  initialRememberPassword,
   onLogin,
   onLoginAsGuest,
   description = 'Log in to access repeater dashboard',
@@ -35,13 +32,33 @@ export function RepeaterLogin({
   loginLabel = 'Login with Password',
   guestLabel = 'Login as Guest / ACLs',
 }: RepeaterLoginProps) {
+  const form = useForm({
+    defaultValues: {
+      password: initialPassword,
+      rememberPassword: initialRememberPassword,
+    },
+    onSubmit: async ({ value }) => {
+      await onLogin(value.password, value.rememberPassword);
+    },
+  });
+  const password = useStore(form.store, (state) => state.values.password);
+  const rememberPassword = useStore(form.store, (state) => state.values.rememberPassword);
+
+  useEffect(() => {
+    if (form.state.isDirty) return;
+    form.reset({
+      password: initialPassword,
+      rememberPassword: initialRememberPassword,
+    });
+  }, [form, initialPassword, initialRememberPassword]);
+
   const handleSubmit = useCallback(
     async (e: FormEvent) => {
       e.preventDefault();
       if (loading) return;
-      await onLogin(password);
+      await form.handleSubmit();
     },
-    [password, loading, onLogin]
+    [form, loading]
   );
 
   return (
@@ -61,7 +78,7 @@ export function RepeaterLogin({
             data-1p-ignore="true"
             data-bwignore="true"
             value={password}
-            onChange={(e) => onPasswordChange(e.target.value)}
+            onChange={(e) => form.setFieldValue('password', e.target.value)}
             placeholder={passwordPlaceholder}
             aria-label="Repeater password"
             disabled={loading}
@@ -76,7 +93,9 @@ export function RepeaterLogin({
               id="remember-server-password"
               checked={rememberPassword}
               disabled={loading}
-              onCheckedChange={(checked) => onRememberPasswordChange(checked === true)}
+              onCheckedChange={(checked) =>
+                form.setFieldValue('rememberPassword', checked === true)
+              }
             />
             <span>Remember password</span>
           </label>

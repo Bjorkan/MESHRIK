@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
+import { useForm, useStore } from '@tanstack/react-form';
 
 import { Button } from './ui/button';
 import {
@@ -34,13 +35,15 @@ export function ChannelPathHashModeOverrideModal({
   radioDefault,
   onSetOverride,
 }: ChannelPathHashModeOverrideModalProps) {
-  const [selected, setSelected] = useState<number | null>(null);
+  const form = useForm({ defaultValues: { selected: null as number | null } });
+  const selected = useStore(form.store, (state) => state.values.selected);
 
   useEffect(() => {
     if (open) {
-      setSelected(currentOverride);
+      form.reset();
+      form.setFieldValue('selected', currentOverride);
     }
-  }, [currentOverride, open]);
+  }, [currentOverride, form, open]);
 
   const radioDefaultLabel = PATH_HASH_MODE_LABELS[radioDefault] ?? `${radioDefault}`;
 
@@ -102,7 +105,7 @@ export function ChannelPathHashModeOverrideModal({
                       ? 'border-primary bg-primary/10 text-foreground'
                       : 'border-border hover:bg-accent'
                   }`}
-                  onClick={() => setSelected(opt.value)}
+                  onClick={() => form.setFieldValue('selected', opt.value)}
                 >
                   <div className="font-medium">{opt.label}</div>
                   <div className="text-xs text-muted-foreground">{opt.description}</div>

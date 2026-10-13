@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
+import { useForm, useStore } from '@tanstack/react-form';
 
 import { api } from '../api';
 import type { Contact } from '../types';
@@ -34,35 +35,40 @@ export function ContactRoutingOverrideModal({
   onSaved,
   onError,
 }: ContactRoutingOverrideModalProps) {
-  const [route, setRoute] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const form = useForm({
+    defaultValues: { route: '', serverError: null as string | null },
+    onSubmit: async ({ value }) => {
+      try {
+        await api.setContactRoutingOverride(contact.public_key, value.route);
+        onSaved(
+          value.route.trim() === '' ? 'Routing override cleared' : 'Routing override updated'
+        );
+        onClose();
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to update routing override';
+        form.setFieldValue('serverError', message);
+        onError(message);
+      }
+    },
+  });
+  const route = useStore(form.store, (state) => state.values.route);
+  const saving = useStore(form.store, (state) => state.isSubmitting);
+  const error = useStore(form.store, (state) => state.values.serverError);
 
   useEffect(() => {
     if (!open) {
       return;
     }
-    setRoute(formatRoutingOverrideInput(contact));
-    setError(null);
-  }, [contact, open]);
+    form.reset({ route: formatRoutingOverrideInput(contact), serverError: null });
+  }, [contact, form, open]);
 
   const learnedRouteSummary = useMemo(() => formatLearnedRouteSummary(contact), [contact]);
   const forcedRouteSummary = useMemo(() => formatForcedRouteSummary(contact), [contact]);
 
-  const saveRoute = async (value: string) => {
-    setSaving(true);
-    setError(null);
-    try {
-      await api.setContactRoutingOverride(contact.public_key, value);
-      onSaved(value.trim() === '' ? 'Routing override cleared' : 'Routing override updated');
-      onClose();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to update routing override';
-      setError(message);
-      onError(message);
-    } finally {
-      setSaving(false);
-    }
+  const saveRoute = (value: string) => {
+    form.setFieldValue('serverError', null);
+    form.setFieldValue('route', value);
+    void form.handleSubmit();
   };
 
   return (
@@ -80,7 +86,7 @@ export function ContactRoutingOverrideModal({
           className="space-y-4"
           onSubmit={(event) => {
             event.preventDefault();
-            void saveRoute(route);
+            void form.handleSubmit();
           }}
         >
           <div className="rounded-md border border-border bg-muted/20 p-3 text-sm">
@@ -100,7 +106,7 @@ export function ContactRoutingOverrideModal({
             <Input
               id="routing-override-input"
               value={route}
-              onChange={(event) => setRoute(event.target.value)}
+              onChange={(event) => form.setFieldValue('route', event.target.value)}
               placeholder='Examples: "ae,f1" or "ae92,f13e"'
               autoFocus
               disabled={saving}
@@ -120,7 +126,7 @@ export function ContactRoutingOverrideModal({
                 type="button"
                 variant="outline"
                 className="w-full"
-                onClick={() => void saveRoute('-1')}
+                onClick={() => saveRoute('-1')}
                 disabled={saving}
               >
                 Force Flood
@@ -129,7 +135,7 @@ export function ContactRoutingOverrideModal({
                 type="button"
                 variant="outline"
                 className="w-full"
-                onClick={() => void saveRoute('0')}
+                onClick={() => saveRoute('0')}
                 disabled={saving}
               >
                 Force Direct
@@ -143,7 +149,10 @@ export function ContactRoutingOverrideModal({
           </div>
 
           {error && (
-            <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            <div
+              role="alert"
+              className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+            >
               {error}
             </div>
           )}
@@ -152,12 +161,7 @@ export function ContactRoutingOverrideModal({
             <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>
               Cancel
             </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => void saveRoute('')}
-              disabled={saving}
-            >
+            <Button type="button" variant="outline" onClick={() => saveRoute('')} disabled={saving}>
               Clear override
             </Button>
           </DialogFooter>

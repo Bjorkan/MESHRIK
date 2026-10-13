@@ -52,22 +52,23 @@ export function useRememberedServerPassword(kind: ServerLoginKind, publicKey: st
   }, [kind, publicKey, storageKey]);
 
   const recordLoginAttempt = useCallback(
-    (submittedPassword: string) => {
+    (submittedPassword: string, shouldRemember: boolean) => {
       if (submittedPassword.length === 0) return;
 
       inMemoryPasswords.set(storageKey, { password: submittedPassword });
       setPassword(submittedPassword);
+      setRememberPassword(shouldRemember);
     },
     [storageKey]
   );
 
   const persistConfirmedPassword = useCallback(
-    (submittedPassword: string) => {
+    (submittedPassword: string, shouldRemember: boolean) => {
       if (submittedPassword.length === 0) return;
 
       inMemoryPasswords.set(storageKey, { password: submittedPassword });
 
-      if (!rememberPassword) {
+      if (!shouldRemember) {
         try {
           localStorage.removeItem(storageKey);
         } catch {
@@ -82,15 +83,14 @@ export function useRememberedServerPassword(kind: ServerLoginKind, publicKey: st
       }
 
       setPassword(submittedPassword);
+      setRememberPassword(shouldRemember);
     },
-    [rememberPassword, storageKey]
+    [storageKey]
   );
 
   return {
     password,
-    setPassword,
     rememberPassword,
-    setRememberPassword,
     recordLoginAttempt,
     persistConfirmedPassword,
   };

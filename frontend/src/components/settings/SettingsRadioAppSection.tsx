@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useForm, useStore } from '@tanstack/react-form';
 import { Label } from '../ui/label';
 import { Button } from '../ui/button';
 import { Separator } from '../ui/separator';
@@ -46,8 +47,18 @@ export function SettingsRadioAppSection({
   className?: string;
 }) {
   const { distanceUnit } = useDistanceUnit();
-  const [discoveryBlockedTypes, setDiscoveryBlockedTypes] = useState<number[]>([]);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const form = useForm({
+    defaultValues: {
+      discoveryBlockedTypes: appSettings.discovery_blocked_types ?? [],
+      intervalDraft: appSettings.telemetry_interval_hours,
+      telemetryRoutedHourly: appSettings.telemetry_routed_hourly,
+    },
+  });
+  const { discoveryBlockedTypes, intervalDraft, telemetryRoutedHourly } = useStore(
+    form.store,
+    (state) => state.values
+  );
 
   const [latestTelemetry, setLatestTelemetry] = useState<
     Record<string, TelemetryHistoryEntry | null>
@@ -60,14 +71,19 @@ export function SettingsRadioAppSection({
   const contactTelemetryFetchedRef = useRef(false);
 
   const [schedule, setSchedule] = useState<TelemetrySchedule | null>(null);
-  const [intervalDraft, setIntervalDraft] = useState<number>(appSettings.telemetry_interval_hours);
-
   const saveChainRef = useRef<Promise<void>>(Promise.resolve());
 
   useEffect(() => {
-    setDiscoveryBlockedTypes(appSettings.discovery_blocked_types ?? []);
-    setIntervalDraft(appSettings.telemetry_interval_hours);
-  }, [appSettings]);
+    if (!form.getFieldMeta('discoveryBlockedTypes')?.isDirty) {
+      form.setFieldValue('discoveryBlockedTypes', appSettings.discovery_blocked_types ?? []);
+    }
+    if (!form.getFieldMeta('intervalDraft')?.isDirty) {
+      form.setFieldValue('intervalDraft', appSettings.telemetry_interval_hours);
+    }
+    if (!form.getFieldMeta('telemetryRoutedHourly')?.isDirty) {
+      form.setFieldValue('telemetryRoutedHourly', appSettings.telemetry_routed_hourly);
+    }
+  }, [appSettings, form]);
 
   useEffect(() => {
     let cancelled = false;
@@ -166,9 +182,9 @@ export function SettingsRadioAppSection({
                 const nextValue = Number(e.target.value);
                 if (!Number.isFinite(nextValue) || nextValue === intervalDraft) return;
                 const prevValue = intervalDraft;
-                setIntervalDraft(nextValue);
+                form.setFieldValue('intervalDraft', nextValue);
                 void persistAppSettings({ telemetry_interval_hours: nextValue }, () =>
-                  setIntervalDraft(prevValue)
+                  form.setFieldValue('intervalDraft', prevValue)
                 );
               }}
               className="h-9 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
@@ -196,10 +212,13 @@ export function SettingsRadioAppSection({
         <label className="flex items-start gap-2 cursor-pointer">
           <input
             type="checkbox"
-            checked={appSettings.telemetry_routed_hourly}
+            checked={telemetryRoutedHourly}
             onChange={() => {
-              const next = !appSettings.telemetry_routed_hourly;
-              void persistAppSettings({ telemetry_routed_hourly: next }, () => {});
+              const next = !telemetryRoutedHourly;
+              form.setFieldValue('telemetryRoutedHourly', next);
+              void persistAppSettings({ telemetry_routed_hourly: next }, () =>
+                form.setFieldValue('telemetryRoutedHourly', !next)
+              );
             }}
             className="w-4 h-4 rounded border-input accent-primary mt-0.5"
           />
@@ -444,9 +463,9 @@ export function SettingsRadioAppSection({
                       const next = checked
                         ? prev.filter((t) => t !== typeCode)
                         : [...prev, typeCode];
-                      setDiscoveryBlockedTypes(next);
+                      form.setFieldValue('discoveryBlockedTypes', next);
                       void persistAppSettings({ discovery_blocked_types: next }, () =>
-                        setDiscoveryBlockedTypes(prev)
+                        form.setFieldValue('discoveryBlockedTypes', prev)
                       );
                     }}
                     className="rounded border-input"

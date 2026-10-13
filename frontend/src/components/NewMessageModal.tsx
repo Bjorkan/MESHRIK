@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
+import { useForm, useStore } from '@tanstack/react-form';
 import { Dice5 } from 'lucide-react';
 import {
   Dialog,
@@ -105,29 +106,105 @@ export function NewMessageModal({
   onCreateHashtagChannel,
   onBulkAddHashtagChannels,
 }: NewMessageModalProps) {
-  const [tab, setTab] = useState<Tab>('new-contact');
-  const [name, setName] = useState('');
-  const [contactType, setContactType] = useState(1);
-  const [contactKey, setContactKey] = useState('');
-  const [channelKey, setChannelKey] = useState('');
-  const [bulkChannelText, setBulkChannelText] = useState('');
-  const [tryHistorical, setTryHistorical] = useState(false);
-  const [permitExtended, setPermitExtended] = useState(false);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
   const hashtagInputRef = useRef<HTMLInputElement>(null);
   const bulkTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const form = useForm({
+    defaultValues: {
+      tab: 'new-contact' as Tab,
+      name: '',
+      contactType: 1,
+      contactKey: '',
+      channelKey: '',
+      bulkChannelText: '',
+      tryHistorical: false,
+      permitExtended: false,
+      serverError: '',
+      addAnother: false,
+    },
+    onSubmit: async ({ value }) => {
+      form.setFieldValue('serverError', '');
+      try {
+        if (value.tab === 'new-contact') {
+          if (!value.name.trim() || !value.contactKey.trim()) {
+            form.setFieldValue('serverError', 'Name and public key are required');
+            return;
+          }
+          await onCreateContact(
+            value.name.trim(),
+            value.contactKey.trim(),
+            value.tryHistorical,
+            value.contactType
+          );
+        } else if (value.tab === 'new-channel') {
+          if (!value.name.trim() || !value.channelKey.trim()) {
+            form.setFieldValue('serverError', 'Channel name and key are required');
+            return;
+          }
+          await onCreateChannel(value.name.trim(), value.channelKey.trim(), value.tryHistorical);
+        } else if (value.tab === 'hashtag') {
+          const channelName = value.name.trim();
+          const validationError = validateHashtagName(channelName, value.permitExtended);
+          if (validationError) {
+            form.setFieldValue('serverError', validationError);
+            return;
+          }
+          const normalizedName = value.permitExtended ? channelName : channelName.toLowerCase();
+          await onCreateHashtagChannel(`#${normalizedName}`, value.tryHistorical);
+        } else {
+          const { channelNames, invalidNames } = parseBulkHashtagNames(
+            value.bulkChannelText,
+            value.permitExtended
+          );
+          if (channelNames.length === 0) {
+            form.setFieldValue('serverError', 'Enter at least one valid channel name');
+            return;
+          }
+          if (invalidNames.length > 0) {
+            form.setFieldValue('serverError', `Invalid channel names: ${invalidNames.join(', ')}`);
+            return;
+          }
+          await onBulkAddHashtagChannels(channelNames, value.tryHistorical);
+        }
 
-  const resetForm = () => {
-    setName('');
-    setContactType(1);
-    setContactKey('');
-    setChannelKey('');
-    setBulkChannelText('');
-    setTryHistorical(false);
-    setPermitExtended(false);
-    setError('');
-  };
+        if (value.addAnother && value.tab === 'hashtag') {
+          form.setFieldValue('name', '');
+          form.setFieldValue('addAnother', false);
+          hashtagInputRef.current?.focus();
+          return;
+        }
+
+        form.reset();
+        onClose();
+      } catch (err) {
+        toast.error('Failed to create conversation', {
+          description: err instanceof Error ? err.message : undefined,
+        });
+        form.setFieldValue('serverError', err instanceof Error ? err.message : 'Failed to create');
+      }
+    },
+  });
+  const formRef = useRef(form);
+  formRef.current = form;
+  const values = useStore(form.store, (state) => state.values);
+  const loading = useStore(form.store, (state) => state.isSubmitting);
+  const {
+    tab,
+    name,
+    contactType,
+    contactKey,
+    channelKey,
+    bulkChannelText,
+    tryHistorical,
+    permitExtended,
+    serverError: error,
+  } = values;
+
+  const resetForm = useCallback((nextTab?: Tab) => {
+    const currentForm = formRef.current;
+    const targetTab = nextTab ?? currentForm.state.values.tab;
+    currentForm.reset();
+    currentForm.setFieldValue('tab', targetTab);
+  }, []);
 
   useEffect(() => {
     if (!open) {
@@ -135,15 +212,8 @@ export function NewMessageModal({
     }
 
     if (prefillRequest) {
-      setTab(prefillRequest.tab);
-      setName(prefillRequest.hashtagName);
-      setContactKey('');
-      setChannelKey('');
-      setBulkChannelText('');
-      setTryHistorical(false);
-      setPermitExtended(false);
-      setError('');
-      setLoading(false);
+      resetForm(prefillRequest.tab);
+      formRef.current.setFieldValue('name', prefillRequest.hashtagName);
       requestAnimationFrame(() => {
         hashtagInputRef.current?.focus();
       });
@@ -151,101 +221,24 @@ export function NewMessageModal({
     }
 
     if (showBulkAddChannelTab) {
-      setTab('bulk-hashtag');
-      setName('');
-      setContactKey('');
-      setChannelKey('');
-      setBulkChannelText('');
-      setTryHistorical(false);
-      setPermitExtended(false);
-      setError('');
-      setLoading(false);
+      resetForm('bulk-hashtag');
       requestAnimationFrame(() => {
         bulkTextareaRef.current?.focus();
       });
       return;
     }
 
-    setTab('new-contact');
-  }, [open, prefillRequest, showBulkAddChannelTab]);
+    resetForm('new-contact');
+  }, [open, prefillRequest, resetForm, showBulkAddChannelTab]);
 
-  const handleCreate = async () => {
-    setError('');
-    setLoading(true);
-
-    try {
-      if (tab === 'new-contact') {
-        if (!name.trim() || !contactKey.trim()) {
-          setError('Name and public key are required');
-          return;
-        }
-        await onCreateContact(name.trim(), contactKey.trim(), tryHistorical, contactType);
-      } else if (tab === 'new-channel') {
-        if (!name.trim() || !channelKey.trim()) {
-          setError('Channel name and key are required');
-          return;
-        }
-        await onCreateChannel(name.trim(), channelKey.trim(), tryHistorical);
-      } else if (tab === 'hashtag') {
-        const channelName = name.trim();
-        const validationError = validateHashtagName(channelName, permitExtended);
-        if (validationError) {
-          setError(validationError);
-          return;
-        }
-        const normalizedName = permitExtended ? channelName : channelName.toLowerCase();
-        await onCreateHashtagChannel(`#${normalizedName}`, tryHistorical);
-      } else {
-        const { channelNames, invalidNames } = parseBulkHashtagNames(
-          bulkChannelText,
-          permitExtended
-        );
-        if (channelNames.length === 0) {
-          setError('Enter at least one valid channel name');
-          return;
-        }
-        if (invalidNames.length > 0) {
-          setError(`Invalid channel names: ${invalidNames.join(', ')}`);
-          return;
-        }
-        await onBulkAddHashtagChannels(channelNames, tryHistorical);
-      }
-
-      resetForm();
-      onClose();
-    } catch (err) {
-      toast.error('Failed to create conversation', {
-        description: err instanceof Error ? err.message : undefined,
-      });
-      setError(err instanceof Error ? err.message : 'Failed to create');
-    } finally {
-      setLoading(false);
-    }
+  const handleCreate = () => {
+    form.setFieldValue('addAnother', false);
+    void form.handleSubmit();
   };
 
-  const handleCreateAndAddAnother = async () => {
-    setError('');
-    const channelName = name.trim();
-    const validationError = validateHashtagName(channelName, permitExtended);
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const normalizedName = permitExtended ? channelName : channelName.toLowerCase();
-      await onCreateHashtagChannel(`#${normalizedName}`, tryHistorical);
-      setName('');
-      hashtagInputRef.current?.focus();
-    } catch (err) {
-      toast.error('Failed to create conversation', {
-        description: err instanceof Error ? err.message : undefined,
-      });
-      setError(err instanceof Error ? err.message : 'Failed to create');
-    } finally {
-      setLoading(false);
-    }
+  const handleCreateAndAddAnother = () => {
+    form.setFieldValue('addAnother', true);
+    void form.handleSubmit();
   };
 
   const showHistoricalOption = undecryptedCount > 0;
@@ -274,8 +267,7 @@ export function NewMessageModal({
         <Tabs
           value={tab}
           onValueChange={(value) => {
-            setTab(value as Tab);
-            resetForm();
+            resetForm(value as Tab);
           }}
           className="w-full"
         >
@@ -298,7 +290,7 @@ export function NewMessageModal({
               <Input
                 id="contact-name"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => form.setFieldValue('name', e.target.value)}
                 placeholder="Contact name"
               />
             </div>
@@ -307,7 +299,7 @@ export function NewMessageModal({
               <Input
                 id="contact-key"
                 value={contactKey}
-                onChange={(e) => setContactKey(e.target.value)}
+                onChange={(e) => form.setFieldValue('contactKey', e.target.value)}
                 placeholder="64-character hex public key"
               />
             </div>
@@ -316,7 +308,7 @@ export function NewMessageModal({
               <select
                 id="contact-type"
                 value={contactType}
-                onChange={(e) => setContactType(Number(e.target.value))}
+                onChange={(e) => form.setFieldValue('contactType', Number(e.target.value))}
                 className="block h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm"
               >
                 <option value={1}>Client</option>
@@ -332,7 +324,7 @@ export function NewMessageModal({
               <Input
                 id="channel-name"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => form.setFieldValue('name', e.target.value)}
                 placeholder="Channel name"
               />
             </div>
@@ -342,7 +334,7 @@ export function NewMessageModal({
                 <Input
                   id="channel-key"
                   value={channelKey}
-                  onChange={(e) => setChannelKey(e.target.value)}
+                  onChange={(e) => form.setFieldValue('channelKey', e.target.value)}
                   placeholder="Pre-shared key (hex)"
                   className="flex-1"
                 />
@@ -356,7 +348,7 @@ export function NewMessageModal({
                     const hex = Array.from(bytes)
                       .map((byte) => byte.toString(16).padStart(2, '0'))
                       .join('');
-                    setChannelKey(hex);
+                    form.setFieldValue('channelKey', hex);
                   }}
                   title="Generate random key"
                   aria-label="Generate random key"
@@ -376,7 +368,7 @@ export function NewMessageModal({
                   ref={hashtagInputRef}
                   id="hashtag-name"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => form.setFieldValue('name', e.target.value)}
                   placeholder="channel-name"
                   className="flex-1"
                 />
@@ -387,7 +379,7 @@ export function NewMessageModal({
                 <input
                   type="checkbox"
                   checked={permitExtended}
-                  onChange={(e) => setPermitExtended(e.target.checked)}
+                  onChange={(e) => form.setFieldValue('permitExtended', e.target.checked)}
                   className="h-4 w-4 rounded border-input accent-primary"
                 />
                 <span className="text-sm">
@@ -411,7 +403,7 @@ export function NewMessageModal({
                   id="bulk-hashtag-names"
                   aria-label="Bulk channel names"
                   value={bulkChannelText}
-                  onChange={(e) => setBulkChannelText(e.target.value)}
+                  onChange={(e) => form.setFieldValue('bulkChannelText', e.target.value)}
                   placeholder={'#ops\nmesh-chat\nanother-channel'}
                   className="min-h-48 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
                 />
@@ -426,7 +418,7 @@ export function NewMessageModal({
                   <input
                     type="checkbox"
                     checked={permitExtended}
-                    onChange={(e) => setPermitExtended(e.target.checked)}
+                    onChange={(e) => form.setFieldValue('permitExtended', e.target.checked)}
                     className="h-4 w-4 rounded border-input accent-primary"
                   />
                   <span className="text-sm">
@@ -463,7 +455,7 @@ export function NewMessageModal({
               <Checkbox
                 id="try-historical"
                 checked={tryHistorical}
-                onCheckedChange={(checked) => setTryHistorical(checked === true)}
+                onCheckedChange={(checked) => form.setFieldValue('tryHistorical', checked === true)}
               />
             </div>
             {tryHistorical && (

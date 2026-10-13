@@ -1,4 +1,5 @@
-import { useState, useCallback, useRef, useEffect, type FormEvent } from 'react';
+import { useCallback, useRef, useEffect, type FormEvent } from 'react';
+import { useForm, useStore } from '@tanstack/react-form';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 
@@ -11,10 +12,19 @@ export function ConsolePane({
   loading: boolean;
   onSend: (command: string) => Promise<void>;
 }) {
-  const [input, setInput] = useState('');
   const outputRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const prevLoadingRef = useRef(loading);
+  const form = useForm({
+    defaultValues: { command: '' },
+    onSubmit: async ({ value }) => {
+      const command = value.command.trimStart();
+      if (!command || loading) return;
+      form.reset();
+      await onSend(command);
+    },
+  });
+  const input = useStore(form.store, (state) => state.values.command);
 
   // Auto-scroll to bottom on new entries
   useEffect(() => {
@@ -34,12 +44,10 @@ export function ConsolePane({
   const handleSubmit = useCallback(
     async (e: FormEvent) => {
       e.preventDefault();
-      const trimmed = input.trimStart();
-      if (!trimmed || loading) return;
-      setInput('');
-      await onSend(trimmed);
+      if (!input.trimStart() || loading) return;
+      await form.handleSubmit();
     },
-    [input, loading, onSend]
+    [form, input, loading]
   );
 
   return (
@@ -77,7 +85,7 @@ export function ConsolePane({
           spellCheck={false}
           name="console-input"
           value={input}
-          onChange={(e) => setInput(e.target.value)}
+          onChange={(e) => form.setFieldValue('command', e.target.value)}
           placeholder="CLI command..."
           aria-label="Console command"
           disabled={loading}

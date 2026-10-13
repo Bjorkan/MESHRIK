@@ -1,5 +1,4 @@
 import {
-  useState,
   useCallback,
   useImperativeHandle,
   forwardRef,
@@ -10,6 +9,7 @@ import {
   type FormEvent,
   type KeyboardEvent,
 } from 'react';
+import { useForm, useStore } from '@tanstack/react-form';
 import { Button } from './ui/button';
 import { toast } from './ui/sonner';
 import { cn } from '@/lib/utils';
@@ -57,9 +57,32 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(fu
   { onSend, disabled, placeholder, conversationType, senderName },
   ref
 ) {
-  const [text, setText] = useState('');
-  const [sending, setSending] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const form = useForm({
+    defaultValues: { text: '' },
+    onSubmit: async ({ value }) => {
+      const trimmed = value.text.trim();
+      if (!trimmed || disabled) return;
+
+      try {
+        await onSend(trimmed);
+        form.reset();
+      } catch (err) {
+        console.error('Failed to send message:', err);
+        const description = err instanceof Error ? err.message : 'Check radio connection';
+        const isRadioNoResponse =
+          err instanceof Error && err.message.toLowerCase().includes(RADIO_NO_RESPONSE_SNIPPET);
+        toast.error(isRadioNoResponse ? 'Radio did not confirm send' : 'Failed to send message', {
+          description,
+        });
+        return;
+      }
+      // Refocus after React re-enables the textarea
+      setTimeout(() => textareaRef.current?.focus(), 0);
+    },
+  });
+  const text = useStore(form.store, (state) => state.values.text);
+  const sending = useStore(form.store, (state) => state.isSubmitting);
 
   /** Resize textarea to fit content, clamped between 1 row and ~6 rows. */
   const autoResize = useCallback(() => {
@@ -72,7 +95,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(fu
 
   useImperativeHandle(ref, () => ({
     appendText: (appendedText: string) => {
-      setText((prev) => prev + appendedText);
+      form.setFieldValue('text', (previous) => previous + appendedText);
       textareaRef.current?.focus();
     },
     focus: () => {
@@ -131,57 +154,41 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(fu
   const remaining = limits ? limits.hardLimit - textByteLen : 0;
 
   const handleSubmit = useCallback(
-    async (e: FormEvent) => {
-      e.preventDefault();
-      const trimmed = text.trim();
-      if (!trimmed || sending || disabled || limitState === 'error') return;
-
-      setSending(true);
-      try {
-        await onSend(trimmed);
-        setText('');
-      } catch (err) {
-        console.error('Failed to send message:', err);
-        const description = err instanceof Error ? err.message : 'Check radio connection';
-        const isRadioNoResponse =
-          err instanceof Error && err.message.toLowerCase().includes(RADIO_NO_RESPONSE_SNIPPET);
-        toast.error(isRadioNoResponse ? 'Radio did not confirm send' : 'Failed to send message', {
-          description,
-        });
-        return;
-      } finally {
-        setSending(false);
-      }
-      // Refocus after React re-enables the textarea
-      setTimeout(() => textareaRef.current?.focus(), 0);
+    (event: FormEvent) => {
+      event.preventDefault();
+      if (sending || disabled || limitState === 'error') return;
+      void form.handleSubmit();
     },
-    [text, sending, disabled, limitState, onSend]
+    [disabled, form, limitState, sending]
   );
 
-  const handleChange = useCallback((e: ChangeEvent<HTMLTextAreaElement>) => {
-    const input = e.target;
-    const raw = input.value;
-    // Skip replacement during IME / dead-key composition to avoid garbling interim input
-    if (!e.nativeEvent || (e.nativeEvent as InputEvent).isComposing) {
-      setText(raw);
-      return;
-    }
-    if (getTextReplaceEnabled()) {
-      const result = applyTextReplacements(
-        raw,
-        input.selectionStart ?? raw.length,
-        getTextReplaceMapJson()
-      );
-      if (result) {
-        setText(result.text);
-        // Schedule cursor restore after React flushes the new value
-        const pos = result.cursor;
-        requestAnimationFrame(() => input.setSelectionRange(pos, pos));
+  const handleChange = useCallback(
+    (e: ChangeEvent<HTMLTextAreaElement>) => {
+      const input = e.target;
+      const raw = input.value;
+      // Skip replacement during IME / dead-key composition to avoid garbling interim input
+      if (!e.nativeEvent || (e.nativeEvent as InputEvent).isComposing) {
+        form.setFieldValue('text', raw);
         return;
       }
-    }
-    setText(raw);
-  }, []);
+      if (getTextReplaceEnabled()) {
+        const result = applyTextReplacements(
+          raw,
+          input.selectionStart ?? raw.length,
+          getTextReplaceMapJson()
+        );
+        if (result) {
+          form.setFieldValue('text', result.text);
+          // Schedule cursor restore after React flushes the new value
+          const pos = result.cursor;
+          requestAnimationFrame(() => input.setSelectionRange(pos, pos));
+          return;
+        }
+      }
+      form.setFieldValue('text', raw);
+    },
+    [form]
+  );
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {

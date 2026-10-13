@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { RepeaterLogin } from '../components/RepeaterLogin';
 
 describe('RepeaterLogin', () => {
@@ -7,10 +7,8 @@ describe('RepeaterLogin', () => {
     repeaterName: 'TestRepeater',
     loading: false,
     error: null as string | null,
-    password: '',
-    onPasswordChange: vi.fn(),
-    rememberPassword: false,
-    onRememberPasswordChange: vi.fn(),
+    initialPassword: '',
+    initialRememberPassword: false,
     onLogin: vi.fn(),
     onLoginAsGuest: vi.fn(),
   };
@@ -35,20 +33,21 @@ describe('RepeaterLogin', () => {
     expect(screen.getByText('Login as Guest / ACLs')).toBeInTheDocument();
   });
 
-  it('preserves the exact password on submit', () => {
-    render(<RepeaterLogin {...defaultProps} password="  secret  " />);
+  it('preserves the exact password on submit', async () => {
+    render(<RepeaterLogin {...defaultProps} initialPassword="  secret  " />);
     fireEvent.submit(screen.getByText('Login with Password').closest('form')!);
 
-    expect(defaultProps.onLogin).toHaveBeenCalledWith('  secret  ');
+    await waitFor(() => expect(defaultProps.onLogin).toHaveBeenCalledWith('  secret  ', false));
   });
 
-  it('propagates password changes', () => {
+  it('keeps password changes in the form draft until submit', () => {
     render(<RepeaterLogin {...defaultProps} />);
 
     const input = screen.getByPlaceholderText('Repeater password...');
     fireEvent.change(input, { target: { value: 'new secret' } });
 
-    expect(defaultProps.onPasswordChange).toHaveBeenCalledWith('new secret');
+    expect(input).toHaveValue('new secret');
+    expect(defaultProps.onLogin).not.toHaveBeenCalled();
   });
 
   it('toggles remember password checkbox', () => {
@@ -56,11 +55,11 @@ describe('RepeaterLogin', () => {
 
     fireEvent.click(screen.getByLabelText('Remember password'));
 
-    expect(defaultProps.onRememberPasswordChange).toHaveBeenCalledWith(true);
+    expect(screen.getByLabelText('Remember password')).toBeChecked();
   });
 
   it('shows storage warning when remember password is enabled', () => {
-    render(<RepeaterLogin {...defaultProps} rememberPassword={true} />);
+    render(<RepeaterLogin {...defaultProps} initialRememberPassword={true} />);
 
     expect(
       screen.getByText(

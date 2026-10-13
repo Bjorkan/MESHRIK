@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
+import { useForm, useStore } from '@tanstack/react-form';
 import {
   createFilteredRowModel,
   createSortedRowModel,
@@ -98,13 +99,40 @@ export function BulkDeleteContactsModal({
   contacts,
   onDeleted,
 }: BulkDeleteContactsModalProps) {
-  const [step, setStep] = useState<'select' | 'confirm'>('select');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [lastHeardAfter, setLastHeardAfter] = useState('');
-  const [lastHeardBefore, setLastHeardBefore] = useState('');
-  const [typeFilter, setTypeFilter] = useState<number | 'all'>('all');
-  const [deleting, setDeleting] = useState(false);
+  const form = useForm({
+    defaultValues: {
+      step: 'select' as 'select' | 'confirm',
+      startDate: '',
+      endDate: '',
+      lastHeardAfter: '',
+      lastHeardBefore: '',
+      typeFilter: 'all' as number | 'all',
+    },
+    onSubmit: async () => {
+      const keysToDelete = table.getSelectedRowIds();
+      try {
+        const result = await api.bulkDeleteContacts(keysToDelete);
+        const deletedLabel = `Deleted ${result.deleted} contact${result.deleted === 1 ? '' : 's'}`;
+        if (result.radio_failed > 0) {
+          toast.warning(deletedLabel, {
+            description: `${result.radio_failed} could not be removed from the radio and may return during synchronization.`,
+          });
+        } else {
+          toast.success(deletedLabel);
+        }
+        onDeleted(keysToDelete);
+        resetAndClose();
+      } catch (err) {
+        console.error('Bulk delete failed:', err);
+        toast.error('Bulk delete failed', {
+          description: err instanceof Error ? err.message : undefined,
+        });
+      }
+    },
+  });
+  const values = useStore(form.store, (state) => state.values);
+  const deleting = useStore(form.store, (state) => state.isSubmitting);
+  const { step, startDate, endDate, lastHeardAfter, lastHeardBefore, typeFilter } = values;
 
   const filters = useMemo<ContactFilters>(
     () => ({ startDate, endDate, lastHeardAfter, lastHeardBefore, type: typeFilter }),
@@ -137,16 +165,11 @@ export function BulkDeleteContactsModal({
   const selectedKeys = new Set(table.getSelectedRowIds());
 
   const resetAndClose = useCallback(() => {
-    setStep('select');
-    setStartDate('');
-    setEndDate('');
-    setLastHeardAfter('');
-    setLastHeardBefore('');
-    setTypeFilter('all');
+    form.reset();
     table.resetRowSelection(true);
     table.resetSorting();
     onClose();
-  }, [onClose, table]);
+  }, [form, onClose, table]);
 
   const handleSelectAll = () => {
     table.setRowSelection(Object.fromEntries(filteredRows.map((row) => [row.id, true] as const)));
@@ -174,31 +197,6 @@ export function BulkDeleteContactsModal({
   const maxDate =
     firstSeenDates.length > 0 ? formatDateISO(Math.max(...firstSeenDates)) : 'unknown';
 
-  const handleDelete = async () => {
-    setDeleting(true);
-    try {
-      const keysToDelete = [...selectedKeys];
-      const result = await api.bulkDeleteContacts(keysToDelete);
-      const deletedLabel = `Deleted ${result.deleted} contact${result.deleted === 1 ? '' : 's'}`;
-      if (result.radio_failed > 0) {
-        toast.warning(deletedLabel, {
-          description: `${result.radio_failed} could not be removed from the radio and may return during synchronization.`,
-        });
-      } else {
-        toast.success(deletedLabel);
-      }
-      onDeleted(keysToDelete);
-      resetAndClose();
-    } catch (err) {
-      console.error('Bulk delete failed:', err);
-      toast.error('Bulk delete failed', {
-        description: err instanceof Error ? err.message : undefined,
-      });
-    } finally {
-      setDeleting(false);
-    }
-  };
-
   const hasFilters = startDate || endDate || lastHeardAfter || lastHeardBefore;
 
   return (
@@ -224,7 +222,10 @@ export function BulkDeleteContactsModal({
                   <select
                     value={typeFilter === 'all' ? 'all' : String(typeFilter)}
                     onChange={(e) =>
-                      setTypeFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))
+                      form.setFieldValue(
+                        'typeFilter',
+                        e.target.value === 'all' ? 'all' : Number(e.target.value)
+                      )
                     }
                     className="block h-8 rounded-md border border-input bg-background px-2 text-sm"
                   >
@@ -242,7 +243,7 @@ export function BulkDeleteContactsModal({
                   <Input
                     type="datetime-local"
                     value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
+                    onChange={(e) => form.setFieldValue('startDate', e.target.value)}
                     className="w-48 h-8 text-sm"
                   />
                 </div>
@@ -251,7 +252,7 @@ export function BulkDeleteContactsModal({
                   <Input
                     type="datetime-local"
                     value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
+                    onChange={(e) => form.setFieldValue('endDate', e.target.value)}
                     className="w-48 h-8 text-sm"
                   />
                 </div>
@@ -262,7 +263,7 @@ export function BulkDeleteContactsModal({
                   <Input
                     type="datetime-local"
                     value={lastHeardAfter}
-                    onChange={(e) => setLastHeardAfter(e.target.value)}
+                    onChange={(e) => form.setFieldValue('lastHeardAfter', e.target.value)}
                     className="w-48 h-8 text-sm"
                   />
                 </div>
@@ -271,7 +272,7 @@ export function BulkDeleteContactsModal({
                   <Input
                     type="datetime-local"
                     value={lastHeardBefore}
-                    onChange={(e) => setLastHeardBefore(e.target.value)}
+                    onChange={(e) => form.setFieldValue('lastHeardBefore', e.target.value)}
                     className="w-48 h-8 text-sm"
                   />
                 </div>
@@ -371,7 +372,7 @@ export function BulkDeleteContactsModal({
                 variant="outline"
                 className="border-warning text-warning hover:bg-warning/10 hover:text-warning"
                 disabled={selectedKeys.size === 0}
-                onClick={() => setStep('confirm')}
+                onClick={() => form.setFieldValue('step', 'confirm')}
               >
                 Proceed to confirmation ({selectedKeys.size})
               </Button>
@@ -429,7 +430,7 @@ export function BulkDeleteContactsModal({
                 variant="destructive"
                 className="w-full h-auto py-3 text-wrap"
                 disabled={deleting}
-                onClick={handleDelete}
+                onClick={() => void form.handleSubmit()}
               >
                 {deleting
                   ? 'Deleting...'
@@ -443,7 +444,11 @@ export function BulkDeleteContactsModal({
                       .filter(Boolean)
                       .join(', ')}, spanning creation dates from ${minDate} to ${maxDate}`}
               </Button>
-              <Button variant="secondary" onClick={() => setStep('select')} disabled={deleting}>
+              <Button
+                variant="secondary"
+                onClick={() => form.setFieldValue('step', 'select')}
+                disabled={deleting}
+              >
                 Back
               </Button>
             </div>

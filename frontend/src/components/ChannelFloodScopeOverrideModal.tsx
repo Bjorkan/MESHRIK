@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
+import { useForm, useStore } from '@tanstack/react-form';
 
 import {
   UNSCOPED_OVERRIDE_MARKER,
@@ -32,15 +33,20 @@ export function ChannelFloodScopeOverrideModal({
   currentOverride,
   onSetOverride,
 }: ChannelFloodScopeOverrideModalProps) {
-  const [region, setRegion] = useState('');
+  const form = useForm({ defaultValues: { region: '' } });
+  const region = useStore(form.store, (state) => state.values.region);
 
   useEffect(() => {
     if (!open) {
       return;
     }
     // The unscoped marker isn't a region name, so start the input blank for it.
-    setRegion(isUnscopedMarker(currentOverride) ? '' : stripRegionScopePrefix(currentOverride));
-  }, [currentOverride, open]);
+    form.reset();
+    form.setFieldValue(
+      'region',
+      isUnscopedMarker(currentOverride) ? '' : stripRegionScopePrefix(currentOverride)
+    );
+  }, [currentOverride, form, open]);
 
   const trimmedRegion = region.trim();
 
@@ -76,7 +82,7 @@ export function ChannelFloodScopeOverrideModal({
             <Input
               id="channel-region-input"
               value={region}
-              onChange={(event) => setRegion(event.target.value)}
+              onChange={(event) => form.setFieldValue('region', event.target.value)}
               placeholder="Esperance"
               autoFocus
             />

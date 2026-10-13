@@ -94,14 +94,8 @@ export function RepeaterDashboard({
     rebootRepeater,
     syncClock,
   } = useRepeaterDashboard(conversation, { hasAdvertLocation });
-  const {
-    password,
-    setPassword,
-    rememberPassword,
-    setRememberPassword,
-    recordLoginAttempt,
-    persistConfirmedPassword,
-  } = useRememberedServerPassword('repeater', conversation.id);
+  const { password, rememberPassword, recordLoginAttempt, persistConfirmedPassword } =
+    useRememberedServerPassword('repeater', conversation.id);
 
   // Telemetry history: preload from stored data, refresh from live status
   const [telemetryHistory, setTelemetryHistory] = useState<TelemetryHistoryEntry[]>([]);
@@ -146,10 +140,10 @@ export function RepeaterDashboard({
 
   const isFav = contact?.favorite ?? false;
 
-  const handleRepeaterLogin = async (nextPassword: string) => {
-    recordLoginAttempt(nextPassword);
+  const handleRepeaterLogin = async (nextPassword: string, shouldRemember = rememberPassword) => {
+    recordLoginAttempt(nextPassword, shouldRemember);
     if (await login(nextPassword)) {
-      persistConfirmedPassword(nextPassword);
+      persistConfirmedPassword(nextPassword, shouldRemember);
     }
   };
   const handleRepeaterGuestLogin = async () => {
@@ -315,10 +309,8 @@ export function RepeaterDashboard({
             repeaterName={conversation.name}
             loading={loginLoading}
             error={loginError}
-            password={password}
-            onPasswordChange={setPassword}
-            rememberPassword={rememberPassword}
-            onRememberPasswordChange={setRememberPassword}
+            initialPassword={password}
+            initialRememberPassword={rememberPassword}
             onLogin={handleRepeaterLogin}
             onLoginAsGuest={handleRepeaterGuestLogin}
           />

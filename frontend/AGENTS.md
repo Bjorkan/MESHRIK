@@ -52,6 +52,12 @@ Keep it aligned with `frontend/src` source code.
 - TanStack Charts owns every statistics, telemetry, activity, and distribution chart. Shared
   typed bar, time-series, and donut adapters define responsive marks, scales, axes, tooltips,
   and accessible labels; Recharts is not part of the dependency graph.
+- TanStack Form owns editable values, validation, dirty state, reset behavior, and submission
+  status for settings, integration editors, destructive confirmations, login, conversation
+  creation, routing overrides, the message composer, and repeater console. Remote settings are
+  copied into a pristine form only; a dirty draft is preserved when a background refresh arrives.
+  Numeric radio fields reject empty, partial, non-finite, and non-integer values where applicable.
+  API/Query state must not be mirrored into a second field-by-field `useState` form controller.
 
 ## Frontend Map
 
@@ -322,7 +328,10 @@ That gives the store a load-bearing invariant: **no ancestor of `MessageList` ma
 
 ### New Message modal
 
-`NewMessageModal` resets form state on close. The component instance persists across open/close cycles for smooth animations.
+`NewMessageModal` resets its TanStack Form state on close. The component instance persists across
+open/close cycles for smooth animations. TanStack Form's `reset(values)` updates defaults as well as
+values; when changing only the active creation tab, reset first and then set the tab field so the
+hook's canonical defaults cannot restore a stale tab on the next render.
 
 ### Message behavior
 
