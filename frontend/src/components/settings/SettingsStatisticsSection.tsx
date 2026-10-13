@@ -1,21 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
 import { tableFeatures, useTable, type ColumnDef } from '@tanstack/react-table';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip as RechartsTooltip,
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-  Cell,
-} from 'recharts';
 import { Separator } from '../ui/separator';
 import { api } from '../../api';
 import type { RegionScopeStats, StatisticsResponse } from '../../types';
 import { formatLocaleNumber } from '@/utils/localeNumber';
+import { TanStackBarChart, TanStackTimeSeriesChart } from '../charts/TanStackChart';
 
 interface ActivityRow {
   label: string;
@@ -103,18 +92,6 @@ function RegionScopeStatsPanel({ stats }: { stats: RegionScopeStats }) {
 
 const CHANNEL_BAR_COLORS = ['#0ea5e9', '#10b981', '#f59e0b', '#f43f5e', '#8b5cf6'];
 
-const TOOLTIP_STYLE = {
-  contentStyle: {
-    backgroundColor: 'hsl(var(--popover))',
-    border: '1px solid hsl(var(--border))',
-    borderRadius: '6px',
-    fontSize: '11px',
-    color: 'hsl(var(--popover-foreground))',
-  },
-  itemStyle: { color: 'hsl(var(--popover-foreground))' },
-  labelStyle: { color: 'hsl(var(--muted-foreground))' },
-} as const;
-
 function formatTime(ts: number): string {
   return new Date(ts * 1000).toLocaleTimeString([], {
     hour: '2-digit',
@@ -145,63 +122,20 @@ function PacketsPerHourChart({ buckets }: { buckets: { timestamp: number; count:
     }
   }
 
-  const data = filled.map((b, i) => ({
-    idx: i,
-    label: formatDateTime(b.timestamp),
-    count: b.count,
+  const data = filled.map((bucket) => ({
+    category: formatDateTime(bucket.timestamp),
+    values: { count: bucket.count },
   }));
 
-  // Show ~6 evenly-spaced tick labels
-  const tickCount = Math.min(6, data.length);
-  const tickIndices: number[] = [];
-  if (data.length > 1) {
-    for (let i = 0; i < tickCount; i++) {
-      tickIndices.push(Math.round((i / (tickCount - 1)) * (data.length - 1)));
-    }
-  }
-
   return (
-    <ResponsiveContainer width="100%" height={140}>
-      <AreaChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: -8 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-        <XAxis
-          dataKey="idx"
-          type="number"
-          domain={[0, data.length - 1]}
-          tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-          tickLine={false}
-          axisLine={false}
-          ticks={tickIndices}
-          tickFormatter={(idx) => data[idx]?.label ?? ''}
-        />
-        <YAxis
-          tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-          tickLine={false}
-          axisLine={false}
-          allowDecimals={false}
-        />
-        <RechartsTooltip
-          {...TOOLTIP_STYLE}
-          cursor={{
-            stroke: 'hsl(var(--muted-foreground))',
-            strokeWidth: 1,
-            strokeDasharray: '3 3',
-          }}
-          labelFormatter={(idx) => data[Number(idx)]?.label ?? ''}
-          formatter={(value) => [`${formatLocaleNumber(Number(value))} packets`, 'Count']}
-        />
-        <Area
-          type="monotone"
-          dataKey="count"
-          stroke="#0ea5e9"
-          fill="#0ea5e9"
-          fillOpacity={0.15}
-          strokeWidth={1.5}
-          dot={false}
-          activeDot={{ r: 4, fill: '#0ea5e9', strokeWidth: 2, stroke: 'hsl(var(--popover))' }}
-        />
-      </AreaChart>
-    </ResponsiveContainer>
+    <TanStackTimeSeriesChart
+      data={data}
+      series={[{ key: 'count', label: 'Count', color: '#0ea5e9' }]}
+      height={140}
+      ariaLabel="Packets per hour over 72 hours"
+      variant="area"
+      valueFormatter={(value) => formatLocaleNumber(value)}
+    />
   );
 }
 
@@ -210,63 +144,20 @@ function NoiseFloorChart({
 }: {
   samples: { timestamp: number; noise_floor_dbm: number }[];
 }) {
-  const data = samples.map((s, i) => ({
-    idx: i,
-    time: formatTime(s.timestamp),
-    noise_floor: s.noise_floor_dbm,
+  const data = samples.map((sample) => ({
+    category: formatTime(sample.timestamp),
+    values: { noise_floor: sample.noise_floor_dbm },
   }));
 
-  const tickCount = Math.min(6, samples.length);
-  const tickIndices: number[] = [];
-  if (samples.length > 1) {
-    for (let i = 0; i < tickCount; i++) {
-      tickIndices.push(Math.round((i / (tickCount - 1)) * (samples.length - 1)));
-    }
-  }
-
   return (
-    <ResponsiveContainer width="100%" height={120}>
-      <AreaChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: -8 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-        <XAxis
-          dataKey="idx"
-          type="number"
-          domain={[0, samples.length - 1]}
-          tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-          tickLine={false}
-          axisLine={false}
-          ticks={tickIndices}
-          tickFormatter={(idx) => data[idx]?.time ?? ''}
-        />
-        <YAxis
-          tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-          tickLine={false}
-          axisLine={false}
-          domain={['dataMin - 5', 'dataMax + 5']}
-          tickFormatter={(v) => `${v}`}
-        />
-        <RechartsTooltip
-          {...TOOLTIP_STYLE}
-          cursor={{
-            stroke: 'hsl(var(--muted-foreground))',
-            strokeWidth: 1,
-            strokeDasharray: '3 3',
-          }}
-          labelFormatter={(idx) => data[Number(idx)]?.time ?? ''}
-          formatter={(value) => [`${value} dBm`, 'Noise Floor']}
-        />
-        <Area
-          type="linear"
-          dataKey="noise_floor"
-          stroke="#8b5cf6"
-          fill="#8b5cf6"
-          fillOpacity={0.15}
-          strokeWidth={1.5}
-          dot={false}
-          activeDot={{ r: 4, fill: '#8b5cf6', strokeWidth: 2, stroke: 'hsl(var(--popover))' }}
-        />
-      </AreaChart>
-    </ResponsiveContainer>
+    <TanStackTimeSeriesChart
+      data={data}
+      series={[{ key: 'noise_floor', label: 'Noise Floor', color: '#8b5cf6' }]}
+      height={120}
+      ariaLabel="Noise floor over 24 hours"
+      variant="area"
+      valueFormatter={(value) => `${value} dBm`}
+    />
   );
 }
 
@@ -458,60 +349,28 @@ export function SettingsStatisticsSection({ className }: { className?: string })
               {stats.path_hash_width_24h.total_packets}
             </div>
             {stats.path_hash_width_24h.total_packets > 0 ? (
-              <ResponsiveContainer width="100%" height={120}>
-                <BarChart
-                  data={[
-                    {
-                      name: '1-byte',
-                      count: stats.path_hash_width_24h.single_byte,
-                      pct: stats.path_hash_width_24h.single_byte_pct,
-                    },
-                    {
-                      name: '2-byte',
-                      count: stats.path_hash_width_24h.double_byte,
-                      pct: stats.path_hash_width_24h.double_byte_pct,
-                    },
-                    {
-                      name: '3-byte',
-                      count: stats.path_hash_width_24h.triple_byte,
-                      pct: stats.path_hash_width_24h.triple_byte_pct,
-                    },
-                  ]}
-                  margin={{ top: 4, right: 4, bottom: 0, left: -16 }}
-                >
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    stroke="hsl(var(--border))"
-                    vertical={false}
-                  />
-                  <XAxis
-                    dataKey="name"
-                    tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <YAxis
-                    tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                    tickLine={false}
-                    axisLine={false}
-                    allowDecimals={false}
-                  />
-                  <RechartsTooltip
-                    {...TOOLTIP_STYLE}
-                    cursor={{ fill: 'hsl(var(--muted))', opacity: 0.5 }}
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    formatter={(value: any, _: any, props: any) => [
-                      `${formatLocaleNumber(Number(value))} (${formatPercent(props.payload.pct)})`,
-                      'Packets',
-                    ]}
-                  />
-                  <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={40}>
-                    <Cell fill="#0ea5e9" />
-                    <Cell fill="#10b981" />
-                    <Cell fill="#f59e0b" />
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+              <TanStackBarChart
+                data={[
+                  {
+                    category: '1-byte',
+                    values: { count: stats.path_hash_width_24h.single_byte },
+                    color: '#0ea5e9',
+                  },
+                  {
+                    category: '2-byte',
+                    values: { count: stats.path_hash_width_24h.double_byte },
+                    color: '#10b981',
+                  },
+                  {
+                    category: '3-byte',
+                    values: { count: stats.path_hash_width_24h.triple_byte },
+                    color: '#f59e0b',
+                  },
+                ]}
+                series={[{ key: 'count', label: 'Packets', color: '#0ea5e9' }]}
+                height={120}
+                ariaLabel="Path hash width packet counts"
+              />
             ) : (
               <p className="text-sm text-muted-foreground">No path data in the last 24 hours.</p>
             )}
@@ -530,40 +389,17 @@ export function SettingsStatisticsSection({ className }: { className?: string })
                 <h3 className="text-base font-semibold tracking-tight mb-2">
                   Busiest Channels (24h)
                 </h3>
-                <ResponsiveContainer
-                  width="100%"
+                <TanStackBarChart
+                  data={stats.busiest_channels_24h.map((channel, index) => ({
+                    category: channel.channel_name,
+                    values: { messages: channel.message_count },
+                    color: CHANNEL_BAR_COLORS[index % CHANNEL_BAR_COLORS.length],
+                  }))}
+                  series={[{ key: 'messages', label: 'Messages', color: CHANNEL_BAR_COLORS[0] }]}
                   height={stats.busiest_channels_24h.length * 28 + 8}
-                >
-                  <BarChart
-                    data={stats.busiest_channels_24h.map((ch) => ({
-                      name: ch.channel_name,
-                      messages: ch.message_count,
-                    }))}
-                    layout="vertical"
-                    margin={{ top: 0, right: 4, bottom: 0, left: 0 }}
-                    barCategoryGap="20%"
-                  >
-                    <XAxis type="number" hide />
-                    <YAxis
-                      type="category"
-                      dataKey="name"
-                      tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
-                      tickLine={false}
-                      axisLine={false}
-                      width={100}
-                    />
-                    <RechartsTooltip
-                      {...TOOLTIP_STYLE}
-                      cursor={{ fill: 'hsl(var(--muted))', opacity: 0.5 }}
-                      formatter={(value) => [`${formatLocaleNumber(Number(value))} messages`, null]}
-                    />
-                    <Bar dataKey="messages" radius={[0, 4, 4, 0]} maxBarSize={16}>
-                      {stats.busiest_channels_24h.map((_, i) => (
-                        <Cell key={i} fill={CHANNEL_BAR_COLORS[i % CHANNEL_BAR_COLORS.length]} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+                  ariaLabel="Busiest channels over 24 hours"
+                  horizontal
+                />
               </div>
             </>
           )}

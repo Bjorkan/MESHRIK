@@ -49,6 +49,9 @@ Keep it aligned with `frontend/src` source code.
 - TanStack Table owns column definitions and row models for every semantic table. Interactive
   neighbor and bulk-contact tables delegate sorting/filtering to Table state; read-only ACL,
   confirmation, and statistics tables use the same schema-driven rendering path.
+- TanStack Charts owns every statistics, telemetry, activity, and distribution chart. Shared
+  typed bar, time-series, and donut adapters define responsive marks, scales, axes, tooltips,
+  and accessible labels; Recharts is not part of the dependency graph.
 
 ## Frontend Map
 
@@ -452,7 +455,7 @@ Clicking a contact's avatar in `ChatHeader` or `MessageList` opens a `ContactInf
 - Header: avatar, name, public key, type badge, on-radio badge
 - Info grid: last seen, first heard, last contacted, distance, hops
 - GPS location (clickable → map)
-- On-demand LPP telemetry: "Request" button fetches `POST /contacts/{key}/telemetry`, displays sensor readings via `LppSensorRow`, optional GPS mini-map (MapLibre), and history chart (Recharts). Opt-in tracking toggle uses `POST /settings/tracked-telemetry-contacts/toggle`.
+- On-demand LPP telemetry: "Request" button fetches `POST /contacts/{key}/telemetry`, displays sensor readings via `LppSensorRow`, optional GPS mini-map (MapLibre), and history chart (TanStack Charts). Opt-in tracking toggle uses `POST /settings/tracked-telemetry-contacts/toggle`.
 - Favorite toggle
 - Name history ("Also Known As") — shown only when the contact has used multiple names
 - Message stats: DM count, channel message count

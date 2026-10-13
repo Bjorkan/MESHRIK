@@ -1,20 +1,9 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { Activity, Ban, ChevronDown, ChevronRight, Search, Star } from 'lucide-react';
-import {
-  AreaChart,
-  Area,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip as RechartsTooltip,
-  ResponsiveContainer,
-  Legend,
-} from 'recharts';
 import MapLibreMap, { AttributionControl, Marker, Popup } from 'react-map-gl/maplibre';
 import { api, isAbortError } from '../api';
+import { TanStackTimeSeriesChart } from './charts/TanStackChart';
 import { formatTime } from '../utils/messageParser';
 import { EMBEDDED_MAP_ATTRIBUTION } from '../utils/mapLibre';
 import { useMapStyle } from '../hooks/useMapStyle';
@@ -117,7 +106,7 @@ export function ContactInfoPane({
   const liveContact =
     contactKey && !isNameOnly ? (contacts.find((c) => c.public_key === contactKey) ?? null) : null;
 
-  // Defer mounting Recharts containers until the pane's slide-in animation
+  // Defer mounting chart containers until the pane's slide-in animation
   // settles; mounting them mid-transform crashes Safari (React #185). See #317.
   const chartsReady = useEntranceSettled(contactKey !== null);
 
@@ -801,18 +790,6 @@ function ActivityChartsSection({
   );
 }
 
-const TOOLTIP_STYLE = {
-  contentStyle: {
-    backgroundColor: 'hsl(var(--popover))',
-    border: '1px solid hsl(var(--border))',
-    borderRadius: '6px',
-    fontSize: '11px',
-    color: 'hsl(var(--popover-foreground))',
-  },
-  itemStyle: { color: 'hsl(var(--popover-foreground))' },
-  labelStyle: { color: 'hsl(var(--muted-foreground))' },
-} as const;
-
 const ACTIVITY_CHART_HEIGHT = 140;
 
 function ActivityLineChart<T extends ContactAnalyticsHourlyBucket | ContactAnalyticsWeeklyBucket>({
@@ -837,88 +814,41 @@ function ActivityLineChart<T extends ContactAnalyticsHourlyBucket | ContactAnaly
     return <div role="img" aria-label={ariaLabel} style={{ height: ACTIVITY_CHART_HEIGHT }} />;
   }
 
-  const data = points.map((point, i) => {
-    const entry: Record<string, string | number> = { idx: i, tick: tickFormatter(point) };
+  const data = points.map((point) => {
+    const values: Record<string, number> = {};
     for (const s of series) {
       const raw = point[s.key];
-      entry[String(s.key)] = typeof raw === 'number' ? raw : 0;
+      values[String(s.key)] = typeof raw === 'number' ? raw : 0;
     }
-    return entry;
+    return { category: tickFormatter(point), values };
   });
-
-  const tickCount = Math.min(5, points.length);
-  const tickIndices: number[] = [];
-  if (points.length > 1) {
-    for (let i = 0; i < tickCount; i++) {
-      tickIndices.push(Math.round((i / (tickCount - 1)) * (points.length - 1)));
-    }
-  }
 
   return (
     <div role="img" aria-label={ariaLabel}>
-      <ResponsiveContainer width="100%" height={ACTIVITY_CHART_HEIGHT}>
-        <LineChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: -16 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-          <XAxis
-            dataKey="idx"
-            type="number"
-            domain={[0, Math.max(1, points.length - 1)]}
-            tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-            tickLine={false}
-            axisLine={false}
-            ticks={tickIndices}
-            tickFormatter={(idx) => String(data[idx]?.tick ?? '')}
-          />
-          <YAxis
-            tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-            tickLine={false}
-            axisLine={false}
-            tickFormatter={(v) => valueFormatter(v)}
-            width={40}
-          />
-          <RechartsTooltip
-            {...TOOLTIP_STYLE}
-            cursor={{
-              stroke: 'hsl(var(--muted-foreground))',
-              strokeWidth: 1,
-              strokeDasharray: '3 3',
-            }}
-            labelFormatter={(idx) => String(data[Number(idx)]?.tick ?? '')}
-            formatter={(value, name) => {
-              const match = series.find((s) => String(s.key) === name);
-              return [valueFormatter(Number(value)), match?.label ?? String(name)];
-            }}
-          />
-          {legendItems && (
-            <Legend
-              content={() => (
-                <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 mt-1 text-[0.6875rem] text-muted-foreground">
-                  {legendItems.map((item) => (
-                    <span key={item.label} className="inline-flex items-center gap-1.5">
-                      <span
-                        className="inline-block h-2 w-2 rounded-full"
-                        style={{ backgroundColor: item.color }}
-                      />
-                      {item.label}
-                    </span>
-                  ))}
-                </div>
-              )}
-            />
-          )}
-          {series.map((entry) => (
-            <Line
-              key={String(entry.key)}
-              type="linear"
-              dataKey={String(entry.key)}
-              stroke={entry.color}
-              strokeWidth={1.5}
-              dot={false}
-              activeDot={{ r: 4, strokeWidth: 2, stroke: 'hsl(var(--popover))' }}
-            />
+      <TanStackTimeSeriesChart
+        data={data}
+        series={series.map((entry) => ({
+          key: String(entry.key),
+          label: entry.label ?? String(entry.key),
+          color: entry.color,
+        }))}
+        height={ACTIVITY_CHART_HEIGHT}
+        ariaLabel={ariaLabel}
+        valueFormatter={valueFormatter}
+      />
+      {legendItems && (
+        <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 mt-1 text-[0.6875rem] text-muted-foreground">
+          {legendItems.map((item) => (
+            <span key={item.label} className="inline-flex items-center gap-1.5">
+              <span
+                className="inline-block h-2 w-2 rounded-full"
+                style={{ backgroundColor: item.color }}
+              />
+              {item.label}
+            </span>
           ))}
-        </LineChart>
-      </ResponsiveContainer>
+        </div>
+      )}
     </div>
   );
 }
@@ -1238,44 +1168,22 @@ function ContactTelemetrySection({
                     ))}
                   </div>
                   {chartData.length > 1 && activeSeries && (
-                    <ResponsiveContainer width="100%" height={120}>
-                      <AreaChart data={chartData}>
-                        <CartesianGrid
-                          strokeDasharray="3 3"
-                          stroke="hsl(var(--border))"
-                          vertical={false}
-                        />
-                        <XAxis
-                          dataKey="time"
-                          tickFormatter={(t: number) => {
-                            const d = new Date(t * 1000);
-                            return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${d.getMinutes().toString().padStart(2, '0')}`;
-                          }}
-                          tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                          tickLine={false}
-                          axisLine={false}
-                        />
-                        <YAxis
-                          tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                          tickLine={false}
-                          axisLine={false}
-                          width={40}
-                        />
-                        <RechartsTooltip
-                          {...TOOLTIP_STYLE}
-                          labelFormatter={(t) => new Date(Number(t) * 1000).toLocaleString()}
-                        />
-                        <Area
-                          type="monotone"
-                          dataKey="value"
-                          name={activeSeries.label}
-                          stroke={activeSeries.color}
-                          fill={activeSeries.color}
-                          fillOpacity={0.15}
-                          dot={false}
-                        />
-                      </AreaChart>
-                    </ResponsiveContainer>
+                    <TanStackTimeSeriesChart
+                      data={chartData.map((point) => ({
+                        category: new Date(point.time * 1000).toLocaleString(),
+                        values: { value: point.value },
+                      }))}
+                      series={[
+                        {
+                          key: 'value',
+                          label: activeSeries.label,
+                          color: activeSeries.color,
+                        },
+                      ]}
+                      height={120}
+                      ariaLabel={`${activeSeries.label} telemetry history`}
+                      variant="area"
+                    />
                   )}
                 </div>
               )}

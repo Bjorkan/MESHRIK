@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 import { Star } from 'lucide-react';
 import { api } from '../api';
 import { formatTime } from '../utils/messageParser';
@@ -8,6 +7,7 @@ import { useEntranceSettled } from '../hooks/useEntranceSettled';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from './ui/sheet';
 import { toast } from './ui/sonner';
 import type { Channel, ChannelDetail, PathHashWidthStats } from '../types';
+import { TanStackDonutChart } from './charts/TanStackChart';
 
 interface ChannelInfoPaneProps {
   channelKey: string | null;
@@ -29,7 +29,7 @@ export function ChannelInfoPane({
   // Get live channel data from channels array (real-time via WS)
   const liveChannel = channelKey ? (channels.find((c) => c.key === channelKey) ?? null) : null;
 
-  // Defer mounting the Recharts pie until the pane's slide-in animation settles;
+  // Defer mounting the chart until the pane's slide-in animation settles;
   // mounting it mid-transform crashes Safari (React #185). See #317.
   const chartReady = useEntranceSettled(channelKey !== null);
 
@@ -263,16 +263,6 @@ const HOP_WIDTH_SEGMENTS = [
   { key: 'triple_byte', label: '3-byte', color: '#8b5cf6' },
 ] as const;
 
-const TOOLTIP_STYLE = {
-  contentStyle: {
-    backgroundColor: 'hsl(var(--popover))',
-    border: '1px solid hsl(var(--border))',
-    borderRadius: '6px',
-    fontSize: '11px',
-    color: 'hsl(var(--popover-foreground))',
-  },
-} as const;
-
 function HopWidthChart({ stats, ready }: { stats: PathHashWidthStats; ready: boolean }) {
   const data = useMemo(
     () =>
@@ -289,32 +279,7 @@ function HopWidthChart({ stats, ready }: { stats: PathHashWidthStats; ready: boo
       <div className="flex-shrink-0" style={{ width: 90, height: 90 }}>
         {/* Reserve the box while the pane animates in (see #317). */}
         {ready && (
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={data}
-                dataKey="value"
-                cx="50%"
-                cy="50%"
-                innerRadius={22}
-                outerRadius={40}
-                strokeWidth={1.5}
-                stroke="hsl(var(--background))"
-              >
-                {data.map((d) => (
-                  <Cell key={d.name} fill={d.color} />
-                ))}
-              </Pie>
-              <RechartsTooltip
-                {...TOOLTIP_STYLE}
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                formatter={(value: any, name: any) => {
-                  const v = typeof value === 'number' ? value : Number(value);
-                  return [`${v.toLocaleString()} pkt${v !== 1 ? 's' : ''}`, name];
-                }}
-              />
-            </PieChart>
-          </ResponsiveContainer>
+          <TanStackDonutChart data={data} height={90} ariaLabel="Path hash width distribution" />
         )}
       </div>
 

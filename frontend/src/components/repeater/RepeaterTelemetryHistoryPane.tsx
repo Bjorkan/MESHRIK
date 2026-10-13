@@ -1,15 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Link } from '@tanstack/react-router';
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip as RechartsTooltip,
-  ResponsiveContainer,
-  Brush,
-} from 'recharts';
 import { Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '../ui/button';
@@ -17,6 +7,7 @@ import { Separator } from '../ui/separator';
 import { lppDisplayUnit } from './repeaterPaneShared';
 import { useDistanceUnit } from '../../contexts/DistanceUnitContext';
 import type { TelemetryHistoryEntry, TelemetryLppSensor, Contact } from '../../types';
+import { TanStackTimeSeriesChart } from '../charts/TanStackChart';
 
 const MAX_TRACKED = 8;
 
@@ -56,18 +47,6 @@ function assignLppKeys(
   });
 }
 
-const TOOLTIP_STYLE = {
-  contentStyle: {
-    backgroundColor: 'hsl(var(--popover))',
-    border: '1px solid hsl(var(--border))',
-    borderRadius: '6px',
-    fontSize: '11px',
-    color: 'hsl(var(--popover-foreground))',
-  },
-  itemStyle: { color: 'hsl(var(--popover-foreground))' },
-  labelStyle: { color: 'hsl(var(--muted-foreground))' },
-} as const;
-
 function formatTime(ts: number): string {
   return new Date(ts * 1000).toLocaleString([], {
     month: 'short',
@@ -81,41 +60,6 @@ function formatUptime(seconds: number): string {
   if (seconds < 3600) return `${Math.round(seconds / 60)}m`;
   if (seconds < 86400) return `${(seconds / 3600).toFixed(1)}h`;
   return `${(seconds / 86400).toFixed(1)}d`;
-}
-
-/** Collect all numeric values for the given keys across a set of chart points. */
-function collectValues(data: Array<Record<string, number | undefined>>, keys: string[]): number[] {
-  const out: number[] = [];
-  for (const d of data) {
-    for (const k of keys) {
-      const v = d[k];
-      if (typeof v === 'number' && Number.isFinite(v)) out.push(v);
-    }
-  }
-  return out;
-}
-
-/** Bound a Y axis to the data range padded by 10% on each side.
- *  Returns undefined (recharts auto-domain) when there is nothing to plot. */
-function paddedDomain(values: number[]): [number, number] | undefined {
-  if (values.length === 0) return undefined;
-  const lo = Math.min(...values);
-  const hi = Math.max(...values);
-  const span = hi - lo;
-  // Flat series (single value / no spread): pad relative to magnitude so the
-  // line doesn't sit on a degenerate zero-height axis.
-  const pad = span === 0 ? Math.abs(lo) * 0.1 || 1 : span * 0.1;
-  return [lo - pad, hi + pad];
-}
-
-/** Decimal places to render axis ticks at, derived from the axis span so a
- *  tightly-zoomed range (e.g. battery voltage varying in the 5th decimal)
- *  shows distinct, clean labels instead of raw floating-point tick values
- *  like "4.0487999999999996". Aims for ~5 ticks across the span. */
-function tickDecimals(span: number | undefined): number {
-  if (span == null || !isFinite(span) || span <= 0) return 2;
-  const step = span / 5;
-  return Math.min(8, Math.max(0, Math.ceil(-Math.log10(step))));
 }
 
 /** Round away floating-point noise, then drop trailing zeros so a real data
@@ -420,15 +364,6 @@ export function TelemetryHistoryPane({
     ];
   }, [activeMetric, activeConfig]);
 
-  const leftKeys = useMemo(
-    () => series.filter((s) => s.axis === 'left').map((s) => s.key),
-    [series]
-  );
-  const rightKeys = useMemo(
-    () => series.filter((s) => s.axis === 'right').map((s) => s.key),
-    [series]
-  );
-
   // Brush-controlled viewport. Indices are clamped to the current data length
   // so a stale range from a previous repeater can never index out of bounds.
   const lastIndex = Math.max(0, chartData.length - 1);
@@ -440,34 +375,6 @@ export function TelemetryHistoryPane({
     [chartData, brushStart, brushEnd]
   );
 
-  // Y extents bound to the visible window so zooming re-tightens the axis.
-  const leftDomain = useMemo(
-    () => paddedDomain(collectValues(visibleData, leftKeys)),
-    [visibleData, leftKeys]
-  );
-  const rightDomain = useMemo(
-    () => (rightKeys.length ? paddedDomain(collectValues(visibleData, rightKeys)) : undefined),
-    [visibleData, rightKeys]
-  );
-
-  // Tick precision tracks each axis's current span so zooming into a flat
-  // series (e.g. battery voltage) keeps labels clean instead of leaking
-  // floating-point noise into the rendered tick text.
-  const leftTickDecimals = useMemo(
-    () => tickDecimals(leftDomain ? leftDomain[1] - leftDomain[0] : undefined),
-    [leftDomain]
-  );
-  const rightTickDecimals = useMemo(
-    () => tickDecimals(rightDomain ? rightDomain[1] - rightDomain[0] : undefined),
-    [rightDomain]
-  );
-
-  const handleBrushChange = (range: { startIndex?: number; endIndex?: number }) => {
-    if (typeof range.startIndex === 'number' && typeof range.endIndex === 'number') {
-      setBrushRange({ start: range.startIndex, end: range.endIndex });
-    }
-  };
-
   const formatSeriesValue = (key: string, value: number): string => {
     if (key === 'recv_error_pct') return `${cleanNumber(value)}%`;
     if (activeMetric === 'uptime_seconds') return formatUptime(value);
@@ -476,46 +383,6 @@ export function TelemetryHistoryPane({
         ? ` ${activeConfig.unit}`
         : '';
     return `${cleanNumber(value)}${suffix}`;
-  };
-
-  // Custom tooltip so each row carries a color swatch matching its line —
-  // essential for the multi-series packets view where four values overlap.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const renderTooltip = ({ active, payload, label }: any) => {
-    if (!active || !Array.isArray(payload) || payload.length === 0) return null;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const rows = (payload as any[]).filter((p) => p.value != null);
-    if (rows.length === 0) return null;
-    return (
-      <div style={{ ...TOOLTIP_STYLE.contentStyle, padding: '6px 9px' }}>
-        <div style={{ ...TOOLTIP_STYLE.labelStyle, marginBottom: 4 }}>
-          {formatTime(Number(label))}
-        </div>
-        {rows.map((p) => {
-          const key = String(p.dataKey ?? p.name);
-          const s = series.find((x) => x.key === key);
-          const color = s?.color ?? (p.color as string);
-          const numVal = typeof p.value === 'number' ? p.value : Number(p.value);
-          return (
-            <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: 2,
-                  backgroundColor: color,
-                  flexShrink: 0,
-                }}
-              />
-              <span style={TOOLTIP_STYLE.labelStyle}>{s?.label ?? key}:</span>
-              <span style={{ color: 'hsl(var(--popover-foreground))' }}>
-                {formatSeriesValue(key, numVal)}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-    );
   };
 
   const handleToggle = async () => {
@@ -669,99 +536,55 @@ export function TelemetryHistoryPane({
             No history yet. Fetch status above to record data points.
           </p>
         ) : (
-          <ResponsiveContainer width="100%" height={210}>
-            <AreaChart
-              data={chartData}
-              margin={{
-                top: 4,
-                right: rightKeys.length ? 8 : 4,
-                bottom: 0,
-                left: -8,
-              }}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-              <XAxis
-                dataKey="timestamp"
-                type="number"
-                domain={['dataMin', 'dataMax']}
-                tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={formatTime}
-              />
-              <YAxis
-                yAxisId="left"
-                domain={leftDomain}
-                tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={(v) =>
-                  activeMetric === 'uptime_seconds' ? formatUptime(v) : v.toFixed(leftTickDecimals)
-                }
-              />
-              {rightKeys.length > 0 && (
-                <YAxis
-                  yAxisId="right"
-                  orientation="right"
-                  domain={rightDomain}
-                  tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(v) =>
-                    activeMetric === 'recv_errors'
-                      ? `${v.toFixed(rightTickDecimals)}%`
-                      : v.toFixed(rightTickDecimals)
-                  }
-                />
-              )}
-              <RechartsTooltip
-                cursor={{
-                  stroke: 'hsl(var(--muted-foreground))',
-                  strokeWidth: 1,
-                  strokeDasharray: '3 3',
-                }}
-                content={renderTooltip}
-              />
-              {series.map((s) => (
-                <Area
-                  key={s.key}
-                  type="linear"
-                  dataKey={s.key}
-                  yAxisId={s.axis}
-                  connectNulls={false}
-                  stroke={s.color}
-                  fill={s.color}
-                  fillOpacity={s.line ? 0 : 0.15}
-                  strokeWidth={1.5}
-                  dot={{
-                    r: 4,
-                    fill: s.color,
-                    strokeWidth: 1.5,
-                    stroke: 'hsl(var(--popover))',
-                  }}
-                  activeDot={{
-                    r: 6,
-                    fill: s.color,
-                    strokeWidth: 2,
-                    stroke: 'hsl(var(--popover))',
-                  }}
-                />
-              ))}
-              {chartData.length > 2 && (
-                <Brush
-                  dataKey="timestamp"
-                  height={22}
-                  travellerWidth={8}
-                  stroke="hsl(var(--muted-foreground))"
-                  fill="hsl(var(--muted))"
-                  tickFormatter={(ts) => formatTime(Number(ts))}
-                  startIndex={brushStart}
-                  endIndex={brushEnd}
-                  onChange={handleBrushChange}
-                />
-              )}
-            </AreaChart>
-          </ResponsiveContainer>
+          <div>
+            <TanStackTimeSeriesChart
+              data={visibleData.map((point) => ({
+                category: formatTime(Number(point.timestamp)),
+                values: point,
+              }))}
+              series={series}
+              height={210}
+              ariaLabel={`${activeConfig.label} telemetry history`}
+              variant="area"
+              valueFormatter={(value) => formatSeriesValue(activeMetric, value)}
+            />
+            {chartData.length > 2 && (
+              <div className="mt-1 grid grid-cols-2 gap-3" aria-label="Telemetry chart range">
+                <label className="text-[0.625rem] text-muted-foreground">
+                  From
+                  <input
+                    className="block w-full accent-primary"
+                    type="range"
+                    min={0}
+                    max={lastIndex}
+                    value={brushStart}
+                    onChange={(event) =>
+                      setBrushRange({
+                        start: Math.min(Number(event.target.value), brushEnd),
+                        end: brushEnd,
+                      })
+                    }
+                  />
+                </label>
+                <label className="text-[0.625rem] text-muted-foreground">
+                  To
+                  <input
+                    className="block w-full accent-primary"
+                    type="range"
+                    min={0}
+                    max={lastIndex}
+                    value={brushEnd}
+                    onChange={(event) =>
+                      setBrushRange({
+                        start: brushStart,
+                        end: Math.max(Number(event.target.value), brushStart),
+                      })
+                    }
+                  />
+                </label>
+              </div>
+            )}
+          </div>
         )}
       </div>
     </div>

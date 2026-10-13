@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
  * Returns `false` until `open` has been continuously true for `delayMs`, then
  * `true`; resets to `false` whenever `open` becomes false.
  *
- * Used to defer mounting layout-measuring children (notably Recharts
+ * Used to defer mounting layout-measuring children (notably chart
  * `ResponsiveContainer`) inside sliding drawers until the entrance animation has
  * settled. Mounting a `ResponsiveContainer` while its box is still being
  * transformed drives a `ResizeObserver` -> setState storm that Safari resolves
