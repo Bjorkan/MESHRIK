@@ -592,7 +592,7 @@ describe('useUnreadCounts', () => {
 
     vi.useFakeTimers();
     try {
-      act(() => {
+      await act(async () => {
         result.current.recordMessageEvent({
           msg: makeMessage({
             id: 40,
@@ -613,6 +613,7 @@ describe('useUnreadCounts', () => {
           activeConversation: true,
           isNewMessage: true,
         });
+        await Promise.resolve();
       });
 
       expect(mocks.markChannelRead).not.toHaveBeenCalled();
@@ -621,6 +622,48 @@ describe('useUnreadCounts', () => {
       });
       expect(mocks.markChannelRead).toHaveBeenCalledTimes(1);
       expect(mocks.markChannelRead).toHaveBeenCalledWith(CHANNEL_KEY, 41);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('flushes one conversation before pacing the next without losing either boundary', async () => {
+    const mocks = await getMockedApi();
+    const { result } = renderWith({});
+    await act(async () => {
+      await vi.waitFor(() => expect(mocks.getUnreads).toHaveBeenCalled());
+    });
+    mocks.markChannelRead.mockClear();
+    mocks.markContactRead.mockClear();
+
+    vi.useFakeTimers();
+    try {
+      await act(async () => {
+        result.current.recordMessageEvent({
+          msg: makeMessage({
+            id: 60,
+            type: 'CHAN',
+            conversation_key: CHANNEL_KEY,
+            received_at: 1700003100,
+          }),
+          activeConversation: true,
+          isNewMessage: true,
+        });
+        result.current.recordMessageEvent({
+          msg: makeMessage({ id: 61, received_at: 1700003101 }),
+          activeConversation: true,
+          isNewMessage: true,
+        });
+        await Promise.resolve();
+      });
+
+      expect(mocks.markChannelRead).toHaveBeenCalledWith(CHANNEL_KEY, 60);
+      expect(mocks.markContactRead).not.toHaveBeenCalled();
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(250);
+      });
+      expect(mocks.markContactRead).toHaveBeenCalledWith(CONTACT_KEY, 61);
     } finally {
       vi.useRealTimers();
     }

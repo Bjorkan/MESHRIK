@@ -62,6 +62,10 @@ Keep it aligned with `frontend/src` source code.
   entities, search results, raw packets, Radio Activity history/events, and bulk-contact Table
   rows. `utils/virtualization.ts` supplies the shared non-zero viewport and row-measurement
   invariants. TanStack Table still owns row semantics; Virtual only owns which rows are mounted.
+- TanStack Pacer owns frontend debounce, throttle, and batch timing. Domain queues retain the
+  work itself; Pacer decides only when latest-value work, lossless batches, or the next cooperative
+  step may run. Protocol clocks, animation frames, workflow delays, and periodic maintenance remain
+  plain timers because they are not rate-control state.
 
 ## Frontend Map
 
@@ -400,6 +404,33 @@ settings choices, path hops, and telemetry sensor cards. These are not alternate
 
 jsdom cannot validate real layout convergence, sticky table geometry, touch momentum, or visual
 scroll anchoring. Recheck those in a browser when changing estimates, padding, or scroll containers.
+
+### Pacing and batching
+
+Frontend rate control is centralized in TanStack Pacer, with each workflow declaring whether
+superseded work may be discarded or every item must survive:
+
+| Workflow | Pacer contract | Loss policy |
+| --- | --- | --- |
+| Message search | 300 ms latest-value debounce | Superseded drafts are discarded; Query still owns request cancellation and results |
+| Active-conversation read boundary | 250 ms latest-boundary debounce | The newest message ID per conversation is retained; switching conversations flushes the previous boundary first |
+| Status-dot packet pulse | trailing clear after the pulse duration | A newer pulse restarts the visible window; only the obsolete clear is discarded |
+| Visualizer observation publishing | configurable wait, maximum batch of 100 keys | Every queued message key is published; repeat observations for one key aggregate their paths before publication |
+| Channel cracker scheduling | cooperative next-step debounce | The domain attempt map retains every candidate; Pacer only schedules when the next attempt begins |
+
+The visualizer ingests packet observations into graph state immediately; batching controls particle
+publication, not WebSocket receipt or raw-packet identity. ACKs, distinct packet observations, and
+message sends never pass through a lossy latest-value queue.
+
+Keep ordinary timers where elapsed time is itself part of the domain contract: WebSocket reconnect
+and ping, map/radio-activity clocks, animation frames, visualizer pruning, message bottom anchoring,
+bounded retry UI, focus/entrance deferral, push timeouts, repeater/radio workflow waits, and explicit
+confirmation countdowns. These are not alternative debounce/throttle implementations.
+
+The Pacer regression tests use fake clocks for the 300 ms search and 250 ms read/pulse windows. The
+visualizer burst case enqueues 100 distinct keys and asserts that all 100 are published; the unread
+suite also switches conversations inside one debounce window and asserts that both exact boundaries
+reach their respective mutations.
 
 ### Radio settings behavior
 

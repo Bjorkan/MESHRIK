@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useDebouncer } from '@tanstack/react-pacer';
 import { GroupTextCracker, type ProgressReport } from 'meshcore-hashtag-cracker';
 import NoSleep from 'nosleep.js';
 import type { RawPacket, Channel } from '../types';
@@ -66,6 +67,21 @@ export function CrackerPanel({
   const undecryptedIdsRef = useRef<Set<number>>(new Set());
   const seenPayloadsRef = useRef<Set<string>>(new Set());
   const existingChannelKeysRef = useRef<Set<string>>(new Set());
+  const processNextRef = useRef<() => Promise<void>>(async () => undefined);
+  const nextProcessDelayRef = useRef(0);
+  const processScheduler = useDebouncer(
+    () => {
+      void processNextRef.current();
+    },
+    { key: 'channel-cracker-next-item', wait: () => nextProcessDelayRef.current }
+  );
+  const scheduleNext = useCallback(
+    (delayMs: number) => {
+      nextProcessDelayRef.current = delayMs;
+      processScheduler.maybeExecute();
+    },
+    [processScheduler]
+  );
 
   // Initialize cracker and NoSleep
   useEffect(() => {
@@ -259,7 +275,7 @@ export function CrackerPanel({
     if (!nextItem || nextId === null) {
       // Nothing to process right now, but keep running and check again later
       if (isRunningRef.current) {
-        setTimeout(() => processNext(), 1000);
+        scheduleNext(1000);
       }
       return;
     }
@@ -274,7 +290,7 @@ export function CrackerPanel({
         return updated;
       });
       if (isRunningRef.current) {
-        setTimeout(() => processNext(), 10);
+        scheduleNext(10);
       }
       return;
     }
@@ -401,9 +417,18 @@ export function CrackerPanel({
 
     // Continue processing if still running
     if (isRunningRef.current) {
-      setTimeout(() => processNext(), 100);
+      scheduleNext(100);
     }
-  }, [onChannelCreate]);
+  }, [onChannelCreate, scheduleNext]);
+  processNextRef.current = processNext;
+
+  useEffect(
+    () => () => {
+      isRunningRef.current = false;
+      processScheduler.cancel();
+    },
+    [processScheduler]
+  );
 
   // Start/stop handlers
   const handleStart = () => {
@@ -420,12 +445,13 @@ export function CrackerPanel({
     isRunningRef.current = true;
     abortedRef.current = false;
     noSleepRef.current?.enable();
-    processNext();
+    void processNext();
   };
 
   const handleStop = () => {
     setIsRunning(false);
     isRunningRef.current = false;
+    processScheduler.cancel();
     abortedRef.current = true;
     crackerRef.current?.abort();
     noSleepRef.current?.disable();

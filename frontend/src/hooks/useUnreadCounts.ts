@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useDebouncer } from '@tanstack/react-pacer';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { api } from '../api';
@@ -87,7 +88,6 @@ export function useUnreadCounts(
   const activeConversationRef = useRef(activeConversation);
   activeConversationRef.current = activeConversation;
   const pendingReadBoundaryRef = useRef<PendingReadBoundary | null>(null);
-  const pendingReadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const unreadQuery = useQuery({
     queryKey: queryKeys.unreads(),
@@ -139,19 +139,21 @@ export function useUnreadCounts(
   });
 
   const flushPendingRead = useCallback(() => {
-    if (pendingReadTimerRef.current !== null) {
-      clearTimeout(pendingReadTimerRef.current);
-      pendingReadTimerRef.current = null;
-    }
     const boundary = pendingReadBoundaryRef.current;
     pendingReadBoundaryRef.current = null;
     if (boundary) markRead(boundary);
   }, [markRead]);
+  const activeReadDebouncer = useDebouncer(flushPendingRead, {
+    key: 'active-conversation-read-boundary',
+    wait: ACTIVE_READ_DEBOUNCE_MS,
+    onUnmount: (debouncer) => debouncer.flush(),
+  });
 
   const scheduleReadBoundary = useCallback(
     (boundary: PendingReadBoundary) => {
       const pending = pendingReadBoundaryRef.current;
       if (pending && (pending.type !== boundary.type || pending.id !== boundary.id)) {
+        activeReadDebouncer.cancel();
         flushPendingRead();
       }
       const current = pendingReadBoundaryRef.current;
@@ -162,10 +164,9 @@ export function useUnreadCounts(
       ) {
         pendingReadBoundaryRef.current = boundary;
       }
-      if (pendingReadTimerRef.current !== null) clearTimeout(pendingReadTimerRef.current);
-      pendingReadTimerRef.current = setTimeout(flushPendingRead, ACTIVE_READ_DEBOUNCE_MS);
+      activeReadDebouncer.maybeExecute();
     },
-    [flushPendingRead]
+    [activeReadDebouncer, flushPendingRead]
   );
 
   const updateSnapshot = useCallback(
@@ -179,10 +180,12 @@ export function useUnreadCounts(
   );
 
   useEffect(() => {
-    if (!isUnreadTrackedConversation(activeConversation)) return flushPendingRead;
+    if (!isUnreadTrackedConversation(activeConversation)) {
+      return () => activeReadDebouncer.flush();
+    }
     markRead({ type: activeConversation.type, id: activeConversation.id });
-    return flushPendingRead;
-  }, [activeConversation, flushPendingRead, markRead]);
+    return () => activeReadDebouncer.flush();
+  }, [activeConversation, activeReadDebouncer, markRead]);
 
   const channelsLen = channels.length;
   const contactsLen = contacts.length;

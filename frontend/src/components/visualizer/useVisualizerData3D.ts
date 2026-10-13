@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useBatcher } from '@tanstack/react-pacer';
 import {
   forceCenter,
   forceLink,
@@ -122,7 +123,6 @@ export function useVisualizerData3D({
   const simulationRef = useRef<Simulation3D<GraphNode, GraphLink> | null>(null);
   const processedRef = useRef<Set<string>>(new Set());
   const pendingRef = useRef<Map<string, PendingPacket>>(new Map());
-  const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const speedMultiplierRef = useRef(particleSpeedMultiplier);
   const observationWindowRef = useRef(observationWindowSec * 1000);
   const stretchRafRef = useRef<number | null>(null);
@@ -312,8 +312,6 @@ export function useVisualizerData3D({
     linksRef.current.clear();
     particlesRef.current = [];
     pendingRef.current.clear();
-    timersRef.current.forEach((timer) => clearTimeout(timer));
-    timersRef.current.clear();
 
     const selfNode = networkStateRef.current.nodes.get('self');
     if (selfNode) {
@@ -333,7 +331,6 @@ export function useVisualizerData3D({
     if (!pending) return;
 
     pendingRef.current.delete(packetKey);
-    timersRef.current.delete(packetKey);
 
     if (document.hidden) return;
 
@@ -354,6 +351,23 @@ export function useVisualizerData3D({
       }
     }
   }, []);
+  const packetPublisher = useBatcher<string>(
+    (packetKeys) => {
+      for (const packetKey of packetKeys) {
+        publishPacket(packetKey);
+      }
+    },
+    {
+      key: 'visualizer-packet-observation-window',
+      maxSize: 100,
+      wait: () => observationWindowRef.current,
+      onUnmount: (batcher) => batcher.clear(),
+    }
+  );
+
+  useEffect(() => {
+    packetPublisher.clear();
+  }, [config?.name, packetPublisher, splitAmbiguousByTraffic, useAdvertPathHints]);
 
   useEffect(() => {
     let newProcessed = 0;
@@ -396,9 +410,10 @@ export function useVisualizerData3D({
           timestamp: now,
         });
       } else {
-        const existingTimer = timersRef.current.get(packetKey);
-        if (existingTimer) {
-          clearTimeout(existingTimer);
+        if (existing) {
+          // The observation-window setting can shrink while a batch is pending.
+          // Flush the lossless Pacer batch before opening a new window for this key.
+          packetPublisher.flush();
         }
         const windowMs = observationWindowRef.current;
         pendingRef.current.set(packetKey, {
@@ -408,24 +423,7 @@ export function useVisualizerData3D({
           firstSeen: now,
           expiresAt: now + windowMs,
         });
-        timersRef.current.set(
-          packetKey,
-          setTimeout(() => publishPacket(packetKey), windowMs)
-        );
-      }
-
-      if (pendingRef.current.size > 100) {
-        const entries = Array.from(pendingRef.current.entries())
-          .sort((a, b) => a[1].firstSeen - b[1].firstSeen)
-          .slice(0, 50);
-        for (const [key] of entries) {
-          const timer = timersRef.current.get(key);
-          if (timer) {
-            clearTimeout(timer);
-          }
-          timersRef.current.delete(key);
-          pendingRef.current.delete(key);
-        }
+        packetPublisher.addItem(packetKey);
       }
 
       newAnimated++;
@@ -444,6 +442,7 @@ export function useVisualizerData3D({
   }, [
     packets,
     packetNetworkContext,
+    packetPublisher,
     publishPacket,
     collapseLikelyKnownSiblingRepeaters,
     rebuildRenderProjection,
@@ -532,10 +531,7 @@ export function useVisualizerData3D({
       stretchRafRef.current = null;
     }
 
-    for (const timer of timersRef.current.values()) {
-      clearTimeout(timer);
-    }
-    timersRef.current.clear();
+    packetPublisher.clear();
     pendingRef.current.clear();
     processedRef.current.clear();
     particlesRef.current.length = 0;
@@ -557,23 +553,19 @@ export function useVisualizerData3D({
     }
 
     setStats({ processed: 0, animated: 0, nodes: selfNode ? 1 : 0, links: 0 });
-  }, [config?.name, upsertRenderNode]);
+  }, [config?.name, packetPublisher, upsertRenderNode]);
 
   useEffect(() => {
     const stretchRaf = stretchRafRef;
-    const timers = timersRef.current;
     const pending = pendingRef.current;
     return () => {
       if (stretchRaf.current !== null) {
         cancelAnimationFrame(stretchRaf.current);
       }
-      for (const timer of timers.values()) {
-        clearTimeout(timer);
-      }
-      timers.clear();
+      packetPublisher.clear();
       pending.clear();
     };
-  }, []);
+  }, [packetPublisher]);
 
   useEffect(() => {
     if (!pruneStaleNodes) return;

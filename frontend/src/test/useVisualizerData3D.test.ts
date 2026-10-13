@@ -445,4 +445,33 @@ describe('useVisualizerData3D', () => {
     expect(result.current.links.size).toBe(0);
     expect(Array.from(result.current.nodes.keys())).toEqual(['self']);
   });
+
+  it('publishes every distinct packet in a 100-item burst through the lossless batch', async () => {
+    const selfKey = 'ffffffffffff0000000000000000000000000000000000000000000000000000';
+    const aliceKey = 'aaaaaaaaaaaa0000000000000000000000000000000000000000000000000000';
+    const packets = Array.from({ length: 100 }, (_, index) => {
+      const data = `burst-${index}`;
+      packetFixtures.set(data, {
+        payloadType: PayloadType.TextMessage,
+        messageHash: data,
+        pathBytes: [],
+        srcHash: 'aaaaaaaaaaaa',
+        dstHash: 'ffffffffffff',
+        advertPubkey: null,
+        groupTextSender: null,
+        anonRequestPubkey: null,
+      });
+      return createPacket(data, { id: index + 1, observationId: index + 1 });
+    });
+
+    const { result } = renderVisualizerData({
+      packets,
+      contacts: [createContact(aliceKey, 'Alice')],
+      config: createConfig(selfKey),
+    });
+
+    await waitFor(() => expect(result.current.stats.processed).toBe(100));
+    await waitFor(() => expect(result.current.particles).toHaveLength(100));
+    expect(result.current.stats.animated).toBe(100);
+  });
 });

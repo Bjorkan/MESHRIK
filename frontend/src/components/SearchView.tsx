@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useDebouncer } from '@tanstack/react-pacer';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { api, isAbortError } from '../api';
 import type { Contact, Channel } from '../types';
@@ -105,6 +106,10 @@ export function SearchView({
   const inputRef = useRef<HTMLInputElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
   const highlightQuery = getHighlightQuery(debouncedQuery);
+  const queryDebouncer = useDebouncer((nextQuery: string) => setDebouncedQuery(nextQuery), {
+    key: 'message-search',
+    wait: DEBOUNCE_MS,
+  });
   const virtualizer = useVirtualizer({
     count: results.length,
     getScrollElement: () => resultsRef.current,
@@ -115,13 +120,10 @@ export function SearchView({
     observeElementRect: observeElementRectWithFallback(),
   });
 
-  // Debounce query
+  // Search is latest-value work: Pacer discards superseded drafts before Query fetches.
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedQuery(query.trim());
-    }, DEBOUNCE_MS);
-    return () => clearTimeout(timer);
-  }, [query]);
+    queryDebouncer.maybeExecute(query.trim());
+  }, [query, queryDebouncer]);
 
   // Reset results when query changes
   useEffect(() => {
@@ -137,10 +139,11 @@ export function SearchView({
     }
 
     const nextQuery = prefillRequest.query.trim();
+    queryDebouncer.cancel();
     setQuery(nextQuery);
     setDebouncedQuery(nextQuery);
     inputRef.current?.focus();
-  }, [prefillRequest]);
+  }, [prefillRequest, queryDebouncer]);
 
   useEffect(() => {
     return () => {

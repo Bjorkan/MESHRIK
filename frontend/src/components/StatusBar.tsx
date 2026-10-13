@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useDebouncer } from '@tanstack/react-pacer';
 import {
   BatteryFull,
   BatteryLow,
@@ -97,6 +98,10 @@ export function StatusBar({
   const [currentTheme, setCurrentTheme] = useState(getEffectiveTheme);
   const [pulseEnabled, setPulseEnabled] = useState(getStatusDotPulseEnabled);
   const [pulseKind, setPulseKind] = useState<StatusDotPulseKind | null>(null);
+  const clearPulseDebouncer = useDebouncer(() => setPulseKind(null), {
+    key: 'status-dot-pulse',
+    wait: STATUS_DOT_PULSE_DURATION_MS,
+  });
 
   useEffect(() => {
     const handler = () => setPulseEnabled(getStatusDotPulseEnabled());
@@ -106,29 +111,21 @@ export function StatusBar({
 
   useEffect(() => {
     if (!pulseEnabled) {
+      clearPulseDebouncer.cancel();
       setPulseKind(null);
       return;
     }
-    let timer: number | null = null;
     const handler = (event: Event) => {
       const kind = (event as CustomEvent<StatusDotPulseKind>).detail;
       setPulseKind(kind);
-      if (timer !== null) {
-        window.clearTimeout(timer);
-      }
-      timer = window.setTimeout(() => {
-        setPulseKind(null);
-        timer = null;
-      }, STATUS_DOT_PULSE_DURATION_MS);
+      clearPulseDebouncer.maybeExecute();
     };
     window.addEventListener(STATUS_DOT_PULSE_PACKET_EVENT, handler);
     return () => {
       window.removeEventListener(STATUS_DOT_PULSE_PACKET_EVENT, handler);
-      if (timer !== null) {
-        window.clearTimeout(timer);
-      }
+      clearPulseDebouncer.cancel();
     };
-  }, [pulseEnabled]);
+  }, [clearPulseDebouncer, pulseEnabled]);
 
   useEffect(() => {
     const syncEffective = () => setCurrentTheme(getEffectiveTheme());

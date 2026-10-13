@@ -1,8 +1,12 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { StatusBar } from '../components/StatusBar';
 import type { HealthStatus } from '../types';
+import {
+  STATUS_DOT_PULSE_DURATION_MS,
+  STATUS_DOT_PULSE_PACKET_EVENT,
+} from '../utils/statusDotPulse';
 
 const baseHealth: HealthStatus = {
   status: 'degraded',
@@ -76,6 +80,44 @@ describe('StatusBar', () => {
 
     expect(localStorage.getItem('meshrik-theme')).toBe('original');
     expect(document.documentElement.dataset.theme).toBeUndefined();
+  });
+
+  it('keeps the latest packet pulse visible for one complete debounced window', async () => {
+    localStorage.setItem('meshrik-status-dot-pulse', 'true');
+    vi.useFakeTimers();
+    try {
+      render(
+        <StatusBar
+          health={{ ...baseHealth, status: 'ok', radio_connected: true }}
+          config={null}
+          onSettingsClick={vi.fn()}
+        />
+      );
+      const dot = screen
+        .getByRole('status', { name: 'Radio OK' })
+        .querySelector('div[aria-hidden="true"]') as HTMLElement;
+
+      act(() => {
+        window.dispatchEvent(new CustomEvent(STATUS_DOT_PULSE_PACKET_EVENT, { detail: 'channel' }));
+      });
+      const channelColor = dot.style.backgroundColor;
+      expect(channelColor).not.toBe('');
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(STATUS_DOT_PULSE_DURATION_MS - 50);
+        window.dispatchEvent(new CustomEvent(STATUS_DOT_PULSE_PACKET_EVENT, { detail: 'dm' }));
+        await vi.advanceTimersByTimeAsync(60);
+      });
+      expect(dot.style.backgroundColor).not.toBe(channelColor);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(STATUS_DOT_PULSE_DURATION_MS - 60);
+      });
+      expect(dot.style.backgroundColor).toBe('');
+    } finally {
+      vi.useRealTimers();
+      localStorage.removeItem('meshrik-status-dot-pulse');
+    }
   });
 
   describe('with Follow OS theme saved', () => {
