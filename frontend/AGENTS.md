@@ -58,6 +58,10 @@ Keep it aligned with `frontend/src` source code.
   copied into a pristine form only; a dirty draft is preserved when a background refresh arrives.
   Numeric radio fields reject empty, partial, non-finite, and non-integer values where applicable.
   API/Query state must not be mirrored into a second field-by-field `useState` form controller.
+- TanStack Virtual owns the mounted window for every large or unbounded list: messages, sidebar
+  entities, search results, raw packets, Radio Activity history/events, and bulk-contact Table
+  rows. `utils/virtualization.ts` supplies the shared non-zero viewport and row-measurement
+  invariants. TanStack Table still owns row semantics; Virtual only owns which rows are mounted.
 
 ## Frontend Map
 
@@ -364,15 +368,38 @@ hook's canonical defaults cannot restore a stale tab on the next render.
 - Packet feed/visualizer render keys and dedup logic should use `observation_id` (fallback to `id` only for older payloads).
 - The dedicated raw packet feed view now includes a frontend-only stats drawer. It tracks a separate lightweight per-observation session history for charts/rankings, so its windows are not limited by the visible packet list cap. Coverage messaging should stay honest when detailed in-memory stats history has been trimmed or the selected window predates the current browser session.
 
-### Virtualization (`MessageList`)
+### Virtualization
 
-The message list is windowed with `@tanstack/react-virtual`; only the visible rows are mounted, so render cost no longer scales with conversation length. Three details are load-bearing and easy to break:
+All scalable scroll surfaces are windowed with `@tanstack/react-virtual`; only visible rows plus
+overscan are mounted. Dynamic rows use stable domain keys and real element measurements. A zero
+height from a hidden pane or jsdom retains the estimate and uses a bounded fallback viewport, so
+route/filter changes do not produce a blank first frame.
+
+The message history has three additional load-bearing details:
 
 - **`scrollMargin`** is measured from the virtual spacer's offset within the scroll container, because the container carries `p-4` and can show an "older messages" banner above the rows. Without it every `scrollToIndex` with `start`/`center` lands 16–48px high, and the error shifts as the banner appears during pagination. Rows must subtract it back out in their `translateY`.
 - **The bottom-pin is deferred and re-asserted** across a bounded run of frames rather than performed once, because row heights start as estimates and a single `scrollToIndex` gets undone as they converge (completely so under StrictMode's double-invoked effects). It is cancelled by a pending `targetMessageId` and by any deliberate scroll gesture.
 - **`getItemKey` returns a string sentinel** for indices past the end of a shrunken list; a bare index would collide with the numeric message-id keyspace and poison the measurement cache.
 
-jsdom has no layout engine, so none of this is observable from the vitest suite — it needs a real browser.
+The audit baseline below was rerun in Node/jsdom on 2026-10-13. The duration is a regression signal,
+not a cross-machine performance budget; mounted-row bounds are the memory/DOM invariant that the
+tests enforce.
+
+| Surface / input | Observed test time | Mounted-row bound | Notes |
+| --- | ---: | ---: | --- |
+| Raw packets: 100 → 1,000 → 5,000 plus 100-row burst | 60 ms | `< 40` | Paused scroll offset remains unchanged |
+| Sidebar: 5,000 contacts | 227 ms | `< 80` | Navigation/search semantics remain available |
+| Message history: 500 messages | covered by `messageList.test.tsx` | bounded viewport | Variable height, inverse/bottom pin, jump and unread-divider tests |
+
+Search remains server-paged in batches of 50, but accumulated pages share one virtual window. Radio
+Activity received events and paged job history each have a virtual window. Bulk-delete tables combine
+TanStack Table's filtered/sorted/selected row model with a Virtual-mounted `tbody`; selection is not
+derived from the mounted subset. Intentional normal-render exceptions are bounded collections:
+ongoing/queued radio jobs, firmware-bounded repeater neighbors, fixed statistics summary rows,
+settings choices, path hops, and telemetry sensor cards. These are not alternate windowing engines.
+
+jsdom cannot validate real layout convergence, sticky table geometry, touch momentum, or visual
+scroll anchoring. Recheck those in a browser when changing estimates, padding, or scroll containers.
 
 ### Radio settings behavior
 

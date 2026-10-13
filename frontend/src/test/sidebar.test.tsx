@@ -818,4 +818,30 @@ describe('Sidebar section summaries', () => {
       screen.getByRole('button', { name: 'Sort Favorites by type, then recent' })
     ).toBeInTheDocument();
   });
+
+  it('keeps 5,000 conversation rows in one bounded, accessible virtual window', () => {
+    const contacts = Array.from({ length: 5_000 }, (_, index) =>
+      makeContact(index.toString(16).padStart(64, '0'), `Contact ${index}`, 1)
+    );
+    const { container } = render(
+      <Sidebar
+        contacts={contacts}
+        channels={[]}
+        activeConversation={null}
+        onSelectConversation={vi.fn()}
+        onNewMessage={vi.fn()}
+        lastMessageTimes={{}}
+        unreadCounts={{}}
+        mentions={{}}
+        showCracker={false}
+        crackerRunning={false}
+        onToggleCracker={vi.fn()}
+        onMarkAllRead={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole('navigation', { name: 'Conversations' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Search conversations')).toBeInTheDocument();
+    expect(container.querySelectorAll('[data-index]').length).toBeLessThan(80);
+  });
 });

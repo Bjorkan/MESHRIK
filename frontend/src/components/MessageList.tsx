@@ -30,6 +30,10 @@ import { PathModal } from './PathModal';
 import { RawPacketInspectorDialog } from './RawPacketDetailModal';
 import { toast } from './ui/sonner';
 import { handleKeyboardActivate } from '../utils/a11y';
+import {
+  measureElementWithFallback,
+  observeElementRectWithFallback,
+} from '../utils/virtualization';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { cn } from '@/lib/utils';
 
@@ -148,7 +152,6 @@ function renderMeshcoreOpenPayload(
 const ESTIMATED_MESSAGE_HEIGHT = 64;
 
 /** Stand-in viewport height for when the scroll container cannot be measured. */
-const FALLBACK_VIEWPORT_HEIGHT = 800;
 /**
  * Frames a pending bottom-pin may re-assert itself for. Row heights start as
  * estimates and converge over the first few measurement passes, so the pin has to
@@ -546,22 +549,11 @@ export function MessageList({
     overscan: 8,
     // A row that measures zero has not really been laid out yet (hidden pane, images
     // still loading). Keep the estimate instead, or the window balloons to compensate.
-    measureElement: (element) => element.getBoundingClientRect().height || ESTIMATED_MESSAGE_HEIGHT,
+    measureElement: measureElementWithFallback(() => ESTIMATED_MESSAGE_HEIGHT),
     // A viewport that measures zero (before first layout, a hidden tab, jsdom) would
     // otherwise collapse the window to nothing and render an empty list. Fall back to a
     // nominal height so we always mount a plausible screenful.
-    observeElementRect: (instance, cb) => {
-      const element = instance.scrollElement;
-      if (!element) return;
-      const report = () => {
-        const rect = element.getBoundingClientRect();
-        cb({ width: rect.width, height: rect.height || FALLBACK_VIEWPORT_HEIGHT });
-      };
-      report();
-      const observer = new ResizeObserver(report);
-      observer.observe(element);
-      return () => observer.disconnect();
-    },
+    observeElementRect: observeElementRectWithFallback(800),
   });
   const virtualRows = virtualizer.getVirtualItems();
 

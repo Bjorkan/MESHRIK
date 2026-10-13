@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import {
   Bell,
   BellOff,
@@ -37,6 +38,10 @@ import {
 import { isPublicChannelKey } from '../utils/publicChannel';
 import { getContactDisplayName } from '../utils/pubkey';
 import { handleKeyboardActivate } from '../utils/a11y';
+import {
+  measureElementWithFallback,
+  observeElementRectWithFallback,
+} from '../utils/virtualization';
 import { ContactAvatar } from './ContactAvatar';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
@@ -212,6 +217,7 @@ export function Sidebar({
   const [roomsCollapsed, setRoomsCollapsed] = useState(initialCollapsedState.rooms);
   const [repeatersCollapsed, setRepeatersCollapsed] = useState(initialCollapsedState.repeaters);
   const collapseSnapshotRef = useRef<CollapseState | null>(null);
+  const sidebarScrollRef = useRef<HTMLDivElement>(null);
 
   const handleSortToggle = (section: SidebarSortableSection) => {
     setSectionSortOrders((prev) => {
@@ -912,6 +918,159 @@ export function Sidebar({
     );
   };
 
+  type SidebarVirtualItem = { key: string; node: React.ReactNode; estimate: number };
+  const sidebarItems: SidebarVirtualItem[] = [];
+  const addSection = (
+    key: string,
+    header: React.ReactNode,
+    rows: ConversationRow[],
+    expanded: boolean
+  ) => {
+    sidebarItems.push({ key: `${key}-header`, node: header, estimate: 42 });
+    if (expanded) {
+      rows.forEach((row) =>
+        sidebarItems.push({ key: row.key, node: renderConversationRow(row), estimate: 38 })
+      );
+    }
+  };
+
+  if (toolRows.length > 0) {
+    sidebarItems.push({
+      key: 'tools-header',
+      node: renderSectionHeader('Tools', toolsCollapsed, () => setToolsCollapsed((prev) => !prev)),
+      estimate: 42,
+    });
+    if (isSearching || !toolsCollapsed) {
+      toolRows.forEach((node, index) =>
+        sidebarItems.push({ key: `tool-${index}`, node, estimate: 38 })
+      );
+    }
+  }
+
+  if (!query && Object.values(unreadCounts).some((count) => count > 0)) {
+    sidebarItems.push({
+      key: 'mark-all-read',
+      estimate: 38,
+      node: (
+        <div
+          className="px-3 py-2 cursor-pointer flex items-center gap-2 border-l-2 border-transparent hover:bg-accent transition-colors text-[0.8125rem] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          role="button"
+          tabIndex={0}
+          onKeyDown={handleKeyboardActivate}
+          onClick={onMarkAllRead}
+        >
+          <CheckCheck className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+          <span className="flex-1 truncate text-muted-foreground">Mark all as read</span>
+        </div>
+      ),
+    });
+  }
+
+  if (favoriteItems.length > 0) {
+    addSection(
+      'favorites',
+      renderSectionHeader(
+        'Favorites',
+        favoritesCollapsed,
+        () => setFavoritesCollapsed((prev) => !prev),
+        'favorites',
+        favoritesUnreadCount,
+        favoritesHasMention
+      ),
+      favoriteRows,
+      isSearching || !favoritesCollapsed
+    );
+  }
+  if (nonFavoriteChannels.length > 0) {
+    addSection(
+      'channels',
+      renderSectionHeader(
+        'Channels',
+        channelsCollapsed,
+        () => setChannelsCollapsed((prev) => !prev),
+        'channels',
+        channelsUnreadCount,
+        channelsHasMention
+      ),
+      channelRows,
+      isSearching || !channelsCollapsed
+    );
+  }
+  if (nonFavoriteContacts.length > 0) {
+    addSection(
+      'contacts',
+      renderSectionHeader(
+        'Contacts',
+        contactsCollapsed,
+        () => setContactsCollapsed((prev) => !prev),
+        'contacts',
+        contactsUnreadCount,
+        contactsUnreadCount > 0
+      ),
+      contactRows,
+      isSearching || !contactsCollapsed
+    );
+  }
+  if (nonFavoriteRepeaters.length > 0) {
+    addSection(
+      'repeaters',
+      renderSectionHeader(
+        'Repeaters',
+        repeatersCollapsed,
+        () => setRepeatersCollapsed((prev) => !prev),
+        'repeaters',
+        repeatersUnreadCount
+      ),
+      repeaterRows,
+      isSearching || !repeatersCollapsed
+    );
+  }
+  if (nonFavoriteRooms.length > 0) {
+    addSection(
+      'rooms',
+      renderSectionHeader(
+        'Room Servers',
+        roomsCollapsed,
+        () => setRoomsCollapsed((prev) => !prev),
+        'rooms',
+        roomsUnreadCount,
+        roomsUnreadCount > 0
+      ),
+      roomRows,
+      isSearching || !roomsCollapsed
+    );
+  }
+  if (
+    nonFavoriteContacts.length === 0 &&
+    nonFavoriteRooms.length === 0 &&
+    nonFavoriteChannels.length === 0 &&
+    nonFavoriteRepeaters.length === 0 &&
+    favoriteItems.length === 0
+  ) {
+    sidebarItems.push({
+      key: 'empty',
+      estimate: 64,
+      node: (
+        <div className="p-5 text-center text-muted-foreground">
+          {query ? 'No matches found' : 'No conversations yet'}
+        </div>
+      ),
+    });
+  }
+
+  const sidebarVirtualizer = useVirtualizer({
+    count: sidebarItems.length,
+    getScrollElement: () => sidebarScrollRef.current,
+    estimateSize: (index) => sidebarItems[index]?.estimate ?? 38,
+    getItemKey: (index) => sidebarItems[index]?.key ?? `sidebar-${index}`,
+    overscan: 10,
+    measureElement: measureElementWithFallback((index) => sidebarItems[index]?.estimate ?? 38),
+    observeElementRect: observeElementRectWithFallback(1400),
+  });
+  useEffect(() => {
+    sidebarVirtualizer.scrollToOffset(0);
+  }, [query, sidebarVirtualizer]);
+
   return (
     <nav
       className="sidebar w-60 h-full min-h-0 overflow-hidden bg-card border-r border-border flex flex-col"
@@ -932,141 +1091,48 @@ export function Sidebar({
         </Button>
       </div>
 
-      {/* List */}
-      <div className="flex-1 min-h-0 overflow-y-auto [contain:layout_paint]">
-        <div className="px-3 py-2 border-b border-border/60">
-          <div className="relative min-w-0">
-            <Input
-              type="text"
-              placeholder="Search channels/contacts..."
-              aria-label="Search conversations"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className={cn('h-7 text-[0.8125rem] bg-background/50', searchQuery ? 'pr-8' : 'pr-3')}
-            />
-            {searchQuery && (
-              <button
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-lg leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
-                onClick={() => setSearchQuery('')}
-                title="Clear search"
-                aria-label="Clear search"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Tools */}
-        {toolRows.length > 0 && (
-          <>
-            {renderSectionHeader('Tools', toolsCollapsed, () => setToolsCollapsed((prev) => !prev))}
-            {(isSearching || !toolsCollapsed) && toolRows}
-          </>
-        )}
-
-        {/* Mark All Read */}
-        {!query && Object.values(unreadCounts).some((c) => c > 0) && (
-          <div
-            className="px-3 py-2 cursor-pointer flex items-center gap-2 border-l-2 border-transparent hover:bg-accent transition-colors text-[0.8125rem] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            role="button"
-            tabIndex={0}
-            onKeyDown={handleKeyboardActivate}
-            onClick={onMarkAllRead}
-          >
-            <CheckCheck className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-            <span className="flex-1 truncate text-muted-foreground">Mark all as read</span>
-          </div>
-        )}
-
-        {/* Favorites */}
-        {favoriteItems.length > 0 && (
-          <>
-            {renderSectionHeader(
-              'Favorites',
-              favoritesCollapsed,
-              () => setFavoritesCollapsed((prev) => !prev),
-              'favorites',
-              favoritesUnreadCount,
-              favoritesHasMention
-            )}
-            {(isSearching || !favoritesCollapsed) &&
-              favoriteRows.map((row) => renderConversationRow(row))}
-          </>
-        )}
-
-        {/* Channels */}
-        {nonFavoriteChannels.length > 0 && (
-          <>
-            {renderSectionHeader(
-              'Channels',
-              channelsCollapsed,
-              () => setChannelsCollapsed((prev) => !prev),
-              'channels',
-              channelsUnreadCount,
-              channelsHasMention
-            )}
-            {(isSearching || !channelsCollapsed) &&
-              channelRows.map((row) => renderConversationRow(row))}
-          </>
-        )}
-
-        {/* Contacts */}
-        {nonFavoriteContacts.length > 0 && (
-          <>
-            {renderSectionHeader(
-              'Contacts',
-              contactsCollapsed,
-              () => setContactsCollapsed((prev) => !prev),
-              'contacts',
-              contactsUnreadCount,
-              contactsUnreadCount > 0
-            )}
-            {(isSearching || !contactsCollapsed) &&
-              contactRows.map((row) => renderConversationRow(row))}
-          </>
-        )}
-
-        {/* Repeaters */}
-        {nonFavoriteRepeaters.length > 0 && (
-          <>
-            {renderSectionHeader(
-              'Repeaters',
-              repeatersCollapsed,
-              () => setRepeatersCollapsed((prev) => !prev),
-              'repeaters',
-              repeatersUnreadCount
-            )}
-            {(isSearching || !repeatersCollapsed) &&
-              repeaterRows.map((row) => renderConversationRow(row))}
-          </>
-        )}
-
-        {/* Room Servers */}
-        {nonFavoriteRooms.length > 0 && (
-          <>
-            {renderSectionHeader(
-              'Room Servers',
-              roomsCollapsed,
-              () => setRoomsCollapsed((prev) => !prev),
-              'rooms',
-              roomsUnreadCount,
-              roomsUnreadCount > 0
-            )}
-            {(isSearching || !roomsCollapsed) && roomRows.map((row) => renderConversationRow(row))}
-          </>
-        )}
-
-        {/* Empty state */}
-        {nonFavoriteContacts.length === 0 &&
-          nonFavoriteRooms.length === 0 &&
-          nonFavoriteChannels.length === 0 &&
-          nonFavoriteRepeaters.length === 0 &&
-          favoriteItems.length === 0 && (
-            <div className="p-5 text-center text-muted-foreground">
-              {query ? 'No matches found' : 'No conversations yet'}
-            </div>
+      <div className="px-3 py-2 border-b border-border/60">
+        <div className="relative min-w-0">
+          <Input
+            type="text"
+            placeholder="Search channels/contacts..."
+            aria-label="Search conversations"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className={cn('h-7 text-[0.8125rem] bg-background/50', searchQuery ? 'pr-8' : 'pr-3')}
+          />
+          {searchQuery && (
+            <button
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-lg leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+              onClick={() => setSearchQuery('')}
+              title="Clear search"
+              aria-label="Clear search"
+            >
+              <X className="h-4 w-4" />
+            </button>
           )}
+        </div>
+      </div>
+
+      {/* Scalable channel/contact/repeater rows share one scroll window. */}
+      <div ref={sidebarScrollRef} className="flex-1 min-h-0 overflow-y-auto [contain:layout_paint]">
+        <div className="relative w-full" style={{ height: sidebarVirtualizer.getTotalSize() }}>
+          {sidebarVirtualizer.getVirtualItems().map((virtualRow) => {
+            const item = sidebarItems[virtualRow.index];
+            if (!item) return null;
+            return (
+              <div
+                key={virtualRow.key}
+                ref={sidebarVirtualizer.measureElement}
+                data-index={virtualRow.index}
+                className="absolute left-0 top-0 w-full"
+                style={{ transform: `translateY(${virtualRow.start}px)` }}
+              >
+                {item.node}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </nav>
   );

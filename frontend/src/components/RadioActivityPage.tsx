@@ -1,9 +1,14 @@
 /** Radio Activity is an observer of the *one* process-owned radio, not a radio controller. */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { ArrowDown, Clock3, RadioTower, RefreshCw, XCircle } from 'lucide-react';
 import type { components } from '../generated/api-schema';
 import type { HealthStatus } from '../types';
 import { type HistoryFilter, type RadioJobFeed, useRadioActivity } from '../hooks/useRadioActivity';
+import {
+  measureElementWithFallback,
+  observeElementRectWithFallback,
+} from '../utils/virtualization';
 import { Button } from './ui/button';
 import {
   Dialog,
@@ -176,11 +181,17 @@ function JobRow({
   now,
   onCancel,
   pending,
+  measureRef,
+  dataIndex,
+  style,
 }: {
   job: Job;
   now: number;
   onCancel: (job: Job) => void;
   pending: boolean;
+  measureRef?: (element: HTMLLIElement | null) => void;
+  dataIndex?: number;
+  style?: CSSProperties;
 }) {
   const awaiting = job.state === 'awaiting_ack' || job.state === 'awaiting_response';
   const cancellable =
@@ -192,7 +203,15 @@ function JobRow({
         ? job.response_deadline
         : job.command_deadline;
   return (
-    <li className="border-b border-border/70 last:border-b-0 py-3 first:pt-0 last:pb-0 min-w-0">
+    <li
+      ref={measureRef}
+      data-index={dataIndex}
+      style={style}
+      className={cn(
+        'border-b border-border/70 last:border-b-0 py-3 first:pt-0 last:pb-0 min-w-0',
+        style && 'absolute left-0 top-0 w-full'
+      )}
+    >
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <p className="font-medium text-sm">{JOB_NAMES[job.kind]}</p>
@@ -242,6 +261,124 @@ function JobRow({
         )}
       </div>
     </li>
+  );
+}
+
+function VirtualJobHistory({
+  jobs,
+  emptyText,
+  now,
+  onCancel,
+  pendingJobId,
+}: {
+  jobs: Job[];
+  emptyText: string;
+  now: number;
+  onCancel: (job: Job) => void;
+  pendingJobId: string | null;
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const virtualizer = useVirtualizer({
+    count: jobs.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 92,
+    getItemKey: (index) => jobs[index]?.id ?? `job-${index}`,
+    overscan: 6,
+    measureElement: measureElementWithFallback(() => 92),
+    observeElementRect: observeElementRectWithFallback(416),
+  });
+
+  return (
+    <div
+      ref={scrollRef}
+      className="max-h-[26rem] overflow-y-auto min-w-0 [contain:layout_paint]"
+      role="group"
+      aria-label="Job history list"
+    >
+      {jobs.length === 0 ? (
+        <p className="text-[0.8125rem] text-muted-foreground">{emptyText}</p>
+      ) : (
+        <ul className="relative min-w-0" style={{ height: virtualizer.getTotalSize() }}>
+          {virtualizer.getVirtualItems().map((virtualRow) => {
+            const job = jobs[virtualRow.index];
+            if (!job) return null;
+            return (
+              <JobRow
+                key={virtualRow.key}
+                job={job}
+                now={now}
+                onCancel={onCancel}
+                pending={pendingJobId === job.id}
+                measureRef={virtualizer.measureElement}
+                dataIndex={virtualRow.index}
+                style={{ transform: `translateY(${virtualRow.start}px)` }}
+              />
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function VirtualActivityList({ events }: { events: ActivityRecord[] }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const virtualizer = useVirtualizer({
+    count: events.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 58,
+    getItemKey: (index) => events[index]?.sequence ?? `activity-${index}`,
+    overscan: 8,
+    measureElement: measureElementWithFallback(() => 58),
+    observeElementRect: observeElementRectWithFallback(416),
+  });
+
+  return (
+    <div
+      ref={scrollRef}
+      className="min-w-0 max-h-[26rem] overflow-y-auto [contain:layout_paint]"
+      role="list"
+      aria-label="Recent received events"
+    >
+      <div className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>
+        {virtualizer.getVirtualItems().map((virtualRow) => {
+          const event = events[virtualRow.index];
+          if (!event) return null;
+          return (
+            <div
+              key={virtualRow.key}
+              ref={virtualizer.measureElement}
+              data-index={virtualRow.index}
+              role="listitem"
+              className="absolute left-0 top-0 flex w-full gap-2 justify-between py-2.5 border-b border-border/70 text-xs"
+              style={{ transform: `translateY(${virtualRow.start}px)` }}
+            >
+              <span className="min-w-0">
+                <span className="font-medium">
+                  {event.kind === 'packet_received' && event.packet_type
+                    ? PACKET_TYPES[event.packet_type]
+                    : ACTIVITY_LABELS[event.kind]}
+                </span>
+                <span className="block text-muted-foreground text-xs">
+                  {event.kind === 'packet_received'
+                    ? [
+                        event.hops != null ? `${event.hops} hops` : null,
+                        event.rssi != null ? `${event.rssi} dBm` : null,
+                        event.snr != null ? `SNR ${event.snr} dB` : null,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ') || 'Sender unavailable'
+                    : ACTIVITY_SOURCES[event.source]}
+                </span>
+              </span>
+              <time className="text-muted-foreground shrink-0 tabular-nums" dateTime={event.at}>
+                {clockTime(event.at)}
+              </time>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -432,42 +569,7 @@ export function RadioActivityPage({ feed, connection, health }: Props) {
             {(feed.activity.data?.items.length ?? 0) === 0 ? (
               <p className="text-[0.8125rem] text-muted-foreground">No retained incoming events.</p>
             ) : (
-              <ol
-                className="min-w-0 max-h-[26rem] overflow-y-auto"
-                aria-label="Recent received events"
-              >
-                {[...(feed.activity.data?.items ?? [])].reverse().map((event) => (
-                  <li
-                    key={event.sequence}
-                    className="flex gap-2 justify-between py-2.5 border-b border-border/70 last:border-0 text-xs"
-                  >
-                    <span className="min-w-0">
-                      <span className="font-medium">
-                        {event.kind === 'packet_received' && event.packet_type
-                          ? PACKET_TYPES[event.packet_type]
-                          : ACTIVITY_LABELS[event.kind]}
-                      </span>
-                      <span className="block text-muted-foreground text-xs">
-                        {event.kind === 'packet_received'
-                          ? [
-                              event.hops != null ? `${event.hops} hops` : null,
-                              event.rssi != null ? `${event.rssi} dBm` : null,
-                              event.snr != null ? `SNR ${event.snr} dB` : null,
-                            ]
-                              .filter(Boolean)
-                              .join(' · ') || 'Sender unavailable'
-                          : ACTIVITY_SOURCES[event.source]}
-                      </span>
-                    </span>
-                    <time
-                      className="text-muted-foreground shrink-0 tabular-nums"
-                      dateTime={event.at}
-                    >
-                      {clockTime(event.at)}
-                    </time>
-                  </li>
-                ))}
-              </ol>
+              <VirtualActivityList events={[...(feed.activity.data?.items ?? [])].reverse()} />
             )}
           </Section>
           <Section title="History">
@@ -504,16 +606,14 @@ export function RadioActivityPage({ feed, connection, health }: Props) {
               />
               Include routine background jobs
             </label>
-            <div
-              className="max-h-[26rem] overflow-y-auto min-w-0"
-              role="group"
-              aria-label="Job history list"
-            >
-              {renderJobs(
-                visibleHistory,
-                'No matching history. Enable background jobs to see routine samples.'
-              )}
-            </div>
+            <VirtualJobHistory
+              key={`${filter}:${showBackground}`}
+              jobs={visibleHistory}
+              emptyText="No matching history. Enable background jobs to see routine samples."
+              now={now}
+              onCancel={handleCancel}
+              pendingJobId={cancel.isPending ? (cancel.variables ?? null) : null}
+            />
             {historyQuery.hasNextPage && (
               <Button
                 variant="outline"

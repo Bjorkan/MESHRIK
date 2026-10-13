@@ -1,13 +1,19 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { api, isAbortError } from '../api';
 import type { Contact, Channel } from '../types';
 import { formatTime } from '../utils/messageParser';
+import {
+  measureElementWithFallback,
+  observeElementRectWithFallback,
+} from '../utils/virtualization';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { cn } from '@/lib/utils';
 
 const SEARCH_PAGE_SIZE = 50;
 const DEBOUNCE_MS = 300;
+const ESTIMATED_RESULT_HEIGHT = 82;
 
 interface SearchResult {
   id: number;
@@ -97,7 +103,17 @@ export function SearchView({
   const [offset, setOffset] = useState(0);
   const abortRef = useRef<AbortController | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const resultsRef = useRef<HTMLDivElement>(null);
   const highlightQuery = getHighlightQuery(debouncedQuery);
+  const virtualizer = useVirtualizer({
+    count: results.length,
+    getScrollElement: () => resultsRef.current,
+    estimateSize: () => ESTIMATED_RESULT_HEIGHT,
+    getItemKey: (index) => results[index]?.id ?? `search-result-${index}`,
+    overscan: 8,
+    measureElement: measureElementWithFallback(() => ESTIMATED_RESULT_HEIGHT),
+    observeElementRect: observeElementRectWithFallback(),
+  });
 
   // Debounce query
   useEffect(() => {
@@ -112,7 +128,8 @@ export function SearchView({
     setResults([]);
     setOffset(0);
     setHasMore(false);
-  }, [debouncedQuery, visibilityVersion]);
+    virtualizer.scrollToOffset(0);
+  }, [debouncedQuery, visibilityVersion, virtualizer]);
 
   useEffect(() => {
     if (!prefillRequest) {
@@ -260,7 +277,7 @@ export function SearchView({
       </div>
 
       {/* Results */}
-      <div className="flex-1 overflow-y-auto">
+      <div ref={resultsRef} className="flex-1 overflow-y-auto [contain:layout_paint]">
         {!debouncedQuery && (
           <div className="p-8 text-center text-muted-foreground text-sm">
             <p>Type to search across all messages</p>
@@ -282,55 +299,74 @@ export function SearchView({
           </div>
         )}
 
-        {results.map((result) => {
-          const convName = getConversationName(result);
-          const typeBadge = result.type === 'CHAN' ? 'Channel' : 'DM';
+        {results.length > 0 && (
+          <div
+            className="relative w-full"
+            style={{ height: virtualizer.getTotalSize() }}
+            aria-label="Message search results"
+          >
+            {virtualizer.getVirtualItems().map((virtualRow) => {
+              const result = results[virtualRow.index];
+              if (!result) return null;
+              const convName = getConversationName(result);
+              const typeBadge = result.type === 'CHAN' ? 'Channel' : 'DM';
 
-          return (
-            <div
-              key={result.id}
-              className="px-4 py-3 border-b border-border/50 cursor-pointer hover:bg-accent/50 transition-colors"
-              role="button"
-              tabIndex={0}
-              onClick={() => handleResultClick(result)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  handleResultClick(result);
-                }
-              }}
-            >
-              <div className="flex items-center gap-2 mb-1">
-                <span
-                  className={cn(
-                    'text-[0.625rem] font-medium px-1.5 py-0.5 rounded',
-                    result.type === 'CHAN'
-                      ? 'bg-primary/20 text-primary'
-                      : 'bg-secondary text-secondary-foreground'
-                  )}
+              return (
+                <div
+                  key={virtualRow.key}
+                  ref={virtualizer.measureElement}
+                  data-index={virtualRow.index}
+                  className="absolute left-0 top-0 w-full"
+                  style={{ transform: `translateY(${virtualRow.start}px)` }}
                 >
-                  {typeBadge}
-                </span>
-                <span className="text-xs font-medium text-foreground truncate">{convName}</span>
-                <span className="text-[0.6875rem] text-muted-foreground ml-auto flex-shrink-0">
-                  {formatTime(result.received_at)}
-                </span>
-              </div>
-              <div className="text-[0.8125rem] text-foreground/80 line-clamp-2 break-words">
-                {result.sender_name && !result.outgoing && (
-                  <span className="text-muted-foreground">{result.sender_name}: </span>
-                )}
-                {result.outgoing && <span className="text-muted-foreground">You: </span>}
-                {highlightMatch(
-                  result.sender_name && result.text.startsWith(`${result.sender_name}: `)
-                    ? result.text.slice(result.sender_name.length + 2)
-                    : result.text,
-                  highlightQuery
-                )}
-              </div>
-            </div>
-          );
-        })}
+                  <div
+                    className="px-4 py-3 border-b border-border/50 cursor-pointer hover:bg-accent/50 transition-colors"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => handleResultClick(result)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleResultClick(result);
+                      }
+                    }}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <span
+                        className={cn(
+                          'text-[0.625rem] font-medium px-1.5 py-0.5 rounded',
+                          result.type === 'CHAN'
+                            ? 'bg-primary/20 text-primary'
+                            : 'bg-secondary text-secondary-foreground'
+                        )}
+                      >
+                        {typeBadge}
+                      </span>
+                      <span className="text-xs font-medium text-foreground truncate">
+                        {convName}
+                      </span>
+                      <span className="text-[0.6875rem] text-muted-foreground ml-auto flex-shrink-0">
+                        {formatTime(result.received_at)}
+                      </span>
+                    </div>
+                    <div className="text-[0.8125rem] text-foreground/80 line-clamp-2 break-words">
+                      {result.sender_name && !result.outgoing && (
+                        <span className="text-muted-foreground">{result.sender_name}: </span>
+                      )}
+                      {result.outgoing && <span className="text-muted-foreground">You: </span>}
+                      {highlightMatch(
+                        result.sender_name && result.text.startsWith(`${result.sender_name}: `)
+                          ? result.text.slice(result.sender_name.length + 2)
+                          : result.text,
+                        highlightQuery
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {loading && (
           <div className="p-4 text-center text-muted-foreground text-sm" role="status">

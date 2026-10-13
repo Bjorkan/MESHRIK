@@ -1,5 +1,6 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useForm, useStore } from '@tanstack/react-form';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import {
   createFilteredRowModel,
   createSortedRowModel,
@@ -13,6 +14,10 @@ import {
 } from '@tanstack/react-table';
 import { api } from '../../api';
 import { getContactDisplayName } from '../../utils/pubkey';
+import {
+  measureElementWithFallback,
+  observeElementRectWithFallback,
+} from '../../utils/virtualization';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
@@ -99,6 +104,8 @@ export function BulkDeleteContactsModal({
   contacts,
   onDeleted,
 }: BulkDeleteContactsModalProps) {
+  const selectionScrollRef = useRef<HTMLDivElement>(null);
+  const confirmationScrollRef = useRef<HTMLDivElement>(null);
   const form = useForm({
     defaultValues: {
       step: 'select' as 'select' | 'confirm',
@@ -185,6 +192,28 @@ export function BulkDeleteContactsModal({
     columns: contactColumns.slice(1),
     data: selectedContacts,
   });
+  const confirmationRows = confirmationTable.getRowModel().rows;
+  const selectionVirtualizer = useVirtualizer({
+    count: filteredRows.length,
+    getScrollElement: () => selectionScrollRef.current,
+    estimateSize: () => 37,
+    getItemKey: (index) => filteredRows[index]?.id ?? `contact-${index}`,
+    overscan: 10,
+    measureElement: measureElementWithFallback(() => 37),
+    observeElementRect: observeElementRectWithFallback(420),
+  });
+  const confirmationVirtualizer = useVirtualizer({
+    count: confirmationRows.length,
+    getScrollElement: () => confirmationScrollRef.current,
+    estimateSize: () => 37,
+    getItemKey: (index) => confirmationRows[index]?.id ?? `confirmation-${index}`,
+    overscan: 10,
+    measureElement: measureElementWithFallback(() => 37),
+    observeElementRect: observeElementRectWithFallback(420),
+  });
+  useEffect(() => {
+    selectionVirtualizer.scrollToOffset(0);
+  }, [filters, selectionVirtualizer]);
 
   const contactCount = selectedContacts.filter((c) => c.type === 1 || c.type === 0).length;
   const repeaterCount = selectedContacts.filter((c) => c.type === 2).length;
@@ -294,7 +323,10 @@ export function BulkDeleteContactsModal({
               {selectedKeys.size} selected
             </div>
 
-            <div className="flex-1 overflow-y-auto min-h-0 border border-border rounded-md">
+            <div
+              ref={selectionScrollRef}
+              className="flex-1 overflow-y-auto min-h-0 border border-border rounded-md [contain:layout_paint]"
+            >
               {filteredContacts.length === 0 ? (
                 <div className="p-4 text-center text-sm text-muted-foreground">
                   No contacts match the selected filters.
@@ -323,13 +355,21 @@ export function BulkDeleteContactsModal({
                       </tr>
                     ))}
                   </thead>
-                  <tbody>
-                    {filteredRows.map((row) => {
+                  <tbody
+                    className="relative block w-full"
+                    style={{ height: selectionVirtualizer.getTotalSize() }}
+                  >
+                    {selectionVirtualizer.getVirtualItems().map((virtualRow) => {
+                      const row = filteredRows[virtualRow.index];
+                      if (!row) return null;
                       const c = row.original;
                       return (
                         <tr
-                          key={row.id}
-                          className="border-t border-border hover:bg-accent/50 cursor-pointer"
+                          key={virtualRow.key}
+                          ref={selectionVirtualizer.measureElement}
+                          data-index={virtualRow.index}
+                          className="absolute left-0 top-0 table w-full table-fixed border-t border-border hover:bg-accent/50 cursor-pointer"
+                          style={{ transform: `translateY(${virtualRow.start}px)` }}
                           onClick={row.getToggleSelectedHandler()}
                         >
                           <td className="px-3 py-1.5">
@@ -382,7 +422,10 @@ export function BulkDeleteContactsModal({
 
         {step === 'confirm' && (
           <>
-            <div className="flex-1 overflow-y-auto min-h-0 border border-border rounded-md">
+            <div
+              ref={confirmationScrollRef}
+              className="flex-1 overflow-y-auto min-h-0 border border-border rounded-md [contain:layout_paint]"
+            >
               <table className="w-full text-sm">
                 <thead className="sticky top-0 bg-muted/90 backdrop-blur-sm">
                   {confirmationTable.getHeaderGroups().map((group) => (
@@ -398,11 +441,22 @@ export function BulkDeleteContactsModal({
                     </tr>
                   ))}
                 </thead>
-                <tbody>
-                  {confirmationTable.getRowModel().rows.map((row) => {
+                <tbody
+                  className="relative block w-full"
+                  style={{ height: confirmationVirtualizer.getTotalSize() }}
+                >
+                  {confirmationVirtualizer.getVirtualItems().map((virtualRow) => {
+                    const row = confirmationRows[virtualRow.index];
+                    if (!row) return null;
                     const c = row.original;
                     return (
-                      <tr key={row.id} className="border-t border-border">
+                      <tr
+                        key={virtualRow.key}
+                        ref={confirmationVirtualizer.measureElement}
+                        data-index={virtualRow.index}
+                        className="absolute left-0 top-0 table w-full table-fixed border-t border-border"
+                        style={{ transform: `translateY(${virtualRow.start}px)` }}
+                      >
                         <td className="px-3 py-1.5 truncate max-w-[12rem]">
                           {getContactDisplayName(c.name, c.public_key, c.last_advert)}
                         </td>

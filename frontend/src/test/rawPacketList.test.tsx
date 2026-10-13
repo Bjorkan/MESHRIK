@@ -66,4 +66,33 @@ describe('RawPacketList', () => {
       delete (HTMLElement.prototype as { scrollHeight?: number }).scrollHeight;
     }
   });
+
+  it('keeps the mounted packet window bounded at 100, 1,000, and 5,000 rows', () => {
+    const packets = Array.from({ length: 5_100 }, (_, index) =>
+      createPacket({
+        id: index + 1,
+        observation_id: index + 1,
+        timestamp: 1_700_000_000 + index,
+      })
+    );
+    const { container, rerender } = render(
+      <RawPacketList packets={packets.slice(0, 100)} autoScroll={false} />
+    );
+    const mountedRows = () => container.querySelectorAll('[data-index]').length;
+
+    expect(mountedRows()).toBeGreaterThan(0);
+    expect(mountedRows()).toBeLessThan(40);
+
+    rerender(<RawPacketList packets={packets.slice(0, 1_000)} autoScroll={false} />);
+    expect(mountedRows()).toBeLessThan(40);
+
+    rerender(<RawPacketList packets={packets.slice(0, 5_000)} autoScroll={false} />);
+    expect(mountedRows()).toBeLessThan(40);
+
+    const list = container.querySelector('.overflow-y-auto') as HTMLElement;
+    list.scrollTop = 120;
+    rerender(<RawPacketList packets={packets} autoScroll={false} />);
+    expect(mountedRows()).toBeLessThan(40);
+    expect(list.scrollTop).toBe(120);
+  });
 });
