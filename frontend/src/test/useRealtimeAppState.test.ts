@@ -219,6 +219,16 @@ describe('useRealtimeAppState', () => {
     });
 
     expect(fns.setContacts).toHaveBeenCalledWith(expect.any(Function));
+    const removeDeleted = fns.setContacts.mock.calls[0]?.[0] as (contacts: Contact[]) => Contact[];
+    expect(
+      removeDeleted([
+        {
+          public_key: incomingDm.conversation_key,
+          name: 'Alice',
+          type: 1,
+        } as Contact,
+      ])
+    ).toEqual([]);
     expect(args.removeConversationMessages).toHaveBeenCalledWith(incomingDm.conversation_key);
     expect(args.setActiveConversation).toHaveBeenCalledWith(null);
     expect(pendingDeleteFallbackRef.current).toBe(true);
@@ -273,6 +283,54 @@ describe('useRealtimeAppState', () => {
       id: resolvedContact.public_key,
       name: '[unknown sender]',
     });
+    const reconcileIdentity = fns.setContacts.mock.calls[0]?.[0] as (
+      contacts: Contact[]
+    ) => Contact[];
+    const reconciled = reconcileIdentity([
+      { ...resolvedContact, public_key: previousPublicKey },
+      { ...resolvedContact, name: 'stale canonical name' },
+    ]);
+    expect(reconciled).toEqual([resolvedContact]);
+  });
+
+  it('deduplicates repeated contact and channel WebSocket entities by stable key', () => {
+    const contact = {
+      public_key: 'bb'.repeat(32),
+      name: 'Stable contact',
+      type: 1,
+    } as Contact;
+    const { args, fns } = createRealtimeArgs();
+    const { result } = renderHook(() => useRealtimeAppState(args));
+
+    act(() => {
+      result.current.onContact?.(contact);
+      result.current.onContact?.(contact);
+      result.current.onChannel?.(publicChannel);
+      result.current.onChannel?.(publicChannel);
+    });
+
+    const contactUpdates = fns.setContacts.mock.calls.map(
+      ([update]) => update as (contacts: Contact[]) => Contact[]
+    );
+    const channelUpdates = fns.setChannels.mock.calls.map(
+      ([update]) => update as (channels: Channel[]) => Channel[]
+    );
+    const contacts = contactUpdates.reduce((current, update) => update(current), [] as Contact[]);
+    const channels = channelUpdates.reduce((current, update) => update(current), [] as Channel[]);
+    expect(contacts).toEqual([contact]);
+    expect(channels).toEqual([publicChannel]);
+  });
+
+  it('deletes channels from the stable-key entity snapshot', () => {
+    const { args, fns } = createRealtimeArgs();
+    const { result } = renderHook(() => useRealtimeAppState(args));
+
+    act(() => result.current.onChannelDeleted?.(publicChannel.key));
+
+    const removeDeleted = fns.setChannels.mock.calls[0]?.[0] as (channels: Channel[]) => Channel[];
+    expect(removeDeleted([publicChannel])).toEqual([]);
+    expect(args.removeConversationMessages).toHaveBeenCalledWith(publicChannel.key);
+    expect(args.removeConversationState).toHaveBeenCalledWith(`channel-${publicChannel.key}`);
   });
 
   it('appends raw packets using observation identity dedup', () => {

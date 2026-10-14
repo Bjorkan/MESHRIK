@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
     getChannels: vi.fn(),
     getContacts: vi.fn(),
     toggleFavorite: vi.fn(),
+    toggleChannelMute: vi.fn(),
     updateSettings: vi.fn(),
     getHealth: vi.fn(),
     sendAdvertisement: vi.fn(),
@@ -224,6 +225,7 @@ const publicChannel = {
   on_radio: false,
   last_read_at: null,
   favorite: false,
+  muted: false,
 };
 
 describe('App favorite toggle flow', () => {
@@ -239,11 +241,22 @@ describe('App favorite toggle flow', () => {
     mocks.api.getUndecryptedPacketCount.mockResolvedValue({ count: 0 });
     mocks.api.getChannels.mockResolvedValue([publicChannel]);
     mocks.api.getContacts.mockResolvedValue([]);
+    mocks.api.getHealth.mockResolvedValue({
+      status: 'ok',
+      radio_connected: true,
+      radio_initializing: false,
+      connection_info: 'test',
+      database_size_mb: 0,
+      oldest_undecrypted_timestamp: null,
+      fanout_statuses: {},
+      bots_disabled: true,
+    });
     mocks.api.toggleFavorite.mockResolvedValue({
       type: 'channel',
       id: publicChannel.key,
       favorite: true,
     });
+    mocks.api.toggleChannelMute.mockResolvedValue({ muted: true });
   });
 
   it('optimistically toggles favorite and persists on success', async () => {
@@ -286,6 +299,24 @@ describe('App favorite toggle flow', () => {
     await waitFor(() => {
       expect(screen.getByTitle('Add to favorites')).toBeInTheDocument();
     });
+  });
+
+  it('updates the canonical channel entity when mute succeeds', async () => {
+    render(<App />);
+    await waitFor(() => expect(screen.getByTitle('Notification settings')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTitle('Notification settings'));
+    const mute = screen.getByRole('checkbox', { name: /Mute channel/ });
+    expect(mute).not.toBeChecked();
+    fireEvent.click(mute);
+
+    await waitFor(() =>
+      expect(mocks.api.toggleChannelMute).toHaveBeenCalledWith(publicChannel.key)
+    );
+    await waitFor(() =>
+      expect(screen.getByRole('checkbox', { name: /Mute channel/ })).toBeChecked()
+    );
+    expect(mocks.hookFns.refreshUnreads).toHaveBeenCalledOnce();
   });
 
   it('re-fetches channels after WebSocket reconnect', async () => {

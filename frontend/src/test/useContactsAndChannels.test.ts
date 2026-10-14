@@ -7,7 +7,7 @@
 
 import { createElement, type PropsWithChildren } from 'react';
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { QueryClientProvider } from '@tanstack/react-query';
+import { onlineManager, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 import { useContactsAndChannels } from '../hooks/useContactsAndChannels';
@@ -86,11 +86,11 @@ describe('useContactsAndChannels', () => {
   });
 
   afterEach(() => {
+    onlineManager.setOnline(true);
     vi.restoreAllMocks();
   });
 
-  function renderUseContactsAndChannels() {
-    const queryClient = createAppQueryClient();
+  function renderUseContactsAndChannels(queryClient = createAppQueryClient()) {
     const wrapper = ({ children }: PropsWithChildren) =>
       createElement(QueryClientProvider, { client: queryClient }, children);
     return {
@@ -107,6 +107,65 @@ describe('useContactsAndChannels', () => {
       queryClient,
     };
   }
+
+  it('reports pending and independently completed entity collections during partial loads', async () => {
+    let resolveContacts!: (contacts: Contact[]) => void;
+    vi.mocked(api.getContacts).mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveContacts = resolve;
+      })
+    );
+    vi.mocked(api.getChannels).mockResolvedValueOnce([]);
+
+    const { result } = renderUseContactsAndChannels();
+    await waitFor(() => expect(result.current.channelsStatus).toBe('empty'));
+    expect(result.current.contactsStatus).toBe('pending');
+    expect(result.current.contacts).toEqual([]);
+
+    await act(async () => resolveContacts([makeContact('partial')]));
+    await waitFor(() => expect(result.current.contactsStatus).toBe('ready'));
+    expect(result.current.contacts).toHaveLength(1);
+  });
+
+  it('reports an error instead of treating retained DB rows as a fresh success', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const contact = makeContact('stale');
+    vi.mocked(api.getContacts).mockResolvedValueOnce([contact]);
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } },
+    });
+    const { result } = renderUseContactsAndChannels(queryClient);
+    await waitFor(() => expect(result.current.contactsStatus).toBe('ready'));
+
+    vi.mocked(api.getContacts).mockRejectedValueOnce(new Error('server unavailable'));
+    await act(async () => {
+      await result.current.refreshContacts();
+    });
+
+    await waitFor(() => expect(result.current.contactsStatus).toBe('error'));
+    expect(result.current.contacts).toHaveLength(1);
+    expect(result.current.contacts[0]).toMatchObject(contact);
+    expect(result.current.contactsLoaded).toBe(false);
+    expect(consoleError).toHaveBeenCalledWith(
+      'Failed to fetch contacts:',
+      expect.objectContaining({ message: 'server unavailable' })
+    );
+  });
+
+  it('reports offline instead of pending or ready when collection fetches are paused', async () => {
+    onlineManager.setOnline(false);
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } },
+    });
+    const { result } = renderUseContactsAndChannels(queryClient);
+
+    await waitFor(() => expect(result.current.contactsStatus).toBe('offline'));
+    expect(result.current.channelsStatus).toBe('offline');
+    expect(result.current.contactsLoaded).toBe(false);
+    expect(result.current.channelsLoaded).toBe(false);
+    expect(result.current.contacts).toEqual([]);
+    expect(result.current.channels).toEqual([]);
+  });
 
   describe('fetchAllContacts pagination', () => {
     it('returns contacts directly when fewer than page size', async () => {

@@ -40,7 +40,7 @@ const RawPacketFeedView = lazy(() =>
 );
 
 export interface RouteResourceState {
-  status: 'loading' | 'error' | 'not-found';
+  status: 'loading' | 'error' | 'offline' | 'not-found';
   resource: 'Channel' | 'Contact';
   onRetry?: () => void;
 }
@@ -230,6 +230,24 @@ export function ConversationPane({
               onClick={routeResourceState.onRetry}
             >
               Retry
+            </button>
+          )}
+        </div>
+      );
+    }
+    if (routeResourceState?.status === 'offline') {
+      return (
+        <div className="flex-1 flex flex-col items-center justify-center gap-3 p-6 text-center">
+          <p className="text-muted-foreground">
+            {routeResourceState.resource} data is unavailable while offline.
+          </p>
+          {routeResourceState.onRetry && (
+            <button
+              type="button"
+              className="text-sm text-primary hover:underline"
+              onClick={routeResourceState.onRetry}
+            >
+              Retry when online
             </button>
           )}
         </div>

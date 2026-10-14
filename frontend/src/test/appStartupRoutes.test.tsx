@@ -1,5 +1,6 @@
 import React from 'react';
 import { act, configure, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { onlineManager } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -215,6 +216,7 @@ describe('App startup route resolution', () => {
   });
 
   afterEach(() => {
+    onlineManager.setOnline(true);
     resetUrl();
     localStorage.clear();
   });
@@ -327,6 +329,20 @@ describe('App startup route resolution', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
     await waitFor(() => expect(mocks.api.getContacts.mock.calls.length).toBeGreaterThan(2));
     consoleError.mockRestore();
+  });
+
+  it('shows offline instead of loading, error, or stale route data', async () => {
+    onlineManager.setOnline(false);
+    await renderWithRouter(
+      <App routeEntity={{ type: 'contact', id: 'offline-contact' }} routeIsRoot={false} />
+    );
+
+    expect(
+      await screen.findByText('Contact data is unavailable while offline.')
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Loading contact...')).not.toBeInTheDocument();
+    expect(screen.queryByText('Failed to load contact data.')).not.toBeInTheDocument();
+    expect(screen.queryByText('Contact not found')).not.toBeInTheDocument();
   });
 
   it('resolves Radio Activity from route state even when channels have not loaded', async () => {

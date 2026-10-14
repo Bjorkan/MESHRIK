@@ -231,6 +231,23 @@ describe('ConversationPane', () => {
     expect(onRetry).toHaveBeenCalledOnce();
   });
 
+  it('distinguishes offline resources from query errors and empty results', () => {
+    const onRetry = vi.fn();
+    render(
+      <ConversationPane
+        {...createProps({
+          routeResourceState: { status: 'offline', resource: 'Channel', onRetry },
+        })}
+      />
+    );
+
+    expect(screen.getByText('Channel data is unavailable while offline.')).toBeInTheDocument();
+    expect(screen.queryByText('Failed to load channel data.')).not.toBeInTheDocument();
+    expect(screen.queryByText('Channel not found')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry when online' }));
+    expect(onRetry).toHaveBeenCalledOnce();
+  });
+
   it('renders repeater dashboard instead of chat chrome for repeater contacts', async () => {
     render(
       <ConversationPane

@@ -256,12 +256,12 @@ function AppContent({
   // useContactsAndChannels is called first — it uses the ref bridge for setActiveConversation
   const {
     contacts,
+    contactsStatus,
     contactsLoaded,
-    contactsError,
     retryContacts,
     channels,
+    channelsStatus,
     channelsLoaded,
-    channelsError,
     retryChannels,
     undecryptedCount,
     setContacts,
@@ -283,38 +283,51 @@ function AppContent({
       removeConversationMessagesRef.current(conversationId),
   });
 
-  const entityRouteConversation = useMemo(
-    () => (routeEntity ? resolveEntityConversation(routeEntity, channels, contacts) : null),
-    [channels, contacts, routeEntity]
-  );
+  const entityRouteConversation = useMemo(() => {
+    if (!routeEntity) return null;
+    const status = routeEntity.type === 'channel' ? channelsStatus : contactsStatus;
+    return status === 'ready' ? resolveEntityConversation(routeEntity, channels, contacts) : null;
+  }, [channels, channelsStatus, contacts, contactsStatus, routeEntity]);
   const effectiveRouteConversation = routeEntity ? entityRouteConversation : routeConversation;
   const routeResourceState = useMemo<RouteResourceState | null>(() => {
     if (!routeEntity || entityRouteConversation) return null;
     if (routeEntity.type === 'channel') {
-      if (channelsError) {
+      if (channelsStatus === 'offline') {
+        return {
+          status: 'offline',
+          resource: 'Channel',
+          onRetry: () => void retryChannels(),
+        };
+      }
+      if (channelsStatus === 'error') {
         return {
           status: 'error',
           resource: 'Channel',
           onRetry: () => void retryChannels(),
         };
       }
-      if (!channelsLoaded) return { status: 'loading', resource: 'Channel' };
+      if (channelsStatus === 'pending') return { status: 'loading', resource: 'Channel' };
       return { status: 'not-found', resource: 'Channel' };
     }
-    if (contactsError) {
+    if (contactsStatus === 'offline') {
+      return {
+        status: 'offline',
+        resource: 'Contact',
+        onRetry: () => void retryContacts(),
+      };
+    }
+    if (contactsStatus === 'error') {
       return {
         status: 'error',
         resource: 'Contact',
         onRetry: () => void retryContacts(),
       };
     }
-    if (!contactsLoaded) return { status: 'loading', resource: 'Contact' };
+    if (contactsStatus === 'pending') return { status: 'loading', resource: 'Contact' };
     return { status: 'not-found', resource: 'Contact' };
   }, [
-    channelsError,
-    channelsLoaded,
-    contactsError,
-    contactsLoaded,
+    channelsStatus,
+    contactsStatus,
     entityRouteConversation,
     retryChannels,
     retryContacts,

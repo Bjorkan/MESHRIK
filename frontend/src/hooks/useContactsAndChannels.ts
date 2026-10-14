@@ -1,11 +1,12 @@
 import {
   useCallback,
   useEffect,
+  useSyncExternalStore,
   type Dispatch,
   type MutableRefObject,
   type SetStateAction,
 } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { onlineManager, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api';
 import { queryKeys } from '../queryClient';
 import { channelsQueryOptions, contactsQueryOptions } from '../entityQueries';
@@ -24,6 +25,29 @@ interface UseContactsAndChannelsArgs {
   removeConversationMessages: (conversationId: string) => void;
 }
 
+export type EntityResourceStatus = 'pending' | 'empty' | 'ready' | 'error' | 'offline';
+
+export function deriveEntityResourceStatus({
+  collectionReady,
+  entityCount,
+  fetchStatus,
+  isError,
+  isOnline,
+  isPending,
+}: {
+  collectionReady: boolean;
+  entityCount: number;
+  fetchStatus: 'fetching' | 'paused' | 'idle';
+  isError: boolean;
+  isOnline: boolean;
+  isPending: boolean;
+}): EntityResourceStatus {
+  if (!isOnline || fetchStatus === 'paused') return 'offline';
+  if (isError) return 'error';
+  if (isPending || !collectionReady) return 'pending';
+  return entityCount === 0 ? 'empty' : 'ready';
+}
+
 function applyStateAction<T>(previous: T, update: SetStateAction<T>): T {
   return typeof update === 'function' ? (update as (value: T) => T)(previous) : update;
 }
@@ -35,6 +59,11 @@ export function useContactsAndChannels({
   removeConversationMessages,
 }: UseContactsAndChannelsArgs) {
   const queryClient = useQueryClient();
+  const isOnline = useSyncExternalStore(
+    (onStoreChange) => onlineManager.subscribe(onStoreChange),
+    () => onlineManager.isOnline(),
+    () => true
+  );
   const contactsQuery = useQuery(contactsQueryOptions());
   const channelsQuery = useQuery(channelsQueryOptions());
   const entityQueries = useLiveEntities();
@@ -44,9 +73,25 @@ export function useContactsAndChannels({
   });
 
   const contacts = entityQueries.contacts.data ?? [];
-  const contactsLoaded = entityQueries.contacts.isReady && !contactsQuery.isPending;
   const channels = entityQueries.channels.data ?? [];
-  const channelsLoaded = entityQueries.channels.isReady && !channelsQuery.isPending;
+  const contactsStatus = deriveEntityResourceStatus({
+    collectionReady: entityQueries.contacts.isReady,
+    entityCount: contacts.length,
+    fetchStatus: contactsQuery.fetchStatus,
+    isError: contactsQuery.isError,
+    isOnline,
+    isPending: contactsQuery.isPending,
+  });
+  const channelsStatus = deriveEntityResourceStatus({
+    collectionReady: entityQueries.channels.isReady,
+    entityCount: channels.length,
+    fetchStatus: channelsQuery.fetchStatus,
+    isError: channelsQuery.isError,
+    isOnline,
+    isPending: channelsQuery.isPending,
+  });
+  const contactsLoaded = contactsStatus === 'ready' || contactsStatus === 'empty';
+  const channelsLoaded = channelsStatus === 'ready' || channelsStatus === 'empty';
   const repeaters = entityQueries.repeaters.data ?? [];
   const undecryptedCount = undecryptedCountQuery.data?.count ?? 0;
 
@@ -259,13 +304,13 @@ export function useContactsAndChannels({
 
   return {
     contacts,
+    contactsStatus,
     repeaters,
     contactsLoaded,
-    contactsError: contactsQuery.error,
     retryContacts: contactsQuery.refetch,
     channels,
+    channelsStatus,
     channelsLoaded,
-    channelsError: channelsQuery.error,
     retryChannels: channelsQuery.refetch,
     undecryptedCount,
     setContacts,
