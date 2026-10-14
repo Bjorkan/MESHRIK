@@ -1680,6 +1680,35 @@ function MqttCommunityConfigEditor({
         </p>
       </div>
 
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {([
+          ['publish_status', 'Publish status'], ['publish_packets', 'Publish received raw packets'],
+          ['publish_neighbors', 'Publish sampled neighbor snapshots'],
+        ] as const).map(([field, label]) => (
+          <label key={field} className="text-sm flex gap-2 items-center">
+            <input type="checkbox" checked={config[field] === undefined ? field !== 'publish_neighbors' : !!config[field]}
+              onChange={(e) => onChange({ ...config, [field]: e.target.checked })} />
+            {label}
+          </label>
+        ))}
+        <div>
+          <Label htmlFor="fanout-comm-status-interval">Status interval (1–60 min)</Label>
+          <Input id="fanout-comm-status-interval" type="number" min="1" max="60"
+            value={getNumberInputValue(config.status_interval_minutes, 5)}
+            onChange={(e) => onChange({ ...config, status_interval_minutes: parseIntegerInputValue(e.target.value) })} />
+        </div>
+        <div>
+          <Label htmlFor="fanout-comm-neighbor-interval">Neighbor interval (12–336 h)</Label>
+          <Input id="fanout-comm-neighbor-interval" type="number" min="12" max="336"
+            value={getNumberInputValue(config.neighbors_interval_hours, 24)}
+            onChange={(e) => onChange({ ...config, neighbors_interval_hours: parseIntegerInputValue(e.target.value) })} />
+        </div>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Neighbor snapshots use only previous host-observed discovery results; scheduling does not
+        send automatic radio discovery or mutate radio contacts.
+      </p>
+
       <div className="space-y-2">
         <Label htmlFor="fanout-comm-tx">Outbound raw frame upload</Label>
         <select

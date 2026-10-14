@@ -143,6 +143,20 @@ def _validate_mqtt_community_config(config: dict) -> None:
         config["packet_filter"] = normalize_packet_filter(config.get("packet_filter", "all"))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    for field, default, low, high in (
+        ("status_interval_minutes", 5, 1, 60),
+        ("neighbors_interval_hours", 24, 12, 336),
+    ):
+        value = config.get(field, default)
+        if type(value) is not int or not low <= value <= high:
+            raise HTTPException(status_code=400, detail=f"{field} must be an integer {low}-{high}")
+        config[field] = value
+    for field, default in (("publish_status", True), ("publish_packets", True), ("publish_neighbors", False)):
+        value = config.get(field, default)
+        if type(value) is not bool:
+            raise HTTPException(status_code=400, detail=f"{field} must be boolean")
+        config[field] = value
+
     tx_mode = config.get("tx_mode", "off")
     if tx_mode not in ("off", "on", "advert"):
         raise HTTPException(status_code=400, detail="tx_mode must be off, on or advert")

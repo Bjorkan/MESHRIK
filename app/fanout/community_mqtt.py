@@ -393,6 +393,9 @@ class CommunityMqttPublisher(BaseMqttPublisher):
         self._stats_supported: bool | None = None
         self._last_stats_fetch: float = 0.0
         self._last_status_publish: float = 0.0
+        self._last_neighbors_publish: float = 0.0
+        self.last_status_submission_utc: str | None = None
+        self.last_neighbors_submission_utc: str | None = None
         self._error_reader: asyncio.Task[None] | None = None
         self.broker_error_code: str | None = None
         self.broker_error_at: str | None = None
@@ -404,6 +407,7 @@ class CommunityMqttPublisher(BaseMqttPublisher):
         self._stats_supported = None
         self._last_stats_fetch = 0.0
         self._last_status_publish = 0.0
+        self._last_neighbors_publish = 0.0
         await super().start(settings)
 
     @property
@@ -526,12 +530,13 @@ class CommunityMqttPublisher(BaseMqttPublisher):
             "port": broker_port,
             "transport": transport,
             "tls_context": tls_context,
-            "will": aiomqtt.Will(
+        }
+        if getattr(s, "community_mqtt_publish_status", True):
+            kwargs["will"] = aiomqtt.Will(
                 status_topic,
                 offline_payload,
                 retain=broker_retains(_settings_topic_config(s), "status"),
-            ),
-        }
+            )
         if auth_mode == "token":
             assert private_key is not None
             token_audience = (s.community_mqtt_token_audience or "").strip() or broker_host
@@ -715,6 +720,7 @@ class CommunityMqttPublisher(BaseMqttPublisher):
             status_topic, payload, retain=broker_retains(_settings_topic_config(settings), "status")
         )
         self._last_status_publish = time.monotonic()
+        self.last_status_submission_utc = _format_utc_timestamp()
 
     async def submit_packet(self, topic: str, packet: dict[str, Any]) -> bool:
         """True means QoS0 *local submission*, never broker acceptance."""
@@ -760,6 +766,8 @@ class CommunityMqttPublisher(BaseMqttPublisher):
             payload,
             retain=broker_retains(_settings_topic_config(settings), "neighbors"),
         )
+        self._last_neighbors_publish = time.monotonic()
+        self.last_neighbors_submission_utc = _format_utc_timestamp()
         return True
 
     async def _on_connected_async(self, settings: object) -> None:
@@ -776,14 +784,23 @@ class CommunityMqttPublisher(BaseMqttPublisher):
                 await self._client.subscribe(topic, qos=0)
             if allowed:
                 self._error_reader = asyncio.create_task(self._read_broker_errors(allowed))
-        await self._publish_status(settings)  # type: ignore[arg-type]
+        if getattr(settings, "community_mqtt_publish_status", True):
+            await self._publish_status(settings)  # type: ignore[arg-type]
+        if getattr(settings, "community_mqtt_publish_neighbors", False):
+            await self._publish_neighbors(settings)  # type: ignore[arg-type]
 
     async def _on_periodic_wake(self, elapsed: float) -> None:
         if not self._settings:
             return
         now = time.monotonic()
-        if (now - self._last_status_publish) >= _STATS_REFRESH_INTERVAL:
-            await self._publish_status(self._settings, refresh_stats=True)
+        if getattr(self._settings, "community_mqtt_publish_status", True):
+            interval = getattr(self._settings, "community_mqtt_status_interval_minutes", 5)
+            if now - self._last_status_publish >= interval * 60:
+                await self._publish_status(self._settings, refresh_stats=True)
+        if getattr(self._settings, "community_mqtt_publish_neighbors", False):
+            hours = getattr(self._settings, "community_mqtt_neighbors_interval_hours", 24)
+            if now - self._last_neighbors_publish >= hours * 3600:
+                await self._publish_neighbors(self._settings)
 
     def _on_error(self) -> tuple[str, str]:
         return (

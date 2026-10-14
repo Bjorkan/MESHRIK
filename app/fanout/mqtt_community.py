@@ -172,6 +172,8 @@ class MqttCommunityModule(FanoutModule):
         pass
 
     async def on_raw(self, data: dict) -> None:
+        if not self.config.get("publish_packets", True):
+            return
         prepared = _prepare_community_packet(self.config, data)
         if prepared is not None:
             self._enqueue(*prepared)
