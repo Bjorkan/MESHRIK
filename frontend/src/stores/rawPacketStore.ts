@@ -133,6 +133,32 @@ export function useRawPackets(): RawPacket[] {
   return useStore(rawPacketStore, (state) => state.packets);
 }
 
+function isCrackablePacket(packet: RawPacket): boolean {
+  return packet.payload_type === 'GROUP_TEXT' && !packet.decrypted;
+}
+
+function sameCrackablePackets(previous: RawPacket[], next: RawPacket[]): boolean {
+  return (
+    previous.length === next.length &&
+    previous.every(
+      (packet, index) => packet.id === next[index]?.id && packet.data === next[index]?.data
+    )
+  );
+}
+
+/**
+ * Select only the rolling-buffer membership consumed by the channel cracker.
+ * The comparator ignores unrelated RF packets, but detects an eligible packet
+ * replacing another while the full buffer remains the same length.
+ */
+export function useCrackableRawPackets(): RawPacket[] {
+  return useStore(
+    rawPacketStore,
+    (state) => state.packets.filter(isCrackablePacket),
+    sameCrackablePackets
+  );
+}
+
 export function useRawPacketStatsSession(): RawPacketStatsSessionState {
   return useStore(rawPacketStore, (state) => state.statsSession);
 }

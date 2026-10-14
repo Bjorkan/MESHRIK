@@ -7,7 +7,7 @@ import { api } from '../api';
 import { toast } from './ui/sonner';
 import { cn } from '@/lib/utils';
 import { extractPacketPayloadHex } from '../utils/pathUtils';
-import { useRawPackets } from '../stores/rawPacketStore';
+import { useCrackableRawPackets } from '../stores/rawPacketStore';
 
 interface CrackedChannel {
   channelName: string;
@@ -37,7 +37,7 @@ export function CrackerPanel({
   onRunningChange,
   visible = false,
 }: CrackerPanelProps) {
-  const packets = useRawPackets();
+  const undecryptedGroupText = useCrackableRawPackets();
   const [isRunning, setIsRunning] = useState(false);
   const [maxLength, setMaxLength] = useState(6);
   const [maxLengthInput, setMaxLengthInput] = useState('6');
@@ -143,14 +143,7 @@ export function CrackerPanel({
     existingChannelKeysRef.current = existingChannelKeys;
   }, [existingChannelKeys]);
 
-  // Filter packets to only undecrypted GROUP_TEXT
-  const undecryptedGroupText = useMemo(
-    () => packets.filter((p) => p.payload_type === 'GROUP_TEXT' && !p.decrypted),
-    [packets]
-  );
-
   // Update queue when packets change (deduplicated by payload)
-  // Note: We intentionally depend on .length only to avoid re-running on every array identity change
   useEffect(() => {
     let newSkipped = 0;
 
@@ -193,8 +186,7 @@ export function CrackerPanel({
     if (newSkipped > 0) {
       setSkippedDuplicates((prev) => prev + newSkipped);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [undecryptedGroupText.length]);
+  }, [undecryptedGroupText]);
 
   // Keep refs in sync with state
   useEffect(() => {
