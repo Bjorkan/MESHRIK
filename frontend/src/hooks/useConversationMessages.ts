@@ -16,6 +16,11 @@ interface PendingAckUpdate {
   packetId?: number | null;
 }
 
+interface LatestRequestState {
+  messageIdsAtStart: ReadonlySet<number>;
+  observedMessages: Map<number, Message>;
+}
+
 interface ConversationPage {
   messages: Message[];
   hasOlder: boolean;
@@ -122,9 +127,7 @@ export function reconcileConversationMessages(
     );
   };
 
-  let changed = current.some(
-    (message) => !fetchedIds.has(message.id) && mayRemove(message) && isInsideFetchedRange(message)
-  );
+  let changed = current.some((message) => !fetchedIds.has(message.id));
   const reconciledFetched = fetched.map((message) => {
     const existing = currentById.get(message.id);
     return existing ? mergeMessageRevisions(existing, message) : message;
@@ -208,6 +211,76 @@ function mapQueryMessages(
   };
 }
 
+function newestPageIndex(pages: ConversationPage[]): number {
+  let newestMessage: Message | null = null;
+  let newestIndex = 0;
+  pages.forEach((page, index) => {
+    for (const message of page.messages) {
+      if (!newestMessage || compareMessagePosition(message, newestMessage) > 0) {
+        newestMessage = message;
+        newestIndex = index;
+      }
+    }
+  });
+  return newestIndex;
+}
+
+function overlayMessages(
+  data: ConversationInfiniteData,
+  overlay: ReadonlyMap<number, Message>
+): ConversationInfiniteData {
+  if (overlay.size === 0) return data;
+  const seenIds = new Set<number>();
+  const pages = data.pages.map((page) => ({
+    ...page,
+    messages: page.messages.map((message) => {
+      seenIds.add(message.id);
+      return overlay.get(message.id) ?? message;
+    }),
+  }));
+  const additions = [...overlay.values()].filter((message) => !seenIds.has(message.id));
+  if (additions.length > 0) {
+    const index = newestPageIndex(pages);
+    pages[index] = { ...pages[index], messages: [...pages[index].messages, ...additions] };
+  }
+  return { ...data, pages };
+}
+
+function reconcileConversationPages(
+  current: ConversationInfiniteData,
+  fetched: ConversationInfiniteData,
+  messageIdsAtRequestStart: ReadonlySet<number>
+): ConversationInfiniteData {
+  const currentMessages = flattenMessages(current);
+  const fetchedMessages = flattenMessages(fetched);
+  const fetchedHasOlderMessages = fetched.pages[fetched.pages.length - 1]?.hasOlder ?? false;
+  const reconciled = reconcileConversationMessages(
+    currentMessages,
+    fetchedMessages,
+    fetchedHasOlderMessages,
+    messageIdsAtRequestStart
+  );
+  if (!reconciled) return fetched;
+
+  const reconciledById = new Map(reconciled.map((message) => [message.id, message]));
+  const fetchedIds = new Set(fetchedMessages.map((message) => message.id));
+  const seenIds = new Set<number>();
+  const pages = fetched.pages.map((page) => ({
+    ...page,
+    messages: page.messages.flatMap((message) => {
+      if (seenIds.has(message.id)) return [];
+      seenIds.add(message.id);
+      return [reconciledById.get(message.id) ?? message];
+    }),
+  }));
+  const retained = reconciled.filter((message) => !fetchedIds.has(message.id));
+  if (retained.length > 0) {
+    const index = newestPageIndex(pages);
+    pages[index] = { ...pages[index], messages: [...pages[index].messages, ...retained] };
+  }
+  return { ...fetched, pages };
+}
+
 interface UseConversationMessagesResult {
   messages: Message[];
   messagesLoading: boolean;
@@ -238,6 +311,7 @@ export function useConversationMessages(
 ): UseConversationMessagesResult {
   const queryClient = useQueryClient();
   const pendingAcksRef = useRef<Map<number, PendingAckUpdate>>(new Map());
+  const latestRequestRef = useRef<LatestRequestState | null>(null);
   const activeConversationRef = useRef(activeConversation);
   activeConversationRef.current = activeConversation;
   const pendingReconnectRef = useRef(false);
@@ -335,6 +409,12 @@ export function useConversationMessages(
           (message) => message.id
         )
       );
+      if (pageParam.direction === 'latest') {
+        latestRequestRef.current = {
+          messageIdsAtStart,
+          observedMessages: new Map(),
+        };
+      }
       const fetched = (await api.getMessages(params, signal)).map(applyPendingAck);
       if (pageParam.direction === 'latest') {
         const current = flattenMessages(
@@ -380,7 +460,22 @@ export function useConversationMessages(
         messageId: newest.id,
       };
     },
+    structuralSharing: (current, fetched) => {
+      const currentData = current as ConversationInfiniteData | undefined;
+      const fetchedData = fetched as ConversationInfiniteData;
+      const latestRequest = latestRequestRef.current;
+      if (!currentData || !latestRequest) return fetchedData;
+      return reconcileConversationPages(
+        overlayMessages(currentData, latestRequest.observedMessages),
+        fetchedData,
+        latestRequest.messageIdsAtStart
+      );
+    },
   });
+
+  useEffect(() => {
+    if (!query.isFetching) latestRequestRef.current = null;
+  }, [query.isFetching]);
 
   const messages = useMemo(
     () => flattenMessages(query.data).map(applyPendingAck),
@@ -404,12 +499,10 @@ export function useConversationMessages(
       .findAll({ queryKey: ['messages', 'conversation'] })
       .filter((entry) => entry.state.data !== undefined)
       .sort((left, right) => right.state.dataUpdatedAt - left.state.dataUpdatedAt);
-    for (const entry of cached.slice(MAX_CACHED_CONVERSATIONS)) {
-      if (
-        entry.queryHash !== queryClient.getQueryCache().find({ queryKey, exact: true })?.queryHash
-      ) {
-        queryClient.removeQueries({ queryKey: entry.queryKey, exact: true });
-      }
+    const activeQueryHash = queryClient.getQueryCache().find({ queryKey, exact: true })?.queryHash;
+    const inactiveCached = cached.filter((entry) => entry.queryHash !== activeQueryHash);
+    for (const entry of inactiveCached.slice(MAX_CACHED_CONVERSATIONS - 1)) {
+      queryClient.removeQueries({ queryKey: entry.queryKey, exact: true });
     }
   }, [conversation, query.data, queryClient, queryKey]);
 
@@ -475,6 +568,9 @@ export function useConversationMessages(
       ) {
         return { added: false, activeConversation: active };
       }
+      if (active && latestRequestRef.current) {
+        latestRequestRef.current.observedMessages.set(withAck.id, withAck);
+      }
       const targets =
         matchingQueries.length > 0
           ? matchingQueries.map((candidate) => candidate.queryKey)
@@ -489,7 +585,7 @@ export function useConversationMessages(
         queryClient.setQueryData<ConversationInfiniteData>(targetKey, (data) => {
           if (!data) return replaceWithSinglePage([withAck], true);
           const pages = [...data.pages];
-          const index = pages.length - 1;
+          const index = newestPageIndex(pages);
           pages[index] = { ...pages[index], messages: [...pages[index].messages, withAck] };
           return { ...data, pages };
         });
@@ -501,6 +597,15 @@ export function useConversationMessages(
 
   const receiveMessageAck = useCallback(
     (messageId: number, ackCount: number, paths?: MessagePath[], packetId?: number | null) => {
+      const observed = latestRequestRef.current?.observedMessages.get(messageId);
+      if (observed) {
+        latestRequestRef.current?.observedMessages.set(messageId, {
+          ...observed,
+          acked: Math.max(observed.acked, ackCount),
+          ...(paths !== undefined && paths.length >= (observed.paths?.length ?? 0) && { paths }),
+          ...(packetId !== undefined && { packet_id: packetId }),
+        });
+      }
       let found = false;
       for (const cachedQuery of queryClient
         .getQueryCache()

@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 
 import { api } from '../api';
 import {
+  MAX_CACHED_CONVERSATIONS,
   reconcileConversationMessages,
   useConversationMessages,
 } from '../hooks/useConversationMessages';
@@ -556,6 +557,70 @@ describe('useConversationMessages older-page dedup and reentry', () => {
     });
   });
 
+  it('retains three Query-owned pages and live revisions across reconnect refetch', async () => {
+    const conv: Conversation = { type: 'contact', id: 'conv_a', name: 'Contact A' };
+    const page = (firstId: number, count: number) =>
+      Array.from({ length: count }, (_, index) => {
+        const id = firstId + index;
+        return createMessage({
+          id,
+          conversation_key: conv.id,
+          text: `msg-${id}`,
+          sender_timestamp: 1700000000 + id,
+          received_at: 1700000000 + id,
+        });
+      });
+    const latest = page(401, 200);
+    const older = page(201, 200);
+    const oldest = page(196, 5);
+    mockGetMessages
+      .mockResolvedValueOnce(latest)
+      .mockResolvedValueOnce(older)
+      .mockResolvedValueOnce(oldest);
+
+    const { result } = renderHook(() => useConversationMessages(conv));
+    await waitFor(() => expect(result.current.messagesLoading).toBe(false));
+    await act(async () => await result.current.fetchOlderMessages());
+    await waitFor(() => expect(result.current.messages).toHaveLength(400));
+    await act(async () => await result.current.fetchOlderMessages());
+    await waitFor(() => expect(result.current.messages).toHaveLength(405));
+    expect(result.current.messages[154].id).toBe(350);
+
+    const refetchedLatest = createDeferred<Message[]>();
+    mockGetMessages
+      .mockReturnValueOnce(refetchedLatest.promise)
+      .mockResolvedValueOnce(older)
+      .mockResolvedValueOnce(oldest);
+    act(() => result.current.reconcileOnReconnect());
+    await waitFor(() => expect(mockGetMessages).toHaveBeenCalledTimes(4));
+
+    const livePath = { path: 'A1B2', received_at: 1700000700 };
+    act(() => {
+      result.current.observeMessage(
+        createMessage({
+          id: 601,
+          conversation_key: conv.id,
+          text: 'live-tail',
+          sender_timestamp: 1700000601,
+          received_at: 1700000601,
+        })
+      );
+      result.current.receiveMessageAck(601, 2, [livePath], 9001);
+    });
+    await waitFor(() => expect(result.current.messages).toHaveLength(406));
+
+    refetchedLatest.resolve(latest);
+
+    await waitFor(() => expect(mockGetMessages).toHaveBeenCalledTimes(6));
+    await waitFor(() => expect(result.current.messagesLoading).toBe(false));
+    expect(result.current.messages).toHaveLength(406);
+    expect(new Set(result.current.messages.map((message) => message.id)).size).toBe(406);
+    expect(result.current.messages[154].id).toBe(350);
+    expect(result.current.messages[result.current.messages.length - 1]).toEqual(
+      expect.objectContaining({ id: 601, acked: 2, paths: [livePath], packet_id: 9001 })
+    );
+  });
+
   it('aborts stale older-page requests on conversation switch without toasting', async () => {
     const convA: Conversation = { type: 'contact', id: 'conv_a', name: 'Contact A' };
     const convB: Conversation = { type: 'contact', id: 'conv_b', name: 'Contact B' };
@@ -603,6 +668,47 @@ describe('useConversationMessages older-page dedup and reentry', () => {
     await waitFor(() => expect(result.current.messagesLoading).toBe(false));
     expect(olderSignal?.aborted).toBe(true);
     expect(mockToastError).not.toHaveBeenCalled();
+  });
+});
+
+describe('useConversationMessages bounded cache', () => {
+  beforeEach(() => {
+    mockGetMessages.mockReset();
+    queryClient.clear();
+  });
+
+  it('keeps the active conversation inside the global cache bound', async () => {
+    for (let index = 0; index < MAX_CACHED_CONVERSATIONS + 5; index += 1) {
+      const id = `cached-${index}`;
+      queryClient.setQueryData(queryKeys.conversationView('contact', id, null), {
+        pages: [
+          {
+            messages: [createMessage({ id: index + 1, conversation_key: id })],
+            hasOlder: false,
+            hasNewer: false,
+          },
+        ],
+        pageParams: [{ direction: 'latest' }],
+      });
+    }
+    const active: Conversation = { type: 'contact', id: 'active', name: 'Active' };
+    mockGetMessages.mockResolvedValueOnce([
+      createMessage({ id: 999, conversation_key: active.id }),
+    ]);
+
+    const { result } = renderHook(() => useConversationMessages(active));
+    await waitFor(() => expect(result.current.messagesLoading).toBe(false));
+
+    await waitFor(() => {
+      const cached = queryClient
+        .getQueryCache()
+        .findAll({ queryKey: ['messages', 'conversation'] })
+        .filter((entry) => entry.state.data !== undefined);
+      expect(cached).toHaveLength(MAX_CACHED_CONVERSATIONS);
+    });
+    expect(
+      queryClient.getQueryData(queryKeys.conversationView('contact', active.id, null))
+    ).toBeDefined();
   });
 });
 
