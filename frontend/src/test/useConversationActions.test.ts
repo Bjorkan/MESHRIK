@@ -62,7 +62,6 @@ function createArgs(overrides: Partial<Parameters<typeof useConversationActions>
 
   return {
     activeConversation,
-    activeConversationRef: { current: activeConversation },
     setContacts: vi.fn(),
     setChannels: vi.fn(),
     observeMessage: vi.fn(() => ({ added: true, activeConversation: true })),
@@ -90,7 +89,7 @@ describe('useConversationActions', () => {
     expect(args.observeMessage).toHaveBeenCalledWith(sentMessage);
   });
 
-  it('does not append a sent message after the active conversation changes', async () => {
+  it('reconciles a sent message into its Query cache after the active route changes', async () => {
     let resolveSend: ((message: Message) => void) | null = null;
     mocks.api.sendChannelMessage.mockImplementation(
       () =>
@@ -100,20 +99,25 @@ describe('useConversationActions', () => {
     );
 
     const args = createArgs();
-    const { result } = renderHook(() => useConversationActions(args));
+    const { result, rerender } = renderHook(
+      ({ activeConversation }) => useConversationActions({ ...args, activeConversation }),
+      { initialProps: { activeConversation: args.activeConversation } }
+    );
 
     await act(async () => {
       const sendPromise = result.current.handleSendMessage(sentMessage.text);
-      args.activeConversationRef.current = {
-        type: 'contact',
-        id: 'aa'.repeat(32),
-        name: 'Alice',
-      };
+      rerender({
+        activeConversation: {
+          type: 'contact',
+          id: 'aa'.repeat(32),
+          name: 'Alice',
+        },
+      });
       resolveSend?.(sentMessage);
       await sendPromise;
     });
 
-    expect(args.observeMessage).not.toHaveBeenCalled();
+    expect(args.observeMessage).toHaveBeenCalledWith(sentMessage);
   });
 
   it('appends sender mentions into the message input', () => {
@@ -167,7 +171,7 @@ describe('useConversationActions', () => {
     expect(args.observeMessage).not.toHaveBeenCalled();
   });
 
-  it('does not append a resend if the user has switched conversations', async () => {
+  it('reconciles a new-timestamp resend after the active route changes', async () => {
     const resentMessage: Message = {
       ...sentMessage,
       id: 100,
@@ -180,19 +184,24 @@ describe('useConversationActions', () => {
       message: resentMessage,
     });
     const args = createArgs();
-    const { result } = renderHook(() => useConversationActions(args));
+    const { result, rerender } = renderHook(
+      ({ activeConversation }) => useConversationActions({ ...args, activeConversation }),
+      { initialProps: { activeConversation: args.activeConversation } }
+    );
 
     await act(async () => {
       const resendPromise = result.current.handleResendChannelMessage(sentMessage.id, true);
-      args.activeConversationRef.current = {
-        type: 'channel',
-        id: 'AA'.repeat(16),
-        name: 'Other',
-      };
+      rerender({
+        activeConversation: {
+          type: 'channel',
+          id: 'AA'.repeat(16),
+          name: 'Other',
+        },
+      });
       await resendPromise;
     });
 
-    expect(args.observeMessage).not.toHaveBeenCalled();
+    expect(args.observeMessage).toHaveBeenCalledWith(resentMessage);
   });
 
   it('merges returned contact data after path discovery', async () => {
@@ -224,7 +233,6 @@ describe('useConversationActions', () => {
     const setContacts = vi.fn();
     const args = createArgs({
       activeConversation: { type: 'contact', id: contactKey, name: 'Alice' },
-      activeConversationRef: { current: { type: 'contact', id: contactKey, name: 'Alice' } },
       setContacts,
     });
 

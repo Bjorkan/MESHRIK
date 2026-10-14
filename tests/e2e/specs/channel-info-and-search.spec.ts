@@ -130,6 +130,9 @@ test.describe("Message search and jump-to-message", () => {
     // Wait for results
     const result = page.getByText("seed-15", { exact: false }).first();
     await expect(result).toBeVisible({ timeout: 10_000 });
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get("q"))
+      .toBe("seed-15");
 
     // Click the search result to jump to it
     await result.click();
@@ -145,6 +148,24 @@ test.describe("Message search and jump-to-message", () => {
       .locator("[data-message-id]")
       .filter({ hasText: "seed-15" });
     await expect(messageContainer.first()).toBeVisible({ timeout: 10_000 });
+    await expect
+      .poll(() => new URL(page.url()).pathname)
+      .toBe(`/channel/${channelKey}`);
+    await expect
+      .poll(() => Number(new URL(page.url()).searchParams.get("message")))
+      .toBeGreaterThan(0);
+
+    await page.goBack();
+    await expect(searchInput).toHaveValue("seed-15");
+    expect(new URL(page.url()).pathname).toBe("/search");
+    expect(new URL(page.url()).searchParams.get("q")).toBe("seed-15");
+
+    await page.goForward();
+    await expect(messageContainer.first()).toBeVisible({ timeout: 10_000 });
+    expect(new URL(page.url()).pathname).toBe(`/channel/${channelKey}`);
+    expect(
+      Number(new URL(page.url()).searchParams.get("message")),
+    ).toBeGreaterThan(0);
   });
 
   test("search returns no results for nonsense query", async ({ page }) => {

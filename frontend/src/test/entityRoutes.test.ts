@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { getEntityPath, getEntityRoute, resolveEntityConversation } from '../routing/entityRoutes';
+import {
+  getEntityPath,
+  resolveEntityConversation,
+  validateEntitySearch,
+} from '../routing/entityRoutes';
 import type { Channel, Contact } from '../types';
 
 const channel: Channel = {
@@ -40,16 +44,13 @@ describe('entity pathname routing', () => {
     );
   });
 
-  it('parses stable channel and contact identities without display-name segments', () => {
-    expect(getEntityRoute(`/channel/${channel.key}`)).toEqual({
-      type: 'channel',
-      id: channel.key,
-    });
-    expect(getEntityRoute(`/contact/${contact.public_key}`)).toEqual({
-      type: 'contact',
-      id: contact.public_key,
-    });
-    expect(getEntityRoute(`/channel/${channel.key}/Display%20Name`)).toBeNull();
+  it('validates positive message anchors without preserving invalid URL state', () => {
+    expect(validateEntitySearch({ message: '42' })).toEqual({ message: 42 });
+    expect(validateEntitySearch({ message: 7 })).toEqual({ message: 7 });
+    expect(validateEntitySearch({ message: '0' })).toEqual({});
+    expect(validateEntitySearch({ message: '-1' })).toEqual({});
+    expect(validateEntitySearch({ message: '1.5' })).toEqual({});
+    expect(validateEntitySearch({ message: 'not-a-number' })).toEqual({});
   });
 
   it('resolves only exact stable identities', () => {
@@ -73,7 +74,7 @@ describe('entity pathname routing', () => {
 
   it('keeps canonical identity independent of a changed display name', () => {
     const renamed = { ...channel, name: 'Renamed Channel' };
-    const route = getEntityRoute(`/channel/${channel.key}`)!;
+    const route = { type: 'channel', id: channel.key } as const;
 
     expect(resolveEntityConversation(route, [renamed], [])).toMatchObject({
       id: channel.key,

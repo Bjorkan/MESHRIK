@@ -6,20 +6,23 @@ export interface EntityRoute {
   id: string;
 }
 
-export function getEntityPath(route: EntityRoute): string {
-  return `/${route.type}/${encodeURIComponent(route.id)}`;
+export interface EntitySearch {
+  message?: number;
 }
 
-export function getEntityRoute(pathname: string): EntityRoute | null {
-  const match = /^\/(channel|contact)\/([^/]+)$/.exec(pathname);
-  if (!match) return null;
+export function validateEntitySearch(search: Record<string, unknown>): EntitySearch {
+  const rawMessage = search.message;
+  const message =
+    typeof rawMessage === 'number'
+      ? rawMessage
+      : typeof rawMessage === 'string' && rawMessage.trim() !== ''
+        ? Number(rawMessage)
+        : Number.NaN;
+  return Number.isSafeInteger(message) && message > 0 ? { message } : {};
+}
 
-  try {
-    const id = decodeURIComponent(match[2]);
-    return id ? { type: match[1] as EntityRoute['type'], id } : null;
-  } catch {
-    return null;
-  }
+export function getEntityPath(route: EntityRoute): string {
+  return `/${route.type}/${encodeURIComponent(route.id)}`;
 }
 
 export function resolveEntityConversation(

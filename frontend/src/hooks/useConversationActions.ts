@@ -1,4 +1,4 @@
-import { useCallback, type MutableRefObject, type RefObject } from 'react';
+import { useCallback, type RefObject } from 'react';
 import { api } from '../api';
 import { toast } from '../components/ui/sonner';
 import type { MessageInputHandle } from '../components/MessageInput';
@@ -7,7 +7,6 @@ import { mergeContactIntoList } from '../utils/contactMerge';
 
 interface UseConversationActionsArgs {
   activeConversation: Conversation | null;
-  activeConversationRef: MutableRefObject<Conversation | null>;
   setContacts: React.Dispatch<React.SetStateAction<Contact[]>>;
   setChannels: React.Dispatch<React.SetStateAction<Channel[]>>;
   observeMessage: (msg: Message) => { added: boolean; activeConversation: boolean };
@@ -32,7 +31,6 @@ interface UseConversationActionsResult {
 
 export function useConversationActions({
   activeConversation,
-  activeConversationRef,
   setContacts,
   setChannels,
   observeMessage,
@@ -57,17 +55,14 @@ export function useConversationActions({
     async (text: string) => {
       if (!activeConversation) return;
 
-      const conversationId = activeConversation.id;
       const sent =
         activeConversation.type === 'channel'
           ? await api.sendChannelMessage(activeConversation.id, text)
           : await api.sendDirectMessage(activeConversation.id, text);
 
-      if (activeConversationRef.current?.id === conversationId) {
-        observeMessage(sent);
-      }
+      observeMessage(sent);
     },
-    [activeConversation, activeConversationRef, observeMessage]
+    [activeConversation, observeMessage]
   );
 
   const handleResendChannelMessage = useCallback(
@@ -75,12 +70,7 @@ export function useConversationActions({
       try {
         const resent = await api.resendChannelMessage(messageId, newTimestamp);
         const resentMessage = resent.message;
-        if (
-          newTimestamp &&
-          resentMessage &&
-          activeConversationRef.current?.type === 'channel' &&
-          activeConversationRef.current.id === resentMessage.conversation_key
-        ) {
+        if (newTimestamp && resentMessage) {
           observeMessage(resentMessage);
         }
         toast.success(newTimestamp ? 'Message resent with new timestamp' : 'Message resent');
@@ -90,7 +80,7 @@ export function useConversationActions({
         });
       }
     },
-    [activeConversationRef, observeMessage]
+    [observeMessage]
   );
 
   const handleSetChannelFloodScopeOverride = useCallback(

@@ -41,10 +41,8 @@ export interface SearchViewProps {
   visibilityVersion?: number;
   focusRequestVersion?: number;
   onNavigateToMessage: (target: SearchNavigateTarget) => void;
-  prefillRequest?: {
-    query: string;
-    nonce: number;
-  } | null;
+  searchQuery?: string;
+  onSearchQueryChange?: (query: string) => void;
 }
 
 function highlightMatch(text: string, query: string): React.ReactNode[] {
@@ -96,7 +94,8 @@ export function SearchView({
   visibilityVersion = 0,
   focusRequestVersion = 0,
   onNavigateToMessage,
-  prefillRequest = null,
+  searchQuery,
+  onSearchQueryChange,
 }: SearchViewProps) {
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
@@ -107,11 +106,18 @@ export function SearchView({
   const abortRef = useRef<AbortController | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
-  const highlightQuery = getHighlightQuery(debouncedQuery);
-  const queryDebouncer = useDebouncer((nextQuery: string) => setDebouncedQuery(nextQuery), {
-    key: 'message-search',
-    wait: DEBOUNCE_MS,
-  });
+  const committedQuery = searchQuery !== undefined ? searchQuery : debouncedQuery;
+  const highlightQuery = getHighlightQuery(committedQuery);
+  const queryDebouncer = useDebouncer(
+    (nextQuery: string) => {
+      if (onSearchQueryChange) onSearchQueryChange(nextQuery);
+      else setDebouncedQuery(nextQuery);
+    },
+    {
+      key: 'message-search',
+      wait: DEBOUNCE_MS,
+    }
+  );
   const virtualizer = useVirtualizer({
     count: results.length,
     getScrollElement: () => resultsRef.current,
@@ -127,25 +133,20 @@ export function SearchView({
     queryDebouncer.maybeExecute(query.trim());
   }, [query, queryDebouncer]);
 
+  useEffect(() => {
+    if (searchQuery === undefined) return;
+    queryDebouncer.cancel();
+    setQuery(searchQuery);
+    setDebouncedQuery(searchQuery);
+  }, [queryDebouncer, searchQuery]);
+
   // Reset results when query changes
   useEffect(() => {
     setResults([]);
     setOffset(0);
     setHasMore(false);
     virtualizer.scrollToOffset(0);
-  }, [debouncedQuery, visibilityVersion, virtualizer]);
-
-  useEffect(() => {
-    if (!prefillRequest) {
-      return;
-    }
-
-    const nextQuery = prefillRequest.query.trim();
-    queryDebouncer.cancel();
-    setQuery(nextQuery);
-    setDebouncedQuery(nextQuery);
-    inputRef.current?.focus();
-  }, [prefillRequest, queryDebouncer]);
+  }, [committedQuery, visibilityVersion, virtualizer]);
 
   useEffect(() => {
     return () => {
@@ -157,7 +158,7 @@ export function SearchView({
 
   // Fetch search results
   useEffect(() => {
-    if (!debouncedQuery) {
+    if (!committedQuery) {
       abortRef.current?.abort();
       abortRef.current = null;
       setLoading(false);
@@ -172,7 +173,7 @@ export function SearchView({
 
     setLoading(true);
     api
-      .getMessages({ q: debouncedQuery, limit: SEARCH_PAGE_SIZE, offset: 0 }, controller.signal)
+      .getMessages({ q: committedQuery, limit: SEARCH_PAGE_SIZE, offset: 0 }, controller.signal)
       .then((data) => {
         if (abortRef.current !== controller) return;
         setResults(data as SearchResult[]);
@@ -192,10 +193,10 @@ export function SearchView({
       });
 
     return () => controller.abort();
-  }, [debouncedQuery, visibilityVersion]);
+  }, [committedQuery, visibilityVersion]);
 
   const loadMore = useCallback(() => {
-    if (!debouncedQuery || loading) return;
+    if (!committedQuery || loading) return;
 
     abortRef.current?.abort();
     const controller = new AbortController();
@@ -203,7 +204,7 @@ export function SearchView({
 
     setLoading(true);
     api
-      .getMessages({ q: debouncedQuery, limit: SEARCH_PAGE_SIZE, offset }, controller.signal)
+      .getMessages({ q: committedQuery, limit: SEARCH_PAGE_SIZE, offset }, controller.signal)
       .then((data) => {
         if (abortRef.current !== controller) return;
         setResults((prev) => {
@@ -225,7 +226,7 @@ export function SearchView({
           setLoading(false);
         }
       });
-  }, [debouncedQuery, loading, offset]);
+  }, [committedQuery, loading, offset]);
 
   // Resolve conversation name from contacts/channels
   const getConversationName = useCallback(
@@ -283,7 +284,7 @@ export function SearchView({
 
       {/* Results */}
       <div ref={resultsRef} className="flex-1 overflow-y-auto [contain:layout_paint]">
-        {!debouncedQuery && (
+        {!committedQuery && (
           <div className="p-8 text-center text-muted-foreground text-sm">
             <p>Type to search across all messages</p>
             <p className="mt-2 text-xs">
@@ -298,9 +299,9 @@ export function SearchView({
           </div>
         )}
 
-        {debouncedQuery && results.length === 0 && !loading && (
+        {committedQuery && results.length === 0 && !loading && (
           <div className="p-8 text-center text-muted-foreground text-sm">
-            No messages found for &ldquo;{debouncedQuery}&rdquo;
+            No messages found for &ldquo;{committedQuery}&rdquo;
           </div>
         )}
 

@@ -1,27 +1,32 @@
-import { useCallback, useState, type Dispatch, type SetStateAction } from 'react';
+import { useCallback, useState } from 'react';
 
 import type { SearchNavigateTarget } from '../components/SearchView';
 import type { Channel, Conversation } from '../types';
 
 interface UseConversationNavigationArgs {
   channels: Channel[];
-  handleSelectConversation: (conv: Conversation) => void;
+  handleSelectConversation: (
+    conv: Conversation,
+    options?: { targetMessageId?: number | null }
+  ) => void;
+  routeTargetMessageId?: number | null;
+  onSetRouteTargetMessageId?: (messageId: number | null) => void;
+  onNavigateSearchQuery?: (query: string) => void;
 }
 
 interface UseConversationNavigationResult {
   targetMessageId: number | null;
-  setTargetMessageId: Dispatch<SetStateAction<number | null>>;
+  setTargetMessageId: (messageId: number | null) => void;
   infoPaneContactKey: string | null;
   infoPaneFromChannel: boolean;
   infoPaneChannelKey: string | null;
-  searchPrefillRequest: { query: string; nonce: number } | null;
   handleOpenContactInfo: (publicKey: string, fromChannel?: boolean) => void;
   handleCloseContactInfo: () => void;
   handleOpenChannelInfo: (channelKey: string) => void;
   handleCloseChannelInfo: () => void;
   handleSelectConversationWithTargetReset: (
     conv: Conversation,
-    options?: { preserveTarget?: boolean }
+    options?: { preserveTarget?: boolean; targetMessageId?: number | null }
   ) => void;
   handleNavigateToChannel: (channelKey: string) => void;
   handleNavigateToMessage: (target: SearchNavigateTarget) => void;
@@ -31,15 +36,26 @@ interface UseConversationNavigationResult {
 export function useConversationNavigation({
   channels,
   handleSelectConversation,
+  routeTargetMessageId,
+  onSetRouteTargetMessageId,
+  onNavigateSearchQuery,
 }: UseConversationNavigationArgs): UseConversationNavigationResult {
-  const [targetMessageId, setTargetMessageId] = useState<number | null>(null);
+  const [localTargetMessageId, setLocalTargetMessageId] = useState<number | null>(null);
+  const targetMessageId =
+    routeTargetMessageId !== undefined ? routeTargetMessageId : localTargetMessageId;
+  const setTargetMessageId = useCallback(
+    (messageId: number | null) => {
+      if (routeTargetMessageId !== undefined && onSetRouteTargetMessageId) {
+        onSetRouteTargetMessageId(messageId);
+        return;
+      }
+      setLocalTargetMessageId(messageId);
+    },
+    [onSetRouteTargetMessageId, routeTargetMessageId]
+  );
   const [infoPaneContactKey, setInfoPaneContactKey] = useState<string | null>(null);
   const [infoPaneFromChannel, setInfoPaneFromChannel] = useState(false);
   const [infoPaneChannelKey, setInfoPaneChannelKey] = useState<string | null>(null);
-  const [searchPrefillRequest, setSearchPrefillRequest] = useState<{
-    query: string;
-    nonce: number;
-  } | null>(null);
 
   const handleOpenContactInfo = useCallback((publicKey: string, fromChannel?: boolean) => {
     setInfoPaneContactKey(publicKey);
@@ -59,13 +75,27 @@ export function useConversationNavigation({
   }, []);
 
   const handleSelectConversationWithTargetReset = useCallback(
-    (conv: Conversation, options?: { preserveTarget?: boolean }) => {
-      if (conv.type !== 'search' && !options?.preserveTarget) {
-        setTargetMessageId(null);
+    (
+      conv: Conversation,
+      options?: { preserveTarget?: boolean; targetMessageId?: number | null }
+    ) => {
+      const resetsTarget = conv.type !== 'search' && !options?.preserveTarget;
+      if (resetsTarget && routeTargetMessageId === undefined) {
+        setLocalTargetMessageId(null);
       }
-      handleSelectConversation(conv);
+      const nextTarget =
+        options?.targetMessageId !== undefined
+          ? options.targetMessageId
+          : resetsTarget && routeTargetMessageId !== undefined
+            ? null
+            : undefined;
+      if (nextTarget !== undefined) {
+        handleSelectConversation(conv, { targetMessageId: nextTarget });
+      } else {
+        handleSelectConversation(conv);
+      }
     },
-    [handleSelectConversation]
+    [handleSelectConversation, routeTargetMessageId]
   );
 
   const handleNavigateToChannel = useCallback(
@@ -88,34 +118,34 @@ export function useConversationNavigation({
   const handleNavigateToMessage = useCallback(
     (target: SearchNavigateTarget) => {
       const convType = target.type === 'CHAN' ? 'channel' : 'contact';
-      setTargetMessageId(target.id);
+      if (routeTargetMessageId === undefined) setLocalTargetMessageId(target.id);
       handleSelectConversationWithTargetReset(
         {
           type: convType,
           id: target.conversation_key,
           name: target.conversation_name,
         },
-        { preserveTarget: true }
+        { preserveTarget: true, targetMessageId: target.id }
       );
     },
-    [handleSelectConversationWithTargetReset]
+    [handleSelectConversationWithTargetReset, routeTargetMessageId]
   );
 
   const handleOpenSearchWithQuery = useCallback(
     (query: string) => {
-      setTargetMessageId(null);
       setInfoPaneContactKey(null);
+      if (onNavigateSearchQuery) {
+        onNavigateSearchQuery(query);
+        return;
+      }
+      setLocalTargetMessageId(null);
       handleSelectConversationWithTargetReset({
         type: 'search',
         id: 'search',
         name: 'Message Search',
       });
-      setSearchPrefillRequest((prev) => ({
-        query,
-        nonce: (prev?.nonce ?? 0) + 1,
-      }));
     },
-    [handleSelectConversationWithTargetReset]
+    [handleSelectConversationWithTargetReset, onNavigateSearchQuery]
   );
 
   return {
@@ -124,7 +154,6 @@ export function useConversationNavigation({
     infoPaneContactKey,
     infoPaneFromChannel,
     infoPaneChannelKey,
-    searchPrefillRequest,
     handleOpenContactInfo,
     handleCloseContactInfo,
     handleOpenChannelInfo,

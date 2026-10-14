@@ -99,7 +99,14 @@ interface AppProps {
   routeConversation?: Conversation | null;
   routeEntity?: EntityRoute | null;
   routeIsRoot?: boolean;
-  onNavigateConversation?: (conversation: Conversation, options?: { replace?: boolean }) => void;
+  onNavigateConversation?: (
+    conversation: Conversation,
+    options?: { replace?: boolean; targetMessageId?: number | null }
+  ) => void;
+  routeTargetMessageId?: number | null;
+  onSetRouteTargetMessageId?: (messageId: number | null) => void;
+  routeSearchQuery?: string;
+  onNavigateSearchQuery?: (query: string) => void;
   routeSettingsSection?: SettingsSection | null;
   onNavigateSettings?: (section: SettingsSection) => void;
   onCloseSettingsRoute?: () => void;
@@ -125,6 +132,10 @@ function AppContent({
   routeEntity,
   routeIsRoot,
   onNavigateConversation,
+  routeTargetMessageId,
+  onSetRouteTargetMessageId,
+  routeSearchQuery,
+  onNavigateSearchQuery,
   routeSettingsSection,
   onNavigateSettings,
   onCloseSettingsRoute,
@@ -349,24 +360,20 @@ function AppContent({
   );
 
   // useConversationRouter is called second — it receives channels/contacts as inputs
-  const {
-    activeConversation,
-    setActiveConversation,
-    activeConversationRef,
-    handleSelectConversation,
-  } = useConversationRouter({
-    channels,
-    channelsLoaded,
-    contacts,
-    contactsLoaded,
-    setSidebarOpen,
-    pendingDeleteFallbackRef,
-    hasSetDefaultConversation,
-    routeConversation: effectiveRouteConversation,
-    routeEntity,
-    routeIsRoot,
-    onNavigateConversation,
-  });
+  const { activeConversation, setActiveConversation, handleSelectConversation } =
+    useConversationRouter({
+      channels,
+      channelsLoaded,
+      contacts,
+      contactsLoaded,
+      setSidebarOpen,
+      pendingDeleteFallbackRef,
+      hasSetDefaultConversation,
+      routeConversation: effectiveRouteConversation,
+      routeEntity,
+      routeIsRoot,
+      onNavigateConversation,
+    });
 
   // One Query snapshot cache and the existing single WebSocket connection.
   const radioJobFeed = useRadioJobFeed(activeConversation?.type === 'radio-activity');
@@ -380,7 +387,6 @@ function AppContent({
     infoPaneContactKey,
     infoPaneFromChannel,
     infoPaneChannelKey,
-    searchPrefillRequest,
     handleOpenContactInfo,
     handleCloseContactInfo,
     handleOpenChannelInfo,
@@ -392,6 +398,9 @@ function AppContent({
   } = useConversationNavigation({
     channels,
     handleSelectConversation,
+    routeTargetMessageId,
+    onSetRouteTargetMessageId,
+    onNavigateSearchQuery,
   });
 
   // Custom hooks for conversation-specific functionality
@@ -502,7 +511,7 @@ function AppContent({
     blockedKeysRef,
     blockedNamesRef,
     channelsRef,
-    activeConversationRef,
+    activeConversation,
     observeMessage,
     recordMessageEvent,
     renameConversationState,
@@ -547,7 +556,6 @@ function AppContent({
     handlePathDiscovery,
   } = useConversationActions({
     activeConversation,
-    activeConversationRef,
     setContacts,
     setChannels,
     observeMessage,
@@ -696,9 +704,13 @@ function AppContent({
     onChannelReferenceClick: handleChannelReferenceClick,
     onLoadOlder: fetchOlderMessages,
     onResendChannelMessage: handleResendChannelMessage,
-    onTargetReached: () => setTargetMessageId(null),
+    onTargetReached:
+      routeTargetMessageId === undefined ? () => setTargetMessageId(null) : undefined,
     onLoadNewer: fetchNewerMessages,
-    onJumpToBottom: jumpToBottom,
+    onJumpToBottom: () => {
+      jumpToBottom();
+      setTargetMessageId(null);
+    },
     onSendMessage: handleSendMessage,
     onDismissUnreadMarker: () => setChannelUnreadMarker(null),
     notificationsSupported,
@@ -757,7 +769,8 @@ function AppContent({
     channels,
     visibilityVersion,
     onNavigateToMessage: handleNavigateToMessage,
-    prefillRequest: searchPrefillRequest,
+    searchQuery: routeSearchQuery,
+    onSearchQueryChange: onNavigateSearchQuery,
   };
   const settingsProps = {
     config,

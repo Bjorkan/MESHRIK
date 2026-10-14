@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react';
+import { useCallback, useEffect, useMemo, type MutableRefObject } from 'react';
 
 import {
   getLastViewedConversation,
@@ -28,7 +28,10 @@ interface UseConversationRouterArgs {
   routeConversation?: Conversation | null;
   routeEntity?: EntityRoute | null;
   routeIsRoot?: boolean;
-  onNavigateConversation?: (conversation: Conversation, options?: { replace?: boolean }) => void;
+  onNavigateConversation?: (
+    conversation: Conversation,
+    options?: { replace?: boolean; targetMessageId?: number | null }
+  ) => void;
 }
 
 export function useConversationRouter({
@@ -44,7 +47,6 @@ export function useConversationRouter({
   routeIsRoot,
   onNavigateConversation,
 }: UseConversationRouterArgs) {
-  const [standaloneConversation, setStandaloneConversation] = useState<Conversation | null>(null);
   const rootConversation = useMemo(() => {
     if (routeEntity || routeConversation || routeIsRoot === false) return null;
 
@@ -96,23 +98,18 @@ export function useConversationRouter({
     routeEntity,
     routeIsRoot,
   ]);
-  const activeConversation =
-    routeConversation ?? (routeEntity ? null : (standaloneConversation ?? rootConversation));
-  const activeConversationRef = useRef<Conversation | null>(activeConversation);
+  const activeConversation = routeConversation ?? (routeEntity ? null : rootConversation);
 
   const setActiveConversation = useCallback(
-    (conversation: Conversation | null, options?: { replace?: boolean }) => {
+    (
+      conversation: Conversation | null,
+      options?: { replace?: boolean; targetMessageId?: number | null }
+    ) => {
       const target = conversation ?? resolvePublicFromChannels(channels);
       if (!target) return;
       if (onNavigateConversation) {
         onNavigateConversation(target, options);
-        return;
       }
-
-      // App is also rendered directly by component tests and embedders. In that
-      // standalone mode there is no Router callback to own navigation, so retain
-      // the selected conversation locally.
-      setStandaloneConversation(target);
     },
     [channels, onNavigateConversation]
   );
@@ -126,7 +123,6 @@ export function useConversationRouter({
   }, [hasSetDefaultConversation, onNavigateConversation, rootConversation, routeIsRoot]);
 
   useEffect(() => {
-    activeConversationRef.current = activeConversation;
     if (activeConversation && activeConversation.type !== 'search') {
       saveLastViewedConversation(activeConversation);
     }
@@ -135,8 +131,11 @@ export function useConversationRouter({
   pendingDeleteFallbackRef.current = false;
 
   const handleSelectConversation = useCallback(
-    (conversation: Conversation) => {
-      setActiveConversation(conversation);
+    (
+      conversation: Conversation,
+      options?: { replace?: boolean; targetMessageId?: number | null }
+    ) => {
+      setActiveConversation(conversation, options);
       setSidebarOpen(false);
     },
     [setActiveConversation, setSidebarOpen]
@@ -145,7 +144,6 @@ export function useConversationRouter({
   return {
     activeConversation,
     setActiveConversation,
-    activeConversationRef,
     handleSelectConversation,
   };
 }

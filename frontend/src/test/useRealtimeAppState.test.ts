@@ -85,7 +85,7 @@ function createRealtimeArgs(overrides: Partial<Parameters<typeof useRealtimeAppS
       blockedKeysRef: { current: [] as string[] },
       channelsRef: { current: [publicChannel] },
       blockedNamesRef: { current: [] as string[] },
-      activeConversationRef: { current: null as Conversation | null },
+      activeConversation: null as Conversation | null,
       observeMessage: vi.fn(() => ({ added: false, activeConversation: false })),
       recordMessageEvent: vi.fn(),
       renameConversationState: vi.fn(),
@@ -202,15 +202,13 @@ describe('useRealtimeAppState', () => {
 
   it('deleting the active contact clears it and marks fallback recovery pending', () => {
     const pendingDeleteFallbackRef = { current: false };
-    const activeConversationRef = {
-      current: {
-        type: 'contact',
-        id: incomingDm.conversation_key,
-        name: 'Alice',
-      } satisfies Conversation,
-    };
+    const activeConversation = {
+      type: 'contact',
+      id: incomingDm.conversation_key,
+      name: 'Alice',
+    } satisfies Conversation;
     const { args, fns } = createRealtimeArgs({
-      activeConversationRef,
+      activeConversation,
       pendingDeleteFallbackRef,
     });
 
@@ -246,15 +244,13 @@ describe('useRealtimeAppState', () => {
       last_read_at: null,
       first_seen: 1700000000,
     };
-    const activeConversationRef = {
-      current: {
-        type: 'contact',
-        id: previousPublicKey,
-        name: 'abc123def456',
-      } satisfies Conversation,
-    };
+    const activeConversation = {
+      type: 'contact',
+      id: previousPublicKey,
+      name: 'abc123def456',
+    } satisfies Conversation;
     const { args, fns } = createRealtimeArgs({
-      activeConversationRef,
+      activeConversation,
     });
 
     const { result } = renderHook(() => useRealtimeAppState(args));

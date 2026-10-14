@@ -1,35 +1,24 @@
 import { describe, expect, it } from 'vitest';
 
-import { getToolConversation, validateMapSearch } from '../routing/toolRoutes';
+import { validateMapSearch, validateMessageSearch } from '../routing/toolRoutes';
 
-describe('tool pathname routing', () => {
-  it.each([
-    ['/raw', 'raw'],
-    ['/map', 'map'],
-    ['/visualizer', 'visualizer'],
-    ['/search', 'search'],
-    ['/trace', 'trace'],
-    ['/radio-activity', 'radio-activity'],
-  ] as const)('derives the %s view from the pathname', (pathname, type) => {
-    expect(getToolConversation(pathname, {})).toMatchObject({ type });
-  });
-
+describe('tool route search validation', () => {
   it('passes a validated map focus to the map conversation', () => {
-    expect(getToolConversation('/map', { focus: '  ABCD1234  ' })).toMatchObject({
-      type: 'map',
-      mapFocusKey: 'ABCD1234',
-    });
+    expect(validateMapSearch({ focus: '  ABCD1234  ' })).toEqual({ focus: 'ABCD1234' });
   });
 
   it.each([{ focus: '' }, { focus: '   ' }, { focus: 42 }, { focus: null }])(
     'drops invalid or empty map focus: $focus',
     (search) => {
       expect(validateMapSearch(search)).toEqual({});
-      expect(getToolConversation('/map', search)).not.toHaveProperty('mapFocusKey');
     }
   );
 
-  it('does not invent a tool conversation for an unrelated path', () => {
-    expect(getToolConversation('/channel/example', {})).toBeNull();
+  it('normalizes bookmarkable message search queries', () => {
+    expect(validateMessageSearch({ q: '  user:Alice hello  ' })).toEqual({
+      q: 'user:Alice hello',
+    });
+    expect(validateMessageSearch({ q: '   ' })).toEqual({});
+    expect(validateMessageSearch({ q: 42 })).toEqual({});
   });
 });

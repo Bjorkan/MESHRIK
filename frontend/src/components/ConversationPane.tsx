@@ -90,7 +90,7 @@ interface ConversationPaneProps {
   onChannelReferenceClick?: (channelName: string) => void;
   onLoadOlder: () => Promise<void>;
   onResendChannelMessage: (messageId: number, newTimestamp?: boolean) => Promise<void>;
-  onTargetReached: () => void;
+  onTargetReached?: () => void;
   onLoadNewer: () => Promise<void>;
   onJumpToBottom: () => void;
   onDismissUnreadMarker: () => void;

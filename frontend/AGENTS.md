@@ -479,9 +479,10 @@ MessageInput Enter-to-send/IME handling and for Enter/Space activation of custom
 
 TanStack Router owns application navigation. Canonical routes are:
 
-- tools: `/raw`, `/map`, `/map?focus={publicKey}`, `/visualizer`, `/search`, `/trace`, `/radio-activity`
+- tools: `/raw`, `/map`, `/map?focus={publicKey}`, `/visualizer`, `/search?q={query}`, `/trace`, `/radio-activity`
 - settings: `/settings/{section}`, where `{section}` is `radio`, `local`, `radio-app`, `fanout`, `database`, `statistics`, or `about`
-- entities: `/channel/{channelKey}` and `/contact/{publicKey}`
+- entities: `/channel/{channelKey}` and `/contact/{publicKey}`, optionally with a validated
+  `?message={positiveMessageId}` jump anchor
 
 Entity routes use stable IDs only; display names are presentation data and never part of route identity. Internal React navigation uses typed `Link`/`navigate` calls. Notification and other non-React entry points emit the same root-relative pathnames. Root `/` is the supported deployment base; old application hash routes are intentionally unsupported.
 
@@ -596,9 +597,14 @@ For room contacts (`type=3`), `ConversationPane.tsx` keeps the normal chat surfa
 
 The `SearchView` component (`components/SearchView.tsx`) provides full-text search across all DMs and channel messages. Key behaviors:
 
-- **State**: `targetMessageId` is shared between `useConversationNavigation` and `useConversationMessages`. When a search result is clicked, `handleNavigateToMessage` sets the target ID and switches to the target conversation.
+- **State**: the Router owns the trimmed `q` search parameter and positive `message` jump anchor.
+  `useConversationMessages` consumes the active route's anchor; clicking a result performs one typed
+  navigation to the target entity plus anchor rather than updating a parallel selected-conversation
+  controller.
 - **Same-conversation clear**: when `targetMessageId` is cleared after the target is reached, the hook preserves the around-loaded mid-history view instead of replacing it with the latest page.
-- **Persistence**: `SearchView` stays mounted after first open using the same `hidden` class pattern as `CrackerPanel`, preserving search state when navigating to results.
+- **Persistence**: browser back/forward restores the URL-owned query and message anchor. `SearchView`
+  stays mounted after first open using the same `hidden` class pattern as `CrackerPanel`, while its
+  text field is synchronized from Router state.
 - **Jump-to-message**: `useConversationMessages` handles optional `targetMessageId` by calling `api.getMessagesAround()` instead of the normal latest-page fetch, loading context around the target message. `MessageList` resolves the target to an index and calls `virtualizer.scrollToIndex(...)`, then applies a `message-highlight` CSS animation. A pending target suppresses the bottom-pin (see Virtualization below), since the around-load clears the list first and would otherwise be yanked to the newest message.
 - **Bidirectional pagination**: After jumping mid-history, `hasNewerMessages` enables forward pagination via `fetchNewerMessages`. The scroll-to-bottom button calls `jumpToBottom` (re-fetches latest page) instead of just scrolling.
 - **WS message suppression**: When `hasNewerMessages` is true, incoming WS messages for the active conversation are not added to the message list (the user is viewing historical context, not the latest page).

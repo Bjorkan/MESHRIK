@@ -127,6 +127,44 @@ describe('SearchView', () => {
     );
   });
 
+  it('uses route search as the committed query and navigates on debounced edits', async () => {
+    mockGetMessages.mockResolvedValue([]);
+    const onSearchQueryChange = vi.fn();
+    const { rerender } = render(
+      <SearchView
+        {...defaultProps}
+        searchQuery="user:Alice"
+        onSearchQueryChange={onSearchQueryChange}
+      />
+    );
+
+    await act(async () => await Promise.resolve());
+    expect(screen.getByLabelText('Search messages')).toHaveValue('user:Alice');
+    expect(mockGetMessages).toHaveBeenCalledWith(
+      expect.objectContaining({ q: 'user:Alice' }),
+      expect.any(AbortSignal)
+    );
+
+    vi.useFakeTimers();
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Search messages'), {
+        target: { value: 'channel:Public status' },
+      });
+      vi.advanceTimersByTime(350);
+    });
+    expect(onSearchQueryChange).toHaveBeenCalledWith('channel:Public status');
+    vi.useRealTimers();
+
+    rerender(
+      <SearchView
+        {...defaultProps}
+        searchQuery="restored by Back"
+        onSearchQueryChange={onSearchQueryChange}
+      />
+    );
+    expect(screen.getByLabelText('Search messages')).toHaveValue('restored by Back');
+  });
+
   it('keeps loading visible when an older aborted search settles', async () => {
     const first = deferred<Message[]>();
     const second = deferred<Message[]>();
@@ -322,24 +360,6 @@ describe('SearchView', () => {
     );
     expect(screen.getByText('hello', { selector: 'mark' })).toBeInTheDocument();
     expect(screen.queryByText('user:Alice', { selector: 'mark' })).not.toBeInTheDocument();
-  });
-
-  it('runs a prefilled search immediately', async () => {
-    mockGetMessages.mockResolvedValue([createSearchResult({ text: 'prefilled result' })]);
-
-    render(
-      <SearchView {...defaultProps} prefillRequest={{ query: 'user:"Alice Smith"', nonce: 1 }} />
-    );
-
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    });
-
-    expect(screen.getByLabelText('Search messages')).toHaveValue('user:"Alice Smith"');
-    expect(mockGetMessages).toHaveBeenCalledWith(
-      expect.objectContaining({ q: 'user:"Alice Smith"' }),
-      expect.any(AbortSignal)
-    );
   });
 
   it('refetches current results when visibility policy changes', async () => {

@@ -58,11 +58,35 @@ describe('useConversationNavigation', () => {
     });
 
     expect(result.current.targetMessageId).toBe(321);
-    expect(args.handleSelectConversation).toHaveBeenCalledWith({
-      type: 'channel',
-      id: publicChannel.key,
-      name: publicChannel.name,
+    expect(args.handleSelectConversation).toHaveBeenCalledWith(
+      {
+        type: 'channel',
+        id: publicChannel.key,
+        name: publicChannel.name,
+      },
+      { targetMessageId: 321 }
+    );
+  });
+
+  it('delegates message anchors and search queries to the route owner', () => {
+    const onSetRouteTargetMessageId = vi.fn();
+    const onNavigateSearchQuery = vi.fn();
+    const args = createArgs({
+      routeTargetMessageId: null,
+      onSetRouteTargetMessageId,
+      onNavigateSearchQuery,
     });
+    const { result } = renderHook(() => useConversationNavigation(args));
+
+    act(() => {
+      result.current.setTargetMessageId(42);
+      result.current.handleOpenSearchWithQuery('user:Alice');
+    });
+
+    expect(onSetRouteTargetMessageId).toHaveBeenNthCalledWith(1, 42);
+    expect(onSetRouteTargetMessageId).toHaveBeenCalledTimes(1);
+    expect(onNavigateSearchQuery).toHaveBeenCalledWith('user:Alice');
+    expect(args.handleSelectConversation).not.toHaveBeenCalled();
   });
 
   it('closes the contact info pane when navigating to a channel', () => {

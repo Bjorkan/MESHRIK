@@ -1,9 +1,13 @@
 import { StrictMode } from 'react';
 import { render, screen } from '@testing-library/react';
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { api } from '../api';
+import { createAppQueryClient } from '../queryClient';
 import { createAppRouter } from '../router';
+
+afterEach(() => vi.restoreAllMocks());
 
 describe('application router', () => {
   it('matches the application index at the root pathname', async () => {
@@ -110,6 +114,73 @@ describe('application router', () => {
     router.history.forward();
     await router.load();
     expect(router.state.location.pathname).toBe('/contact/contact-b');
+  });
+
+  it('reuses fresh Query data after channel and contact intent preloads', async () => {
+    const getChannels = vi.spyOn(api, 'getChannels').mockResolvedValue([]);
+    const getContacts = vi.spyOn(api, 'getContacts').mockResolvedValue([]);
+    const reconnectRadio = vi.spyOn(api, 'reconnectRadio');
+    const requestRadioTrace = vi.spyOn(api, 'requestRadioTrace');
+    const router = createAppRouter(
+      createMemoryHistory({ initialEntries: ['/raw'] }),
+      createAppQueryClient()
+    );
+    await router.load();
+
+    await router.preloadRoute({
+      to: '/channel/$channelId',
+      params: { channelId: 'channel-a' },
+      search: {},
+    });
+    expect(getChannels).toHaveBeenCalledTimes(1);
+    await router.navigate({
+      to: '/channel/$channelId',
+      params: { channelId: 'channel-a' },
+      search: {},
+    });
+    expect(getChannels).toHaveBeenCalledTimes(1);
+
+    await router.navigate({ to: '/raw' });
+    await router.preloadRoute({
+      to: '/contact/$publicKey',
+      params: { publicKey: 'contact-b' },
+      search: {},
+    });
+    expect(getContacts).toHaveBeenCalledTimes(1);
+    await router.navigate({
+      to: '/contact/$publicKey',
+      params: { publicKey: 'contact-b' },
+      search: {},
+    });
+    expect(getContacts).toHaveBeenCalledTimes(1);
+    expect(reconnectRadio).not.toHaveBeenCalled();
+    expect(requestRadioTrace).not.toHaveBeenCalled();
+  });
+
+  it('restores typed search queries and message anchors through browser history', async () => {
+    vi.spyOn(api, 'getChannels').mockResolvedValue([]);
+    const router = createAppRouter(
+      createMemoryHistory({ initialEntries: ['/search?q=user%3AAlice%20hello'] })
+    );
+    await router.load();
+    expect(router.state.location.search).toEqual({ q: 'user:Alice hello' });
+
+    await router.navigate({
+      to: '/channel/$channelId',
+      params: { channelId: 'channel-a' },
+      search: { message: 321 },
+    });
+    expect(router.state.location.search).toEqual({ message: 321 });
+
+    router.history.back();
+    await router.load();
+    expect(router.state.location.pathname).toBe('/search');
+    expect(router.state.location.search).toEqual({ q: 'user:Alice hello' });
+
+    router.history.forward();
+    await router.load();
+    expect(router.state.location.pathname).toBe('/channel/channel-a');
+    expect(router.state.location.search).toEqual({ message: 321 });
   });
 
   it('preserves validated map focus on a direct route load', async () => {

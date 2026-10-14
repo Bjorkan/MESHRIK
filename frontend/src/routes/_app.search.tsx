@@ -1,3 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 
-export const Route = createFileRoute('/_app/search')({});
+import { validateMessageSearch } from '../routing/toolRoutes';
+
+export const Route = createFileRoute('/_app/search')({
+  validateSearch: (search) => validateMessageSearch(search),
+});

@@ -134,7 +134,7 @@ vi.mock('../components/NewMessageModal', () => ({
 vi.mock('../components/SearchView', () => ({
   SearchView: ({
     onNavigateToMessage,
-    prefillRequest,
+    searchQuery,
   }: {
     onNavigateToMessage: (target: {
       id: number;
@@ -142,10 +142,10 @@ vi.mock('../components/SearchView', () => ({
       conversation_key: string;
       conversation_name: string;
     }) => void;
-    prefillRequest?: { query: string; nonce: number } | null;
+    searchQuery?: string;
   }) => (
     <div>
-      <div data-testid="search-prefill">{prefillRequest?.query ?? ''}</div>
+      <div data-testid="search-prefill">{searchQuery ?? ''}</div>
       <button
         type="button"
         onClick={() =>
@@ -204,6 +204,36 @@ vi.mock('../components/ui/sonner', () => ({
 }));
 
 import { App } from '../App';
+import type { Conversation } from '../types';
+
+function RouterOwnedApp() {
+  const [conversation, setConversation] = React.useState<Conversation>({
+    type: 'channel',
+    id: PUBLIC_CHANNEL_KEY,
+    name: 'Public',
+  });
+  const [targetMessageId, setTargetMessageId] = React.useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = React.useState('');
+
+  return (
+    <App
+      routeConversation={conversation}
+      routeIsRoot={false}
+      routeTargetMessageId={targetMessageId}
+      routeSearchQuery={searchQuery}
+      onSetRouteTargetMessageId={setTargetMessageId}
+      onNavigateConversation={(next, options) => {
+        setConversation(next);
+        setTargetMessageId(options?.targetMessageId ?? null);
+      }}
+      onNavigateSearchQuery={(query) => {
+        setSearchQuery(query);
+        setTargetMessageId(null);
+        setConversation({ type: 'search', id: 'search', name: 'Message Search' });
+      }}
+    />
+  );
+}
 
 describe('App search jump target handling', () => {
   beforeEach(() => {
@@ -244,7 +274,7 @@ describe('App search jump target handling', () => {
 
   it('clears jump target when user selects a non-search conversation', async () => {
     await act(async () => {
-      render(<App />);
+      render(<RouterOwnedApp />);
     });
 
     await waitFor(() => {
@@ -277,7 +307,7 @@ describe('App search jump target handling', () => {
 
   it('opens search with a prefilled query from the contact pane', async () => {
     await act(async () => {
-      render(<App />);
+      render(<RouterOwnedApp />);
     });
 
     // ChatHeader (and its "Open Contact Info" button) only renders once a

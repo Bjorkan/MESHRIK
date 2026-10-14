@@ -35,7 +35,7 @@ interface UseRealtimeAppStateArgs {
   blockedKeysRef: MutableRefObject<string[]>;
   blockedNamesRef: MutableRefObject<string[]>;
   channelsRef: MutableRefObject<Channel[]>;
-  activeConversationRef: MutableRefObject<Conversation | null>;
+  activeConversation: Conversation | null;
   observeMessage: (msg: Message) => { added: boolean; activeConversation: boolean };
   recordMessageEvent: (args: {
     msg: Message;
@@ -95,7 +95,7 @@ export function useRealtimeAppState({
   blockedKeysRef,
   blockedNamesRef,
   channelsRef,
-  activeConversationRef,
+  activeConversation,
   observeMessage,
   recordMessageEvent,
   renameConversationState,
@@ -227,8 +227,7 @@ export function useRealtimeAppState({
           getStateKey('contact', contact.public_key)
         );
 
-        const active = activeConversationRef.current;
-        if (active?.type === 'contact' && active.id === previousPublicKey) {
+        if (activeConversation?.type === 'contact' && activeConversation.id === previousPublicKey) {
           setActiveConversation({
             type: 'contact',
             id: contact.public_key,
@@ -243,8 +242,7 @@ export function useRealtimeAppState({
         setContacts((prev) => prev.filter((c) => c.public_key !== publicKey));
         removeConversationMessages(publicKey);
         removeConversationState(getStateKey('contact', publicKey));
-        const active = activeConversationRef.current;
-        if (active?.type === 'contact' && active.id === publicKey) {
+        if (activeConversation?.type === 'contact' && activeConversation.id === publicKey) {
           pendingDeleteFallbackRef.current = true;
           setActiveConversation(null);
         }
@@ -253,8 +251,7 @@ export function useRealtimeAppState({
         setChannels((prev) => prev.filter((c) => c.key !== key));
         removeConversationMessages(key);
         removeConversationState(getStateKey('channel', key));
-        const active = activeConversationRef.current;
-        if (active?.type === 'channel' && active.id === key) {
+        if (activeConversation?.type === 'channel' && activeConversation.id === key) {
           pendingDeleteFallbackRef.current = true;
           setActiveConversation(null);
         }
@@ -273,7 +270,7 @@ export function useRealtimeAppState({
       },
     }),
     [
-      activeConversationRef,
+      activeConversation,
       blockedKeysRef,
       blockedNamesRef,
       channelsRef,
