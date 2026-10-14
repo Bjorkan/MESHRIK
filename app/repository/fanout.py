@@ -29,8 +29,23 @@ def _row_to_dict(row: Any) -> dict[str, Any]:
         "sort_order": row["sort_order"] or 0,
         "created_at": row["created_at"] or 0,
     }
+    if result["type"] == "mqtt_community":
+        from app.fanout.secret_storage import decrypt_token
+
+        token = result["config"].get("token")
+        if isinstance(token, str):
+            result["config"]["token"] = decrypt_token(token)
     _configs_cache[result["id"]] = result
     return result
+
+
+def _encode_config(config_type: str, config: dict) -> str:
+    value = dict(config)
+    if config_type == "mqtt_community" and isinstance(value.get("token"), str):
+        from app.fanout.secret_storage import encrypt_token
+
+        value["token"] = encrypt_token(value["token"])
+    return json.dumps(value)
 
 
 async def _get_in_conn(conn: aiosqlite.Connection, config_id: str) -> dict[str, Any] | None:
@@ -97,7 +112,7 @@ class FanoutConfigRepository:
                     config_type,
                     name,
                     1 if enabled else 0,
-                    json.dumps(config),
+                    _encode_config(config_type, config),
                     json.dumps(scope),
                     sort_order,
                     now,
@@ -120,7 +135,10 @@ class FanoutConfigRepository:
                 value = fields[field]
                 if field == "enabled":
                     value = 1 if value else 0
-                elif field in ("config", "scope"):
+                elif field == "config":
+                    existing = await FanoutConfigRepository.get(config_id)
+                    value = _encode_config(existing["type"] if existing else "", value)
+                elif field == "scope":
                     value = json.dumps(value)
                 updates.append(f"{field} = ?")
                 params.append(value)

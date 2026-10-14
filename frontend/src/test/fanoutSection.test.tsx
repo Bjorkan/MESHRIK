@@ -974,7 +974,7 @@ describe('SettingsFanoutSection', () => {
     expect(screen.queryByText('Region: LAX')).not.toBeInTheDocument();
   });
 
-  it('MeshRank preset pre-fills the broker settings and asks for the topic template', async () => {
+  it('MeshRank preset pre-fills the broker settings and shows the token field', async () => {
     renderSection();
     await openCreateIntegrationDialog();
     selectCreateIntegration('MeshRank');
@@ -983,7 +983,7 @@ describe('SettingsFanoutSection', () => {
     await waitFor(() => expect(screen.getByText('← Back to list')).toBeInTheDocument());
 
     expect(screen.getByLabelText('Name')).toHaveValue('MeshRank');
-    expect(screen.getByLabelText('Packet Topic Template')).toHaveValue('');
+    expect(screen.getByLabelText('MeshRank uplink token')).toBeInTheDocument();
     expect(screen.queryByLabelText('Broker Host')).not.toBeInTheDocument();
   });
 
@@ -1053,6 +1053,8 @@ describe('SettingsFanoutSection', () => {
       name: 'MeshRank',
       enabled: true,
       config: {
+        profile: 'meshrank',
+        token: 'B435F6D5F7896B74C6B995FE221C2C1F',
         broker_host: 'meshrank.net',
         broker_port: 8883,
         transport: 'tcp',
@@ -1061,10 +1063,10 @@ describe('SettingsFanoutSection', () => {
         auth_mode: 'none',
         username: '',
         password: '',
-        iata: 'XYZ',
+        iata: '',
         email: '',
         token_audience: '',
-        topic_template: 'meshrank/uplink/B435F6D5F7896B74C6B995FE221C2C1F/{PUBLIC_KEY}/packets',
+        topic_template: '',
       },
       scope: { messages: 'none', raw_packets: 'all' },
       sort_order: 0,
@@ -1079,35 +1081,18 @@ describe('SettingsFanoutSection', () => {
     confirmCreateIntegration();
     await waitFor(() => expect(screen.getByText('← Back to list')).toBeInTheDocument());
 
-    fireEvent.change(screen.getByLabelText('Packet Topic Template'), {
+    fireEvent.change(screen.getByLabelText('MeshRank uplink token'), {
       target: {
-        value: 'meshrank/uplink/B435F6D5F7896B74C6B995FE221C2C1F/{PUBLIC_KEY}/packets',
+        value: 'B435F6D5F7896B74C6B995FE221C2C1F',
       },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Save as Enabled' }));
 
-    await waitFor(() =>
-      expect(mockedApi.createFanoutConfig).toHaveBeenCalledWith({
-        type: 'mqtt_community',
-        name: 'MeshRank',
-        config: {
-          broker_host: 'meshrank.net',
-          broker_port: 8883,
-          transport: 'tcp',
-          use_tls: true,
-          tls_verify: true,
-          auth_mode: 'none',
-          username: '',
-          password: '',
-          iata: 'XYZ',
-          email: '',
-          token_audience: '',
-          topic_template: 'meshrank/uplink/B435F6D5F7896B74C6B995FE221C2C1F/{PUBLIC_KEY}/packets',
-        },
-        scope: { messages: 'none', raw_packets: 'all' },
-        enabled: true,
-      })
-    );
+    await waitFor(() => expect(mockedApi.createFanoutConfig).toHaveBeenCalled());
+    const callArgs = mockedApi.createFanoutConfig.mock.calls[0][0];
+    expect(callArgs.type).toBe('mqtt_community');
+    expect(callArgs.config?.profile).toBe('meshrank');
+    expect(callArgs.config?.token).toBe('B435F6D5F7896B74C6B995FE221C2C1F');
   });
 
   it('shows Home Assistant topic summary with device-key-derived node ids', async () => {

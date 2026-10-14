@@ -57,7 +57,6 @@ const DEFAULT_MESHRANK_BROKER_PORT = 8883;
 const DEFAULT_MESHRANK_TRANSPORT = 'tcp';
 const DEFAULT_MESHRANK_AUTH_MODE = 'none';
 const EMPTY_TRACKED_KEYS: string[] = [];
-const DEFAULT_MESHRANK_IATA = 'XYZ';
 
 function createCommunityConfigDefaults(
   overrides: Partial<Record<string, unknown>> = {}
@@ -228,7 +227,7 @@ const CREATE_INTEGRATION_DEFINITIONS: readonly CreateIntegrationDefinition[] = [
     label: 'MeshRank',
     section: 'Community Sharing',
     description:
-      'A community MQTT config preconfigured for MeshRank, requiring only the provided topic from your MeshRank configuration. A subset of the primary Community MQTT/meshcoretomqtt configuration; you are free to edit all configuration after creation.',
+      'A community MQTT config preconfigured for MeshRank, requiring only your MeshRank uplink token. A subset of the primary Community MQTT/meshcoretomqtt configuration; you are free to edit all configuration after creation.',
     defaultName: 'MeshRank',
     nameMode: 'fixed',
     defaults: {
@@ -237,7 +236,9 @@ const CREATE_INTEGRATION_DEFINITIONS: readonly CreateIntegrationDefinition[] = [
         broker_port: DEFAULT_MESHRANK_BROKER_PORT,
         transport: DEFAULT_MESHRANK_TRANSPORT,
         auth_mode: DEFAULT_MESHRANK_AUTH_MODE,
-        iata: DEFAULT_MESHRANK_IATA,
+        profile: 'meshrank',
+        token: '',
+        iata: '',
         email: '',
         token_audience: '',
         topic_template: '',
@@ -438,7 +439,10 @@ function normalizeIntegrationConfigForSave(
     }
 
     const topicTemplate = String(normalized.topic_template ?? '').trim();
-    normalized.topic_template = topicTemplate || DEFAULT_COMMUNITY_PACKET_TOPIC_TEMPLATE;
+    normalized.topic_template =
+      normalized.profile === 'meshrank'
+        ? topicTemplate
+        : topicTemplate || DEFAULT_COMMUNITY_PACKET_TOPIC_TEMPLATE;
   }
 
   if (configType === 'map_upload') {
@@ -471,23 +475,24 @@ function normalizeDraftName(draftType: DraftType, name: string, configs: FanoutC
 
 function normalizeDraftConfig(draftType: DraftType, config: Record<string, unknown>) {
   if (draftType === 'mqtt_community_meshrank') {
-    const topicTemplate = String(config.topic_template || '').trim();
-    if (!topicTemplate) {
-      throw new Error('MeshRank packet topic is required');
+    const token = String(config.token || '').trim();
+    if (!/^[A-Za-z0-9_-]{8,128}$/.test(token)) {
+      throw new Error('A valid MeshRank uplink token (8–128 URL-safe characters) is required');
     }
-
     return normalizeIntegrationConfigForSave('mqtt_community', {
       ...config,
+      profile: 'meshrank',
+      token,
       broker_host: DEFAULT_MESHRANK_BROKER_HOST,
       broker_port: DEFAULT_MESHRANK_BROKER_PORT,
       transport: DEFAULT_MESHRANK_TRANSPORT,
       auth_mode: DEFAULT_MESHRANK_AUTH_MODE,
       use_tls: true,
       tls_verify: true,
-      iata: DEFAULT_MESHRANK_IATA,
+      iata: '',
       email: '',
       token_audience: '',
-      topic_template: topicTemplate,
+      topic_template: '',
       username: '',
       password: '',
     });
@@ -1501,6 +1506,7 @@ function MqttCommunityConfigEditor({
   onChange: (config: Record<string, unknown>) => void;
 }) {
   const authMode = (config.auth_mode as string) || DEFAULT_COMMUNITY_AUTH_MODE;
+  const isMeshRank = config.profile === 'meshrank';
 
   return (
     <div className="space-y-3">
@@ -1706,21 +1712,41 @@ function MqttCommunityConfigEditor({
         </label>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="fanout-comm-iata">Region Code (IATA)</Label>
-        <Input
-          id="fanout-comm-iata"
-          type="text"
-          maxLength={3}
-          placeholder="e.g. DEN, LAX, NYC"
-          value={(config.iata as string) || ''}
-          onChange={(e) => onChange({ ...config, iata: e.target.value.toUpperCase() })}
-          className="w-32"
-        />
-        <p className="text-[0.8125rem] text-muted-foreground">
-          Your nearest airport&apos;s IATA code (required)
-        </p>
-      </div>
+      {isMeshRank && (
+        <div className="space-y-2">
+          <Label htmlFor="fanout-comm-meshrank-token">
+            MeshRank uplink token (leave blank to keep existing)
+          </Label>
+          <Input
+            id="fanout-comm-meshrank-token"
+            type="password"
+            autoComplete="new-password"
+            value={(config.token as string) || ''}
+            onChange={(e) => onChange({ ...config, token: e.target.value })}
+          />
+          <p className="text-xs text-muted-foreground">
+            Generated topics and broker identity are private. The saved token is never returned by
+            the API.
+          </p>
+        </div>
+      )}
+      {!isMeshRank && (
+        <div className="space-y-2">
+          <Label htmlFor="fanout-comm-iata">Region Code (IATA)</Label>
+          <Input
+            id="fanout-comm-iata"
+            type="text"
+            maxLength={3}
+            placeholder="e.g. DEN, LAX, NYC"
+            value={(config.iata as string) || ''}
+            onChange={(e) => onChange({ ...config, iata: e.target.value.toUpperCase() })}
+            className="w-32"
+          />
+          <p className="text-[0.8125rem] text-muted-foreground">
+            Your nearest airport&apos;s IATA code (required)
+          </p>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {(
@@ -1859,20 +1885,22 @@ function MqttCommunityConfigEditor({
         )}
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="fanout-comm-topic-template">Packet Topic Template</Label>
-        <Input
-          id="fanout-comm-topic-template"
-          type="text"
-          placeholder={DEFAULT_COMMUNITY_PACKET_TOPIC_TEMPLATE}
-          value={(config.topic_template as string | undefined) ?? ''}
-          onChange={(e) => onChange({ ...config, topic_template: e.target.value })}
-        />
-        <p className="text-[0.8125rem] text-muted-foreground">
-          Use <code>{'{IATA}'}</code> and <code>{'{PUBLIC_KEY}'}</code>. Default:{' '}
-          <code>{DEFAULT_COMMUNITY_PACKET_TOPIC_TEMPLATE}</code>
-        </p>
-      </div>
+      {!isMeshRank && (
+        <div className="space-y-2">
+          <Label htmlFor="fanout-comm-topic-template">Packet Topic Template</Label>
+          <Input
+            id="fanout-comm-topic-template"
+            type="text"
+            placeholder={DEFAULT_COMMUNITY_PACKET_TOPIC_TEMPLATE}
+            value={(config.topic_template as string | undefined) ?? ''}
+            onChange={(e) => onChange({ ...config, topic_template: e.target.value })}
+          />
+          <p className="text-[0.8125rem] text-muted-foreground">
+            Use <code>{'{IATA}'}</code> and <code>{'{PUBLIC_KEY}'}</code>. Default:{' '}
+            <code>{DEFAULT_COMMUNITY_PACKET_TOPIC_TEMPLATE}</code>
+          </p>
+        </div>
+      )}
     </div>
   );
 }
@@ -1887,35 +1915,31 @@ function MeshRankConfigEditor({
   return (
     <div className="space-y-3">
       <p className="text-[0.8125rem] text-muted-foreground">
-        Pre-filled MeshRank setup. This saves as a regular Community MQTT integration once created,
-        but only asks for the MeshRank packet topic you were given.
+        MeshRank publishes under a broker-issued token, not an IATA region or a manually constructed
+        MQTT topic. Provide only your personal uplink token.
       </p>
-
       <div className="rounded-md border border-input bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-        Broker <code>{DEFAULT_MESHRANK_BROKER_HOST}</code> on port{' '}
-        <code>{DEFAULT_MESHRANK_BROKER_PORT}</code> via <code>{DEFAULT_MESHRANK_TRANSPORT}</code>,
-        auth <code>{DEFAULT_MESHRANK_AUTH_MODE}</code>, TLS on, certificate verification on, region
-        code fixed to <code>{DEFAULT_MESHRANK_IATA}</code>.
+        Broker{' '}
+        <code>
+          {DEFAULT_MESHRANK_BROKER_HOST}:{DEFAULT_MESHRANK_BROKER_PORT}
+        </code>
+        , TLS with certificate verification. No MQTT username or password.
       </div>
-
       <div className="space-y-2">
-        <Label htmlFor="fanout-meshrank-topic-template">Packet Topic Template</Label>
+        <Label htmlFor="fanout-meshrank-token">MeshRank uplink token</Label>
         <Input
-          id="fanout-meshrank-topic-template"
-          type="text"
-          placeholder="meshrank/uplink/B435F6D5F7896B74C6B995FE221C2C1F/{PUBLIC_KEY}/packets"
-          value={(config.topic_template as string) || ''}
+          id="fanout-meshrank-token"
+          type="password"
+          autoComplete="new-password"
+          placeholder="Enter your broker-issued token"
+          value={(config.token as string) || ''}
           onChange={(e) =>
-            onChange({
-              ...config,
-              iata: DEFAULT_MESHRANK_IATA,
-              topic_template: e.target.value,
-            })
+            onChange({ ...config, profile: 'meshrank', token: e.target.value, iata: '' })
           }
         />
         <p className="text-[0.8125rem] text-muted-foreground">
-          Paste the full topic template from your MeshRank config, for example{' '}
-          <code>meshrank/uplink/B435F6D5F7896B74C6B995FE221C2C1F/{'{PUBLIC_KEY}'}/packets</code>.
+          The token is encrypted at rest and omitted from returned integration details. To rotate a
+          saved token, enter the replacement token here.
         </p>
       </div>
     </div>

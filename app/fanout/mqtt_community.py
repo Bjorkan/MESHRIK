@@ -56,7 +56,9 @@ def _config_to_settings(config: dict) -> SimpleNamespace:
     """Map a fanout config blob to a settings namespace for the CommunityMqttPublisher."""
     return SimpleNamespace(
         community_mqtt_enabled=True,
-        community_mqtt_profile=resolve_profile(config),
+        community_mqtt_profile=(
+            "meshrank" if config.get("broker_host") == "meshrank.net" else resolve_profile(config)
+        ),
         community_mqtt_topic_template=config.get("topic_template", _DEFAULT_PACKET_TOPIC_TEMPLATE),
         community_mqtt_token=config.get("token", ""),
         community_mqtt_publish_status=config.get("publish_status", True),

@@ -802,6 +802,24 @@ class CommunityMqttPublisher(BaseMqttPublisher):
             if now - self._last_neighbors_publish >= hours * 3600:
                 await self._publish_neighbors(self._settings)
 
+    async def publish(self, topic: str, payload: dict[str, Any], *, retain: bool = False) -> None:
+        """Suppress broker topic in log paths (MeshRank topic includes a token)."""
+        if self._client is None or not self.connected:
+            return
+        try:
+            await self._client.publish(topic, json.dumps(payload), retain=retain)
+        except Exception:
+            self.connected = False
+            self._last_error = "MQTT publish failed; reconnect required"
+            self._settings_version += 1
+            self._version_event.set()
+
+    def _safe_connection_error(self, exc: Exception) -> str:
+        code = getattr(exc, "rc", None) or getattr(exc, "return_code", None)
+        if code == 5:
+            return "Authentication refused (CONNACK 5); check broker credentials"
+        return "MQTT connection error; verify broker/credentials/network"
+
     def _on_error(self) -> tuple[str, str]:
         return (
             "Community MQTT connection failure",

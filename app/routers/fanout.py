@@ -206,8 +206,33 @@ def _validate_mqtt_community_config(config: dict) -> None:
     token_audience = str(config.get("token_audience", "")).strip()
     config["token_audience"] = token_audience
 
-    iata = config.get("iata", "").upper().strip()
-    if not iata or not _IATA_RE.fullmatch(iata):
+    from app.fanout.community_topics import resolve_profile
+
+    if str(config.get("broker_host", "")).lower() == "meshrank.net" and not config.get("profile"):
+        config["profile"] = "meshrank"
+    if resolve_profile(config) == "meshrank":
+        topic = str(config.get("topic_template") or "")
+        if not config.get("token") and topic:
+            match = re.fullmatch(
+                r"meshrank/uplink/([A-Za-z0-9_-]{8,128})/\{PUBLIC_KEY\}/packets",
+                topic,
+                re.IGNORECASE,
+            )
+            if match:
+                config["token"] = match.group(1)
+                config["topic_template"] = ""
+        config["iata"] = ""
+        config["auth_mode"] = "none"
+        config["broker_host"] = "meshrank.net"
+        config["broker_port"] = 8883
+        config["transport"] = "tcp"
+        config["use_tls"] = True
+        config["tls_verify"] = True
+
+    iata = str(config.get("iata", "")).upper().strip()
+    if resolve_profile(config) in {"letsmesh", "observer"} and (
+        not iata or not _IATA_RE.fullmatch(iata)
+    ):
         raise HTTPException(
             status_code=400,
             detail="IATA code is required and must be exactly 3 uppercase alphabetic characters",
@@ -451,11 +476,22 @@ def _bot_system_disabled_detail() -> str | None:
     return None
 
 
+def _redact_fanout_config(value: dict) -> dict:
+    """No token-in-topic credential may cross any readback response."""
+    result = dict(value)
+    if result.get("type") == "mqtt_community":
+        config = dict(result["config"])
+        configured = bool(config.pop("token", ""))
+        config["token_configured"] = configured
+        result["config"] = config
+    return result
+
+
 @router.get("", response_model=list[FanoutConfigResponse])
 async def list_fanout_configs() -> list[FanoutConfigResponse]:
     """List all fanout configs."""
     configs = await FanoutConfigRepository.get_all()
-    return configs  # type: ignore[return-value]
+    return [_redact_fanout_config(cfg) for cfg in configs]  # type: ignore[return-value]
 
 
 @router.post("", response_model=FanoutConfigResponse)
@@ -488,7 +524,7 @@ async def create_fanout_config(body: FanoutConfigCreate) -> FanoutConfigResponse
         await fanout_manager.reload_config(cfg["id"])
 
     logger.info("Created fanout config %s (type=%s, name=%s)", cfg["id"], body.type, body.name)
-    return cfg  # type: ignore[return-value]
+    return _redact_fanout_config(cfg)  # type: ignore[return-value]
 
 
 @router.patch("/{config_id}", response_model=FanoutConfigResponse)
@@ -511,7 +547,13 @@ async def update_fanout_config(config_id: str, body: FanoutConfigUpdate) -> Fano
     if body.scope is not None:
         kwargs["scope"] = _enforce_scope(existing["type"], body.scope)
 
-    config_to_validate = body.config if body.config is not None else existing["config"]
+    config_to_validate = dict(body.config) if body.config is not None else dict(existing["config"])
+    if (
+        existing["type"] == "mqtt_community"
+        and not config_to_validate.get("token")
+        and existing["config"].get("token")
+    ):
+        config_to_validate["token"] = existing["config"]["token"]
     kwargs["config"] = _validate_and_normalize_config(existing["type"], config_to_validate)
 
     updated = await FanoutConfigRepository.update(config_id, **kwargs)
@@ -522,7 +564,7 @@ async def update_fanout_config(config_id: str, body: FanoutConfigUpdate) -> Fano
     await fanout_manager.reload_config(config_id)
 
     logger.info("Updated fanout config %s", config_id)
-    return updated  # type: ignore[return-value]
+    return _redact_fanout_config(updated)  # type: ignore[return-value]
 
 
 @router.delete("/{config_id}")

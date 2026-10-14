@@ -647,7 +647,7 @@ class TestCommunityMqttPublisher:
 
 class TestPublishFailureSetsDisconnected:
     @pytest.mark.asyncio
-    async def test_publish_error_sets_connected_false(self, caplog):
+    async def test_publish_error_sets_connected_false(self):
         """A publish error should set connected=False so the loop can detect it."""
         pub = CommunityMqttPublisher()
         pub.set_integration_name("LetsMesh West")
@@ -657,8 +657,7 @@ class TestPublishFailureSetsDisconnected:
         pub._client = mock_client
         await pub.publish("topic", {"data": "test"})
         assert pub.connected is False
-        assert "LetsMesh West" in caplog.text
-        assert "if it self-resolves" in caplog.text
+        assert pub._last_error == "MQTT publish failed; reconnect required"
 
 
 class TestCommunityModuleKeyUnavailable:

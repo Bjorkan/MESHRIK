@@ -76,6 +76,9 @@ class BaseMqttPublisher(ABC):
         """Attach the configured fanout-module name for operator-facing logs."""
         self.integration_name = name.strip()
 
+    def _safe_connection_error(self, exc: Exception) -> str:
+        return _format_error_detail(exc)
+
     def _integration_label(self) -> str:
         """Return a concise label for logs, including the configured module name."""
         if self.integration_name:
@@ -277,7 +280,7 @@ class BaseMqttPublisher(ABC):
             except Exception as e:
                 self.connected = False
                 self._client = None
-                self._last_error = _format_error_detail(e)
+                self._last_error = self._safe_connection_error(e)
 
                 # Windows ProactorEventLoop does not implement add_reader /
                 # add_writer, which paho-mqtt requires.  The failure can
@@ -317,7 +320,7 @@ class BaseMqttPublisher(ABC):
                     "if it self-resolves, it is generally not a concern: %s "
                     "(reconnecting in %ds). If this error persists, check your network connection and MQTT broker status.",
                     self._integration_label(),
-                    e,
+                    self._safe_connection_error(e),
                     backoff,
                     exc_info=True,
                 )
