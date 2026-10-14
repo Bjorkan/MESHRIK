@@ -3,7 +3,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api';
 import { queryKeys } from '../queryClient';
 import { toast } from '../components/ui/sonner';
-import { initLastMessageTimes } from '../utils/conversationState';
 import type { AppSettings, AppSettingsUpdate } from '../types';
 
 export function useAppSettings() {
@@ -22,12 +21,6 @@ export function useAppSettings() {
       console.error('Failed to fetch app settings:', settingsQuery.error);
     }
   }, [settingsQuery.error]);
-
-  useEffect(() => {
-    if (appSettings) {
-      initLastMessageTimes(appSettings.last_message_times ?? {});
-    }
-  }, [appSettings]);
 
   const setAppSettings = useCallback(
     (update: SetStateAction<AppSettings | null>) => {

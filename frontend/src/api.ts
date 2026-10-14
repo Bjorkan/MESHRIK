@@ -612,8 +612,8 @@ export const api = {
     }),
 
   // Read State
-  getUnreads: () =>
-    fetchApiView<'/api/read-state/unreads', 'get', UnreadCounts>('/read-state/unreads'),
+  getUnreads: (signal?: AbortSignal) =>
+    fetchApiView<'/api/read-state/unreads', 'get', UnreadCounts>('/read-state/unreads', { signal }),
   markAllRead: () =>
     fetchApi<'/api/read-state/mark-all-read', 'post'>('/read-state/mark-all-read', {
       method: 'POST',

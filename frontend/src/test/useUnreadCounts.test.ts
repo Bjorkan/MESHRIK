@@ -135,12 +135,14 @@ describe('useUnreadCounts', () => {
     });
   }
 
-  function renderWith({
-    channels = [] as Channel[],
-    contacts = [] as Contact[],
-    activeConversation = null as Conversation | null,
-  } = {}) {
-    const queryClient = makeQueryClient();
+  function renderWith(
+    {
+      channels = [] as Channel[],
+      contacts = [] as Contact[],
+      activeConversation = null as Conversation | null,
+    } = {},
+    queryClient = makeQueryClient()
+  ) {
     const wrapper = ({ children }: { children: ReactNode }) =>
       createElement(QueryClientProvider, { client: queryClient }, children);
     return {
@@ -161,7 +163,7 @@ describe('useUnreadCounts', () => {
       counts: { [`channel-${CHANNEL_KEY}`]: 5 },
       mentions: { [`channel-${CHANNEL_KEY}`]: true },
       last_message_times: {},
-      first_unread_ids: {},
+      first_unread_ids: { [`channel-${CHANNEL_KEY}`]: 99 },
       last_read_ats: { [`channel-${CHANNEL_KEY}`]: 1234 },
     });
 
@@ -176,6 +178,7 @@ describe('useUnreadCounts', () => {
     // The active conversation should NOT have unreads
     expect(result.current.unreadCounts[`channel-${CHANNEL_KEY}`]).toBeUndefined();
     expect(result.current.mentions[`channel-${CHANNEL_KEY}`]).toBeUndefined();
+    expect(result.current.firstUnreadIds[`channel-${CHANNEL_KEY}`]).toBe(99);
     expect(result.current.unreadLastReadAts[`channel-${CHANNEL_KEY}`]).toBe(1234);
   });
 
@@ -312,7 +315,7 @@ describe('useUnreadCounts', () => {
       last_read_ats: {},
     });
 
-    const { result } = renderWith({ channels, activeConversation: activeConv });
+    const { result, queryClient } = renderWith({ channels, activeConversation: activeConv });
 
     await act(async () => {
       await vi.waitFor(() => expect(mocks.getUnreads).toHaveBeenCalledTimes(1));
@@ -321,9 +324,9 @@ describe('useUnreadCounts', () => {
     // Simulate reconnect: server now reports unreads for the active conversation
     mocks.getUnreads.mockResolvedValueOnce({
       counts: { [`channel-${CHANNEL_KEY}`]: 7 },
-      mentions: {},
+      mentions: { [`channel-${CHANNEL_KEY}`]: true },
       last_message_times: {},
-      first_unread_ids: {},
+      first_unread_ids: { [`channel-${CHANNEL_KEY}`]: 111 },
       last_read_ats: { [`channel-${CHANNEL_KEY}`]: 3456 },
     });
 
@@ -334,6 +337,14 @@ describe('useUnreadCounts', () => {
     // Should still be filtered out
     expect(result.current.unreadCounts[`channel-${CHANNEL_KEY}`]).toBeUndefined();
     expect(result.current.unreadLastReadAts[`channel-${CHANNEL_KEY}`]).toBe(3456);
+    expect(result.current.firstUnreadIds[`channel-${CHANNEL_KEY}`]).toBe(111);
+    expect(queryClient.getQueryData<UnreadCounts>(queryKeys.unreads())).toEqual({
+      counts: { [`channel-${CHANNEL_KEY}`]: 7 },
+      mentions: { [`channel-${CHANNEL_KEY}`]: true },
+      last_message_times: {},
+      first_unread_ids: { [`channel-${CHANNEL_KEY}`]: 111 },
+      last_read_ats: { [`channel-${CHANNEL_KEY}`]: 3456 },
+    });
   });
 
   it('re-fetches when channels change while contacts remain empty', async () => {
@@ -973,5 +984,134 @@ describe('useUnreadCounts', () => {
     expect(cached?.counts).toEqual({ [channelStateKey]: 2, [contactStateKey]: 3 });
     expect(result.current.unreadCounts[channelStateKey]).toBe(2);
     expect(result.current.unreadCounts[contactStateKey]).toBeUndefined();
+  });
+
+  it('keeps failed mark-read state and concurrent WebSocket arrivals in one Query snapshot', async () => {
+    const mocks = await getMockedApi();
+    const channelStateKey = getStateKey('channel', CHANNEL_KEY);
+    const contactStateKey = getStateKey('contact', CONTACT_KEY);
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    mocks.getUnreads.mockResolvedValueOnce({
+      counts: { [channelStateKey]: 2 },
+      mentions: { [channelStateKey]: true },
+      last_message_times: { [channelStateKey]: 1700000000 },
+      first_unread_ids: { [channelStateKey]: 10 },
+      last_read_ats: { [channelStateKey]: 1699999999 },
+    });
+    let rejectMarkRead!: (error: Error) => void;
+    mocks.markChannelRead.mockReturnValueOnce(
+      new Promise((_, reject) => {
+        rejectMarkRead = reject;
+      })
+    );
+
+    const activeConversation: Conversation = {
+      type: 'channel',
+      id: CHANNEL_KEY,
+      name: 'Channel',
+    };
+    const { result, rerender, queryClient } = renderWith({
+      channels: [makeChannel(CHANNEL_KEY, 'Channel')],
+      activeConversation,
+    });
+    await vi.waitFor(() => expect(mocks.markChannelRead).toHaveBeenCalledWith(CHANNEL_KEY));
+
+    act(() => {
+      result.current.recordMessageEvent({
+        msg: makeMessage({ id: 30, conversation_key: CONTACT_KEY, received_at: 1700000030 }),
+        activeConversation: false,
+        isNewMessage: true,
+        hasMention: true,
+      });
+    });
+    rejectMarkRead(new Error('offline'));
+    await vi.waitFor(() => expect(consoleError).toHaveBeenCalled());
+
+    const cached = queryClient.getQueryData<UnreadCounts>(queryKeys.unreads());
+    expect(cached?.counts).toEqual({ [channelStateKey]: 2, [contactStateKey]: 1 });
+    expect(cached?.mentions).toEqual({ [channelStateKey]: true, [contactStateKey]: true });
+    expect(cached?.first_unread_ids).toEqual({ [channelStateKey]: 10, [contactStateKey]: 30 });
+    expect(result.current.unreadCounts[channelStateKey]).toBeUndefined();
+    expect(result.current.unreadCounts[contactStateKey]).toBe(1);
+
+    rerender({
+      channels: [makeChannel(CHANNEL_KEY, 'Channel')],
+      contacts: [],
+      activeConversation: null,
+    });
+    expect(result.current.unreadCounts[channelStateKey]).toBe(2);
+    expect(result.current.firstUnreadIds[channelStateKey]).toBe(10);
+  });
+
+  it('renames and deletes every unread field atomically in the Query cache', async () => {
+    const mocks = await getMockedApi();
+    const oldStateKey = getStateKey('contact', 'temporary-key');
+    const newStateKey = getStateKey('contact', CONTACT_KEY);
+    mocks.getUnreads.mockResolvedValueOnce({
+      counts: { [oldStateKey]: 4 },
+      mentions: { [oldStateKey]: true },
+      last_message_times: { [oldStateKey]: 1700000040 },
+      first_unread_ids: { [oldStateKey]: 40 },
+      last_read_ats: { [oldStateKey]: 1699999999 },
+    });
+    const { result, queryClient } = renderWith({ contacts: [makeContact(CONTACT_KEY)] });
+    await vi.waitFor(() => expect(result.current.unreadCounts[oldStateKey]).toBe(4));
+
+    act(() => result.current.renameConversationState(oldStateKey, newStateKey));
+    expect(queryClient.getQueryData<UnreadCounts>(queryKeys.unreads())).toEqual({
+      counts: { [newStateKey]: 4 },
+      mentions: { [newStateKey]: true },
+      last_message_times: { [newStateKey]: 1700000040 },
+      first_unread_ids: { [newStateKey]: 40 },
+      last_read_ats: { [newStateKey]: 1699999999 },
+    });
+
+    act(() => result.current.removeConversationState(newStateKey));
+    expect(queryClient.getQueryData<UnreadCounts>(queryKeys.unreads())).toEqual({
+      counts: {},
+      mentions: {},
+      last_message_times: {},
+      first_unread_ids: {},
+      last_read_ats: {},
+    });
+  });
+
+  it('reloads from a fresh Query client without leaking the previous live snapshot', async () => {
+    const mocks = await getMockedApi();
+    const stateKey = getStateKey('channel', CHANNEL_KEY);
+    mocks.getUnreads
+      .mockResolvedValueOnce({
+        counts: {},
+        mentions: {},
+        last_message_times: {},
+        first_unread_ids: {},
+        last_read_ats: {},
+      })
+      .mockResolvedValueOnce({
+        counts: { [stateKey]: 7 },
+        mentions: { [stateKey]: true },
+        last_message_times: { [stateKey]: 1700000070 },
+        first_unread_ids: { [stateKey]: 70 },
+        last_read_ats: { [stateKey]: 1699999999 },
+      });
+
+    const firstMount = renderWith({ channels: [makeChannel(CHANNEL_KEY, 'Channel')] });
+    await vi.waitFor(() => expect(mocks.getUnreads).toHaveBeenCalledTimes(1));
+    act(() => {
+      firstMount.result.current.recordMessageEvent({
+        msg: makeMessage({ id: 60, type: 'CHAN', conversation_key: CHANNEL_KEY }),
+        activeConversation: false,
+        isNewMessage: true,
+      });
+    });
+    expect(firstMount.result.current.unreadCounts[stateKey]).toBe(1);
+    firstMount.unmount();
+
+    const reloaded = renderWith({ channels: [makeChannel(CHANNEL_KEY, 'Channel')] });
+    await vi.waitFor(() => expect(reloaded.result.current.unreadCounts[stateKey]).toBe(7));
+    expect(reloaded.result.current.mentions[stateKey]).toBe(true);
+    expect(reloaded.result.current.firstUnreadIds[stateKey]).toBe(70);
+    expect(reloaded.result.current.lastMessageTimes[stateKey]).toBe(1700000070);
+    expect(mocks.getUnreads).toHaveBeenCalledTimes(2);
   });
 });

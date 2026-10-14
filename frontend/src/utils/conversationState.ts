@@ -1,9 +1,8 @@
 /**
  * Conversation state utilities.
  *
- * Last message times are tracked in-memory and persisted server-side.
- * This file provides helper functions for generating state keys
- * and managing conversation times.
+ * Conversation activity is owned by the unread TanStack Query snapshot and
+ * persisted server-side. This file provides state-key and sidebar-sort helpers.
  *
  * Read state (timestamp plus message-ID cursor) is tracked server-side for
  * consistency across devices - see useUnreadCounts hook.
@@ -29,48 +28,6 @@ function coerceFavoritesSortOrder(value: unknown): SortOrder {
 
 function coerceBasicSortOrder(value: unknown): SortOrder {
   return value === 'alpha' ? 'alpha' : 'recent';
-}
-
-// In-memory cache of last message times (loaded from server on init)
-let lastMessageTimesCache: ConversationTimes = {};
-
-/**
- * Initialize the last message times cache from server data
- */
-export function initLastMessageTimes(times: ConversationTimes): void {
-  lastMessageTimesCache = { ...times };
-}
-
-/**
- * Get all last message times from the cache
- */
-export function getLastMessageTimes(): ConversationTimes {
-  return { ...lastMessageTimesCache };
-}
-
-/**
- * Update a single message time in the cache and return the updated cache.
- * Note: This does NOT persist to server - caller should sync if needed.
- */
-export function setLastMessageTime(key: string, timestamp: number): ConversationTimes {
-  lastMessageTimesCache[key] = timestamp;
-  return { ...lastMessageTimesCache };
-}
-
-/**
- * Move conversation timing state to a new key, preserving the most recent timestamp.
- */
-export function renameConversationTimeKey(oldKey: string, newKey: string): ConversationTimes {
-  if (oldKey === newKey) return { ...lastMessageTimesCache };
-
-  const oldTimestamp = lastMessageTimesCache[oldKey];
-  const newTimestamp = lastMessageTimesCache[newKey];
-  if (oldTimestamp !== undefined) {
-    lastMessageTimesCache[newKey] =
-      newTimestamp === undefined ? oldTimestamp : Math.max(newTimestamp, oldTimestamp);
-    delete lastMessageTimesCache[oldKey];
-  }
-  return { ...lastMessageTimesCache };
 }
 
 /**

@@ -5,13 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api';
 import { toast } from '../components/ui/sonner';
 import { queryKeys } from '../queryClient';
-import {
-  getLastMessageTimes,
-  getStateKey,
-  renameConversationTimeKey,
-  setLastMessageTime,
-  type ConversationTimes,
-} from '../utils/conversationState';
+import { getStateKey, type ConversationTimes } from '../utils/conversationState';
 import type { Channel, Contact, Conversation, Message, UnreadCounts } from '../types';
 
 type UnreadTrackedConversation = Conversation & { type: 'channel' | 'contact' };
@@ -29,7 +23,7 @@ function emptyUnreadCounts(): UnreadCounts {
   return {
     counts: {},
     mentions: {},
-    last_message_times: getLastMessageTimes(),
+    last_message_times: {},
     last_read_ats: {},
     first_unread_ids: {},
   };
@@ -92,11 +86,11 @@ export function useUnreadCounts(
   activeConversationRef.current = activeConversation;
   const pendingReadBoundaryRef = useRef<PendingReadBoundary | null>(null);
 
-  const unreadQuery = useQuery({
+  const unreadQuery = useQuery<UnreadCounts>({
     queryKey: queryKeys.unreads(),
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       const versionAtStart = mutationVersionRef.current;
-      const serverSnapshot = await api.getUnreads();
+      const serverSnapshot = await api.getUnreads(signal);
       if (versionAtStart !== mutationVersionRef.current) {
         return queryClient.getQueryData<UnreadCounts>(queryKeys.unreads()) ?? serverSnapshot;
       }
@@ -117,12 +111,6 @@ export function useUnreadCounts(
     () => (activeStateKey ? removeKey(snapshot.mentions, activeStateKey) : snapshot.mentions),
     [activeStateKey, snapshot.mentions]
   );
-
-  useEffect(() => {
-    for (const [key, timestamp] of Object.entries(snapshot.last_message_times)) {
-      setLastMessageTime(key, timestamp);
-    }
-  }, [snapshot.last_message_times]);
 
   const { mutate: markRead } = useMutation({
     mutationFn: async (boundary: MarkReadRequest): Promise<void> => {
@@ -224,7 +212,6 @@ export function useUnreadCounts(
       if (!stateKey) return;
 
       const timestamp = msg.received_at || Math.floor(Date.now() / 1000);
-      setLastMessageTime(stateKey, timestamp);
       updateSnapshot((previous) => {
         const next: UnreadCounts = {
           ...previous,
@@ -259,7 +246,6 @@ export function useUnreadCounts(
   const renameConversationState = useCallback(
     (oldStateKey: string, newStateKey: string) => {
       if (oldStateKey === newStateKey) return;
-      renameConversationTimeKey(oldStateKey, newStateKey);
       updateSnapshot((previous) => ({
         ...previous,
         counts: renameKey(previous.counts, oldStateKey, newStateKey),
