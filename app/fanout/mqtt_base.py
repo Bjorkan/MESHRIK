@@ -178,6 +178,10 @@ class BaseMqttPublisher(ABC):
         """
         return  # no-op by default
 
+    async def _on_disconnected_async(self) -> None:
+        """Subclass cleanup while the MQTT client is still in its context."""
+        return
+
     async def _on_periodic_wake(self, elapsed: float) -> None:
         """Called every ~60s while connected. Subclasses may override."""
         return
@@ -238,23 +242,27 @@ class BaseMqttPublisher(ABC):
                     await self._on_connected_async(settings)
                     _broadcast_health()
 
-                    # Wait until cancelled or settings version changes.
-                    # The 60s timeout is a housekeeping wake-up; actual connection
-                    # liveness is handled by paho-mqtt's keepalive mechanism.
-                    while self._settings_version == version_at_connect:
-                        self._version_event.clear()
-                        try:
-                            await asyncio.wait_for(self._version_event.wait(), timeout=60)
-                        except TimeoutError:
-                            elapsed = time.monotonic() - connect_time
-                            await self._on_periodic_wake(elapsed)
-                            if self._should_break_wait(elapsed):
-                                # Expected, self-healing reconnect surfaced by the
-                                # periodic wake (e.g. community-MQTT JWT renewal),
-                                # so don't toast "connected" when it comes back.
-                                self._suppress_next_connect_toast = True
-                                break
-                            continue
+                    try:
+                        # Wait until cancelled or settings version changes.
+                        # The 60s timeout is a housekeeping wake-up; actual connection
+                        # liveness is handled by paho-mqtt's keepalive mechanism.
+                        while self._settings_version == version_at_connect:
+                            self._version_event.clear()
+                            try:
+                                await asyncio.wait_for(self._version_event.wait(), timeout=60)
+                            except TimeoutError:
+                                elapsed = time.monotonic() - connect_time
+                                await self._on_periodic_wake(elapsed)
+                                if self._should_break_wait(elapsed):
+                                    # Expected, self-healing reconnect surfaced by the
+                                    # periodic wake (e.g. community-MQTT JWT renewal),
+                                    # so don't toast "connected" when it comes back.
+                                    self._suppress_next_connect_toast = True
+                                    break
+                                continue
+
+                    finally:
+                        await self._on_disconnected_async()
 
                 # async with exited — client is now closed
                 self._client = None

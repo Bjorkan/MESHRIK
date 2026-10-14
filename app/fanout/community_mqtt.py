@@ -14,6 +14,7 @@ import base64
 import json
 import logging
 import math
+import re
 import ssl
 import time
 from datetime import UTC, datetime
@@ -21,7 +22,12 @@ from typing import Any, Protocol
 
 import aiomqtt
 
-from app.fanout.community_topics import broker_retains, community_topic, validate_profile
+from app.fanout.community_topics import (
+    broker_retains,
+    community_topic,
+    error_subscriptions,
+    validate_profile,
+)
 from app.fanout.mqtt_base import BaseMqttPublisher
 from app.keystore import ed25519_sign_expanded
 from app.path_utils import calculate_packet_hash, parse_packet_envelope, split_path_hex
@@ -278,6 +284,43 @@ def _get_client_version() -> str:
     return f"{_CLIENT_ID}/{build.version}-{commit_hash}"
 
 
+_BROKER_ERROR_REMEDIES = {
+    "PUBLISH_PLACEHOLDER_IATA": "Choose your actual ingress airport code in broker settings.",
+    "PUBLISH_UNKNOWN_IATA": "Choose an IATA code supported by this broker.",
+    "PUBLISH_STALE_STATUS": "Check the server clock and reconnect to refresh online status.",
+    "PUBLISH_STALE_CONNECTION": "Reconnect the integration and check for duplicate clients.",
+    "PUBLISH_ORIGIN_MISMATCH": "Check that the connected radio matches the authenticated identity.",
+    "PUBLISH_PAYLOAD_TOO_LARGE": "Reduce the neighbor snapshot or packet size.",
+    "PUBLISH_RESERVED_SUBTOPIC": "Choose a supported status, packets or neighbors topic.",
+}
+_ERROR_CODE_PATTERN = re.compile(r"^[A-Z][A-Z0-9_]{0,63}$")
+_MAX_BROKER_ERROR_BYTES = 4096
+
+
+def parse_broker_error(payload: bytes) -> tuple[str, str, str] | None:
+    """Only expose broker error code and safe local explanation, not untrusted text."""
+    if len(payload) > _MAX_BROKER_ERROR_BYTES:
+        return None
+    try:
+        event = json.loads(payload)
+        if not isinstance(event, dict):
+            return None
+        code = event.get("code")
+        if not isinstance(code, str) or not _ERROR_CODE_PATTERN.fullmatch(code):
+            return None
+        at = event.get("at")
+        timestamp = _format_utc_timestamp(_packet_timestamp(at)) if at else _format_utc_timestamp()
+        return (
+            code,
+            _BROKER_ERROR_REMEDIES.get(
+                code, "Broker refused a publish; verify integration settings."
+            ),
+            timestamp,
+        )
+    except (ValueError, TypeError):
+        return None
+
+
 class CommunityMqttPublisher(BaseMqttPublisher):
     """Manages the community MQTT connection and publishes raw packets."""
 
@@ -293,6 +336,9 @@ class CommunityMqttPublisher(BaseMqttPublisher):
         self._stats_supported: bool | None = None
         self._last_stats_fetch: float = 0.0
         self._last_status_publish: float = 0.0
+        self._error_reader: asyncio.Task[None] | None = None
+        self.broker_error_code: str | None = None
+        self.broker_error_at: str | None = None
 
     async def start(self, settings: object) -> None:
         self._key_unavailable_warned = False
@@ -302,6 +348,44 @@ class CommunityMqttPublisher(BaseMqttPublisher):
         self._last_stats_fetch = 0.0
         self._last_status_publish = 0.0
         await super().start(settings)
+
+    @property
+    def last_error(self) -> str | None:
+        if self.broker_error_code:
+            return f"{self.broker_error_code}: {_BROKER_ERROR_REMEDIES.get(self.broker_error_code, 'Broker rejected a publish; check settings.')}"
+        return super().last_error
+
+    async def _read_broker_errors(self, allowed: tuple[str, ...]) -> None:
+        client = self._client
+        if client is None:
+            return
+        try:
+            async for message in client.messages:
+                if str(message.topic) not in allowed:
+                    continue
+                incoming = message.payload
+                if not isinstance(incoming, bytes):
+                    continue
+                result = parse_broker_error(incoming)
+                if result is None:
+                    continue
+                self.broker_error_code, _remedy, self.broker_error_at = result
+                from app.fanout.mqtt_base import _broadcast_health
+
+                _broadcast_health()
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.debug("Community MQTT diagnostic subscription ended")
+
+    async def _on_disconnected_async(self) -> None:
+        if self._error_reader is not None:
+            self._error_reader.cancel()
+            try:
+                await self._error_reader
+            except asyncio.CancelledError:
+                pass
+            self._error_reader = None
 
     def _on_not_configured(self) -> None:
         from app.keystore import get_public_key, has_private_key
@@ -565,7 +649,19 @@ class CommunityMqttPublisher(BaseMqttPublisher):
         self._last_status_publish = time.monotonic()
 
     async def _on_connected_async(self, settings: object) -> None:
-        """Publish a retained online status message after connecting."""
+        """Subscribe to own diagnostics before submitting the first packet."""
+        from app.keystore import get_public_key
+
+        public_key = get_public_key()
+        if public_key is not None and self._client is not None:
+            allowed = error_subscriptions(
+                _settings_topic_config(settings),  # type: ignore[arg-type]
+                public_key.hex().upper(),
+            )
+            for topic in allowed:
+                await self._client.subscribe(topic, qos=0)
+            if allowed:
+                self._error_reader = asyncio.create_task(self._read_broker_errors(allowed))
         await self._publish_status(settings)  # type: ignore[arg-type]
 
     async def _on_periodic_wake(self, elapsed: float) -> None:
