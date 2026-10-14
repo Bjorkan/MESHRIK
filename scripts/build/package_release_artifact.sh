@@ -89,6 +89,7 @@ if [ "$SKIP_PREBUILT_BUILD" -eq 0 ]; then
 fi
 
 [ -d "$REPO_ROOT/frontend/prebuilt" ] || release_die "frontend/prebuilt is missing; run with frontend built or omit --skip-prebuilt-build"
+"$REPO_ROOT/scripts/quality/check_frontend_artifact.sh" "$REPO_ROOT/frontend/prebuilt" >/dev/null
 
 mkdir -p "$BUNDLE_DIR/frontend"
 git -C "$REPO_ROOT" archive "$FULL_GIT_HASH" | tar -x -C "$BUNDLE_DIR"

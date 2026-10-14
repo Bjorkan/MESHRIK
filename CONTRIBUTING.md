@@ -71,6 +71,23 @@ npm run test:run
 npm run build
 ```
 
+Production builds deliberately set `build.sourcemap: false`: `frontend/dist` and release
+`frontend/prebuilt` directories are public assets served by the backend. The quality and packaging
+scripts reject any `*.map` file in those directories. For readable stack traces while developing,
+use `npm run dev`; if a maintainer needs a one-off local production map, run Vite with a sourcemap
+override and keep that output outside public artifacts.
+
+The production-build comparison recorded for issue #95 (2026-10-14) used the same checkout and
+Vite inputs with only source-map generation changed:
+
+| Build output | Public files | Zipped directory |
+| --- | ---: | ---: |
+| Source maps enabled (57 maps) | 33,316,001 bytes | 8,325,973 bytes |
+| Source maps disabled (0 maps) | 10,523,157 bytes | 3,515,938 bytes |
+
+That removes 22,792,844 public bytes (68.4%) and 4,810,035 compressed bytes (57.8%). Development
+server behavior is unchanged.
+
 ### Generated REST API contracts
 
 The backend OpenAPI schema is the source of truth for frontend REST types. No running server or

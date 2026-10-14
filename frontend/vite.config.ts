@@ -19,7 +19,9 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    sourcemap: true,
+    // Production assets are served directly by the backend and included in
+    // public release archives. Keep source maps local to dev tooling instead.
+    sourcemap: false,
   },
   server: {
     host: true,

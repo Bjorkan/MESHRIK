@@ -93,6 +93,7 @@ echo -ne "${BLUE}[build]${NC} "
 cd "$REPO_ROOT/frontend"
 npx --quiet tsc 2>&1
 npx --quiet vite build --logLevel error 2>&1
+"$REPO_ROOT/scripts/quality/check_frontend_artifact.sh" "$REPO_ROOT/frontend/dist" >/dev/null
 echo -e "${GREEN}Passed!${NC}"
 
 echo -e "${GREEN}=== Phase 2 complete ===${NC}"

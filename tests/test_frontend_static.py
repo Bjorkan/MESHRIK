@@ -142,6 +142,9 @@ def test_valid_dist_serves_static_and_spa_fallback(tmp_path):
         assert "console.log('ok');" in asset_response.text
         assert asset_response.headers["cache-control"] == ASSET_CACHE_CONTROL
 
+        source_map_response = client.get("/assets/app.js.map")
+        assert source_map_response.status_code == 404
+
 
 def test_frontend_routes_do_not_change_openapi_contract(tmp_path):
     app = FastAPI()
