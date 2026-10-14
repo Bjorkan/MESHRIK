@@ -151,7 +151,11 @@ def _validate_mqtt_community_config(config: dict) -> None:
         if type(value) is not int or not low <= value <= high:
             raise HTTPException(status_code=400, detail=f"{field} must be an integer {low}-{high}")
         config[field] = value
-    for field, default in (("publish_status", True), ("publish_packets", True), ("publish_neighbors", False)):
+    for field, default in (
+        ("publish_status", True),
+        ("publish_packets", True),
+        ("publish_neighbors", False),
+    ):
         value = config.get(field, default)
         if type(value) is not bool:
             raise HTTPException(status_code=400, detail=f"{field} must be boolean")
@@ -217,6 +221,12 @@ def _validate_mqtt_community_config(config: dict) -> None:
         topic_template = _DEFAULT_COMMUNITY_MQTT_TOPIC_TEMPLATE
 
     config["topic_template"] = _normalize_community_topic_template(topic_template)
+    from app.fanout.community_topics import validate_profile
+
+    try:
+        validate_profile(config)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 def _validate_bot_config(config: dict) -> None:

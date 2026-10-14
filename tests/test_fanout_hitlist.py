@@ -918,9 +918,9 @@ class TestCommunityMqttIataValidation:
     def test_topic_template_normalizes_placeholder_capitalization(self):
         from app.routers.fanout import _validate_mqtt_community_config
 
-        config = {"iata": "PDX", "topic_template": "mesh2mqtt/{iata}/node/{Public_Key}"}
+        config = {"iata": "PDX", "topic_template": "mesh2mqtt/{iata}/node/{Public_Key}/packets"}
         _validate_mqtt_community_config(config)
-        assert config["topic_template"] == "mesh2mqtt/{IATA}/node/{PUBLIC_KEY}"
+        assert config["topic_template"] == "mesh2mqtt/{IATA}/node/{PUBLIC_KEY}/packets"
 
     def test_topic_template_rejects_unknown_placeholder(self):
         from app.routers.fanout import _validate_mqtt_community_config
@@ -996,7 +996,7 @@ class TestFanoutConfigMutationInvariant:
             config={
                 "iata": "PDX",
                 "broker_host": " mqtt.example.com ",
-                "topic_template": "mesh2mqtt/{iata}/node/{Public_Key}",
+                "topic_template": "mesh2mqtt/{iata}/node/{Public_Key}/packets",
             },
             scope={"messages": "none", "raw_packets": "all"},
             enabled=False,
@@ -1010,6 +1010,6 @@ class TestFanoutConfigMutationInvariant:
 
         assert updated["enabled"] is True
         assert updated["config"]["broker_host"] == "mqtt.example.com"
-        assert updated["config"]["topic_template"] == "mesh2mqtt/{IATA}/node/{PUBLIC_KEY}"
+        assert updated["config"]["topic_template"] == "mesh2mqtt/{IATA}/node/{PUBLIC_KEY}/packets"
         assert updated["config"]["transport"] == "websockets"
         assert updated["config"]["auth_mode"] == "token"

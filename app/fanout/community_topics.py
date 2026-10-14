@@ -21,7 +21,7 @@ def resolve_profile(config: dict) -> str:
         profile = (
             "custom" if template and not template.startswith("meshcore/{IATA}/") else "letsmesh"
         )
-    if profile not in {"letsmesh", "meshrank", "custom"}:
+    if profile not in {"letsmesh", "observer", "meshrank", "custom"}:
         raise ValueError("profile: unsupported MQTT broker profile")
     return profile
 
@@ -29,7 +29,7 @@ def resolve_profile(config: dict) -> str:
 def validate_profile(config: dict) -> None:
     """Fail closed before any MQTT connect or publication."""
     profile = resolve_profile(config)
-    if profile == "letsmesh":
+    if profile in {"letsmesh", "observer"}:
         iata = str(config.get("iata") or "").strip().upper()
         if not _IATA.fullmatch(iata) or iata in {"XXX", "XYZ"}:
             raise ValueError("iata: enter an approved three-letter ingress code (not XXX/XYZ)")
@@ -60,7 +60,7 @@ def community_topic(config: dict, public_key: str, kind: str) -> str:
         raise ValueError("topic: unsupported or broker-reserved subtopic")
     profile = resolve_profile(config)
     pubkey = public_key.upper()
-    if profile == "letsmesh":
+    if profile in {"letsmesh", "observer"}:
         return f"meshcore/{str(config['iata']).strip().upper()}/{pubkey}/{kind}"
     if profile == "meshrank":
         return f"meshrank/uplink/{config['token']}/{pubkey}/{kind}"

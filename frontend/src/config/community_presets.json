@@ -1,0 +1,86 @@
+{
+  "letsmesh-us": {
+    "label": "LetsMesh (US)",
+    "host": "mqtt-us-v1.letsmesh.net",
+    "port": 443,
+    "transport": "websockets",
+    "websocket_path": "/",
+    "auth_mode": "token",
+    "profile": "letsmesh",
+    "requires_iata": true,
+    "supports_neighbors": true,
+    "source": "https://github.com/Bjorkan/meshcore-mqtt-broker"
+  },
+  "letsmesh-eu": {
+    "label": "LetsMesh (EU)",
+    "host": "mqtt-eu-v1.letsmesh.net",
+    "port": 443,
+    "transport": "websockets",
+    "websocket_path": "/",
+    "auth_mode": "token",
+    "profile": "letsmesh",
+    "requires_iata": true,
+    "supports_neighbors": true,
+    "source": "https://github.com/Bjorkan/meshcore-mqtt-broker"
+  },
+  "meshmapper": {
+    "label": "MeshMapper",
+    "host": "mqtt.meshmapper.net",
+    "port": 443,
+    "transport": "websockets",
+    "websocket_path": "/mqtt",
+    "auth_mode": "token",
+    "profile": "observer",
+    "requires_iata": true,
+    "supports_neighbors": false,
+    "source": "https://wiki.meshmapper.net/mqtt-main/"
+  },
+  "waev": {
+    "label": "WAEV",
+    "host": "mqtt.waev.app",
+    "port": 443,
+    "transport": "websockets",
+    "websocket_path": "/mqtt",
+    "auth_mode": "token",
+    "profile": "observer",
+    "requires_iata": true,
+    "supports_neighbors": false,
+    "source": "https://github.com/xJARiD/MeshCore-EastMesh/blob/main/eastmesh-docs/custom-cli.md"
+  },
+  "meshat": {
+    "label": "Meshat.se",
+    "host": "meshcore-mqtt.meshat.se",
+    "port": 443,
+    "transport": "websockets",
+    "websocket_path": "/mqtt",
+    "auth_mode": "token",
+    "profile": "observer",
+    "requires_iata": true,
+    "supports_neighbors": true,
+    "source": "https://meshat.se/mqtt/server-info/"
+  },
+  "meshrank": {
+    "label": "MeshRank",
+    "host": "meshrank.net",
+    "port": 8883,
+    "transport": "tcp",
+    "websocket_path": "/",
+    "auth_mode": "none",
+    "profile": "meshrank",
+    "requires_iata": false,
+    "supports_neighbors": true,
+    "source": "https://github.com/Bjorkan/MESHRIK/issues/120"
+  },
+  "custom": {
+    "label": "Custom broker",
+    "host": "",
+    "port": 8883,
+    "transport": "tcp",
+    "websocket_path": "/",
+    "auth_mode": "password",
+    "profile": "custom",
+    "requires_iata": false,
+    "supports_neighbors": false,
+    "source": "operator supplied"
+  }
+}

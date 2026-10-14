@@ -58,3 +58,13 @@ success means accepted into the device's send queue, not on-air success.
 Aggregated GET_STATS TX counters cannot reconstruct frames. Thus the TX mode
 setting remains disabled by capability on this firmware even when the operator
 chooses `on`/`advert`. No TX HTTP sends are intercepted or reconstructed.
+
+## Preset provenance (#119)
+
+Connection defaults and documentation are in `app/fanout/community_presets.json`,
+mirrored to the frontend by `python scripts/sync_community_presets.py`.
+Presets never ship shared passwords. Non-LetsMesh observer-profile brokers
+use their own current public connection settings but do not automatically
+inherit LetsMesh-specific `/error` diagnostics or neighbor/retain behavior.
+Existing user overrides are not automatically overwritten on upgrade.
+Encrypted transports enable TLS certificate verification by default.

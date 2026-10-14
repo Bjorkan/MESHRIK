@@ -29,6 +29,7 @@ import { api } from '../../api';
 import { fetchAllContacts } from '../../hooks/useContactsAndChannels';
 import { queryKeys } from '../../queryClient';
 import type { FanoutConfig, HealthStatus } from '../../types';
+import communityPresets from '../../config/community_presets.json';
 
 const BotCodeEditor = lazy(() =>
   import('../BotCodeEditor').then((m) => ({ default: m.BotCodeEditor }))
@@ -1509,6 +1510,47 @@ function MqttCommunityConfigEditor({
         decrypted messages.
       </p>
 
+      <div className="space-y-2">
+        <Label htmlFor="fanout-comm-preset">Verified broker profile</Label>
+        <select
+          id="fanout-comm-preset"
+          value={(config.preset as string) || ''}
+          onChange={(e) => {
+            const key = e.target.value as keyof typeof communityPresets;
+            const preset = communityPresets[key];
+            if (!preset) return;
+            onChange({
+              ...config,
+              preset: key,
+              profile: preset.profile,
+              broker_host: preset.host || config.broker_host,
+              broker_port: preset.port,
+              transport: preset.transport,
+              websocket_path: preset.websocket_path,
+              auth_mode: preset.auth_mode,
+              use_tls: true,
+              tls_verify: true,
+              token_audience: preset.auth_mode === 'token' ? preset.host : '',
+              publish_neighbors: preset.supports_neighbors
+                ? config.publish_neighbors === true
+                : false,
+            });
+          }}
+          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+        >
+          <option value="">Existing custom/legacy settings</option>
+          {Object.entries(communityPresets).map(([key, preset]) => (
+            <option key={key} value={key}>
+              {preset.label}
+            </option>
+          ))}
+        </select>
+        <p className="text-xs text-muted-foreground">
+          Selecting a preset changes connection defaults; existing saved broker overrides remain
+          unchanged until you select one.
+        </p>
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="fanout-comm-host">Broker Host</Label>
@@ -1681,27 +1723,55 @@ function MqttCommunityConfigEditor({
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {([
-          ['publish_status', 'Publish status'], ['publish_packets', 'Publish received raw packets'],
-          ['publish_neighbors', 'Publish sampled neighbor snapshots'],
-        ] as const).map(([field, label]) => (
+        {(
+          [
+            ['publish_status', 'Publish status'],
+            ['publish_packets', 'Publish received raw packets'],
+            ['publish_neighbors', 'Publish sampled neighbor snapshots'],
+          ] as const
+        ).map(([field, label]) => (
           <label key={field} className="text-sm flex gap-2 items-center">
-            <input type="checkbox" checked={config[field] === undefined ? field !== 'publish_neighbors' : !!config[field]}
-              onChange={(e) => onChange({ ...config, [field]: e.target.checked })} />
+            <input
+              type="checkbox"
+              checked={
+                config[field] === undefined ? field !== 'publish_neighbors' : !!config[field]
+              }
+              onChange={(e) => onChange({ ...config, [field]: e.target.checked })}
+            />
             {label}
           </label>
         ))}
         <div>
           <Label htmlFor="fanout-comm-status-interval">Status interval (1–60 min)</Label>
-          <Input id="fanout-comm-status-interval" type="number" min="1" max="60"
+          <Input
+            id="fanout-comm-status-interval"
+            type="number"
+            min="1"
+            max="60"
             value={getNumberInputValue(config.status_interval_minutes, 5)}
-            onChange={(e) => onChange({ ...config, status_interval_minutes: parseIntegerInputValue(e.target.value) })} />
+            onChange={(e) =>
+              onChange({
+                ...config,
+                status_interval_minutes: parseIntegerInputValue(e.target.value),
+              })
+            }
+          />
         </div>
         <div>
           <Label htmlFor="fanout-comm-neighbor-interval">Neighbor interval (12–336 h)</Label>
-          <Input id="fanout-comm-neighbor-interval" type="number" min="12" max="336"
+          <Input
+            id="fanout-comm-neighbor-interval"
+            type="number"
+            min="12"
+            max="336"
             value={getNumberInputValue(config.neighbors_interval_hours, 24)}
-            onChange={(e) => onChange({ ...config, neighbors_interval_hours: parseIntegerInputValue(e.target.value) })} />
+            onChange={(e) =>
+              onChange({
+                ...config,
+                neighbors_interval_hours: parseIntegerInputValue(e.target.value),
+              })
+            }
+          />
         </div>
       </div>
       <p className="text-xs text-muted-foreground">
