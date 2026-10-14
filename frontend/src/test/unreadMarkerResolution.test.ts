@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { resolveUnreadMarkerId } from '../App';
+import { reconcileChannelUnreadMarker, resolveUnreadMarkerId } from '../App';
 import type { Message } from '../types';
 
 function msg(id: number, receivedAt: number): Message {
@@ -52,5 +52,41 @@ describe('resolveUnreadMarkerId', () => {
   it('passes through when there is no boundary or no messages', () => {
     expect(resolveUnreadMarkerId(null, null, loaded)).toBeNull();
     expect(resolveUnreadMarkerId(7, null, [])).toBe(7);
+  });
+});
+
+describe('reconcileChannelUnreadMarker', () => {
+  it('fills the divider after delayed unread hydration on a deep-linked channel', () => {
+    const beforeHydration = reconcileChannelUnreadMarker(null, 'channel-a', null, false);
+    expect(beforeHydration).toBeNull();
+
+    expect(reconcileChannelUnreadMarker(beforeHydration, 'channel-a', 42, true)).toEqual({
+      channelId: 'channel-a',
+      messageId: 42,
+    });
+  });
+
+  it('uses the newly active conversation when hydration resolves after navigation', () => {
+    const oldChannelMarker = { channelId: 'channel-a', messageId: 10 };
+    const whileLoading = reconcileChannelUnreadMarker(oldChannelMarker, 'channel-b', null, false);
+    expect(whileLoading).toBeNull();
+
+    expect(reconcileChannelUnreadMarker(whileLoading, 'channel-b', 84, true)).toEqual({
+      channelId: 'channel-b',
+      messageId: 84,
+    });
+  });
+
+  it('clears a stale divider after an authoritative empty snapshot', () => {
+    const marker = { channelId: 'channel-a', messageId: 42 };
+
+    expect(reconcileChannelUnreadMarker(marker, 'channel-a', null, false)).toEqual(marker);
+    expect(reconcileChannelUnreadMarker(marker, 'channel-a', null, true)).toBeNull();
+  });
+
+  it('keeps the established boundary stable when later messages arrive', () => {
+    const marker = { channelId: 'channel-a', messageId: 42 };
+
+    expect(reconcileChannelUnreadMarker(marker, 'channel-a', 99, true)).toEqual(marker);
   });
 });

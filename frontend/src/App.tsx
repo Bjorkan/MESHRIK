@@ -43,6 +43,23 @@ interface ChannelUnreadMarker {
   messageId: number | null;
 }
 
+export function reconcileChannelUnreadMarker(
+  previous: ChannelUnreadMarker | null,
+  channelId: string,
+  boundaryId: number | null,
+  unreadsResolved: boolean
+): ChannelUnreadMarker | null {
+  if (previous?.channelId === channelId) {
+    // Keep the established boundary from moving under the reader. A resolved
+    // empty snapshot is different from the initial placeholder: it means a
+    // mark-read/reconciliation removed the boundary and the divider is stale.
+    if (boundaryId === null) return unreadsResolved ? null : previous;
+    if (previous.messageId === null) return { channelId, messageId: boundaryId };
+    return previous;
+  }
+  return boundaryId === null ? null : { channelId, messageId: boundaryId };
+}
+
 interface NewMessagePrefillRequest {
   tab: 'hashtag';
   hashtagName: string;
@@ -434,6 +451,7 @@ function AppContent({
     lastMessageTimes,
     unreadLastReadAts,
     firstUnreadIds,
+    unreadsResolved,
     recordMessageEvent,
     renameConversationState,
     removeConversationState,
@@ -466,20 +484,10 @@ function AppContent({
     const activeChannelId = activeConversation.id;
     const boundaryId = firstUnreadIds[getStateKey('channel', activeChannelId)] ?? null;
 
-    setChannelUnreadMarker((prev) => {
-      if (prev?.channelId === activeChannelId) {
-        // Same channel: hold the marker steady so it does not move under the
-        // reader, except to fill in a boundary we did not have yet. A marker
-        // created before /unreads resolved would otherwise stay blank for as long
-        // as the user stays put.
-        if (prev.messageId === null && boundaryId !== null) {
-          return { channelId: activeChannelId, messageId: boundaryId };
-        }
-        return prev;
-      }
-      return boundaryId === null ? null : { channelId: activeChannelId, messageId: boundaryId };
-    });
-  }, [activeConversation, firstUnreadIds]);
+    setChannelUnreadMarker((prev) =>
+      reconcileChannelUnreadMarker(prev, activeChannelId, boundaryId, unreadsResolved)
+    );
+  }, [activeConversation, firstUnreadIds, unreadsResolved]);
 
   const wsHandlers = useRealtimeAppState({
     prevHealthRef,

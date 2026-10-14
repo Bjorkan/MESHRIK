@@ -66,6 +66,7 @@ interface UseUnreadCountsResult {
   lastMessageTimes: ConversationTimes;
   unreadLastReadAts: Record<string, number | null>;
   firstUnreadIds: Record<string, number | null>;
+  unreadsResolved: boolean;
   recordMessageEvent: (args: {
     msg: Message;
     activeConversation: boolean;
@@ -317,6 +318,7 @@ export function useUnreadCounts(
     lastMessageTimes: snapshot.last_message_times,
     unreadLastReadAts: snapshot.last_read_ats,
     firstUnreadIds: snapshot.first_unread_ids,
+    unreadsResolved: !unreadQuery.isPlaceholderData,
     recordMessageEvent,
     renameConversationState,
     removeConversationState,
