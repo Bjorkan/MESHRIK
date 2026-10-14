@@ -584,6 +584,16 @@ async def discover_mesh(request: RadioDiscoveryRequest) -> RadioDiscoveryRespons
             item.public_key,
         ),
     )
+    from app.repository.observed_neighbors import observe_discovery
+
+    for result in results:
+        await observe_discovery(
+            result.public_key,
+            result.node_type,
+            local_snr=result.local_snr,
+            local_rssi=result.local_rssi,
+            remote_snr=result.remote_snr,
+        )
     await _persist_new_discovery_contacts(results)
     await _attach_known_names(results)
     return RadioDiscoveryResponse(
@@ -679,6 +689,10 @@ async def discover_regions(
         suspend_auto_fetch=True,
     )
 
+    from app.repository.observed_neighbors import record_scope_result
+
+    for result in results:
+        await record_scope_result(result.public_key, result.regions if result.answered else None)
     union = _dedupe_region_names([name for result in results for name in result.regions])
     return RadioRegionDiscoveryResponse(
         repeaters_queried=len(targets),

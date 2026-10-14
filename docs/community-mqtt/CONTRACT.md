@@ -27,3 +27,24 @@ The issue-numbered commits are incremental. Apply `109` then `110`, ... `123`
 in numeric order with `git am`. Patches are not individually applicable against
 the initial checkout. Issue 109 is a contract/architecture tracking issue;
 subsequent patches own the corresponding implementations.
+
+## Companion neighbor data matrix (#113)
+
+| Field | Provenance | Completeness |
+| --- | --- | --- |
+| Full neighbor key and type | Tagged `DISCOVER_RESPONSE`, zero-hop | Only responding repeaters/sensors |
+| Local SNR/RSSI, remote SNR | Same discovery response | Only actually supplied values |
+| Last heard | MESHRIK host ingest clock | Not firmware RF timestamp |
+| Flood-allowed scopes | Explicit guest region query on a repeater | Only queried/responding repeaters; guest query may add radio contact |
+| Own default scope | GET_DEFAULT_FLOOD_SCOPE 64 | Optional name; never publish its key |
+| Own full installed scopes | Not exported by Companion protocol 13 | Unknown; omit `self.scopes` |
+| Native zero-hop table, authentic TX frames | Not exported by Companion | Unsupported |
+
+The existing `POST /radio/discover` writes full-key observations; the manual
+`POST /radio/discover-regions` enriches already-observed repeaters. Automatic
+RF discovery and unattended guest scope queries must **not** be enabled until
+a contact-write-free worker-safe implementation is proven. Scheduled neighbor
+publications currently use the existing recent observation snapshot only.
+Rows expire from snapshots after 48 hours without another host observation.
+The `sample_type=host_observed_nearby` extension prevents treating these
+counts as a complete firmware neighbor table.

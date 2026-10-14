@@ -648,6 +648,37 @@ class CommunityMqttPublisher(BaseMqttPublisher):
         )
         self._last_status_publish = time.monotonic()
 
+    async def _publish_neighbors(self, settings: CommunityMqttSettings) -> bool:
+        """Publish only previously observed host-sampled data, without transmitting RF."""
+        if not getattr(settings, "community_mqtt_publish_neighbors", False):
+            return False
+        from app.keystore import get_public_key
+        from app.repository.observed_neighbors import (
+            build_observed_neighbors_payload,
+            get_recent_observations,
+        )
+        from app.services.radio_runtime import radio_runtime as radio_manager
+
+        key = get_public_key()
+        if key is None or not self.connected:
+            return False
+        name = (
+            (radio_manager.meshcore.self_info or {}).get("name", "")
+            if radio_manager.meshcore
+            else ""
+        )
+        payload = build_observed_neighbors_payload(
+            await get_recent_observations(),
+            name,
+            key.hex(),
+        )
+        await self.publish(
+            community_topic(_settings_topic_config(settings), key.hex(), "neighbors"),
+            payload,
+            retain=broker_retains(_settings_topic_config(settings), "neighbors"),
+        )
+        return True
+
     async def _on_connected_async(self, settings: object) -> None:
         """Subscribe to own diagnostics before submitting the first packet."""
         from app.keystore import get_public_key

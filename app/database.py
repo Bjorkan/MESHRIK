@@ -123,6 +123,22 @@ CREATE TABLE IF NOT EXISTS app_settings (
 );
 INSERT OR IGNORE INTO app_settings (id) VALUES (1);
 
+-- Host-observed repeater/sensor subset only (never the radio's native table).
+CREATE TABLE IF NOT EXISTS community_observed_neighbors (
+    public_key TEXT PRIMARY KEY,
+    first_seen INTEGER NOT NULL,
+    last_seen INTEGER NOT NULL,
+    last_discovery_at INTEGER,
+    source TEXT NOT NULL,
+    node_type TEXT NOT NULL,
+    local_snr REAL,
+    local_rssi INTEGER,
+    remote_snr REAL,
+    scope_names TEXT,
+    scope_queried_at INTEGER,
+    scope_status TEXT NOT NULL DEFAULT 'not_queried'
+);
+
 CREATE TABLE IF NOT EXISTS fanout_configs (
     id TEXT PRIMARY KEY,
     type TEXT NOT NULL,
