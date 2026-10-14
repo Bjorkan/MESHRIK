@@ -143,6 +143,11 @@ def _validate_mqtt_community_config(config: dict) -> None:
         config["packet_filter"] = normalize_packet_filter(config.get("packet_filter", "all"))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    tx_mode = config.get("tx_mode", "off")
+    if tx_mode not in ("off", "on", "advert"):
+        raise HTTPException(status_code=400, detail="tx_mode must be off, on or advert")
+    config["tx_mode"] = tx_mode
+
     broker_host = str(config.get("broker_host", _DEFAULT_COMMUNITY_MQTT_BROKER_HOST)).strip()
     if not broker_host:
         broker_host = _DEFAULT_COMMUNITY_MQTT_BROKER_HOST

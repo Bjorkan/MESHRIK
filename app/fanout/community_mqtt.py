@@ -240,6 +240,29 @@ def _format_raw_packet(data: dict[str, Any], device_name: str, public_key_hex: s
     return packet
 
 
+def _format_verified_tx_fixture(
+    raw: bytes,
+    captured_at: datetime,
+    device_name: str,
+    public_key_hex: str,
+) -> dict | None:
+    """Future trusted raw-TX source adapter; NOT wired to Companion protocol 13.
+
+    An HTTP send or CMD_SEND_RAW_PACKET acknowledgement is only queue admission,
+    not a per-frame physical TX observation. No application event invokes this.
+    """
+    packet = _format_raw_packet(
+        {"data": raw.hex(), "timestamp": captured_at},
+        device_name,
+        public_key_hex,
+    )
+    if packet is not None:
+        packet["direction"] = "tx"
+        for metric in ("RSSI", "SNR", "score"):
+            packet.pop(metric, None)
+    return packet
+
+
 def _build_status_topic(settings: CommunityMqttSettings, pubkey_hex: str) -> str:
     """Build the ``meshcore/{IATA}/{PUBKEY}/status`` topic string."""
     return community_topic(_settings_topic_config(settings), pubkey_hex, "status")

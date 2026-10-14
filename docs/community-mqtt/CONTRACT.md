@@ -48,3 +48,13 @@ publications currently use the existing recent observation snapshot only.
 Rows expire from snapshots after 48 hours without another host observation.
 The `sample_type=host_observed_nearby` extension prevents treating these
 counts as a complete firmware neighbor table.
+
+## TX limitation (#116)
+
+Stock Companion protocol 13 pushes RX_LOG_DATA=0x88 with physical received
+packet bytes and local signal measurements. It does **not** push exact raw TX
+packet bytes with individual transmission confirmation. CMD_SEND_RAW_PACKET=65
+success means accepted into the device's send queue, not on-air success.
+Aggregated GET_STATS TX counters cannot reconstruct frames. Thus the TX mode
+setting remains disabled by capability on this firmware even when the operator
+chooses `on`/`advert`. No TX HTTP sends are intercepted or reconstructed.

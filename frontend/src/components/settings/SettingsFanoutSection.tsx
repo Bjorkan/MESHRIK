@@ -1681,6 +1681,25 @@ function MqttCommunityConfigEditor({
       </div>
 
       <div className="space-y-2">
+        <Label htmlFor="fanout-comm-tx">Outbound raw frame upload</Label>
+        <select
+          id="fanout-comm-tx"
+          value={(config.tx_mode as string) || 'off'}
+          onChange={(e) => onChange({ ...config, tx_mode: e.target.value })}
+          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+        >
+          <option value="off">Off (default)</option>
+          <option value="advert">Advertisements only (future firmware)</option>
+          <option value="on">All eligible raw TX (future firmware)</option>
+        </select>
+        <p className="text-xs text-muted-foreground">
+          Companion protocol 13 does not expose verified raw TX frames. This setting is stored for
+          forward compatibility, but no outgoing packet upload is performed. Command send
+          acknowledgements are not proof of RF transmission.
+        </p>
+      </div>
+
+      <div className="space-y-2">
         <Label htmlFor="fanout-comm-filter">MeshCore payload type filter</Label>
         <select
           id="fanout-comm-filter"
