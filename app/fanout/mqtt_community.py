@@ -14,6 +14,7 @@ from typing import Any
 from app.fanout.base import FanoutModule
 from app.fanout.community_mqtt import CommunityMqttPublisher, _format_raw_packet
 from app.fanout.community_topics import community_topic, resolve_profile
+from app.fanout.packet_filter import admits_packet
 
 logger = logging.getLogger(__name__)
 
@@ -237,6 +238,11 @@ def _prepare_community_packet(
         device_name = ""
         if radio_manager.meshcore and radio_manager.meshcore.self_info:
             device_name = radio_manager.meshcore.self_info.get("name", "")
+        raw_hex = data.get("data")
+        if not isinstance(raw_hex, str) or not admits_packet(
+            config.get("packet_filter", "all"), bytes.fromhex(raw_hex)
+        ):
+            return None
         packet = _format_raw_packet(data, device_name, pubkey_hex)
         if packet is None:
             return None

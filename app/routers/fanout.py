@@ -137,6 +137,12 @@ def _validate_mqtt_private_config(config: dict) -> None:
 
 def _validate_mqtt_community_config(config: dict) -> None:
     """Validate mqtt_community config blob. Normalizes IATA to uppercase."""
+    from app.fanout.packet_filter import normalize_packet_filter
+
+    try:
+        config["packet_filter"] = normalize_packet_filter(config.get("packet_filter", "all"))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     broker_host = str(config.get("broker_host", _DEFAULT_COMMUNITY_MQTT_BROKER_HOST)).strip()
     if not broker_host:
         broker_host = _DEFAULT_COMMUNITY_MQTT_BROKER_HOST

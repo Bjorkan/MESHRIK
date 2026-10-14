@@ -1681,6 +1681,67 @@ function MqttCommunityConfigEditor({
       </div>
 
       <div className="space-y-2">
+        <Label htmlFor="fanout-comm-filter">MeshCore payload type filter</Label>
+        <select
+          id="fanout-comm-filter"
+          value={
+            Array.isArray(config.packet_filter)
+              ? 'selected'
+              : (config.packet_filter as string) || 'all'
+          }
+          onChange={(e) =>
+            onChange({
+              ...config,
+              packet_filter: e.target.value === 'selected' ? [] : e.target.value,
+            })
+          }
+          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+        >
+          <option value="all">All packet types</option>
+          <option value="none">None (status only)</option>
+          <option value="selected">Selected types</option>
+        </select>
+        {Array.isArray(config.packet_filter) && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {Array.from({ length: 16 }, (_, id) => {
+              const names: Record<number, string> = {
+                0: 'req',
+                1: 'response',
+                2: 'txt_msg',
+                3: 'ack',
+                4: 'advert',
+                5: 'grp_txt',
+                6: 'grp_data',
+                7: 'anon_req',
+                8: 'path',
+                9: 'trace',
+                10: 'multipart',
+                11: 'control',
+                15: 'raw_custom',
+              };
+              return (
+                <label key={id} className="text-xs flex items-center gap-1">
+                  <input
+                    type="checkbox"
+                    checked={(config.packet_filter as number[]).includes(id)}
+                    onChange={(e) =>
+                      onChange({
+                        ...config,
+                        packet_filter: e.target.checked
+                          ? [...(config.packet_filter as number[]), id].sort((a, b) => a - b)
+                          : (config.packet_filter as number[]).filter((type) => type !== id),
+                      })
+                    }
+                  />
+                  {id}: {names[id] || 'reserved'}
+                </label>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-2">
         <Label htmlFor="fanout-comm-topic-template">Packet Topic Template</Label>
         <Input
           id="fanout-comm-topic-template"
