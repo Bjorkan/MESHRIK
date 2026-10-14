@@ -10,9 +10,10 @@ Test data:
 """
 
 from hashlib import sha256
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
+from fastapi import Response
 
 from app.decoder import (
     DecryptedDirectMessage,
@@ -378,8 +379,6 @@ class TestHistoricalDMDecryptionPipeline:
 
         broadcasts, mock_broadcast = captured_broadcasts
 
-        from unittest.mock import MagicMock
-
         mock_success = MagicMock()
 
         with (
@@ -397,6 +396,87 @@ class TestHistoricalDMDecryptionPipeline:
         args = mock_success.call_args.args
         assert "Client1" in args[0]
         assert "1 message" in args[1]
+
+    @pytest.mark.asyncio
+    async def test_manual_api_decrypts_captured_dm_with_supplied_key(self, test_db):
+        """The user-supplied-key API path runs the real historical decrypt job."""
+        from app.routers.packets import DecryptRequest, decrypt_historical_packets
+
+        await RawPacketRepository.create(DM_PACKET, 1700000000)
+        await ContactRepository.upsert(
+            {
+                "public_key": CLIENT1_PUBLIC_HEX,
+                "name": "Client1",
+                "type": 1,
+            }
+        )
+
+        background_tasks = MagicMock()
+        response = Response()
+        result = await decrypt_historical_packets(
+            DecryptRequest(
+                key_type="contact",
+                private_key=CLIENT2_PRIVATE_HEX,
+                contact_public_key=CLIENT1_PUBLIC_HEX,
+            ),
+            background_tasks,
+            response,
+        )
+
+        assert response.status_code == 202
+        assert result.started is True
+        task, *args = background_tasks.add_task.call_args.args
+        with (
+            patch("app.packet_processor.broadcast_event"),
+            patch("app.websocket.broadcast_success"),
+        ):
+            await task(*args)
+
+        messages = await MessageRepository.get_all(
+            msg_type="PRIV", conversation_key=CLIENT1_PUBLIC_HEX, limit=10
+        )
+        assert [(message.text, message.outgoing) for message in messages] == [(DM_PLAINTEXT, False)]
+
+    @pytest.mark.asyncio
+    async def test_exported_keystore_key_runs_real_historical_decrypt(self, test_db):
+        """A key made available by radio export can start and finish a later job."""
+        from app.keystore import clear_keys, set_private_key
+        from app.packet_processor import start_historical_dm_decryption
+
+        await RawPacketRepository.create(DM_PACKET, 1700000000)
+        await ContactRepository.upsert(
+            {
+                "public_key": CLIENT1_PUBLIC_HEX,
+                "name": "Client1",
+                "type": 1,
+            }
+        )
+        background_tasks = MagicMock()
+        clear_keys()
+        try:
+            set_private_key(CLIENT2_PRIVATE)
+            result = await start_historical_dm_decryption(
+                background_tasks,
+                CLIENT1_PUBLIC_HEX,
+                "Client1",
+            )
+            assert result.status == "started"
+
+            task, *args = background_tasks.add_task.call_args.args
+            with (
+                patch("app.packet_processor.broadcast_event"),
+                patch("app.websocket.broadcast_success"),
+            ):
+                await task(*args)
+
+            messages = await MessageRepository.get_all(
+                msg_type="PRIV", conversation_key=CLIENT1_PUBLIC_HEX, limit=10
+            )
+            assert [(message.text, message.outgoing) for message in messages] == [
+                (DM_PLAINTEXT, False)
+            ]
+        finally:
+            clear_keys()
 
 
 class TestLiveDMDecryptionPipeline:
