@@ -637,7 +637,9 @@ class TestCommunityMqttPublisher:
     def test_is_configured_true_for_none_auth_without_private_key(self):
         pub = CommunityMqttPublisher()
         pub._settings = SimpleNamespace(
-            community_mqtt_enabled=True, community_mqtt_auth_mode="none"
+            community_mqtt_enabled=True,
+            community_mqtt_auth_mode="none",
+            community_mqtt_iata="SFO",
         )
         with patch("app.keystore.get_public_key", return_value=b"x" * 32):
             assert pub._is_configured() is True
@@ -741,13 +743,13 @@ class TestCommunityModuleKeyUnavailable:
 class TestBuildStatusTopic:
     def test_builds_correct_topic(self):
         settings = SimpleNamespace(community_mqtt_iata="LAX")
-        topic = _build_status_topic(settings, "AABB1122")
-        assert topic == "meshcore/LAX/AABB1122/status"
+        topic = _build_status_topic(settings, "AA" * 32)
+        assert topic == f"meshcore/LAX/{'AA' * 32}/status"
 
     def test_iata_uppercased_and_stripped(self):
         settings = SimpleNamespace(community_mqtt_iata=" lax ")
-        topic = _build_status_topic(settings, "PUBKEY")
-        assert topic == "meshcore/LAX/PUBKEY/status"
+        topic = _build_status_topic(settings, "AA" * 32)
+        assert topic == f"meshcore/LAX/{'AA' * 32}/status"
 
 
 class TestRenderPacketTopic:
@@ -755,25 +757,25 @@ class TestRenderPacketTopic:
         topic = _render_packet_topic(
             "meshcore/{IATA}/{PUBLIC_KEY}/packets",
             iata="LAX",
-            public_key="AABB1122",
+            public_key="AA" * 32,
         )
-        assert topic == "meshcore/LAX/AABB1122/packets"
+        assert topic == f"meshcore/LAX/{'AA' * 32}/packets"
 
     def test_supports_custom_template(self):
         topic = _render_packet_topic(
-            "mesh2mqtt/{IATA}/node/{PUBLIC_KEY}",
+            "mesh2mqtt/{IATA}/node/{PUBLIC_KEY}/packets",
             iata="PDX",
-            public_key="PUBKEY",
+            public_key="AA" * 32,
         )
-        assert topic == "mesh2mqtt/PDX/node/PUBKEY"
+        assert topic == f"mesh2mqtt/PDX/node/{'AA' * 32}/packets"
 
     def test_accepts_mixed_case_placeholders(self):
         topic = _render_packet_topic(
-            "mesh2mqtt/{iata}/node/{Public_Key}",
+            "mesh2mqtt/{iata}/node/{Public_Key}/packets",
             iata="SEA",
-            public_key="PUBKEY",
+            public_key="AA" * 32,
         )
-        assert topic == "mesh2mqtt/SEA/node/PUBKEY"
+        assert topic == f"mesh2mqtt/SEA/node/{'AA' * 32}/packets"
 
 
 class TestCommunityConfigDefaults:
@@ -815,7 +817,7 @@ class TestLwtAndStatusPublish:
         assert "will" in kwargs
         will = kwargs["will"]
         assert will.topic == f"meshcore/SFO/{pubkey_hex}/status"
-        assert will.retain is True
+        assert will.retain is False
         payload = json.loads(will.payload)
         assert payload["status"] == "offline"
         assert payload["origin"] == "TestNode"
@@ -909,6 +911,7 @@ class TestLwtAndStatusPublish:
             community_mqtt_broker_port=8883,
             community_mqtt_transport="tcp",
             community_mqtt_auth_mode="none",
+            community_mqtt_iata="SFO",
         )
 
         with (
@@ -965,7 +968,7 @@ class TestLwtAndStatusPublish:
         retain = mock_publish.call_args[1]["retain"]
 
         assert topic == f"meshcore/LAX/{pubkey_hex}/status"
-        assert retain is True
+        assert retain is False
         assert payload["status"] == "online"
         assert payload["origin"] == "TestNode"
         assert payload["origin_id"] == pubkey_hex
@@ -1141,7 +1144,7 @@ class TestCommunityPacketPublishTopic:
             "decrypted": False,
             "decrypted_info": None,
         }
-        config = {"iata": "lax", "topic_template": "mesh2mqtt/{IATA}/node/{PUBLIC_KEY}"}
+        config = {"iata": "lax", "topic_template": "mesh2mqtt/{IATA}/node/{PUBLIC_KEY}/packets"}
 
         mock_radio = MagicMock()
         mock_radio.meshcore = MagicMock()
@@ -1155,7 +1158,7 @@ class TestCommunityPacketPublishTopic:
 
         publisher.publish.assert_awaited_once()
         topic = publisher.publish.await_args.args[0]
-        assert topic == f"mesh2mqtt/LAX/node/{'AA' * 32}"
+        assert topic == f"mesh2mqtt/LAX/node/{'AA' * 32}/packets"
 
 
 def _mock_radio_operation(mc_mock):

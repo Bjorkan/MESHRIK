@@ -10,6 +10,7 @@ from typing import Any
 
 from app.fanout.base import FanoutModule
 from app.fanout.community_mqtt import CommunityMqttPublisher, _format_raw_packet
+from app.fanout.community_topics import community_topic, resolve_profile
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +52,14 @@ def _config_to_settings(config: dict) -> SimpleNamespace:
     """Map a fanout config blob to a settings namespace for the CommunityMqttPublisher."""
     return SimpleNamespace(
         community_mqtt_enabled=True,
+        community_mqtt_profile=resolve_profile(config),
+        community_mqtt_topic_template=config.get("topic_template", _DEFAULT_PACKET_TOPIC_TEMPLATE),
+        community_mqtt_token=config.get("token", ""),
+        community_mqtt_publish_status=config.get("publish_status", True),
+        community_mqtt_publish_packets=config.get("publish_packets", True),
+        community_mqtt_publish_neighbors=config.get("publish_neighbors", False),
+        community_mqtt_status_interval_minutes=config.get("status_interval_minutes", 5),
+        community_mqtt_neighbors_interval_hours=config.get("neighbors_interval_hours", 24),
         community_mqtt_broker_host=config.get("broker_host", "mqtt-us-v1.letsmesh.net"),
         community_mqtt_broker_port=config.get("broker_port", 443),
         community_mqtt_transport=config.get("transport", "websockets"),
@@ -69,7 +78,9 @@ def _config_to_settings(config: dict) -> SimpleNamespace:
 def _render_packet_topic(topic_template: str, *, iata: str, public_key: str) -> str:
     """Render the configured raw-packet publish topic."""
     template = _normalize_topic_template(topic_template)
-    return template.format(IATA=iata, PUBLIC_KEY=public_key)
+    return community_topic(
+        {"profile": "custom", "iata": iata, "topic_template": template}, public_key, "packets"
+    )
 
 
 class MqttCommunityModule(FanoutModule):
@@ -165,15 +176,7 @@ async def _publish_community_packet(
         packet = _format_raw_packet(data, device_name, pubkey_hex)
         if packet is None:
             return
-        iata = config.get("iata", "").upper().strip()
-        if not _IATA_RE.fullmatch(iata):
-            logger.debug("Community MQTT: skipping publish — no valid IATA code configured")
-            return
-        topic = _render_packet_topic(
-            str(config.get("topic_template", _DEFAULT_PACKET_TOPIC_TEMPLATE)),
-            iata=iata,
-            public_key=pubkey_hex,
-        )
+        topic = community_topic(config, pubkey_hex, "packets")
 
         await publisher.publish(topic, packet)
 

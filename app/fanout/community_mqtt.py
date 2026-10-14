@@ -21,6 +21,7 @@ from typing import Any, Protocol
 
 import aiomqtt
 
+from app.fanout.community_topics import broker_retains, community_topic, validate_profile
 from app.fanout.mqtt_base import BaseMqttPublisher
 from app.keystore import ed25519_sign_expanded
 from app.path_utils import calculate_packet_hash, parse_packet_envelope, split_path_hex
@@ -72,6 +73,9 @@ class CommunityMqttSettings(Protocol):
     community_mqtt_email: str
     community_mqtt_token_audience: str
     community_mqtt_websocket_path: str
+    community_mqtt_profile: str
+    community_mqtt_topic_template: str
+    community_mqtt_token: str
 
 
 def _base64url_encode(data: bytes) -> str:
@@ -232,8 +236,18 @@ def _format_raw_packet(data: dict[str, Any], device_name: str, public_key_hex: s
 
 def _build_status_topic(settings: CommunityMqttSettings, pubkey_hex: str) -> str:
     """Build the ``meshcore/{IATA}/{PUBKEY}/status`` topic string."""
-    iata = settings.community_mqtt_iata.upper().strip()
-    return f"meshcore/{iata}/{pubkey_hex}/status"
+    return community_topic(_settings_topic_config(settings), pubkey_hex, "status")
+
+
+def _settings_topic_config(settings: CommunityMqttSettings) -> dict:
+    return {
+        "profile": getattr(settings, "community_mqtt_profile", "letsmesh"),
+        "iata": getattr(settings, "community_mqtt_iata", ""),
+        "token": getattr(settings, "community_mqtt_token", ""),
+        "topic_template": getattr(
+            settings, "community_mqtt_topic_template", "meshcore/{IATA}/{PUBLIC_KEY}/packets"
+        ),
+    }
 
 
 def _build_radio_info() -> str:
@@ -320,6 +334,11 @@ class CommunityMqttPublisher(BaseMqttPublisher):
         auth_mode = getattr(s, "community_mqtt_auth_mode", "token")
         if auth_mode == "token":
             return has_private_key()
+        try:
+            validate_profile(_settings_topic_config(s))
+        except ValueError as exc:
+            self._last_error = str(exc)
+            return False
         return True
 
     def _build_client_kwargs(self, settings: object) -> dict[str, Any]:
@@ -366,7 +385,11 @@ class CommunityMqttPublisher(BaseMqttPublisher):
             "port": broker_port,
             "transport": transport,
             "tls_context": tls_context,
-            "will": aiomqtt.Will(status_topic, offline_payload, retain=True),
+            "will": aiomqtt.Will(
+                status_topic,
+                offline_payload,
+                retain=broker_retains(_settings_topic_config(s), "status"),
+            ),
         }
         if auth_mode == "token":
             assert private_key is not None
@@ -536,7 +559,9 @@ class CommunityMqttPublisher(BaseMqttPublisher):
         if stats:
             payload["stats"] = stats
 
-        await self.publish(status_topic, payload, retain=True)
+        await self.publish(
+            status_topic, payload, retain=broker_retains(_settings_topic_config(settings), "status")
+        )
         self._last_status_publish = time.monotonic()
 
     async def _on_connected_async(self, settings: object) -> None:

@@ -1,5 +1,6 @@
 """No hardware or credentials: observer packet wire contract fixtures (#110)."""
-from datetime import UTC, datetime
+
+from datetime import datetime
 
 import pytest
 
@@ -18,7 +19,9 @@ def test_exact_multibyte_direct_hop_widths(mode: int, width: int):
 
 def test_transport_direct_and_preserved_host_ingest_timestamp():
     packet = "130000000001eeff"
-    result = _format_raw_packet({"data": packet, "timestamp": "2024-03-30T23:15:06-05:00"}, "rx", "bb" * 32)
+    result = _format_raw_packet(
+        {"data": packet, "timestamp": "2024-03-30T23:15:06-05:00"}, "rx", "bb" * 32
+    )
     assert result is not None
     assert result["timestamp"] == "2024-03-31T04:15:06Z"
     assert result["time"] == "04:15:06"
@@ -29,7 +32,11 @@ def test_transport_direct_and_preserved_host_ingest_timestamp():
 
 def test_invalid_bytes_metrics_and_flood_without_path():
     assert _format_raw_packet({"data": "not hex"}, "node", "aa" * 32) is None
-    result = _format_raw_packet({"data": "0100AA", "timestamp": datetime(2025, 1, 2), "snr": "NaN", "rssi": None}, "rx", "cc" * 32)
+    result = _format_raw_packet(
+        {"data": "0100AA", "timestamp": datetime(2025, 1, 2), "snr": "NaN", "rssi": None},
+        "rx",
+        "cc" * 32,
+    )
     assert result is not None
     assert result["timestamp"] == "2025-01-02T00:00:00Z"
     assert "path" not in result and "SNR" not in result and "RSSI" not in result
