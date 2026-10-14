@@ -37,6 +37,7 @@ export function AclPane({
     features: aclTableFeatures,
     columns: aclColumns,
     data: data?.acl ?? emptyAcl,
+    getRowId: (entry) => entry.pubkey_prefix,
   });
 
   return (
@@ -46,42 +47,44 @@ export function AclPane({
       ) : data.acl.length === 0 ? (
         <p className="text-sm text-muted-foreground">No ACL entries</p>
       ) : (
-        <table className="w-full text-sm">
-          <thead>
-            {table.getHeaderGroups().map((group) => (
-              <tr key={group.id} className="text-left text-muted-foreground text-xs">
-                {group.headers.map((header) => (
-                  <th
-                    key={header.id}
-                    className={cn('pb-1 font-medium', header.id === 'permission' && 'text-right')}
-                  >
-                    <table.FlexRender header={header} />
-                  </th>
-                ))}
-              </tr>
-            ))}
-          </thead>
-          <tbody>
-            {table.getRowModel().rows.map((row) => {
-              const entry = row.original;
-              return (
-                <tr key={row.id} className="border-t border-border/50">
-                  <td className="py-1">{entry.name || entry.pubkey_prefix}</td>
-                  <td className="py-1 text-right">
-                    <span
-                      className={cn(
-                        'text-xs px-1.5 py-0.5 rounded',
-                        permColor[entry.permission] ?? 'bg-muted text-muted-foreground'
-                      )}
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              {table.getHeaderGroups().map((group) => (
+                <tr key={group.id} className="text-left text-muted-foreground text-xs">
+                  {group.headers.map((header) => (
+                    <th
+                      key={header.id}
+                      className={cn('pb-1 font-medium', header.id === 'permission' && 'text-right')}
                     >
-                      {entry.permission_name}
-                    </span>
-                  </td>
+                      <table.FlexRender header={header} />
+                    </th>
+                  ))}
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
+              ))}
+            </thead>
+            <tbody>
+              {table.getRowModel().rows.map((row) => {
+                const entry = row.original;
+                return (
+                  <tr key={row.id} className="border-t border-border/50">
+                    <td className="py-1">{entry.name || entry.pubkey_prefix}</td>
+                    <td className="py-1 text-right">
+                      <span
+                        className={cn(
+                          'text-xs px-1.5 py-0.5 rounded',
+                          permColor[entry.permission] ?? 'bg-muted text-muted-foreground'
+                        )}
+                      >
+                        {entry.permission_name}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
     </RepeaterPane>
   );

@@ -195,6 +195,7 @@ export function SettingsStatisticsSection({ className }: { className?: string })
     features: activityTableFeatures,
     columns: activityColumns,
     data: activityRows,
+    getRowId: (row) => row.label,
   });
 
   useEffect(() => {
@@ -273,36 +274,38 @@ export function SettingsStatisticsSection({ className }: { className?: string })
           {/* Activity */}
           <div>
             <h3 className="text-base font-semibold tracking-tight mb-2">Activity</h3>
-            <table className="w-full text-sm">
-              <thead>
-                {activityTable.getHeaderGroups().map((group) => (
-                  <tr key={group.id} className="text-muted-foreground">
-                    {group.headers.map((header) => (
-                      <th
-                        key={header.id}
-                        className={`${header.id === 'label' ? 'text-left' : 'text-right'} font-normal pb-1`}
-                      >
-                        <activityTable.FlexRender header={header} />
-                      </th>
-                    ))}
-                  </tr>
-                ))}
-              </thead>
-              <tbody>
-                {activityTable.getRowModel().rows.map((row) => (
-                  <tr key={row.id}>
-                    {row.getAllCells().map((cell) => (
-                      <td
-                        key={cell.id}
-                        className={`${cell.column.id === 'label' ? '' : 'text-right'} py-1`}
-                      >
-                        <activityTable.FlexRender cell={cell} />
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  {activityTable.getHeaderGroups().map((group) => (
+                    <tr key={group.id} className="text-muted-foreground">
+                      {group.headers.map((header) => (
+                        <th
+                          key={header.id}
+                          className={`${header.id === 'label' ? 'text-left' : 'text-right'} font-normal pb-1`}
+                        >
+                          <activityTable.FlexRender header={header} />
+                        </th>
+                      ))}
+                    </tr>
+                  ))}
+                </thead>
+                <tbody>
+                  {activityTable.getRowModel().rows.map((row) => (
+                    <tr key={row.id}>
+                      {row.getAllCells().map((cell) => (
+                        <td
+                          key={cell.id}
+                          className={`${cell.column.id === 'label' ? '' : 'text-right'} py-1`}
+                        >
+                          <activityTable.FlexRender cell={cell} />
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           <Separator />

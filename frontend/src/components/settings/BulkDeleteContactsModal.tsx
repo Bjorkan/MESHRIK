@@ -98,6 +98,11 @@ interface BulkDeleteContactsModalProps {
   onDeleted: (deletedKeys: string[]) => void;
 }
 
+interface PendingDeletion {
+  keys: string[];
+  contacts: Contact[];
+}
+
 export function BulkDeleteContactsModal({
   open,
   onClose,
@@ -106,6 +111,7 @@ export function BulkDeleteContactsModal({
 }: BulkDeleteContactsModalProps) {
   const selectionScrollRef = useRef<HTMLDivElement>(null);
   const confirmationScrollRef = useRef<HTMLDivElement>(null);
+  const pendingDeletionRef = useRef<PendingDeletion | null>(null);
   const form = useForm({
     defaultValues: {
       step: 'select' as 'select' | 'confirm',
@@ -116,7 +122,8 @@ export function BulkDeleteContactsModal({
       typeFilter: 'all' as number | 'all',
     },
     onSubmit: async () => {
-      const keysToDelete = table.getSelectedRowIds();
+      const keysToDelete = pendingDeletionRef.current?.keys ?? [];
+      if (keysToDelete.length === 0) return;
       try {
         const result = await api.bulkDeleteContacts(keysToDelete);
         const deletedLabel = `Deleted ${result.deleted} contact${result.deleted === 1 ? '' : 's'}`;
@@ -169,9 +176,11 @@ export function BulkDeleteContactsModal({
   });
   const filteredRows = table.getRowModel().rows;
   const filteredContacts = filteredRows.map((row) => row.original);
-  const selectedKeys = new Set(table.getSelectedRowIds());
+  const selectedRows = table.getSelectedRowModel().rows;
+  const selectedKeys = new Set(selectedRows.map((row) => row.id));
 
   const resetAndClose = useCallback(() => {
+    pendingDeletionRef.current = null;
     form.reset();
     table.resetRowSelection(true);
     table.resetSorting();
@@ -186,16 +195,29 @@ export function BulkDeleteContactsModal({
     table.resetRowSelection(true);
   };
 
-  const selectedContacts = table.getSelectedRowModel().rows.map((row) => row.original);
+  const handleProceed = () => {
+    pendingDeletionRef.current = {
+      keys: selectedRows.map((row) => row.id),
+      contacts: selectedRows.map((row) => row.original),
+    };
+    form.setFieldValue('step', 'confirm');
+  };
+
+  const selectedContacts =
+    step === 'confirm'
+      ? (pendingDeletionRef.current?.contacts ?? [])
+      : selectedRows.map((row) => row.original);
   const confirmationTable = useTable({
     features: contactTableFeatures,
     columns: contactColumns.slice(1),
     data: selectedContacts,
+    getRowId: (contact) => contact.public_key,
   });
   const confirmationRows = confirmationTable.getRowModel().rows;
   const selectionVirtualizer = useVirtualizer({
     count: filteredRows.length,
     getScrollElement: () => selectionScrollRef.current,
+    initialRect: { width: 0, height: 420 },
     estimateSize: () => 37,
     getItemKey: (index) => filteredRows[index]?.id ?? `contact-${index}`,
     overscan: 10,
@@ -205,6 +227,7 @@ export function BulkDeleteContactsModal({
   const confirmationVirtualizer = useVirtualizer({
     count: confirmationRows.length,
     getScrollElement: () => confirmationScrollRef.current,
+    initialRect: { width: 0, height: 420 },
     estimateSize: () => 37,
     getItemKey: (index) => confirmationRows[index]?.id ?? `confirmation-${index}`,
     overscan: 10,
@@ -226,7 +249,8 @@ export function BulkDeleteContactsModal({
   const maxDate =
     firstSeenDates.length > 0 ? formatDateISO(Math.max(...firstSeenDates)) : 'unknown';
 
-  const hasFilters = startDate || endDate || lastHeardAfter || lastHeardBefore;
+  const hasFilters =
+    typeFilter !== 'all' || startDate || endDate || lastHeardAfter || lastHeardBefore;
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && resetAndClose()}>
@@ -316,7 +340,7 @@ export function BulkDeleteContactsModal({
               </div>
             </div>
 
-            <div className="text-xs text-muted-foreground">
+            <div role="status" aria-live="polite" className="text-xs text-muted-foreground">
               {filteredContacts.length} contact{filteredContacts.length === 1 ? '' : 's'} shown
               {hasFilters && ' (filtered)'}
               {' · '}
@@ -325,7 +349,7 @@ export function BulkDeleteContactsModal({
 
             <div
               ref={selectionScrollRef}
-              className="flex-1 overflow-y-auto min-h-0 border border-border rounded-md [contain:layout_paint]"
+              className="flex-1 overflow-auto min-h-0 border border-border rounded-md [contain:layout_paint]"
             >
               {filteredContacts.length === 0 ? (
                 <div className="p-4 text-center text-sm text-muted-foreground">
@@ -341,14 +365,23 @@ export function BulkDeleteContactsModal({
                           return (
                             <th
                               key={header.id}
-                              className={`px-3 py-1.5 ${header.id === 'select' ? 'w-8' : ''} ${header.id === 'type' || header.id === 'first_seen' || header.id === 'last_seen' ? 'hidden sm:table-cell' : ''} ${header.column.getCanSort() ? 'cursor-pointer select-none hover:text-foreground transition-colors' : ''}`}
-                              onClick={header.column.getToggleSortingHandler()}
+                              className={`px-3 py-1.5 ${header.id === 'select' ? 'w-8' : ''} ${header.id === 'type' || header.id === 'first_seen' || header.id === 'last_seen' ? 'hidden sm:table-cell' : ''}`}
                               aria-sort={
                                 sorted ? (sorted === 'asc' ? 'ascending' : 'descending') : 'none'
                               }
                             >
-                              <table.FlexRender header={header} />{' '}
-                              {sorted ? (sorted === 'asc' ? '▲' : '▼') : ''}
+                              {header.column.getCanSort() ? (
+                                <button
+                                  type="button"
+                                  className="select-none hover:text-foreground transition-colors"
+                                  onClick={header.column.getToggleSortingHandler()}
+                                >
+                                  <table.FlexRender header={header} />{' '}
+                                  {sorted ? (sorted === 'asc' ? '▲' : '▼') : ''}
+                                </button>
+                              ) : (
+                                <table.FlexRender header={header} />
+                              )}
                             </th>
                           );
                         })}
@@ -412,7 +445,7 @@ export function BulkDeleteContactsModal({
                 variant="outline"
                 className="border-warning text-warning hover:bg-warning/10 hover:text-warning"
                 disabled={selectedKeys.size === 0}
-                onClick={() => form.setFieldValue('step', 'confirm')}
+                onClick={handleProceed}
               >
                 Proceed to confirmation ({selectedKeys.size})
               </Button>
@@ -424,7 +457,7 @@ export function BulkDeleteContactsModal({
           <>
             <div
               ref={confirmationScrollRef}
-              className="flex-1 overflow-y-auto min-h-0 border border-border rounded-md [contain:layout_paint]"
+              className="flex-1 overflow-auto min-h-0 border border-border rounded-md [contain:layout_paint]"
             >
               <table className="w-full text-sm">
                 <thead className="sticky top-0 bg-muted/90 backdrop-blur-sm">
@@ -500,7 +533,10 @@ export function BulkDeleteContactsModal({
               </Button>
               <Button
                 variant="secondary"
-                onClick={() => form.setFieldValue('step', 'select')}
+                onClick={() => {
+                  pendingDeletionRef.current = null;
+                  form.setFieldValue('step', 'select');
+                }}
                 disabled={deleting}
               >
                 Back

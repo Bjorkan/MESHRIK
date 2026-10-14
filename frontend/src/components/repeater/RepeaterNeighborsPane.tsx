@@ -158,6 +158,7 @@ export function NeighborsPane({
     features: neighborTableFeatures,
     columns: neighborColumns,
     data: enriched,
+    getRowId: (neighbor) => neighbor.pubkey_prefix,
     initialState: { sorting: [{ id: 'snr', desc: true }] },
   });
   const rows = table.getRowModel().rows;
@@ -196,17 +197,19 @@ export function NeighborsPane({
                         return (
                           <th
                             key={header.id}
-                            className={cn(
-                              'pb-1 font-medium cursor-pointer select-none hover:text-foreground transition-colors',
-                              header.id !== 'name' && 'text-right'
-                            )}
-                            onClick={header.column.getToggleSortingHandler()}
+                            className={cn('pb-1 font-medium', header.id !== 'name' && 'text-right')}
                             aria-sort={
                               sorted ? (sorted === 'asc' ? 'ascending' : 'descending') : 'none'
                             }
                           >
-                            <table.FlexRender header={header} />{' '}
-                            {sorted ? (sorted === 'asc' ? '▲' : '▼') : ''}
+                            <button
+                              type="button"
+                              className="select-none hover:text-foreground transition-colors"
+                              onClick={header.column.getToggleSortingHandler()}
+                            >
+                              <table.FlexRender header={header} />{' '}
+                              {sorted ? (sorted === 'asc' ? '▲' : '▼') : ''}
+                            </button>
                           </th>
                         );
                       })}

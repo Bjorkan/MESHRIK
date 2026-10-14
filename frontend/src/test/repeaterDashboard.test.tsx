@@ -513,7 +513,7 @@ describe('RepeaterDashboard', () => {
         .getAllByRole('row')
         .slice(1)
         .map((r) => r.querySelector('td')?.firstChild?.textContent ?? '');
-    const header = (re: RegExp) => within(table).getByRole('columnheader', { name: re });
+    const header = (re: RegExp) => within(table).getByRole('button', { name: re });
 
     // Default order is SNR descending (preserves the pre-sorting behavior).
     expect(names()).toEqual(['Zeta', 'Mike', 'Alpha']);
