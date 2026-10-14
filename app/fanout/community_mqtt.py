@@ -13,6 +13,7 @@ import asyncio
 import base64
 import json
 import logging
+import math
 import ssl
 import time
 from datetime import UTC, datetime
@@ -47,7 +48,11 @@ _ROUTE_MAP = {0: "F", 1: "F", 2: "D", 3: "T"}
 
 def _format_utc_timestamp(dt: datetime | None = None) -> str:
     """Return an ISO-8601 UTC timestamp accepted by community observers."""
-    current = dt.astimezone(UTC) if dt is not None else datetime.now(UTC)
+    current = (
+        dt.replace(tzinfo=UTC)
+        if dt is not None and dt.tzinfo is None
+        else (dt.astimezone(UTC) if dt is not None else datetime.now(UTC))
+    )
     return current.isoformat().replace("+00:00", "Z")
 
 
@@ -144,54 +149,84 @@ def _decode_packet_fields(raw_bytes: bytes) -> tuple[str, str, str, list[str], i
         return route, packet_type, payload_len, path_values, payload_type
 
 
-def _format_raw_packet(data: dict[str, Any], device_name: str, public_key_hex: str) -> dict | None:
-    """Convert a RawPacketBroadcast dict to meshcore-packet-capture format.
+def _packet_timestamp(value: Any) -> datetime:
+    """Host RX time, in UTC. Missing/invalid timestamps fall back to ingest time.
 
-    Returns ``None`` when the packet cannot be decoded — callers should skip
-    publishing rather than forwarding malformed data.
+    Numeric event timestamps are Unix seconds; ISO 8601 timestamps are also
+    accepted. Naive date-times are interpreted as UTC, never server local time.
     """
-    raw_hex = data.get("data", "")
-    raw_bytes = bytes.fromhex(raw_hex) if raw_hex else b""
+    try:
+        if isinstance(value, bool):
+            raise ValueError("boolean is not a timestamp")
+        if isinstance(value, datetime):
+            dt = value
+        elif isinstance(value, (int, float)):
+            if not math.isfinite(value):
+                raise ValueError("nonfinite timestamp")
+            dt = datetime.fromtimestamp(value, UTC)
+        elif isinstance(value, str) and value.strip():
+            dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        else:
+            raise ValueError("missing timestamp")
+        return dt.replace(tzinfo=UTC) if dt.tzinfo is None else dt.astimezone(UTC)
+    except (ValueError, OverflowError, OSError, TypeError):
+        return datetime.now(UTC)
 
-    route, packet_type, payload_len, path_values, _payload_type = _decode_packet_fields(raw_bytes)
 
+def _numeric_string(value: Any) -> str | None:
+    """Encode only genuine finite telemetry values; missing values are omitted."""
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    if not math.isfinite(numeric):
+        return None
+    return str(int(numeric)) if numeric.is_integer() else str(numeric)
+
+
+def _format_raw_packet(data: dict[str, Any], device_name: str, public_key_hex: str) -> dict | None:
+    """Serialize a valid captured binary RX frame to the observer packet schema.
+
+    Never use MQTT submission time in place of MESHRIK's host RX ingest time.
+    ``score`` is omitted unless its source scale is explicitly confirmed.
+    """
+    raw_hex = data.get("data")
+    if not isinstance(raw_hex, str):
+        return None
+    try:
+        raw_bytes = bytes.fromhex(raw_hex)
+    except ValueError:
+        return None
+    route, packet_type, payload_len, path_values, _ = _decode_packet_fields(raw_bytes)
     if route == "U":
         return None
 
-    # Community observers clamp zone-less local timestamps; publish explicit UTC.
-    current_time = datetime.now(UTC)
-    ts_str = _format_utc_timestamp(current_time)
-
-    # Keep numeric telemetry numeric so downstream analyzers can ingest it.
-    # Preserve the existing "Unknown" fallback for missing values.
-    snr_val = data.get("snr")
-    rssi_val = data.get("rssi")
-    snr: float | str = float(snr_val) if snr_val is not None else "Unknown"
-    rssi: int | str = int(rssi_val) if rssi_val is not None else "Unknown"
-
-    packet_hash = calculate_packet_hash(raw_bytes)
-
-    packet = {
+    rx_time = _packet_timestamp(data.get("timestamp"))
+    packet: dict[str, str | list[str]] = {
         "origin": device_name or "MeshCore Device",
         "origin_id": public_key_hex.upper(),
-        "timestamp": ts_str,
+        "timestamp": _format_utc_timestamp(rx_time),
         "type": "PACKET",
         "direction": "rx",
-        "time": current_time.strftime("%H:%M:%S"),
-        "date": current_time.strftime("%d/%m/%Y"),
+        "time": rx_time.strftime("%H:%M:%S"),
+        "date": rx_time.strftime("%d/%m/%Y"),
         "len": str(len(raw_bytes)),
         "packet_type": packet_type,
         "route": route,
         "payload_len": payload_len,
-        "raw": raw_hex.upper(),
-        "SNR": snr,
-        "RSSI": rssi,
-        "hash": packet_hash,
+        "raw": raw_bytes.hex().upper(),
+        "hash": calculate_packet_hash(raw_bytes),
     }
+    for source, target in (("rssi", "RSSI"), ("snr", "SNR")):
+        metric = _numeric_string(data.get(source))
+        if metric is not None:
+            packet[target] = metric
 
-    if route == "D":
-        packet["path"] = ",".join(path_values)
-
+    # Transport-direct includes a path just like ordinary direct routing.
+    if route in {"D", "T"} and path_values:
+        packet["path"] = path_values
     return packet
 
 

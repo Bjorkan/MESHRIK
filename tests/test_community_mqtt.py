@@ -222,8 +222,8 @@ class TestPacketFormatConversion:
         assert result["origin"] == "TestNode"
         assert result["origin_id"] == "AABBCCDD" * 8
         assert result["raw"] == "0100AA"
-        assert result["SNR"] == 5.5
-        assert result["RSSI"] == -90
+        assert result["SNR"] == "5.5"
+        assert result["RSSI"] == "-90"
         assert result["type"] == "PACKET"
         assert result["direction"] == "rx"
         assert result["len"] == "3"
@@ -238,8 +238,8 @@ class TestPacketFormatConversion:
         data = {"timestamp": 0, "data": "0100AA", "snr": None, "rssi": None}
         result = _format_raw_packet(data, "Node", "AA" * 32)
         assert result is not None
-        assert result["SNR"] == "Unknown"
-        assert result["RSSI"] == "Unknown"
+        assert "SNR" not in result
+        assert "RSSI" not in result
 
     def test_packet_type_extraction(self):
         # Header 0x14 = type 5, route 0 (TRANSPORT_FLOOD): header + 4 transport + path_len.
@@ -288,14 +288,13 @@ class TestPacketFormatConversion:
         data = {"timestamp": 0, "data": "0202AABBCC", "snr": 1.0, "rssi": -70}
         result = _format_raw_packet(data, "Node", "AA" * 32)
         assert result["route"] == "D"
-        assert result["path"] == "aa,bb"
+        assert result["path"] == ["aa", "bb"]
 
     def test_direct_route_includes_empty_path_field(self):
         data = {"timestamp": 0, "data": "0200AA", "snr": 1.0, "rssi": -70}
         result = _format_raw_packet(data, "Node", "AA" * 32)
         assert result["route"] == "D"
-        assert "path" in result
-        assert result["path"] == ""
+        assert "path" not in result
 
     def test_direct_multibyte_route_formats_path_as_hop_identifiers(self):
         # route=2 (DIRECT), payload_type=2, path_byte=0x82 -> 2 hops x 3 bytes
@@ -303,7 +302,7 @@ class TestPacketFormatConversion:
         result = _format_raw_packet(data, "Node", "AA" * 32)
         assert result["route"] == "D"
         assert result["payload_len"] == "1"
-        assert result["path"] == "aabbcc,ddeeff"
+        assert result["path"] == ["aabbcc", "ddeeff"]
 
     def test_flood_multibyte_route_omits_path_field(self):
         # route=1 (FLOOD), payload_type=2, path_byte=0x82 -> 2 hops x 3 bytes
