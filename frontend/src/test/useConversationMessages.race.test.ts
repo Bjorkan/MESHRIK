@@ -4,7 +4,10 @@ import { createElement, type ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 
 import { api } from '../api';
-import { useConversationMessages } from '../hooks/useConversationMessages';
+import {
+  reconcileConversationMessages,
+  useConversationMessages,
+} from '../hooks/useConversationMessages';
 import { queryKeys } from '../queryClient';
 import type { Conversation, Message } from '../types';
 
@@ -178,6 +181,91 @@ describe('useConversationMessages ACK ordering', () => {
 
     await waitFor(() => expect(result.current.messages[0]?.acked).toBe(3));
     expect(result.current.messages[0].paths).toEqual(highAckPaths);
+  });
+
+  it('preserves ACK and path updates that arrive while a latest fetch is in flight', async () => {
+    const deferred = createDeferred<Message[]>();
+    mockGetMessages.mockReturnValueOnce(deferred.promise);
+    queryClient.setQueryData(queryKeys.conversationView('contact', 'abc123', null), {
+      pages: [
+        {
+          messages: [createMessage({ id: 42, acked: 0, paths: null })],
+          hasOlder: false,
+          hasNewer: false,
+        },
+      ],
+      pageParams: [{ direction: 'latest' }],
+    });
+    const { result } = renderHook(() => useConversationMessages(createConversation()));
+    await waitFor(() => expect(mockGetMessages).toHaveBeenCalledTimes(1));
+
+    const livePath = { path: 'LIVE', received_at: 1700000099 };
+    act(() => {
+      result.current.receiveMessageAck(42, 3, [livePath], 777);
+    });
+    await waitFor(() => expect(result.current.messages[0].acked).toBe(3));
+
+    deferred.resolve([
+      createMessage({
+        id: 42,
+        acked: 1,
+        paths: [{ path: 'REST', received_at: 1700000002 }],
+        packet_id: null,
+      }),
+    ]);
+
+    await waitFor(() => expect(result.current.messagesLoading).toBe(false));
+    expect(result.current.messages[0].acked).toBe(3);
+    expect(result.current.messages[0].paths).toContainEqual(livePath);
+    expect(result.current.messages[0].packet_id).toBe(777);
+  });
+});
+
+describe('reconcileConversationMessages deletion boundary', () => {
+  it('merges monotonic ACK, path and packet revisions from the live cache', () => {
+    const live = createMessage({
+      id: 1,
+      acked: 3,
+      paths: [{ path: 'LIVE', received_at: 1700000003 }],
+      packet_id: 777,
+    });
+    const fetched = createMessage({
+      id: 1,
+      acked: 1,
+      paths: [{ path: 'REST', received_at: 1700000002 }],
+      packet_id: null,
+    });
+
+    expect(reconcileConversationMessages([live], [fetched], false, new Set([1]))).toEqual([
+      {
+        ...fetched,
+        acked: 3,
+        paths: [
+          { path: 'REST', received_at: 1700000002 },
+          { path: 'LIVE', received_at: 1700000003 },
+        ],
+        packet_id: 777,
+      },
+    ]);
+  });
+
+  it('removes server-deleted messages that existed when the request started', () => {
+    const removed = createMessage({ id: 1, text: 'deleted on server' });
+    const retained = createMessage({ id: 2, text: 'still present' });
+
+    expect(
+      reconcileConversationMessages([removed, retained], [retained], false, new Set([1, 2]))
+    ).toEqual([retained]);
+  });
+
+  it('does not mistake a message received during the request for a server deletion', () => {
+    const requestStart = createMessage({ id: 1, text: 'snapshot' });
+    const fetched = createMessage({ id: 1, text: 'snapshot updated' });
+    const live = createMessage({ id: 2, text: 'arrived live', received_at: 1700000010 });
+
+    expect(
+      reconcileConversationMessages([requestStart, live], [fetched], false, new Set([1]))
+    ).toEqual([fetched, live]);
   });
 });
 
@@ -766,6 +854,85 @@ describe('useConversationMessages forward pagination', () => {
       expect(result.current.messages).toHaveLength(1);
       expect(result.current.messages[0].text).toBe('latest-msg');
     });
+  });
+
+  it('coalesces concurrent jump-to-bottom requests into one Query fetch', async () => {
+    const conv: Conversation = { type: 'channel', id: 'ch1', name: 'Channel' };
+    mockGetMessagesAround.mockResolvedValueOnce({
+      messages: [createMessage({ id: 5, conversation_key: 'ch1' })],
+      has_older: true,
+      has_newer: true,
+    });
+    const latest = createDeferred<Message[]>();
+    mockGetMessages.mockReturnValueOnce(latest.promise);
+
+    const { result } = renderHook(() => useConversationMessages(conv, 5));
+    await waitFor(() => expect(result.current.messagesLoading).toBe(false));
+
+    act(() => {
+      result.current.jumpToBottom();
+      result.current.jumpToBottom();
+    });
+
+    await waitFor(() => expect(mockGetMessages).toHaveBeenCalledTimes(1));
+    latest.resolve([createMessage({ id: 10, conversation_key: 'ch1', text: 'tail' })]);
+    await waitFor(() => expect(result.current.messages[0]?.text).toBe('tail'));
+    expect(mockGetMessages).toHaveBeenCalledTimes(1);
+  });
+
+  it('aborts a stale around-message request when the jump target changes', async () => {
+    const conv: Conversation = { type: 'channel', id: 'ch1', name: 'Channel' };
+    let firstSignal: AbortSignal | undefined;
+    mockGetMessagesAround.mockImplementationOnce(
+      (_messageId: number, _type: string, _conversationId: string, signal?: AbortSignal) => {
+        firstSignal = signal;
+        return new Promise((_, reject) => {
+          signal?.addEventListener('abort', () => {
+            reject(new DOMException('The operation was aborted', 'AbortError'));
+          });
+        });
+      }
+    );
+    mockGetMessagesAround.mockResolvedValueOnce({
+      messages: [createMessage({ id: 9, conversation_key: 'ch1', text: 'new target' })],
+      has_older: false,
+      has_newer: false,
+    });
+
+    const { result, rerender } = renderHook(
+      ({ target }: { target: number }) => useConversationMessages(conv, target),
+      { initialProps: { target: 5 } }
+    );
+    await waitFor(() => expect(mockGetMessagesAround).toHaveBeenCalledTimes(1));
+
+    rerender({ target: 9 });
+
+    await waitFor(() => expect(firstSignal?.aborted).toBe(true));
+    await waitFor(() => expect(result.current.messagesLoading).toBe(false));
+    expect(result.current.messages.map((message) => message.text)).toEqual(['new target']);
+    expect(mockToastError).not.toHaveBeenCalled();
+  });
+
+  it('aborts an in-flight jump request on unmount without surfacing an error', async () => {
+    const conv: Conversation = { type: 'channel', id: 'ch1', name: 'Channel' };
+    let signal: AbortSignal | undefined;
+    mockGetMessagesAround.mockImplementationOnce(
+      (_messageId: number, _type: string, _conversationId: string, requestSignal?: AbortSignal) => {
+        signal = requestSignal;
+        return new Promise((_, reject) => {
+          requestSignal?.addEventListener('abort', () => {
+            reject(new DOMException('The operation was aborted', 'AbortError'));
+          });
+        });
+      }
+    );
+
+    const { unmount } = renderHook(() => useConversationMessages(conv, 5));
+    await waitFor(() => expect(mockGetMessagesAround).toHaveBeenCalledTimes(1));
+    unmount();
+
+    await waitFor(() => expect(signal?.aborted).toBe(true));
+    expect(mockToastError).not.toHaveBeenCalled();
   });
 
   it('jumpToBottom clears deferred reconnect reconcile without an extra reconcile fetch', async () => {

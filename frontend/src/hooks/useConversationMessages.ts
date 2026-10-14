@@ -74,6 +74,24 @@ function messagesEqual(left: Message, right: Message): boolean {
   return JSON.stringify(left) === JSON.stringify(right);
 }
 
+function mergeMessageRevisions(current: Message, fetched: Message): Message {
+  const paths = [...(fetched.paths ?? [])];
+  const pathKeys = new Set(paths.map((path) => `${path.path}:${path.received_at}`));
+  for (const path of current.paths ?? []) {
+    const key = `${path.path}:${path.received_at}`;
+    if (!pathKeys.has(key)) {
+      pathKeys.add(key);
+      paths.push(path);
+    }
+  }
+  return {
+    ...fetched,
+    acked: Math.max(current.acked, fetched.acked),
+    paths: paths.length > 0 ? paths : fetched.paths,
+    packet_id: fetched.packet_id ?? current.packet_id,
+  };
+}
+
 export function reconcileConversationMessages(
   current: Message[],
   fetched: Message[],
@@ -107,13 +125,17 @@ export function reconcileConversationMessages(
   let changed = current.some(
     (message) => !fetchedIds.has(message.id) && mayRemove(message) && isInsideFetchedRange(message)
   );
-  changed ||= fetched.some((message) => {
+  const reconciledFetched = fetched.map((message) => {
+    const existing = currentById.get(message.id);
+    return existing ? mergeMessageRevisions(existing, message) : message;
+  });
+  changed ||= reconciledFetched.some((message) => {
     const existing = currentById.get(message.id);
     return !existing || !messagesEqual(existing, message);
   });
   if (!changed) return null;
   return [
-    ...fetched,
+    ...reconciledFetched,
     ...current.filter(
       (message) =>
         !fetchedIds.has(message.id) && (!mayRemove(message) || !isInsideFetchedRange(message))
