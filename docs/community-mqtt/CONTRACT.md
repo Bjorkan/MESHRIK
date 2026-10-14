@@ -68,3 +68,16 @@ use their own current public connection settings but do not automatically
 inherit LetsMesh-specific `/error` diagnostics or neighbor/retain behavior.
 Existing user overrides are not automatically overwritten on upgrade.
 Encrypted transports enable TLS certificate verification by default.
+
+## Companion device-side signing (#122)
+
+On protocol-13 Companion, the connected public identity can be learned from
+`self_info.public_key` without exporting a private key. Community MQTT JWT
+signing is performed through the *single radio job worker* calling the pinned
+meshcore SDK `commands.sign`, which owns START/DATA/FINISH in one worker callback.
+The returned 64-byte Ed25519 signature is verified against the radio public key
+before use; reconnect/generation mismatch discards it. An exported key already
+intentionally authorized by startup settings is a fallback only. This **does
+not** authorize private-key export or historical-message decryption and does
+not grant clients a general radio signing endpoint. Status/logging must never
+show JWT bytes, email claim, or MeshRank token-bearing topics.

@@ -89,6 +89,85 @@ def _base64url_encode(data: bytes) -> str:
     return base64.urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
 
 
+def _jwt_signing_input(
+    public_key: bytes,
+    *,
+    audience: str = _DEFAULT_BROKER,
+    email: str = "",
+) -> bytes:
+    """Form the exact broker JWT claim bytes *before* device-side signing."""
+    header = {"alg": "Ed25519", "typ": "JWT"}
+    now = int(time.time())
+    pubkey_hex = public_key.hex().upper()
+    payload: dict[str, object] = {
+        "publicKey": pubkey_hex,
+        "iat": now,
+        "exp": now + _TOKEN_LIFETIME,
+        "aud": audience,
+        "owner": pubkey_hex,
+        "client": _get_client_version(),
+    }
+    if email:
+        payload["email"] = email
+    header_b64 = _base64url_encode(json.dumps(header, separators=(",", ":")).encode())
+    payload_b64 = _base64url_encode(json.dumps(payload, separators=(",", ":")).encode())
+    return f"{header_b64}.{payload_b64}".encode()
+
+
+async def _sign_jwt_on_connected_radio(
+    public_key: bytes,
+    *,
+    audience: str,
+    email: str,
+) -> str:
+    """Sign using a *single* exclusive worker callback (START/DATA/FINISH).
+
+    This never requests private-key export, and cannot be reached through an
+    arbitrary HTTP/WS signer. Verify the entire returned signature locally to
+    reject lost chunks, wrong-radio responses and stale signing sessions.
+    """
+    from meshcore import EventType
+    from nacl.exceptions import BadSignatureError
+    from nacl.signing import VerifyKey
+
+    from app.services.radio_runtime import radio_runtime as radio_manager
+
+    data = _jwt_signing_input(public_key, audience=audience, email=email)
+    if len(data) > 8192:
+        raise ValueError("JWT signing payload exceeds radio limit")
+    generation = radio_manager.radio_generation
+    connected_mc = radio_manager.meshcore
+    if connected_mc is None or not radio_manager.is_connected:
+        raise RuntimeError("Companion is disconnected; cannot sign JWT")
+
+    async def sign_with_worker(mc):
+        if mc is not connected_mc or not callable(getattr(mc.commands, "sign", None)):
+            raise RuntimeError("Connected Companion SDK lacks signing commands")
+        result = await mc.commands.sign(data, chunk_size=120, timeout=30)
+        if result.type != EventType.SIGNATURE:
+            raise RuntimeError("Companion firmware rejected device-side signing")
+        return result.payload.get("signature")
+
+    signature = await radio_manager.run_radio_command(
+        "community_jwt_sign",
+        sign_with_worker,
+        blocking=True,
+    )
+    if (
+        radio_manager.radio_generation != generation
+        or radio_manager.meshcore is not connected_mc
+        or not radio_manager.is_connected
+    ):
+        raise RuntimeError("Companion reconnected during signing; JWT discarded")
+    if not isinstance(signature, bytes) or len(signature) != 64:
+        raise RuntimeError("Companion produced no valid Ed25519 signature")
+    try:
+        VerifyKey(public_key).verify(data, signature)
+    except (BadSignatureError, ValueError) as exc:
+        raise RuntimeError("Companion JWT signature does not match connected identity") from exc
+    return f"{data.decode()}.{signature.hex()}"
+
+
 def _generate_jwt_token(
     private_key: bytes,
     public_key: bytes,
@@ -104,30 +183,11 @@ def _generate_jwt_token(
     Optional ``email`` embeds a node-claiming identity so the community
     aggregator can associate this radio with an owner.
     """
-    header = {"alg": "Ed25519", "typ": "JWT"}
-    now = int(time.time())
-    pubkey_hex = public_key.hex().upper()
-    payload: dict[str, object] = {
-        "publicKey": pubkey_hex,
-        "iat": now,
-        "exp": now + _TOKEN_LIFETIME,
-        "aud": audience,
-        "owner": pubkey_hex,
-        "client": _get_client_version(),
-    }
-    if email:
-        payload["email"] = email
-
-    header_b64 = _base64url_encode(json.dumps(header, separators=(",", ":")).encode())
-    payload_b64 = _base64url_encode(json.dumps(payload, separators=(",", ":")).encode())
-
-    signing_input = f"{header_b64}.{payload_b64}".encode()
-
+    signing_input = _jwt_signing_input(public_key, audience=audience, email=email)
     scalar = private_key[:32]
     prefix = private_key[32:]
     signature = ed25519_sign_expanded(signing_input, scalar, prefix, public_key)
-
-    return f"{header_b64}.{payload_b64}.{signature.hex()}"
+    return f"{signing_input.decode()}.{signature.hex()}"
 
 
 def _decode_packet_fields(raw_bytes: bytes) -> tuple[str, str, str, list[str], int | None]:
@@ -399,6 +459,7 @@ class CommunityMqttPublisher(BaseMqttPublisher):
         self._error_reader: asyncio.Task[None] | None = None
         self.broker_error_code: str | None = None
         self.broker_error_at: str | None = None
+        self._device_signed_jwt: str | None = None
 
     async def start(self, settings: object) -> None:
         self._key_unavailable_warned = False
@@ -408,6 +469,7 @@ class CommunityMqttPublisher(BaseMqttPublisher):
         self._last_stats_fetch = 0.0
         self._last_status_publish = 0.0
         self._last_neighbors_publish = 0.0
+        self._device_signed_jwt = None
         await super().start(settings)
 
     @property
@@ -448,39 +510,12 @@ class CommunityMqttPublisher(BaseMqttPublisher):
                 pass
             self._error_reader = None
 
-    def _on_not_configured(self) -> None:
-        from app.keystore import get_public_key, has_private_key
-        from app.websocket import broadcast_error
-
-        s: CommunityMqttSettings | None = self._settings
-        auth_mode = getattr(s, "community_mqtt_auth_mode", "token") if s else "token"
-        if (
-            s
-            and auth_mode == "token"
-            and get_public_key() is not None
-            and not has_private_key()
-            and not self._key_unavailable_warned
-        ):
-            broadcast_error(
-                "Community MQTT unavailable",
-                "Radio firmware does not support private key export.",
-            )
-            self._key_unavailable_warned = True
-
     def _is_configured(self) -> bool:
-        """Check if community MQTT is enabled and a public identity is available.
-
-        Token-auth brokers that accept v1 public-identity connections do not
-        require the private key for configuration, only for JWT signing at
-        connect time.  The private-key check therefore lives in
-        ``_pre_connect``, not here.
-        """
+        """Identity is from Companion public key; signing need not export it."""
         from app.keystore import get_public_key
 
         s: CommunityMqttSettings | None = self._settings
-        if not s or not s.community_mqtt_enabled:
-            return False
-        if get_public_key() is None:
+        if not s or not s.community_mqtt_enabled or get_public_key() is None:
             return False
         try:
             validate_profile(_settings_topic_config(s))
@@ -541,14 +576,18 @@ class CommunityMqttPublisher(BaseMqttPublisher):
                 retain=broker_retains(_settings_topic_config(s), "status"),
             )
         if auth_mode == "token":
-            assert private_key is not None
             token_audience = (s.community_mqtt_token_audience or "").strip() or broker_host
-            jwt_token = _generate_jwt_token(
-                private_key,
-                public_key,
-                audience=token_audience,
-                email=(s.community_mqtt_email or "") if secure_connection else "",
-            )
+            jwt_token = self._device_signed_jwt
+            if not jwt_token and private_key is not None:
+                # Explicit previously-authorized export fallback only.
+                jwt_token = _generate_jwt_token(
+                    private_key,
+                    public_key,
+                    audience=token_audience,
+                    email=(s.community_mqtt_email or "") if secure_connection else "",
+                )
+            if jwt_token is None:
+                raise RuntimeError("Companion signing is unavailable; no private key exported")
             kwargs["username"] = f"v1_{pubkey_hex}"
             kwargs["password"] = jwt_token
         elif auth_mode == "password":
@@ -842,18 +881,36 @@ class CommunityMqttPublisher(BaseMqttPublisher):
 
     async def _pre_connect(self, settings: object) -> bool:
         from app.keystore import get_private_key, get_public_key
+        from app.services.radio_runtime import radio_runtime as radio_manager
 
         s: CommunityMqttSettings = settings  # type: ignore[assignment]
-        auth_mode = s.community_mqtt_auth_mode or "token"
-        private_key = get_private_key()
         public_key = get_public_key()
-        if public_key is None or (auth_mode == "token" and private_key is None):
-            # Keys not available yet, wait for settings change or key export
-            self.connected = False
-            self._version_event.clear()
-            try:
-                await asyncio.wait_for(self._version_event.wait(), timeout=30)
-            except TimeoutError:
-                pass
+        if public_key is None:
             return False
+        self._device_signed_jwt = None
+        if s.community_mqtt_auth_mode != "token":
+            return True
+        audience = (s.community_mqtt_token_audience or "").strip() or s.community_mqtt_broker_host
+        email = (
+            (s.community_mqtt_email or "")
+            if s.community_mqtt_use_tls and s.community_mqtt_tls_verify
+            else ""
+        )
+        try:
+            if radio_manager.is_connected:
+                self._device_signed_jwt = await _sign_jwt_on_connected_radio(
+                    public_key,
+                    audience=audience,
+                    email=email,
+                )
+            elif get_private_key() is None:
+                raise RuntimeError("Companion is disconnected; device signing unavailable")
+        except Exception as exc:
+            # No sensitive signing input/token/message is included in UI or logs.
+            if get_private_key() is None:
+                self._last_error = "Companion device signing unavailable: verify firmware, SDK and radio connection"
+                logger.debug("Community MQTT signing could not complete (%s)", type(exc).__name__)
+                await asyncio.sleep(3)
+                return False
+            logger.debug("Community MQTT using previously-authorized exported-key signing fallback")
         return True

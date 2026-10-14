@@ -345,6 +345,11 @@ async def _run_lifecycle_workflow(radio_manager: Any, generation: int) -> None:
 
         async def device_bootstrap(current: Any) -> None:
             register_event_handlers(current)
+            from app.keystore import set_public_key_from_radio
+
+            identity = (current.self_info or {}).get("public_key")
+            if identity is not None and isinstance(identity, (str, bytes)):
+                set_public_key_from_radio(identity)
             await _query_device_info(radio_manager, current)
 
         stages.append(

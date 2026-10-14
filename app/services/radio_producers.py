@@ -82,6 +82,7 @@ _COMMAND_TIMEOUT_SECONDS = {
     "repeater_neighbors": 45,
     "repeater_acl": 45,
     "repeater_regions_anon": 45,
+    "community_jwt_sign": 45,
     "room_status": 45,
     "room_lpp_telemetry": 45,
     "room_acl": 45,

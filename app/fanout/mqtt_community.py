@@ -195,22 +195,7 @@ class MqttCommunityModule(FanoutModule):
         return self._key_unavailable_reason()
 
     def _key_unavailable_reason(self) -> str | None:
-        """Explain a silent "disconnected" caused by a missing radio key.
-
-        Community MQTT can only authenticate (and derive its topic/identity)
-        with the radio's own key, which is exported from the radio on connect.
-        When the radio is fully connected and set up but the keystore is still
-        empty, the key export was refused or never answered -- typically
-        firmware without ENABLE_PRIVATE_KEY_EXPORT, or a proxy transport
-        (e.g. Meshmonitor) that does not forward the key-export command.
-
-        Surfacing this as the module's ``last_error`` promotes the fanout status
-        to "error" and lights up the existing per-card error detail, instead of
-        leaving the operator staring at a bare "Disconnected". See issue #321.
-
-        Gated on ``is_setup_complete`` so we do not falsely accuse the radio
-        during the normal connect/key-export window.
-        """
+        """A public radio identity is required; private key export is not."""
         from app.keystore import get_public_key
         from app.services.radio_runtime import radio_runtime as radio_manager
 
@@ -218,12 +203,7 @@ class MqttCommunityModule(FanoutModule):
             return None
         if not (radio_manager.is_connected and radio_manager.is_setup_complete):
             return None
-        return (
-            "Community MQTT needs the radio's public identity to operate, but it "
-            "isn't available. Your radio firmware may not support key export "
-            "(ENABLE_PRIVATE_KEY_EXPORT=1), or you're connecting through a proxy "
-            "that doesn't forward the key-export command."
-        )
+        return "Companion public identity unavailable after initialization; reconnect radio"
 
 
 def _prepare_community_packet(

@@ -77,6 +77,24 @@ def set_private_key(key: bytes) -> None:
     logger.info("Private key stored in keystore (public key: %s...)", _public_key.hex()[:12])
 
 
+def set_public_key_from_radio(key: str | bytes) -> None:
+    """Track the connected radio's verified public identity without key export.
+
+    A signing-only Companion still provides its 32-byte public identity in
+    ``self_info``. Reconnect calls ``clear_keys`` before the next bootstrap.
+    """
+    global _public_key
+    try:
+        public_key = bytes.fromhex(key) if isinstance(key, str) else bytes(key)
+    except ValueError as exc:
+        raise ValueError("Invalid radio public identity") from exc
+    if len(public_key) != 32:
+        raise ValueError("Radio public identity must contain exactly 32 bytes")
+    if _private_key is not None and derive_public_key(_private_key) != public_key:
+        raise ValueError("Radio public identity does not match loaded private identity")
+    _public_key = public_key
+
+
 def get_private_key() -> bytes | None:
     """Get the stored private key.
 
