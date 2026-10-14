@@ -1,0 +1,28 @@
+{
+  "timestamp": "2025-01-02T03:04:05Z",
+  "origin": "observer-fixture",
+  "origin_id": "A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1",
+  "sample_type": "host_observed_nearby",
+  "total_neighbors": 2,
+  "queried_neighbors": 1,
+  "truncated": false,
+  "self": {},
+  "neighbors": [
+    {
+      "pubkey": "B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2",
+      "snr": 2.5,
+      "heard_secs_ago": 10,
+      "scopes": [
+        "RegionA"
+      ],
+      "status": "responded"
+    },
+    {
+      "pubkey": "C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3",
+      "snr": null,
+      "heard_secs_ago": null,
+      "scopes": null,
+      "status": "not_queried"
+    }
+  ]
+}

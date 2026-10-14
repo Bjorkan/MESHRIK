@@ -1,0 +1,15 @@
+{
+  "origin": "observer-fixture",
+  "origin_id": "A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1",
+  "timestamp": "2025-01-02T03:04:05Z",
+  "type": "PACKET",
+  "direction": "rx",
+  "time": "03:04:05",
+  "date": "02/01/2025",
+  "len": "3",
+  "packet_type": "0",
+  "route": "F",
+  "payload_len": "1",
+  "raw": "0100AA",
+  "hash": "hex-from-parser"
+}

@@ -612,21 +612,23 @@ class TestCommunityMqttPublisher:
         with patch("app.keystore.get_public_key", return_value=b"x" * 32):
             assert pub._is_configured() is False
 
-    def test_is_configured_false_when_no_private_key(self):
+    def test_is_configured_with_public_identity_even_without_exported_key(self):
         pub = CommunityMqttPublisher()
         pub._settings = SimpleNamespace(
-            community_mqtt_enabled=True, community_mqtt_auth_mode="token"
+            community_mqtt_enabled=True,
+            community_mqtt_auth_mode="token",
+            community_mqtt_iata="LAX",
         )
         with (
             patch("app.keystore.get_public_key", return_value=b"x" * 32),
             patch("app.keystore.has_private_key", return_value=False),
         ):
-            assert pub._is_configured() is False
+            assert pub._is_configured() is True
 
     def test_is_configured_true_when_enabled_with_key(self):
         pub = CommunityMqttPublisher()
         pub._settings = SimpleNamespace(
-            community_mqtt_enabled=True, community_mqtt_auth_mode="token"
+            community_mqtt_enabled=True, community_mqtt_auth_mode="token", community_mqtt_iata="LAX"
         )
         with (
             patch("app.keystore.get_public_key", return_value=b"x" * 32),
@@ -637,9 +639,7 @@ class TestCommunityMqttPublisher:
     def test_is_configured_true_for_none_auth_without_private_key(self):
         pub = CommunityMqttPublisher()
         pub._settings = SimpleNamespace(
-            community_mqtt_enabled=True,
-            community_mqtt_auth_mode="none",
-            community_mqtt_iata="SFO",
+            community_mqtt_enabled=True, community_mqtt_auth_mode="none", community_mqtt_iata="LAX"
         )
         with patch("app.keystore.get_public_key", return_value=b"x" * 32):
             assert pub._is_configured() is True
@@ -647,7 +647,7 @@ class TestCommunityMqttPublisher:
 
 class TestPublishFailureSetsDisconnected:
     @pytest.mark.asyncio
-    async def test_publish_error_sets_connected_false(self):
+    async def test_publish_error_sets_connected_false(self, caplog):
         """A publish error should set connected=False so the loop can detect it."""
         pub = CommunityMqttPublisher()
         pub.set_integration_name("LetsMesh West")
@@ -657,7 +657,8 @@ class TestPublishFailureSetsDisconnected:
         pub._client = mock_client
         await pub.publish("topic", {"data": "test"})
         assert pub.connected is False
-        assert pub._last_error == "MQTT publish failed; reconnect required"
+        assert pub.last_error == "MQTT publish failed; reconnect required"
+        assert "topic" not in caplog.text
 
 
 class TestCommunityModuleKeyUnavailable:
@@ -684,9 +685,8 @@ class TestCommunityModuleKeyUnavailable:
         ):
             reason = module.last_error
             assert reason is not None
-            assert "key export" in reason
-            assert "ENABLE_PRIVATE_KEY_EXPORT" in reason
-            assert "proxy" in reason
+            assert "public identity" in reason
+            assert "private key" not in reason
             # A populated last_error promotes the status to "error" so the
             # fanout card shows the actionable detail instead of "Disconnected".
             assert module.status == "error"
@@ -742,13 +742,15 @@ class TestCommunityModuleKeyUnavailable:
 class TestBuildStatusTopic:
     def test_builds_correct_topic(self):
         settings = SimpleNamespace(community_mqtt_iata="LAX")
-        topic = _build_status_topic(settings, "AA" * 32)
-        assert topic == f"meshcore/LAX/{'AA' * 32}/status"
+        key = "AA" * 32
+        topic = _build_status_topic(settings, key)
+        assert topic == f"meshcore/LAX/{key}/status"
 
     def test_iata_uppercased_and_stripped(self):
         settings = SimpleNamespace(community_mqtt_iata=" lax ")
-        topic = _build_status_topic(settings, "AA" * 32)
-        assert topic == f"meshcore/LAX/{'AA' * 32}/status"
+        key = "CC" * 32
+        topic = _build_status_topic(settings, key)
+        assert topic == f"meshcore/LAX/{key}/status"
 
 
 class TestRenderPacketTopic:
@@ -816,7 +818,7 @@ class TestLwtAndStatusPublish:
         assert "will" in kwargs
         will = kwargs["will"]
         assert will.topic == f"meshcore/SFO/{pubkey_hex}/status"
-        assert will.retain is False
+        assert will.retain is False  # LetsMesh broker retains only neighbor snapshots
         payload = json.loads(will.payload)
         assert payload["status"] == "offline"
         assert payload["origin"] == "TestNode"
@@ -910,7 +912,8 @@ class TestLwtAndStatusPublish:
             community_mqtt_broker_port=8883,
             community_mqtt_transport="tcp",
             community_mqtt_auth_mode="none",
-            community_mqtt_iata="SFO",
+            community_mqtt_profile="meshrank",
+            community_mqtt_token="TestToken_123456",
         )
 
         with (
@@ -967,7 +970,7 @@ class TestLwtAndStatusPublish:
         retain = mock_publish.call_args[1]["retain"]
 
         assert topic == f"meshcore/LAX/{pubkey_hex}/status"
-        assert retain is False
+        assert retain is False  # LetsMesh does not retain status
         assert payload["status"] == "online"
         assert payload["origin"] == "TestNode"
         assert payload["origin_id"] == pubkey_hex
@@ -1128,8 +1131,7 @@ class TestCommunityPacketPublishTopic:
     @pytest.mark.asyncio
     async def test_publish_community_packet_uses_configured_topic_template(self):
         publisher = MagicMock()
-        publisher.publish = AsyncMock()
-        publisher.submit_packet = AsyncMock()
+        publisher.submit_packet = AsyncMock(return_value=True)
         publisher.connected = True
         publisher._settings = object()
 
@@ -1144,7 +1146,11 @@ class TestCommunityPacketPublishTopic:
             "decrypted": False,
             "decrypted_info": None,
         }
-        config = {"iata": "lax", "topic_template": "mesh2mqtt/{IATA}/node/{PUBLIC_KEY}/packets"}
+        config = {
+            "profile": "custom",
+            "iata": "lax",
+            "topic_template": "mesh2mqtt/{IATA}/node/{PUBLIC_KEY}/packets",
+        }
 
         mock_radio = MagicMock()
         mock_radio.meshcore = MagicMock()

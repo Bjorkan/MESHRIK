@@ -468,17 +468,20 @@ class CommunityMqttPublisher(BaseMqttPublisher):
             self._key_unavailable_warned = True
 
     def _is_configured(self) -> bool:
-        """Check if community MQTT is enabled and keys are available."""
-        from app.keystore import get_public_key, has_private_key
+        """Check if community MQTT is enabled and a public identity is available.
+
+        Token-auth brokers that accept v1 public-identity connections do not
+        require the private key for configuration, only for JWT signing at
+        connect time.  The private-key check therefore lives in
+        ``_pre_connect``, not here.
+        """
+        from app.keystore import get_public_key
 
         s: CommunityMqttSettings | None = self._settings
         if not s or not s.community_mqtt_enabled:
             return False
         if get_public_key() is None:
             return False
-        auth_mode = getattr(s, "community_mqtt_auth_mode", "token")
-        if auth_mode == "token":
-            return has_private_key()
         try:
             validate_profile(_settings_topic_config(s))
         except ValueError as exc:

@@ -1,0 +1,10 @@
+{
+  "status": "online",
+  "timestamp": "2025-01-02T03:04:05Z",
+  "origin": "observer-fixture",
+  "origin_id": "A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1",
+  "model": "Companion",
+  "firmware_version": "1.17.1",
+  "radio": "915,250,7,5",
+  "client_version": "MESHRIK/test"
+}

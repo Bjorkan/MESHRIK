@@ -219,7 +219,7 @@ class MqttCommunityModule(FanoutModule):
         if not (radio_manager.is_connected and radio_manager.is_setup_complete):
             return None
         return (
-            "Community MQTT needs the radio's private key to authenticate, but it "
+            "Community MQTT needs the radio's public identity to operate, but it "
             "isn't available. Your radio firmware may not support key export "
             "(ENABLE_PRIVATE_KEY_EXPORT=1), or you're connecting through a proxy "
             "that doesn't forward the key-export command."
