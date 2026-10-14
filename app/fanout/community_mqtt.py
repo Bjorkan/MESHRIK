@@ -279,6 +279,40 @@ def _settings_topic_config(settings: CommunityMqttSettings) -> dict:
     }
 
 
+_CORE_STATS = {
+    "battery_mv",
+    "uptime_secs",
+    "queue_len",
+    "noise_floor",
+    "tx_air_secs",
+    "rx_air_secs",
+    "recv_errors",
+    "internal_heap",
+}
+
+
+def _normalize_observer_stats(snapshot: dict[str, Any] | None) -> dict[str, int | float]:
+    """Only Companion-confirmed unit-safe, finite numeric source fields."""
+    if not snapshot:
+        return {}
+    result: dict[str, int | float] = {}
+    for key in _CORE_STATS:
+        value = snapshot.get(key)
+        if isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value):
+            result[key] = value
+    counters = snapshot.get("packets") or {}
+    if isinstance(counters, dict):
+        for source, dest in (
+            ("recv", "packets_received"),
+            ("sent", "packets_sent"),
+            ("recv_errors", "recv_errors"),
+        ):
+            value = counters.get(source)
+            if isinstance(value, int) and not isinstance(value, bool) and value >= 0:
+                result[dest] = value
+    return result
+
+
 def _build_radio_info() -> str:
     """Format the radio parameters string from self_info.
 
@@ -569,6 +603,14 @@ class CommunityMqttPublisher(BaseMqttPublisher):
 
     async def _fetch_stats(self) -> dict[str, Any] | None:
         """Fetch core + radio stats from the radio (best-effort, cached)."""
+        # Prefer the radio's existing 60-second single-worker stats sampler.
+        from app.services.radio_stats import get_latest_radio_stats
+
+        shared = get_latest_radio_stats()
+        if shared:
+            self._cached_stats = shared
+            self._last_stats_fetch = time.monotonic()
+            return shared
         if self._stats_supported is False:
             return self._cached_stats
 
@@ -663,8 +705,11 @@ class CommunityMqttPublisher(BaseMqttPublisher):
             "radio": _build_radio_info(),
             "client_version": _get_client_version(),
         }
-        if stats:
-            payload["stats"] = stats
+        if radio_manager.repeat_enabled_supported and radio_manager.repeat_enabled is not None:
+            payload["repeat"] = "on" if radio_manager.repeat_enabled else "off"
+        normalized_stats = _normalize_observer_stats(stats)
+        if normalized_stats:
+            payload["stats"] = normalized_stats
 
         await self.publish(
             status_topic, payload, retain=broker_retains(_settings_topic_config(settings), "status")
