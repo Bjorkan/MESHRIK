@@ -1,5 +1,8 @@
-import { useMemo } from 'react';
-import { areaY, barX, barY, defineChart, lineY, stack, type ChartMark } from '@tanstack/charts';
+import { useEffect, useMemo, useState } from 'react';
+import { areaY, barX, barY, defineChart, lineY, stack } from '@tanstack/charts';
+import { controlledSignal } from '@tanstack/charts/interaction/signal';
+import { zoomX, type ZoomXChange } from '@tanstack/charts/interaction/zoom';
+import { interactiveColorLegend, type InteractiveColorLegendChange } from '@tanstack/charts/legend';
 import { Chart } from '@tanstack/charts/react';
 import { pie, polar, radialArc } from '@tanstack/charts/polar';
 import { scaleBand } from '@tanstack/charts/scales/band';
@@ -16,19 +19,47 @@ export interface ChartSeries {
 }
 
 export interface ChartDatum {
-  category: string;
+  category: string | number;
   values: Record<string, number | null | undefined>;
   detail?: string;
   color?: string;
 }
 
 interface LongDatum {
-  category: string;
+  category: string | number;
   value: number;
   series: string;
   label: string;
   color: string;
   detail?: string;
+}
+
+export interface ChartViewport {
+  start: number;
+  end: number;
+}
+
+function useVisibleSeries(series: ChartSeries[]) {
+  const seriesKeys = useMemo(() => series.map((descriptor) => descriptor.key), [series]);
+  const [visibleSeries, setVisibleSeries] = useState<readonly string[]>(seriesKeys);
+
+  useEffect(() => {
+    setVisibleSeries((current) => {
+      const retained = current.filter((key) => seriesKeys.includes(key));
+      const added = seriesKeys.filter((key) => !current.includes(key));
+      const next = [...retained, ...added];
+      return next.length === current.length && next.every((key, index) => key === current[index])
+        ? current
+        : next;
+    });
+  }, [seriesKeys]);
+
+  return { visibleSeries, setVisibleSeries };
+}
+
+function chartDescription(data: ChartDatum[], series: ChartSeries[], zoomable = false): string {
+  const labels = series.map((descriptor) => descriptor.label).join(', ');
+  return `${data.length} data point${data.length === 1 ? '' : 's'}${labels ? ` for ${labels}` : ''}. Use arrow keys to inspect values${zoomable ? '; use plus, minus, arrow keys, or Home to change the time window' : ''}.`;
 }
 
 export function TanStackTimeSeriesChart({
@@ -38,6 +69,10 @@ export function TanStackTimeSeriesChart({
   ariaLabel,
   variant = 'line',
   valueFormatter,
+  xValueFormatter,
+  viewport,
+  fullExtent,
+  onViewportChange,
 }: {
   data: ChartDatum[];
   series: ChartSeries[];
@@ -45,16 +80,26 @@ export function TanStackTimeSeriesChart({
   ariaLabel: string;
   variant?: 'line' | 'area';
   valueFormatter?: (value: number) => string;
+  xValueFormatter?: (value: number) => string;
+  viewport?: ChartViewport;
+  fullExtent?: readonly [number, number];
+  onViewportChange?: (viewport: ChartViewport, reason: ZoomXChange<number>) => void;
 }) {
+  const { visibleSeries, setVisibleSeries } = useVisibleSeries(series);
+  const zoomable = Boolean(
+    viewport && fullExtent && fullExtent[0] !== fullExtent[1] && onViewportChange
+  );
   const definition = useMemo(() => {
-    const marks: ChartMark[] = [];
-    for (const descriptor of series) {
+    const marks = series.map((descriptor) => {
       const points: LongDatum[] = data.flatMap((datum, index) => {
         const value = datum.values[descriptor.key];
         return typeof value === 'number' && Number.isFinite(value)
           ? [
               {
-                category: `${datum.category}${'\u200b'.repeat(index)}`,
+                category:
+                  typeof datum.category === 'string'
+                    ? `${datum.category}${'\u200b'.repeat(index)}`
+                    : datum.category,
                 value,
                 series: descriptor.key,
                 label: descriptor.label,
@@ -65,51 +110,150 @@ export function TanStackTimeSeriesChart({
           : [];
       });
       if (variant === 'area' && !descriptor.line) {
-        marks.push(
-          areaY(points, {
-            id: `${descriptor.key}-area`,
-            x: 'category',
-            y: 'value',
-            fill: descriptor.color,
-            fillOpacity: 0.15,
-            stroke: descriptor.color,
-            strokeWidth: 1.5,
-          })
-        );
-      } else {
-        marks.push(
-          lineY(points, {
-            id: descriptor.label,
-            x: 'category',
-            y: 'value',
-            stroke: descriptor.color,
-            strokeWidth: 1.5,
-            points: points.length <= 40,
-          })
-        );
+        return areaY(points, {
+          id: `${descriptor.key}-area`,
+          x: 'category',
+          y: 'value',
+          yScale: descriptor.axis === 'right' ? 'yRight' : 'yLeft',
+          color: 'series',
+          fill: descriptor.color,
+          fillOpacity: 0.15,
+          stroke: descriptor.color,
+          strokeWidth: 1.5,
+        });
       }
-    }
+      return lineY(points, {
+        id: descriptor.label,
+        x: 'category',
+        y: 'value',
+        yScale: descriptor.axis === 'right' ? 'yRight' : 'yLeft',
+        color: 'series',
+        stroke: descriptor.color,
+        strokeWidth: 1.5,
+        points: points.length <= 40,
+      });
+    });
+
+    const valueAxis = {
+      channel: 'y' as const,
+      scale: scaleLinear,
+      nice: true,
+      grid: true,
+      axis: valueFormatter
+        ? { ticks: { format: (value: unknown) => valueFormatter(Number(value)) } }
+        : {},
+    };
+    const numericX = data.every((datum) => typeof datum.category === 'number');
+    const resolvedViewport =
+      viewport && fullExtent && fullExtent[0] !== fullExtent[1] ? viewport : null;
+    const controls =
+      numericX && resolvedViewport && fullExtent && onViewportChange
+        ? [
+            zoomX({
+              window: controlledSignal<ChartViewport, ZoomXChange<number>>(
+                resolvedViewport,
+                (next, context) => onViewportChange(next, context.reason)
+              ),
+              extent: fullExtent,
+              scaleExtent: [1, Math.max(1, data.length)],
+              wheelActivation: 'modifier',
+              ariaLabel: `${ariaLabel} time window`,
+              format: (value) => xValueFormatter?.(value) ?? String(value),
+            }),
+          ]
+        : undefined;
 
     return defineChart({
       marks,
       scales: {
-        x: {
-          scale: () => scalePoint<string>().padding(0.15),
+        x:
+          numericX && resolvedViewport
+            ? {
+                scale: scaleLinear().domain([resolvedViewport.start, resolvedViewport.end]),
+                axis: xValueFormatter
+                  ? { ticks: { format: (value: unknown) => xValueFormatter(Number(value)) } }
+                  : {},
+              }
+            : { scale: () => scalePoint<string | number>().padding(0.15) },
+        y: null,
+        yLeft: { ...valueAxis, side: 'left' },
+        yRight: series.some((descriptor) => descriptor.axis === 'right')
+          ? { ...valueAxis, side: 'right', grid: false }
+          : null,
+      },
+      color: {
+        domain: series.map((descriptor) => descriptor.key),
+        range: series.map((descriptor) => descriptor.color),
+        legend:
+          series.length > 1
+            ? interactiveColorLegend({
+                visible: controlledSignal<readonly string[], InteractiveColorLegendChange<string>>(
+                  visibleSeries,
+                  (next) => setVisibleSeries(next)
+                ),
+                placement: 'bottom',
+                ariaLabel: `${ariaLabel} series visibility`,
+                format: (key) =>
+                  series.find((descriptor) => descriptor.key === key)?.label ?? String(key),
+              })
+            : undefined,
+      },
+      focus: 'group-x',
+      controls,
+      svgAnimation: true,
+      tooltip: {
+        use: tooltip,
+        format: (point) => {
+          const datum = point.datum as LongDatum;
+          return `${datum.label}: ${datum.detail ?? valueFormatter?.(datum.value) ?? datum.value.toLocaleString()}`;
         },
-        y: {
-          scale: scaleLinear,
-          nice: true,
-          grid: true,
-          axis: valueFormatter
-            ? { ticks: { format: (value) => valueFormatter(Number(value)) } }
-            : {},
+        formatGroup: (points) => {
+          const first = points[0]?.datum as LongDatum | undefined;
+          const heading = first
+            ? typeof first.category === 'number'
+              ? (xValueFormatter?.(first.category) ?? String(first.category))
+              : first.category.split('\u200b').join('')
+            : '';
+          return [
+            heading,
+            ...points.map((point) => {
+              const datum = point.datum as LongDatum;
+              return `${datum.label}: ${datum.detail ?? valueFormatter?.(datum.value) ?? datum.value.toLocaleString()}`;
+            }),
+          ].join('\n');
         },
       },
-      tooltip,
     });
-  }, [data, series, valueFormatter, variant]);
+  }, [
+    ariaLabel,
+    data,
+    fullExtent,
+    onViewportChange,
+    series,
+    setVisibleSeries,
+    valueFormatter,
+    variant,
+    viewport,
+    visibleSeries,
+    xValueFormatter,
+  ]);
 
-  return <Chart definition={definition} height={height} ariaLabel={ariaLabel} />;
+  if (data.length === 0 || series.length === 0) {
+    return (
+      <div role="img" aria-label={ariaLabel} className="text-sm text-muted-foreground">
+        No chart data available.
+      </div>
+    );
+  }
+
+  return (
+    <Chart
+      definition={definition}
+      height={height}
+      ariaLabel={ariaLabel}
+      ariaDescription={chartDescription(data, series, zoomable)}
+    />
+  );
 }
 
 export function TanStackBarChart({
@@ -127,6 +271,7 @@ export function TanStackBarChart({
   horizontal?: boolean;
   stacked?: boolean;
 }) {
+  const { visibleSeries, setVisibleSeries } = useVisibleSeries(series);
   const definition = useMemo(() => {
     const points: LongDatum[] = data.flatMap((datum, index) =>
       series.flatMap((descriptor) => {
@@ -151,6 +296,7 @@ export function TanStackBarChart({
           x: 'value',
           y: 'category',
           z: 'series',
+          color: 'series',
           fill: (datum) => datum.color,
           layout,
           radius: { end: 4, stack: stacked ? 'outer' : 'each' },
@@ -160,6 +306,7 @@ export function TanStackBarChart({
           x: 'category',
           y: 'value',
           z: 'series',
+          color: 'series',
           fill: (datum) => datum.color,
           layout,
           radius: { end: 4, stack: stacked ? 'outer' : 'each' },
@@ -177,11 +324,58 @@ export function TanStackBarChart({
             x: { scale: () => scaleBand<string>().padding(0.18) },
             y: { scale: scaleLinear, nice: true, grid: true },
           },
-      tooltip,
+      color: {
+        domain: series.map((descriptor) => descriptor.key),
+        range: series.map((descriptor) => descriptor.color),
+        legend:
+          series.length > 1
+            ? interactiveColorLegend({
+                visible: controlledSignal<readonly string[], InteractiveColorLegendChange<string>>(
+                  visibleSeries,
+                  (next) => setVisibleSeries(next)
+                ),
+                placement: 'bottom',
+                ariaLabel: `${ariaLabel} series visibility`,
+                format: (key) =>
+                  series.find((descriptor) => descriptor.key === key)?.label ?? String(key),
+              })
+            : undefined,
+      },
+      focus: horizontal ? 'group-y' : 'group-x',
+      svgAnimation: true,
+      tooltip: {
+        use: tooltip,
+        format: (point) => {
+          const datum = point.datum as LongDatum;
+          return `${datum.label}: ${datum.detail ?? datum.value.toLocaleString()}`;
+        },
+        formatGroup: (group) =>
+          group
+            .map((point) => {
+              const datum = point.datum as LongDatum;
+              return `${datum.label}: ${datum.detail ?? datum.value.toLocaleString()}`;
+            })
+            .join('\n'),
+      },
     });
-  }, [data, horizontal, series, stacked]);
+  }, [ariaLabel, data, horizontal, series, setVisibleSeries, stacked, visibleSeries]);
 
-  return <Chart definition={definition} height={height} ariaLabel={ariaLabel} />;
+  if (data.length === 0 || series.length === 0) {
+    return (
+      <div role="img" aria-label={ariaLabel} className="text-sm text-muted-foreground">
+        No chart data available.
+      </div>
+    );
+  }
+
+  return (
+    <Chart
+      definition={definition}
+      height={height}
+      ariaLabel={ariaLabel}
+      ariaDescription={chartDescription(data, series)}
+    />
+  );
 }
 
 export function TanStackDonutChart({
@@ -218,9 +412,31 @@ export function TanStackDonutChart({
         domain: data.map((datum) => datum.name),
         range: data.map((datum) => datum.color),
       },
-      tooltip,
+      svgAnimation: true,
+      tooltip: {
+        use: tooltip,
+        format: (point) => {
+          const datum = point.datum as { name: string; value: number };
+          return `${datum.name}: ${datum.value.toLocaleString()}`;
+        },
+      },
     });
   }, [data]);
 
-  return <Chart definition={definition} height={height} ariaLabel={ariaLabel} />;
+  if (data.length === 0) {
+    return (
+      <div role="img" aria-label={ariaLabel} className="text-sm text-muted-foreground">
+        No chart data available.
+      </div>
+    );
+  }
+
+  return (
+    <Chart
+      definition={definition}
+      height={height}
+      ariaLabel={ariaLabel}
+      ariaDescription={`${data.length} slice${data.length === 1 ? '' : 's'}: ${data.map((datum) => datum.name).join(', ')}.`}
+    />
+  );
 }

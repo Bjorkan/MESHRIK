@@ -7,7 +7,7 @@ import { Separator } from '../ui/separator';
 import { lppDisplayUnit } from './repeaterPaneShared';
 import { useDistanceUnit } from '../../contexts/DistanceUnitContext';
 import type { TelemetryHistoryEntry, TelemetryLppSensor, Contact } from '../../types';
-import { TanStackTimeSeriesChart } from '../charts/TanStackChart';
+import { TanStackTimeSeriesChart, type ChartViewport } from '../charts/TanStackChart';
 
 const MAX_TRACKED = 8;
 
@@ -370,10 +370,38 @@ export function TelemetryHistoryPane({
   const brushStart = brushRange ? Math.min(brushRange.start, lastIndex) : 0;
   const brushEnd = brushRange ? Math.min(brushRange.end, lastIndex) : lastIndex;
 
-  const visibleData = useMemo(
-    () => chartData.slice(brushStart, brushEnd + 1),
-    [chartData, brushStart, brushEnd]
+  const fullTimeExtent = useMemo(
+    () =>
+      chartData.length > 0
+        ? ([Number(chartData[0].timestamp), Number(chartData[lastIndex].timestamp)] as const)
+        : ([0, 0] as const),
+    [chartData, lastIndex]
   );
+  const chartViewport = useMemo<ChartViewport>(
+    () => ({
+      start: Number(chartData[brushStart]?.timestamp ?? fullTimeExtent[0]),
+      end: Number(chartData[brushEnd]?.timestamp ?? fullTimeExtent[1]),
+    }),
+    [brushEnd, brushStart, chartData, fullTimeExtent]
+  );
+
+  const handleChartViewportChange = (next: ChartViewport) => {
+    const nearestIndex = (timestamp: number) => {
+      let bestIndex = 0;
+      let bestDistance = Number.POSITIVE_INFINITY;
+      chartData.forEach((point, index) => {
+        const distance = Math.abs(Number(point.timestamp) - timestamp);
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          bestIndex = index;
+        }
+      });
+      return bestIndex;
+    };
+    const start = nearestIndex(next.start);
+    const end = nearestIndex(next.end);
+    setBrushRange({ start: Math.min(start, end), end: Math.max(start, end) });
+  };
 
   const formatSeriesValue = (key: string, value: number): string => {
     if (key === 'recv_error_pct') return `${cleanNumber(value)}%`;
@@ -538,8 +566,8 @@ export function TelemetryHistoryPane({
         ) : (
           <div>
             <TanStackTimeSeriesChart
-              data={visibleData.map((point) => ({
-                category: formatTime(Number(point.timestamp)),
+              data={chartData.map((point) => ({
+                category: Number(point.timestamp),
                 values: point,
               }))}
               series={series}
@@ -547,41 +575,54 @@ export function TelemetryHistoryPane({
               ariaLabel={`${activeConfig.label} telemetry history`}
               variant="area"
               valueFormatter={(value) => formatSeriesValue(activeMetric, value)}
+              xValueFormatter={formatTime}
+              viewport={chartViewport}
+              fullExtent={fullTimeExtent}
+              onViewportChange={handleChartViewportChange}
             />
             {chartData.length > 2 && (
-              <div className="mt-1 grid grid-cols-2 gap-3" aria-label="Telemetry chart range">
-                <label className="text-[0.625rem] text-muted-foreground">
-                  From
-                  <input
-                    className="block w-full accent-primary"
-                    type="range"
-                    min={0}
-                    max={lastIndex}
-                    value={brushStart}
-                    onChange={(event) =>
-                      setBrushRange({
-                        start: Math.min(Number(event.target.value), brushEnd),
-                        end: brushEnd,
-                      })
-                    }
-                  />
-                </label>
-                <label className="text-[0.625rem] text-muted-foreground">
-                  To
-                  <input
-                    className="block w-full accent-primary"
-                    type="range"
-                    min={0}
-                    max={lastIndex}
-                    value={brushEnd}
-                    onChange={(event) =>
-                      setBrushRange({
-                        start: brushStart,
-                        end: Math.max(Number(event.target.value), brushStart),
-                      })
-                    }
-                  />
-                </label>
+              <div className="mt-1" aria-label="Telemetry chart range">
+                <p
+                  role="status"
+                  aria-live="polite"
+                  className="mb-1 text-[0.625rem] text-muted-foreground"
+                >
+                  Visible range: {formatTime(chartViewport.start)} – {formatTime(chartViewport.end)}
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="text-[0.625rem] text-muted-foreground">
+                    From
+                    <input
+                      className="block w-full accent-primary"
+                      type="range"
+                      min={0}
+                      max={lastIndex}
+                      value={brushStart}
+                      onChange={(event) =>
+                        setBrushRange({
+                          start: Math.min(Number(event.target.value), brushEnd),
+                          end: brushEnd,
+                        })
+                      }
+                    />
+                  </label>
+                  <label className="text-[0.625rem] text-muted-foreground">
+                    To
+                    <input
+                      className="block w-full accent-primary"
+                      type="range"
+                      min={0}
+                      max={lastIndex}
+                      value={brushEnd}
+                      onChange={(event) =>
+                        setBrushRange({
+                          start: brushStart,
+                          end: Math.max(Number(event.target.value), brushStart),
+                        })
+                      }
+                    />
+                  </label>
+                </div>
               </div>
             )}
           </div>

@@ -877,5 +877,54 @@ describe('RepeaterDashboard', () => {
 
       expect(screen.getByText('1 samples')).toBeInTheDocument();
     });
+
+    it('keeps the telemetry time window, metric filters and chart semantics connected', async () => {
+      const { api } = await import('../api');
+      vi.mocked(api.repeaterTelemetryHistory).mockResolvedValue([
+        {
+          timestamp: 1700000000,
+          data: { battery_volts: 4.1, packets_received: 100, packets_sent: 40 },
+        },
+        {
+          timestamp: 1700003600,
+          data: { battery_volts: 4.05, packets_received: 115, packets_sent: 45 },
+        },
+        {
+          timestamp: 1700007200,
+          data: { battery_volts: 4.0, packets_received: 130, packets_sent: 52 },
+        },
+        {
+          timestamp: 1700010800,
+          data: { battery_volts: 3.95, packets_received: 150, packets_sent: 60 },
+        },
+      ]);
+      mockHook.loggedIn = true;
+
+      render(<RepeaterDashboard {...defaultProps} />);
+
+      const heading = await screen.findByText('Telemetry History');
+      const pane = heading.closest('.border') as HTMLElement;
+      await waitFor(() =>
+        expect(within(pane).getByRole('img', { name: 'Voltage telemetry history' })).toBeVisible()
+      );
+      expect(within(pane).getByText('4 samples')).toBeInTheDocument();
+      expect(
+        within(pane).getByLabelText('Voltage telemetry history time window')
+      ).toBeInTheDocument();
+
+      const rangeStatus = within(pane).getByRole('status', { name: '' });
+      const initialRange = rangeStatus.textContent;
+      fireEvent.change(within(pane).getByLabelText('From'), { target: { value: '1' } });
+      expect(rangeStatus.textContent).not.toBe(initialRange);
+
+      fireEvent.click(within(pane).getByRole('button', { name: 'Packets' }));
+      const legend = await within(pane).findByRole('group', {
+        name: 'Packets telemetry history series visibility',
+      });
+      expect(
+        within(legend).getByRole('button', { name: 'Toggle Received series' })
+      ).toHaveAttribute('aria-pressed', 'true');
+      expect(within(pane).getByRole('button', { name: 'Download CSV' })).toBeEnabled();
+    });
   });
 });

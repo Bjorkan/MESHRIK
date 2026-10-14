@@ -30,7 +30,7 @@
     "@radix-ui/react-separator": "^1.1.8",
     "@radix-ui/react-slot": "^1.2.4",
     "@radix-ui/react-tabs": "^1.1.13",
-    "@tanstack/charts": "^1.1.0",
+    "@tanstack/charts": "1.1.0",
     "@tanstack/pacer": "^0.23.1",
     "@tanstack/query-db-collection": "^1.4.3",
     "@tanstack/react-db": "^0.5.8",

@@ -3,6 +3,7 @@
   "private": true,
   "scripts": {
     "test": "playwright test",
+    "test:charts": "playwright test --config playwright.charts.config.ts",
     "test:headed": "playwright test --headed",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
