@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import asyncio
+import json
 import logging
 import re
 import string
+from collections import deque
 from types import SimpleNamespace
 from typing import Any
 
@@ -87,6 +90,13 @@ class MqttCommunityModule(FanoutModule):
     """Wraps a CommunityMqttPublisher for community packet sharing."""
 
     def __init__(self, config_id: str, config: dict, *, name: str = "") -> None:
+        self._packet_queue: deque[tuple[str, dict, int]] = deque()
+        self._queue_bytes = 0
+        self._queue_limit_entries = 512
+        self._queue_limit_bytes = 4 * 1024 * 1024
+        self.dropped_packets = 0
+        self.submitted_packets = 0
+        self._flush_task: asyncio.Task[None] | None = None
         super().__init__(config_id, config, name=name)
         self._publisher = CommunityMqttPublisher()
         self._publisher.set_integration_name(name or config_id)
@@ -94,18 +104,76 @@ class MqttCommunityModule(FanoutModule):
     async def start(self) -> None:
         settings = _config_to_settings(self.config)
         await self._publisher.start(settings)
+        if self._flush_task is None or self._flush_task.done():
+            self._flush_task = asyncio.create_task(self._flush_packets())
 
     async def stop(self) -> None:
+        if self._flush_task is not None:
+            self._flush_task.cancel()
+            try:
+                await self._flush_task
+            except asyncio.CancelledError:
+                pass
+            self._flush_task = None
+        self._packet_queue.clear()
+        self._queue_bytes = 0
         await self._publisher.stop()
+
+    @property
+    def queue_stats(self) -> dict[str, int]:
+        return {
+            "queued": len(self._packet_queue),
+            "queued_bytes": self._queue_bytes,
+            "dropped": self.dropped_packets,
+            "submitted_to_client": self.submitted_packets,
+        }
+
+    def _enqueue(self, topic: str, packet: dict) -> None:
+        size = len(topic.encode()) + len(json.dumps(packet, separators=(",", ":")).encode())
+        if size > self._queue_limit_bytes:
+            self.dropped_packets += 1
+            return
+        while self._packet_queue and (
+            len(self._packet_queue) >= self._queue_limit_entries
+            or self._queue_bytes + size > self._queue_limit_bytes
+        ):
+            _old_topic, _old_packet, old_bytes = self._packet_queue.popleft()
+            self._queue_bytes -= old_bytes
+            self.dropped_packets += 1
+        self._packet_queue.append((topic, packet, size))
+        self._queue_bytes += size
+
+    async def _flush_packets(self) -> None:
+        """Bounded batches prevent slow brokers blocking radio event dispatch."""
+        while True:
+            try:
+                for _ in range(16):
+                    if not self._packet_queue or not self._publisher.connected:
+                        break
+                    topic, packet, size = self._packet_queue[0]
+                    ok = await self._publisher.submit_packet(topic, packet)
+                    if not ok:
+                        break  # Keep unsubmitted head and retry after reconnect.
+                    self._packet_queue.popleft()
+                    self._queue_bytes -= size
+                    self.submitted_packets += 1
+                await asyncio.sleep(
+                    0.25 if self._packet_queue and self._publisher.connected else 1.0
+                )
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                logger.warning("Community MQTT packet queue worker failed (details suppressed)")
+                await asyncio.sleep(1.0)
 
     async def on_message(self, data: dict) -> None:
         # Community MQTT only publishes raw packets, not decoded messages.
         pass
 
     async def on_raw(self, data: dict) -> None:
-        if not self._publisher.connected or self._publisher._settings is None:
-            return
-        await _publish_community_packet(self._publisher, self.config, data)
+        prepared = _prepare_community_packet(self.config, data)
+        if prepared is not None:
+            self._enqueue(*prepared)
 
     @property
     def status(self) -> str:
@@ -153,32 +221,38 @@ class MqttCommunityModule(FanoutModule):
         )
 
 
-async def _publish_community_packet(
-    publisher: CommunityMqttPublisher,
+def _prepare_community_packet(
     config: dict,
     data: dict[str, Any],
-) -> None:
-    """Format and publish a raw packet to the community broker."""
+) -> tuple[str, dict] | None:
+    """Format once at RX ingest, preserving timestamp across broker outages."""
     try:
         from app.keystore import get_public_key
         from app.services.radio_runtime import radio_runtime as radio_manager
 
         public_key = get_public_key()
         if public_key is None:
-            return
-
+            return None
         pubkey_hex = public_key.hex().upper()
-
         device_name = ""
         if radio_manager.meshcore and radio_manager.meshcore.self_info:
             device_name = radio_manager.meshcore.self_info.get("name", "")
-
         packet = _format_raw_packet(data, device_name, pubkey_hex)
         if packet is None:
-            return
+            return None
         topic = community_topic(config, pubkey_hex, "packets")
+        return topic, packet
+    except (ValueError, TypeError):
+        logger.debug("Community MQTT packet skipped: invalid configuration or packet")
+        return None
 
-        await publisher.publish(topic, packet)
 
-    except Exception as e:
-        logger.warning("Community MQTT broadcast error: %s", e, exc_info=True)
+async def _publish_community_packet(
+    publisher: CommunityMqttPublisher,
+    config: dict,
+    data: dict[str, Any],
+) -> None:
+    """Compatibility helper for one-off publishing; module traffic uses FIFO."""
+    prepared = _prepare_community_packet(config, data)
+    if prepared is not None:
+        await publisher.submit_packet(*prepared)

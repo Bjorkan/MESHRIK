@@ -1130,6 +1130,7 @@ class TestCommunityPacketPublishTopic:
     async def test_publish_community_packet_uses_configured_topic_template(self):
         publisher = MagicMock()
         publisher.publish = AsyncMock()
+        publisher.submit_packet = AsyncMock()
         publisher.connected = True
         publisher._settings = object()
 
@@ -1156,8 +1157,8 @@ class TestCommunityPacketPublishTopic:
         ):
             await _publish_community_packet(publisher, config, data)
 
-        publisher.publish.assert_awaited_once()
-        topic = publisher.publish.await_args.args[0]
+        publisher.submit_packet.assert_awaited_once()
+        topic = publisher.submit_packet.await_args.args[0]
         assert topic == f"mesh2mqtt/LAX/node/{'AA' * 32}/packets"
 
 

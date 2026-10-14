@@ -648,6 +648,21 @@ class CommunityMqttPublisher(BaseMqttPublisher):
         )
         self._last_status_publish = time.monotonic()
 
+    async def submit_packet(self, topic: str, packet: dict[str, Any]) -> bool:
+        """True means QoS0 *local submission*, never broker acceptance."""
+        client = self._client
+        if not self.connected or client is None:
+            return False
+        try:
+            await client.publish(topic, json.dumps(packet), retain=False)
+            return True
+        except Exception:
+            self.connected = False
+            self._last_error = "MQTT packet submission failed; awaiting reconnect"
+            self._settings_version += 1
+            self._version_event.set()
+            return False
+
     async def _publish_neighbors(self, settings: CommunityMqttSettings) -> bool:
         """Publish only previously observed host-sampled data, without transmitting RF."""
         if not getattr(settings, "community_mqtt_publish_neighbors", False):
