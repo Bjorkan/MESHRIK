@@ -27,6 +27,87 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# A single warning per radio generation per five minutes; no write attempts.
+_last_contacts_full_warning: tuple[int, float] | None = None
+
+
+async def on_radio_contact_deleted(
+    event: "Event",
+    *,
+    generation: int | None = None,
+    source: object | None = None,
+    received_at: float | None = None,
+) -> None:
+    """0x8F automatic *firmware overwrite*, not an application delete.
+
+    Older dispatcher callbacks and stale pending notifications cannot undo a
+    newer radio snapshot/re-add. Only a full 32-byte key is accepted.
+    """
+    import re
+
+    from app.services.contact_residency import was_confirmed_after
+    from app.services.radio_runtime import radio_runtime
+
+    generation = radio_runtime.radio_generation if generation is None else generation
+    received_at = time.monotonic() if received_at is None else received_at
+    if generation is None:
+        return
+    if generation != radio_runtime.radio_generation or (
+        source is not None and radio_runtime.meshcore is not source
+    ):
+        return
+    key = event.payload.get("pubkey") if isinstance(event.payload, dict) else None
+    if not isinstance(key, str) or re.fullmatch(r"[0-9a-fA-F]{64}", key) is None:
+        logger.debug("Ignored malformed Companion contact-overwrite notification")
+        return
+    key = key.lower()
+    if was_confirmed_after(key, generation, received_at):
+        return
+    contact = await ContactRepository.get_by_key(key)
+    if contact is None or not contact.on_radio:
+        return
+    if generation != radio_runtime.radio_generation or was_confirmed_after(
+        key, generation, received_at
+    ):
+        return
+    if not await ContactRepository.set_radio_contact_not_resident(key):
+        return
+    updated = await ContactRepository.get_by_key(key)
+    if updated is not None:
+        broadcast_event("contact", updated.model_dump())
+
+
+async def on_radio_contacts_full(
+    event: "Event",
+    *,
+    generation: int | None = None,
+    source: object | None = None,
+) -> None:
+    """0x90 is a bounded operator warning, never a delete/re-add instruction."""
+    from app.services.radio_runtime import radio_runtime
+    from app.websocket import broadcast_error
+
+    generation = radio_runtime.radio_generation if generation is None else generation
+    if generation is None:
+        return
+    if generation != radio_runtime.radio_generation or (
+        source is not None and source is not radio_runtime.meshcore
+    ):
+        return
+    global _last_contacts_full_warning
+    now = time.monotonic()
+    if _last_contacts_full_warning is not None and (
+        _last_contacts_full_warning[0] == generation and now - _last_contacts_full_warning[1] < 300
+    ):
+        return
+    _last_contacts_full_warning = generation, now
+    broadcast_error(
+        "Companion contact storage full",
+        "The radio contact table is full. Review radio-resident contacts manually; "
+        "MESHRIK will not automatically delete or replace contacts.",
+    )
+
+
 # Track active subscriptions so we can unsubscribe before re-registering
 # This prevents handler duplication after reconnects
 _active_subscriptions: list["Subscription"] = []
@@ -358,4 +439,21 @@ def register_event_handlers(meshcore) -> None:
     _active_subscriptions.append(meshcore.subscribe(EventType.PATH_UPDATE, on_path_update))
     _active_subscriptions.append(meshcore.subscribe(EventType.NEW_CONTACT, on_new_contact))
     _active_subscriptions.append(meshcore.subscribe(EventType.ACK, on_ack))
+    from app.services.radio_runtime import radio_runtime
+
+    generation = radio_runtime.radio_generation
+
+    async def contact_evicted(event: "Event") -> None:
+        await on_radio_contact_deleted(
+            event,
+            generation=generation,
+            source=meshcore,
+            received_at=time.monotonic(),
+        )
+
+    async def contacts_full(event: "Event") -> None:
+        await on_radio_contacts_full(event, generation=generation, source=meshcore)
+
+    _active_subscriptions.append(meshcore.subscribe(EventType.CONTACT_DELETED, contact_evicted))
+    _active_subscriptions.append(meshcore.subscribe(EventType.CONTACTS_FULL, contacts_full))
     logger.info("Event handlers registered")

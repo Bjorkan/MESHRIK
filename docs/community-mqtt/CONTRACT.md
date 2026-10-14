@@ -81,3 +81,14 @@ intentionally authorized by startup settings is a fallback only. This **does
 not** authorize private-key export or historical-message decryption and does
 not grant clients a general radio signing endpoint. Status/logging must never
 show JWT bytes, email claim, or MeshRank token-bearing topics.
+
+## Companion radio contact residency (#123)
+
+Pinned meshcore 2.3.14 parses Companion `0x8F` as typed
+`EventType.CONTACT_DELETED` with full 32-byte public key in `payload.pubkey`,
+and `0x90` as `EventType.CONTACTS_FULL`. The former clears only local
+`contacts.on_radio` after generation and more recent positive confirmation
+checks; it **does not** delete app contact records or message histories.
+`CONTACTS_FULL` emits a warning at most once per five minutes per connection
+generation, with no automatic radio contact mutation. These firmware-origin
+notifications are distinct from user-requested REST contact deletion.

@@ -127,6 +127,21 @@ class ContactRepository:
                 ),
             ):
                 pass
+        if contact_row.on_radio is True:
+            from app.services.contact_residency import note_confirmed_radio_contact
+            from app.services.radio_runtime import radio_runtime
+
+            note_confirmed_radio_contact(contact_row.public_key, radio_runtime.radio_generation)
+
+    @staticmethod
+    async def set_radio_contact_not_resident(public_key: str) -> bool:
+        """Clear radio residence alone; preserve the entire application contact."""
+        async with db.tx() as conn:
+            cursor = await conn.execute(
+                "UPDATE contacts SET on_radio = 0 WHERE public_key = ? AND on_radio = 1",
+                (public_key.lower(),),
+            )
+            return bool(cursor.rowcount)
 
     @staticmethod
     def _row_to_contact(row) -> Contact:
