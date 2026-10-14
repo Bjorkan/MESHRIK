@@ -86,6 +86,8 @@ export function useUnreadCounts(
 ): UseUnreadCountsResult {
   const queryClient = useQueryClient();
   const mutationVersionRef = useRef(0);
+  const pendingMarkAllCountRef = useRef(0);
+  const markAllNeedsReconcileRef = useRef(false);
   const activeConversationRef = useRef(activeConversation);
   activeConversationRef.current = activeConversation;
   const pendingReadBoundaryRef = useRef<PendingReadBoundary | null>(null);
@@ -287,6 +289,7 @@ export function useUnreadCounts(
   const markAllMutation = useMutation({
     mutationFn: api.markAllRead,
     onMutate: async () => {
+      pendingMarkAllCountRef.current += 1;
       await queryClient.cancelQueries({ queryKey: queryKeys.unreads() });
       const previous = queryClient.getQueryData<UnreadCounts>(queryKeys.unreads());
       mutationVersionRef.current += 1;
@@ -304,11 +307,21 @@ export function useUnreadCounts(
       if (context?.previous && context.version === mutationVersionRef.current) {
         queryClient.setQueryData(queryKeys.unreads(), context.previous);
       } else {
-        void queryClient.invalidateQueries({ queryKey: queryKeys.unreads() });
+        // A newer mutation or WebSocket update owns the cache now. Reconcile
+        // only after every concurrent bulk mutation settles; refetching while
+        // a newer mark-all is still in flight can resurrect stale badges.
+        markAllNeedsReconcileRef.current = true;
       }
       toast.error('Failed to mark all messages as read', {
         description: error instanceof Error ? error.message : 'Check your connection and retry',
       });
+    },
+    onSettled: () => {
+      pendingMarkAllCountRef.current = Math.max(0, pendingMarkAllCountRef.current - 1);
+      if (pendingMarkAllCountRef.current === 0 && markAllNeedsReconcileRef.current) {
+        markAllNeedsReconcileRef.current = false;
+        void queryClient.invalidateQueries({ queryKey: queryKeys.unreads() });
+      }
     },
   });
 

@@ -802,4 +802,176 @@ describe('useUnreadCounts', () => {
       expect.objectContaining({ description: 'offline' })
     );
   });
+
+  it('waits for a newer concurrent mark-all before reconciling an older failure', async () => {
+    const mocks = await getMockedApi();
+    const key = getStateKey('channel', CHANNEL_KEY);
+    const initial: UnreadCounts = {
+      counts: { [key]: 2 },
+      mentions: { [key]: true },
+      last_message_times: { [key]: 1700000000 },
+      first_unread_ids: { [key]: 10 },
+      last_read_ats: { [key]: 1699999999 },
+    };
+    mocks.getUnreads.mockResolvedValueOnce(initial);
+
+    let rejectFirst!: (error: Error) => void;
+    let resolveSecond!: (value: { status: string; timestamp: number }) => void;
+    const firstRequest = new Promise<never>((_resolve, reject) => {
+      rejectFirst = reject;
+    });
+    const secondRequest = new Promise<{ status: string; timestamp: number }>((resolve) => {
+      resolveSecond = resolve;
+    });
+    mocks.markAllRead
+      .mockReturnValueOnce(firstRequest)
+      .mockReturnValueOnce(secondRequest as ReturnType<typeof mocks.markAllRead>);
+
+    const { result, queryClient } = renderWith({
+      channels: [makeChannel(CHANNEL_KEY, 'Test')],
+    });
+    await vi.waitFor(() => expect(result.current.unreadCounts[key]).toBe(2));
+
+    let firstMutation!: Promise<void>;
+    let secondMutation!: Promise<void>;
+    act(() => {
+      firstMutation = result.current.markAllRead();
+      secondMutation = result.current.markAllRead();
+    });
+    await vi.waitFor(() => expect(mocks.markAllRead).toHaveBeenCalledTimes(2));
+    expect(result.current.unreadCounts).toEqual({});
+
+    rejectFirst(new Error('first request failed'));
+    await expect(firstMutation).rejects.toThrow('first request failed');
+    expect(mocks.getUnreads).toHaveBeenCalledTimes(1);
+    expect(result.current.unreadCounts).toEqual({});
+
+    mocks.getUnreads.mockResolvedValueOnce({
+      ...initial,
+      counts: {},
+      mentions: {},
+      first_unread_ids: {},
+      last_read_ats: {},
+    });
+    resolveSecond({ status: 'ok', timestamp: 1700000100 });
+    await secondMutation;
+
+    await vi.waitFor(() => expect(mocks.getUnreads).toHaveBeenCalledTimes(2));
+    expect(result.current.unreadCounts).toEqual({});
+    expect(queryClient.getQueryData<UnreadCounts>(queryKeys.unreads())?.counts).toEqual({});
+  });
+
+  it('reconciles a WebSocket unread after a failed mark-all without rolling it back', async () => {
+    const mocks = await getMockedApi();
+    const key = getStateKey('channel', CHANNEL_KEY);
+    const initial: UnreadCounts = {
+      counts: { [key]: 2 },
+      mentions: {},
+      last_message_times: {},
+      first_unread_ids: { [key]: 10 },
+      last_read_ats: { [key]: 1699999999 },
+    };
+    mocks.getUnreads.mockResolvedValueOnce(initial);
+    let rejectMarkAll!: (error: Error) => void;
+    mocks.markAllRead.mockReturnValueOnce(
+      new Promise<never>((_resolve, reject) => {
+        rejectMarkAll = reject;
+      })
+    );
+
+    const { result, queryClient } = renderWith({
+      channels: [makeChannel(CHANNEL_KEY, 'Test')],
+    });
+    await vi.waitFor(() => expect(result.current.unreadCounts[key]).toBe(2));
+
+    let mutation!: Promise<void>;
+    act(() => {
+      mutation = result.current.markAllRead();
+    });
+    await vi.waitFor(() => expect(result.current.unreadCounts).toEqual({}));
+    act(() => {
+      result.current.recordMessageEvent({
+        msg: makeMessage({ id: 30, type: 'CHAN', conversation_key: CHANNEL_KEY }),
+        activeConversation: false,
+        isNewMessage: true,
+        hasMention: true,
+      });
+    });
+    expect(result.current.unreadCounts[key]).toBe(1);
+
+    mocks.getUnreads.mockResolvedValueOnce({
+      ...initial,
+      counts: { [key]: 3 },
+      mentions: { [key]: true },
+    });
+    rejectMarkAll(new Error('timeout'));
+    await expect(mutation).rejects.toThrow('timeout');
+
+    await vi.waitFor(() => expect(result.current.unreadCounts[key]).toBe(3));
+    const cached = queryClient.getQueryData<UnreadCounts>(queryKeys.unreads());
+    expect(cached?.counts[key]).toBe(3);
+    expect(cached?.mentions[key]).toBe(true);
+  });
+
+  it('keeps Query state coherent while rapid conversation changes overlap mark-read calls', async () => {
+    const mocks = await getMockedApi();
+    const channelStateKey = getStateKey('channel', CHANNEL_KEY);
+    const contactStateKey = getStateKey('contact', CONTACT_KEY);
+    mocks.getUnreads.mockResolvedValueOnce({
+      counts: { [channelStateKey]: 2, [contactStateKey]: 3 },
+      mentions: { [channelStateKey]: true },
+      last_message_times: {},
+      first_unread_ids: { [channelStateKey]: 10, [contactStateKey]: 20 },
+      last_read_ats: {},
+    });
+    let resolveChannelRead!: (value: { status: string; key: string }) => void;
+    let resolveContactRead!: (value: { status: string; public_key: string }) => void;
+    mocks.markChannelRead.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveChannelRead = resolve;
+      })
+    );
+    mocks.markContactRead.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveContactRead = resolve;
+      })
+    );
+
+    const channelConversation: Conversation = {
+      type: 'channel',
+      id: CHANNEL_KEY,
+      name: 'Channel',
+    };
+    const contactConversation: Conversation = {
+      type: 'contact',
+      id: CONTACT_KEY,
+      name: 'Contact',
+    };
+    const { result, rerender, queryClient } = renderWith({
+      channels: [makeChannel(CHANNEL_KEY, 'Channel')],
+      contacts: [makeContact(CONTACT_KEY)],
+      activeConversation: channelConversation,
+    });
+    await vi.waitFor(() => expect(mocks.markChannelRead).toHaveBeenCalledWith(CHANNEL_KEY));
+    expect(result.current.unreadCounts[channelStateKey]).toBeUndefined();
+    expect(result.current.unreadCounts[contactStateKey]).toBe(3);
+
+    rerender({
+      channels: [makeChannel(CHANNEL_KEY, 'Channel')],
+      contacts: [makeContact(CONTACT_KEY)],
+      activeConversation: contactConversation,
+    });
+    await vi.waitFor(() => expect(mocks.markContactRead).toHaveBeenCalledWith(CONTACT_KEY));
+    expect(result.current.unreadCounts[channelStateKey]).toBe(2);
+    expect(result.current.unreadCounts[contactStateKey]).toBeUndefined();
+
+    resolveContactRead({ status: 'ok', public_key: CONTACT_KEY });
+    resolveChannelRead({ status: 'ok', key: CHANNEL_KEY });
+    await act(async () => await Promise.resolve());
+
+    const cached = queryClient.getQueryData<UnreadCounts>(queryKeys.unreads());
+    expect(cached?.counts).toEqual({ [channelStateKey]: 2, [contactStateKey]: 3 });
+    expect(result.current.unreadCounts[channelStateKey]).toBe(2);
+    expect(result.current.unreadCounts[contactStateKey]).toBeUndefined();
+  });
 });
