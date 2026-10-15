@@ -291,6 +291,29 @@ async def create_message_from_decrypted(
         if len(candidates) == 1:
             resolved_sender_key = candidates[0].public_key
 
+    # A self-observed channel echo has an on-disk outgoing row created
+    # before send. Link the RF packet to that row; do not duplicate it merely
+    # because the new packet-identity index differs from the send intent.
+    outgoing_match = await MessageRepository.get_by_content(
+        msg_type="CHAN",
+        conversation_key=channel_key_normalized,
+        text=text,
+        sender_timestamp=timestamp,
+        outgoing=True,
+    )
+    if outgoing_match is not None:
+        await reconcile_duplicate_message(
+            existing_msg=outgoing_match,
+            packet_id=packet_id,
+            path=path,
+            received_at=received,
+            path_len=path_len,
+            rssi=rssi,
+            snr=snr,
+            broadcast_fn=broadcast_fn,
+        )
+        return None
+
     msg_id = await MessageRepository.create(
         msg_type="CHAN",
         text=text,

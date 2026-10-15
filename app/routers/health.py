@@ -86,6 +86,7 @@ class HealthResponse(BaseModel):
     bots_disabled_source: Literal["env", "until_restart"] | None = None
     basic_auth_enabled: bool = False
     rx_coverage: dict[str, Any] = Field(default_factory=dict)
+    radio_scheduler: dict[str, Any] = Field(default_factory=dict)
 
 
 def _clean_optional_str(value: object) -> str | None:
@@ -204,10 +205,12 @@ async def build_health_data(radio_connected: bool, connection_info: str | None) 
     ):
         startup_skipped_stages = []
 
+    from app.services.radio_job_worker import radio_job_worker
     from app.services.rx_coverage import snapshot as rx_coverage_snapshot
 
     return {
         "rx_coverage": rx_coverage_snapshot(),
+        "radio_scheduler": radio_job_worker.quarantine_status(),
         "status": (
             "ok" if radio_connected and radio_state in {"ready", "connected"} else "degraded"
         ),

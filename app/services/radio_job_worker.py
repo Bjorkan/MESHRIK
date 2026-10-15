@@ -51,6 +51,18 @@ _RADIO_SEND_KINDS = frozenset({RadioJobKind.DIRECT_MESSAGE, RadioJobKind.CHANNEL
 _LIFECYCLE_KINDS = frozenset(kind for kind in RadioJobKind if kind.value.startswith("lifecycle_"))
 
 
+# These operations are read-only against the Companion and can recover only
+# after cooperative cancellation AND a verified fresh transport generation.
+_READ_ONLY_RECOVERABLE_KINDS = frozenset(
+    {
+        RadioJobKind.RADIO_STATS_SAMPLE,
+        RadioJobKind.LIFECYCLE_DEVICE_INFO,
+        RadioJobKind.LIFECYCLE_CHANNEL_SYNC,
+        RadioJobKind.CONTACT_QUERY,
+    }
+)
+
+
 class RadioProcessLease:
     """OS-level advisory lock across worker processes sharing the radio DB.
 
@@ -129,6 +141,9 @@ class RadioJobWorker:
         self._active_id: UUID | None = None
         self._quarantined = False
         self._command_started = False
+        self._quarantine_kind: str | None = None
+        self._quarantine_generation: int | None = None
+        self._recoverable_read_only = False
 
     @property
     def running(self) -> bool:
@@ -137,6 +152,34 @@ class RadioJobWorker:
     @property
     def quarantined(self) -> bool:
         return self._quarantined
+
+    def quarantine_status(self) -> dict[str, object]:
+        return {
+            "quarantined": self._quarantined,
+            "last_job_kind": self._quarantine_kind,
+            "recoverable_after_reconnect": self._recoverable_read_only,
+            "requires_restart": self._quarantined and not self._recoverable_read_only,
+        }
+
+    def recover_after_reconnect(self) -> bool:
+        """Explicit fresh-generation recovery for proven cancelled read-only reads.
+
+        This does not restart transport, send RF or replay prior job callbacks.
+        Mutating/ambiguous/unresponsive tasks always remain quarantined.
+        """
+        if not self._quarantined or not self._recoverable_read_only:
+            return False
+        if self._active is not None and not self._active.done():
+            return False
+        if self._quarantine_generation == self._runtime_generation():
+            return False
+        if self.running:
+            return False
+        self._quarantined = False
+        self._recoverable_read_only = False
+        self._commands.clear()
+        self.start()
+        return True
 
     def start(self) -> None:
         """Idempotent within a process; never start a second executor."""
@@ -289,6 +332,11 @@ class RadioJobWorker:
                 # have transmitted. Even cooperative cancellation cannot
                 # prove the device's state, so fail closed until restart.
                 if self._command_started or not done:
+                    self._quarantine_kind = snapshot.kind.value
+                    self._quarantine_generation = snapshot.radio_generation
+                    self._recoverable_read_only = bool(
+                        done and task.cancelled() and snapshot.kind in _READ_ONLY_RECOVERABLE_KINDS
+                    )
                     self._finish_if_current(
                         snapshot, RadioJobState.UNKNOWN, RadioJobResult.COMMAND_TIMEOUT
                     )

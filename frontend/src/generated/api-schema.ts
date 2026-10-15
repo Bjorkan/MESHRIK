@@ -3057,6 +3057,10 @@ export interface components {
        * @default false
        */
       radio_initializing: boolean;
+      /** Radio Scheduler */
+      radio_scheduler?: {
+        [key: string]: unknown;
+      };
       /**
        * Radio State
        * @default disconnected

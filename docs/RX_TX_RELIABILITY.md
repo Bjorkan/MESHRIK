@@ -27,3 +27,11 @@ fills. There is no trustworthy firmware eviction counter via Companion v13.
 Health `rx_coverage.drop_count=null` means **unknown**, never zero. The
 transport disconnect interval is recorded as a possible data-loss window;
 receiving all surviving items does not establish uninterrupted RF coverage.
+
+## Radio worker quarantine
+
+`/health.radio_scheduler` distinguishes strict restart-only quarantine from
+cooperatively cancelled read-only commands potentially recoverable after a
+**new transport generation**. Recovery is an explicit method, not a replay:
+mutating sends, unresponsive tasks and same-generation requests cannot reset
+the fence. Never infer peer delivery from scheduler recovery.

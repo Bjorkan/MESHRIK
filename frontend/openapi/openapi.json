@@ -2758,6 +2758,11 @@
             "title": "Radio Initializing",
             "type": "boolean"
           },
+          "radio_scheduler": {
+            "additionalProperties": true,
+            "title": "Radio Scheduler",
+            "type": "object"
+          },
           "radio_state": {
             "default": "disconnected",
             "enum": [

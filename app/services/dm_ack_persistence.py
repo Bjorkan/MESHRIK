@@ -8,8 +8,8 @@ no-op when the database is unavailable instead of breaking the ACK path.
 import logging
 import time
 
-from app.database import db
 from app.keystore import get_public_key
+from app.repository import messages as messages_repo
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ def own_radio_key() -> str | None:
 
 
 def _db_connected() -> bool:
-    return getattr(db, "_connection", None) is not None
+    return getattr(messages_repo.db, "_connection", None) is not None
 
 
 async def remember(code: str, message_id: int, timeout_ms: int) -> None:
@@ -31,7 +31,7 @@ async def remember(code: str, message_id: int, timeout_ms: int) -> None:
         return
     expiry = int(time.time() + max(30, timeout_ms / 1000 * 2))
     try:
-        async with db.tx() as conn:
+        async with messages_repo.db.tx() as conn:
             await conn.execute(
                 "INSERT OR REPLACE INTO pending_dm_ack_correlations "
                 "(code,message_id,radio_key,expiry_at) VALUES (?,?,?,?)",
@@ -50,7 +50,7 @@ async def lookup(code: str) -> int | None:
     if not identity or not _db_connected():
         return None
     try:
-        async with db.readonly() as conn:
+        async with messages_repo.db.readonly() as conn:
             async with conn.execute(
                 "SELECT message_id FROM pending_dm_ack_correlations WHERE code=? AND radio_key=? AND expiry_at>=?",
                 (code, identity, int(time.time())),
@@ -66,7 +66,7 @@ async def retire(message_id: int) -> None:
     if not _db_connected():
         return
     try:
-        async with db.tx() as conn:
+        async with messages_repo.db.tx() as conn:
             await conn.execute(
                 "DELETE FROM pending_dm_ack_correlations WHERE message_id=?",
                 (message_id,),
@@ -87,7 +87,7 @@ async def confirm(code: str, fallback_message_id: int | None = None) -> tuple[in
         return None
     identity = own_radio_key()
     try:
-        async with db.tx() as conn:
+        async with messages_repo.db.tx() as conn:
             found_id = None
             if identity:
                 async with conn.execute(
@@ -103,18 +103,15 @@ async def confirm(code: str, fallback_message_id: int | None = None) -> tuple[in
             if found_id is None:
                 return None
             async with conn.execute(
-                "UPDATE messages SET acked=acked+1 WHERE id=? AND type='PRIV' "
-                "AND outgoing=1 AND acked=0",
+                "UPDATE messages SET acked=acked+1 WHERE id=? AND type='PRIV' AND acked=0",
                 (found_id,),
             ) as cursor:
                 changed = cursor.rowcount
-            if changed == 0:
-                # Already confirmed (or not an outgoing DM); a replay must not
-                # broadcast a second confirmation for the same message.
-                return None
             async with conn.execute("SELECT acked FROM messages WHERE id=?", (found_id,)) as cursor:
                 row = await cursor.fetchone()
-            if row is None:
+            if row is None or not changed:
+                # A replayed ACK must not increment or broadcast twice, and a
+                # vanished row must not retire correlations.
                 return None
             await conn.execute(
                 "DELETE FROM pending_dm_ack_correlations WHERE message_id=?", (found_id,)

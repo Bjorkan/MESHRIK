@@ -350,20 +350,11 @@ async def start_historical_dm_decryption(
     _last_historical_dm_skip_status = None
 
     try:
-        contact_public_key_bytes = bytes.fromhex(contact_public_key_hex)
+        bytes.fromhex(contact_public_key_hex)
     except ValueError:
         logger.warning(
             "Cannot start historical DM decryption: invalid contact key %s",
             contact_public_key_hex,
-        )
-        return HistoricalDmDecryptStart(
-            status="invalid_contact_key",
-            message="The contact public key is invalid, so historical decryption was not started.",
-        )
-    if len(contact_public_key_bytes) != 32:
-        logger.warning(
-            "Cannot start historical DM decryption: contact key must be 32 bytes (%d given)",
-            len(contact_public_key_bytes),
         )
         return HistoricalDmDecryptStart(
             status="invalid_contact_key",
