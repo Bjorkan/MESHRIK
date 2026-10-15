@@ -211,6 +211,16 @@ class RadioActivitySource(StrEnum):
 
 
 RadioPacketType = Literal["channel", "direct", "advertisement", "ack", "path", "control", "other"]
+RadioReadinessState = Literal[
+    "ready",
+    "connected",
+    "degraded",
+    "failed",
+    "initializing",
+    "connecting",
+    "disconnected",
+    "paused",
+]
 
 
 class RadioActivityRecord(BaseModel):
@@ -231,6 +241,10 @@ class RadioActivityRecord(BaseModel):
     rssi: int | None = Field(default=None, ge=-160, le=0)
     snr: float | None = Field(default=None, ge=-40, le=40)
     hops: int | None = Field(default=None, ge=0, le=64)
+    previous_connected: bool | None = None
+    connected: bool | None = None
+    previous_readiness: RadioReadinessState | None = None
+    readiness: RadioReadinessState | None = None
 
 
 class RadioConnectionStatus(StrEnum):

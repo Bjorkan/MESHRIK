@@ -33,6 +33,7 @@ from app.services.radio_jobs import (
     RadioJobStage,
     RadioJobState,
     RadioPacketType,
+    RadioReadinessState,
     require_utc,
     utc_now,
 )
@@ -160,6 +161,11 @@ class RadioJobScheduler:
         rssi: int | None = None,
         snr: float | None = None,
         hops: int | None = None,
+        previous_connected: bool | None = None,
+        connected: bool | None = None,
+        previous_readiness: RadioReadinessState | None = None,
+        readiness: RadioReadinessState | None = None,
+        radio_generation: int | None = None,
     ) -> RadioActivityRecord:
         """Public activity is an allowlisted classification, never a raw event."""
         if not isinstance(kind, RadioActivityKind):
@@ -179,11 +185,23 @@ class RadioJobScheduler:
                 else RadioActivitySource.MESHCORE_EVENT
             ),
             job_id=job_id,
-            radio_generation=self._generation,
+            radio_generation=(
+                radio_generation
+                if kind == RadioActivityKind.CONNECTION_CHANGED and radio_generation is not None
+                else self._generation
+            ),
             packet_type=packet_type if kind == RadioActivityKind.PACKET_RECEIVED else None,
             rssi=rssi if kind == RadioActivityKind.PACKET_RECEIVED else None,
             snr=snr if kind == RadioActivityKind.PACKET_RECEIVED else None,
             hops=hops if kind == RadioActivityKind.PACKET_RECEIVED else None,
+            previous_connected=(
+                previous_connected if kind == RadioActivityKind.CONNECTION_CHANGED else None
+            ),
+            connected=connected if kind == RadioActivityKind.CONNECTION_CHANGED else None,
+            previous_readiness=(
+                previous_readiness if kind == RadioActivityKind.CONNECTION_CHANGED else None
+            ),
+            readiness=readiness if kind == RadioActivityKind.CONNECTION_CHANGED else None,
         )
         if self._activities.maxlen and len(self._activities) == self._activities.maxlen:
             self._activity_dropped_through = self._activities[0].sequence

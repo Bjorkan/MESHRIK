@@ -3673,6 +3673,8 @@ export interface components {
        * Format: date-time
        */
       at: string;
+      /** Connected */
+      connected?: boolean | null;
       /** Hops */
       hops?: number | null;
       /** Job Id */
@@ -3681,8 +3683,36 @@ export interface components {
       /** Packet Type */
       packet_type?:
         ('channel' | 'direct' | 'advertisement' | 'ack' | 'path' | 'control' | 'other') | null;
+      /** Previous Connected */
+      previous_connected?: boolean | null;
+      /** Previous Readiness */
+      previous_readiness?:
+        | (
+            | 'ready'
+            | 'connected'
+            | 'degraded'
+            | 'failed'
+            | 'initializing'
+            | 'connecting'
+            | 'disconnected'
+            | 'paused'
+          )
+        | null;
       /** Radio Generation */
       radio_generation: number;
+      /** Readiness */
+      readiness?:
+        | (
+            | 'ready'
+            | 'connected'
+            | 'degraded'
+            | 'failed'
+            | 'initializing'
+            | 'connecting'
+            | 'disconnected'
+            | 'paused'
+          )
+        | null;
       /** Rssi */
       rssi?: number | null;
       /** Sequence */

@@ -3790,6 +3790,17 @@
             "title": "At",
             "type": "string"
           },
+          "connected": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Connected"
+          },
           "hops": {
             "anyOf": [
               {
@@ -3838,10 +3849,63 @@
             ],
             "title": "Packet Type"
           },
+          "previous_connected": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Connected"
+          },
+          "previous_readiness": {
+            "anyOf": [
+              {
+                "enum": [
+                  "ready",
+                  "connected",
+                  "degraded",
+                  "failed",
+                  "initializing",
+                  "connecting",
+                  "disconnected",
+                  "paused"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Readiness"
+          },
           "radio_generation": {
             "minimum": 0.0,
             "title": "Radio Generation",
             "type": "integer"
+          },
+          "readiness": {
+            "anyOf": [
+              {
+                "enum": [
+                  "ready",
+                  "connected",
+                  "degraded",
+                  "failed",
+                  "initializing",
+                  "connecting",
+                  "disconnected",
+                  "paused"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Readiness"
           },
           "rssi": {
             "anyOf": [

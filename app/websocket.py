@@ -2,11 +2,12 @@
 
 import asyncio
 import logging
-from typing import Any
+from typing import Any, cast
 
 from fastapi import WebSocket
 
 from app.events import dump_ws_event
+from app.services.radio_jobs import RadioReadinessState
 
 logger = logging.getLogger(__name__)
 
@@ -153,7 +154,17 @@ def broadcast_success(message: str, details: str | None = None) -> None:
     ws_manager.enqueue("success", data)
 
 
-_last_radio_activity_status: tuple[bool, str, int] | None = None
+_last_radio_activity_status: tuple[bool, RadioReadinessState, int] | None = None
+_RADIO_READINESS_STATES: set[str] = {
+    "ready",
+    "connected",
+    "degraded",
+    "failed",
+    "initializing",
+    "connecting",
+    "disconnected",
+    "paused",
+}
 
 
 def broadcast_health(radio_connected: bool, connection_info: str | None = None) -> None:
@@ -172,18 +183,29 @@ def broadcast_health(radio_connected: bool, connection_info: str | None = None) 
     from app.services.radio_runtime import radio_runtime
 
     global _last_radio_activity_status
-    snapshot = (
-        radio_connected,
-        str(
-            getattr(
-                radio_runtime, "readiness_state", "ready" if radio_connected else "disconnected"
-            )
-        ),
-        int(getattr(radio_runtime, "radio_generation", 0)),
+    raw_readiness = str(
+        getattr(radio_runtime, "readiness_state", "ready" if radio_connected else "disconnected")
     )
+    if not bool(getattr(radio_runtime, "connection_desired", True)):
+        readiness: RadioReadinessState = "paused"
+    elif not radio_connected:
+        readiness = "disconnected"
+    elif raw_readiness not in _RADIO_READINESS_STATES:
+        readiness = "connected" if radio_connected else "disconnected"
+    else:
+        readiness = cast(RadioReadinessState, raw_readiness)
+    snapshot = (radio_connected, readiness, int(getattr(radio_runtime, "radio_generation", 0)))
     if _last_radio_activity_status != snapshot:
         # Record the first observed state and each real transition; never
         # consume the bounded ring for identical periodic health broadcasts.
-        radio_job_scheduler.record_activity(RadioActivityKind.CONNECTION_CHANGED)
+        previous = _last_radio_activity_status
+        radio_job_scheduler.record_activity(
+            RadioActivityKind.CONNECTION_CHANGED,
+            previous_connected=previous[0] if previous else None,
+            connected=snapshot[0],
+            previous_readiness=previous[1] if previous else None,
+            readiness=snapshot[1],
+            radio_generation=snapshot[2],
+        )
         _last_radio_activity_status = snapshot
     asyncio.create_task(_broadcast())

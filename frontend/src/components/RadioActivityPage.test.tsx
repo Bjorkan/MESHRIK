@@ -144,6 +144,34 @@ describe('Radio Activity', () => {
     expect(screen.getByText('Outcome unknown')).toBeInTheDocument();
   });
 
+  it('renders sanitized connection transition metadata', async () => {
+    mocks.getRadioActivity.mockResolvedValue({
+      items: [
+        {
+          sequence: 21,
+          kind: 'connection_changed',
+          source: 'radio_lifecycle',
+          radio_generation: 4,
+          at: '2026-10-10T20:01:00Z',
+          previous_connected: false,
+          connected: true,
+          previous_readiness: 'disconnected',
+          readiness: 'initializing',
+        },
+      ],
+      gap: false,
+      has_more: false,
+      snapshot_sequence: 21,
+      next_cursor: 21,
+      radio,
+    });
+
+    createView();
+
+    expect(await screen.findByText('Radio connection changed')).toBeInTheDocument();
+    expect(screen.getByText('disconnected → initializing · generation 4')).toBeInTheDocument();
+  });
+
   it('guarantees queued cancellation is distinct from stopping an RF wait', async () => {
     createView();
     const queued = await screen.findByRole('region', { name: 'Queued' });

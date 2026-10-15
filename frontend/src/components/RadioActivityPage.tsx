@@ -368,7 +368,9 @@ function VirtualActivityList({ events }: { events: ActivityRecord[] }) {
                       ]
                         .filter(Boolean)
                         .join(' · ') || 'Sender unavailable'
-                    : ACTIVITY_SOURCES[event.source]}
+                    : event.kind === 'connection_changed' && event.readiness
+                      ? `${event.previous_readiness ?? 'unknown'} → ${event.readiness} · generation ${event.radio_generation}`
+                      : ACTIVITY_SOURCES[event.source]}
                 </span>
               </span>
               <time className="text-muted-foreground shrink-0 tabular-nums" dateTime={event.at}>
