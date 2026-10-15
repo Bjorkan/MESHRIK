@@ -565,6 +565,69 @@ async def sync_and_offload_all(mc: MeshCore) -> dict:
     }
 
 
+# Exactly one application-owned task submits pending pulls through radio worker.
+# The SDK's start_auto_message_fetching() must never be started by MESHRIK.
+_inbound_catchup_task: asyncio.Task | None = None
+_owned_get_msg = 0
+MAX_PENDING_PULL_BATCH = 100
+
+
+def owned_pending_fetch_active() -> bool:
+    return _owned_get_msg > 0
+
+
+async def _get_queued_message(mc: MeshCore):
+    """Mark the SDK's event-dispatch side subscriber as observer-only for this pull."""
+    global _owned_get_msg
+    _owned_get_msg += 1
+    try:
+        result = await mc.commands.get_msg(timeout=2.0)
+        # Event dispatcher schedules subscription callbacks separately.
+        await asyncio.sleep(0)
+        return result
+    finally:
+        _owned_get_msg -= 1
+
+
+async def _run_inbound_catchup(expected_generation: int) -> None:
+    if not radio_manager.is_connected or expected_generation != radio_manager.radio_generation:
+        return
+    try:
+        await radio_manager.run_radio_command(
+            "inbound_backlog_catchup",
+            lambda mc: drain_pending_messages(mc),
+            blocking=False,
+            defer_when_busy=True,
+            suspend_auto_fetch=True,
+        )
+    except (RadioOperationBusyError, RuntimeError):
+        logger.info("Pending inbound catch-up deferred until next authorized poll")
+
+
+def request_inbound_catchup() -> None:
+    """Coalesce waiting notifications without opening a second radio command owner."""
+    global _inbound_catchup_task
+    if not radio_manager.is_connected:
+        return
+    if _inbound_catchup_task is not None and not _inbound_catchup_task.done():
+        return
+    generation = radio_manager.radio_generation
+    _inbound_catchup_task = asyncio.create_task(
+        _run_inbound_catchup(generation), name="inbound-backlog-catchup"
+    )
+
+
+async def stop_inbound_catchup() -> None:
+    global _inbound_catchup_task
+    task, _inbound_catchup_task = _inbound_catchup_task, None
+    if task is not None and not task.done():
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+
+
 async def drain_pending_messages(mc: MeshCore) -> int:
     """
     Drain all pending messages from the radio.
@@ -574,9 +637,9 @@ async def drain_pending_messages(mc: MeshCore) -> int:
     """
     count = 0
 
-    while True:
+    while count < MAX_PENDING_PULL_BATCH:
         try:
-            result = await mc.commands.get_msg(timeout=2.0)
+            result = await _get_queued_message(mc)
 
             if result.type == EventType.NO_MORE_MSGS:
                 break
@@ -615,7 +678,7 @@ async def poll_for_messages(mc: MeshCore) -> int:
 
     try:
         # Try to get one message
-        result = await mc.commands.get_msg(timeout=2.0)
+        result = await _get_queued_message(mc)
 
         if result.type == EventType.NO_MORE_MSGS:
             # No messages waiting

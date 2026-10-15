@@ -45,7 +45,17 @@ async def test_passive_startup_only_queries_device_and_receives(monkeypatch):
         patch("app.radio_sync.sync_radio_time", new_callable=AsyncMock) as time_sync,
         patch("app.repository.AppSettingsRepository.get", new_callable=AsyncMock) as settings_get,
         patch("app.services.flood_scope.set_radio_flood_scope", new_callable=AsyncMock) as scope,
-        patch("app.radio_sync.sync_and_offload_all", new_callable=AsyncMock) as offload,
+        patch(
+            "app.radio_sync.sync_contacts_from_radio",
+            new_callable=AsyncMock,
+            return_value={"synced": 0},
+        ),
+        patch(
+            "app.radio_sync.sync_channels_from_radio",
+            new_callable=AsyncMock,
+            return_value={"synced": 0},
+        ),
+        patch("app.radio_sync.sync_and_offload_channels", new_callable=AsyncMock) as offload,
         patch("app.radio_sync.send_advertisement", new_callable=AsyncMock) as advert,
         patch("app.radio_sync.drain_pending_messages", new_callable=AsyncMock) as drain,
         patch("app.radio_sync.start_periodic_sync") as sync_loop,
@@ -56,7 +66,6 @@ async def test_passive_startup_only_queries_device_and_receives(monkeypatch):
         await run_post_connect_setup(manager)
     register.assert_called_once_with(mc)
     mc.commands.send_device_query.assert_awaited_once()
-    mc.start_auto_message_fetching.assert_awaited_once()
     for call in (export, time_sync, settings_get, scope, offload, advert, drain):
         call.assert_not_awaited()
     for call in (sync_loop, advert_loop, poll_loop, telemetry_loop):

@@ -496,7 +496,9 @@ async def _run_lifecycle_workflow(radio_manager: Any, generation: int) -> None:
                 )
 
         async def start_auto_fetch(current: Any) -> None:
-            await current.start_auto_message_fetching()
+            # SDK 2.3.14 auto-fetch runs get_msg in unscheduled tasks and only
+            # pops one pre-existing item at startup. App owns all pulls instead.
+            return None
 
         stages.append(
             (
@@ -540,6 +542,12 @@ async def _run_lifecycle_workflow(radio_manager: Any, generation: int) -> None:
             if degraded
             else RadioStartupStage.COMPLETE.value
         )
+
+        # Initial queued backlog must be drained through the same worker even
+        # when no new MESSAGES_WAITING event arrives after reconnect.
+        from app.radio_sync import request_inbound_catchup
+
+        request_inbound_catchup()
 
         # Receive-only recovery is independent of destructive FULL maintenance.
         # get_msg() removes a message from Companion's queue, so this remains

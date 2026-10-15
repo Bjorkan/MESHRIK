@@ -25,7 +25,6 @@ def _device() -> MagicMock:
         return_value=SimpleNamespace(payload={"fw ver": 13, "max_channels": 2})
     )
     mc.commands.get_time = AsyncMock(return_value=SimpleNamespace(payload={"time": 1000}))
-    mc.start_auto_message_fetching = AsyncMock()
     mc.disconnect = AsyncMock()
     return mc
 
@@ -92,7 +91,6 @@ async def test_passive_bootstrap_runs_as_worker_job_and_blocks_user_admission(mo
         ]
         manager.meshcore.commands.set_time.assert_not_called()
         manager.meshcore.commands.send_advert.assert_not_called()
-        manager.meshcore.start_auto_message_fetching.assert_awaited_once()
     finally:
         release.set()
         await worker.stop()
@@ -113,7 +111,6 @@ async def test_failed_device_bootstrap_never_admits_user_jobs(monkeypatch):
         assert scheduler.list_jobs()[0].state == RadioJobState.UNKNOWN
         with pytest.raises(RadioQueueUnavailableError):
             worker.submit(RadioJobKind.RADIO_QUERY, AsyncMock())
-        manager.meshcore.start_auto_message_fetching.assert_not_awaited()
     finally:
         await worker.stop()
 
@@ -214,7 +211,6 @@ async def test_disconnect_during_stage_cancels_remaining_stages(monkeypatch):
                 )
                 == 0
             )
-            mc.start_auto_message_fetching.assert_not_awaited()
             mc.disconnect.assert_awaited_once()
         finally:
             release.set()
@@ -477,7 +473,6 @@ async def test_manual_force_retry_recovers_degraded_generation_using_worker(monk
 async def test_disconnect_during_channel_sync_fences_old_generation(monkeypatch):
     manager, scheduler, worker = await _prepare(monkeypatch, StartupPolicy.SYNC)
     entered, release = asyncio.Event(), asyncio.Event()
-    mc_old = manager.meshcore
     calls = 0
 
     async def channel_snapshot(_mc):
@@ -508,7 +503,6 @@ async def test_disconnect_during_channel_sync_fences_old_generation(monkeypatch)
                 await asyncio.wait_for(startup, 2)
             await asyncio.wait_for(disconnect, 2)
             assert manager.radio_generation > old_generation
-            assert mc_old.start_auto_message_fetching.await_count == 0
             assert all(
                 j.kind != RadioJobKind.LIFECYCLE_AUTO_FETCH
                 for j in scheduler.list_jobs()
@@ -521,7 +515,6 @@ async def test_disconnect_during_channel_sync_fences_old_generation(monkeypatch)
             await asyncio.wait_for(run_post_connect_setup(manager), 2)
             assert manager.readiness_state == "ready"
             assert calls == 2
-            assert manager.meshcore.start_auto_message_fetching.await_count == 1
             assert all(
                 j.state
                 in {

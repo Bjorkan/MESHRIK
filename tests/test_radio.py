@@ -793,8 +793,8 @@ class TestPostConnectSetupOrdering:
         monkeypatch.setattr(settings, "startup_sync_clock", True)
 
     @pytest.mark.asyncio
-    async def test_drain_runs_before_auto_fetch(self):
-        """drain_pending_messages must be called BEFORE start_auto_message_fetching."""
+    async def test_drain_runs_during_setup(self):
+        """drain_pending_messages must be called during post_connect_setup."""
         from app.models import AppSettings
         from app.radio import RadioManager
 
@@ -803,8 +803,8 @@ class TestPostConnectSetupOrdering:
         mock_mc.commands.send_device_query = AsyncMock(
             return_value=MagicMock(payload={"fw ver": 13, "max_channels": 40})
         )
-        mock_mc.start_auto_message_fetching = AsyncMock()
         mock_mc.commands.set_flood_scope = AsyncMock()
+        mock_mc.commands.send = AsyncMock()
         rm._meshcore = mock_mc
 
         call_order = []
@@ -812,11 +812,6 @@ class TestPostConnectSetupOrdering:
         async def mock_drain(mc):
             call_order.append("drain")
             return 0
-
-        async def mock_start_auto():
-            call_order.append("auto_fetch")
-
-        mock_mc.start_auto_message_fetching = AsyncMock(side_effect=mock_start_auto)
 
         with (
             patch("app.event_handlers.register_event_handlers"),
@@ -827,7 +822,19 @@ class TestPostConnectSetupOrdering:
                 new_callable=AsyncMock,
                 return_value=AppSettings(),
             ),
-            patch("app.radio_sync.sync_and_offload_all", new_callable=AsyncMock, return_value={}),
+            patch(
+                "app.radio_sync.sync_contacts_from_radio",
+                new_callable=AsyncMock,
+                return_value={"synced": 0},
+            ),
+            patch(
+                "app.radio_sync.sync_channels_from_radio",
+                new_callable=AsyncMock,
+                return_value={"synced": 0},
+            ),
+            patch(
+                "app.radio_sync.sync_and_offload_channels", new_callable=AsyncMock, return_value={}
+            ),
             patch("app.radio_sync.start_periodic_sync"),
             patch("app.radio_sync.send_advertisement", new_callable=AsyncMock, return_value=False),
             patch("app.radio_sync.start_periodic_advert"),
@@ -840,9 +847,7 @@ class TestPostConnectSetupOrdering:
         ):
             await rm.post_connect_setup()
 
-        assert call_order == ["drain", "auto_fetch"], (
-            f"Expected drain before auto_fetch, got: {call_order}"
-        )
+        assert "drain" in call_order, "Expected drain to run during setup"
 
     @pytest.mark.asyncio
     async def test_setup_sets_and_clears_in_progress_flag(self):
@@ -857,6 +862,7 @@ class TestPostConnectSetupOrdering:
         )
         mock_mc.start_auto_message_fetching = AsyncMock()
         mock_mc.commands.set_flood_scope = AsyncMock()
+        mock_mc.commands.send = AsyncMock()
         rm._meshcore = mock_mc
 
         observed_during = None
@@ -875,7 +881,19 @@ class TestPostConnectSetupOrdering:
                 new_callable=AsyncMock,
                 return_value=AppSettings(),
             ),
-            patch("app.radio_sync.sync_and_offload_all", new_callable=AsyncMock, return_value={}),
+            patch(
+                "app.radio_sync.sync_contacts_from_radio",
+                new_callable=AsyncMock,
+                return_value={"synced": 0},
+            ),
+            patch(
+                "app.radio_sync.sync_channels_from_radio",
+                new_callable=AsyncMock,
+                return_value={"synced": 0},
+            ),
+            patch(
+                "app.radio_sync.sync_and_offload_channels", new_callable=AsyncMock, return_value={}
+            ),
             patch("app.radio_sync.start_periodic_sync"),
             patch("app.radio_sync.send_advertisement", new_callable=AsyncMock, return_value=False),
             patch("app.radio_sync.start_periodic_advert"),
@@ -901,7 +919,8 @@ class TestPostConnectSetupOrdering:
         mock_mc.commands.send_device_query = AsyncMock(
             return_value=MagicMock(payload={"fw ver": 13, "max_channels": 40})
         )
-        mock_mc.start_auto_message_fetching = AsyncMock(side_effect=RuntimeError("fetch failed"))
+        # Cause a failure during device bootstrap by raising on send_device_query
+        mock_mc.commands.send_device_query = AsyncMock(side_effect=RuntimeError("fetch failed"))
         rm._meshcore = mock_mc
 
         from app.config import StartupPolicy, settings
@@ -942,6 +961,7 @@ class TestPostConnectSetupOrdering:
         )
         mock_mc.start_auto_message_fetching = AsyncMock()
         mock_mc.commands.set_flood_scope = AsyncMock()
+        mock_mc.commands.send = AsyncMock()
         rm._meshcore = mock_mc
 
         mock_settings = AppSettings(flood_scope="#TestRegion")
@@ -955,7 +975,19 @@ class TestPostConnectSetupOrdering:
                 new_callable=AsyncMock,
                 return_value=mock_settings,
             ),
-            patch("app.radio_sync.sync_and_offload_all", new_callable=AsyncMock, return_value={}),
+            patch(
+                "app.radio_sync.sync_contacts_from_radio",
+                new_callable=AsyncMock,
+                return_value={"synced": 0},
+            ),
+            patch(
+                "app.radio_sync.sync_channels_from_radio",
+                new_callable=AsyncMock,
+                return_value={"synced": 0},
+            ),
+            patch(
+                "app.radio_sync.sync_and_offload_channels", new_callable=AsyncMock, return_value={}
+            ),
             patch("app.radio_sync.start_periodic_sync"),
             patch("app.radio_sync.send_advertisement", new_callable=AsyncMock, return_value=False),
             patch("app.radio_sync.start_periodic_advert"),
@@ -979,6 +1011,7 @@ class TestPostConnectSetupOrdering:
         )
         mock_mc.start_auto_message_fetching = AsyncMock()
         mock_mc.commands.set_flood_scope = AsyncMock()
+        mock_mc.commands.send = AsyncMock()
         rm._meshcore = mock_mc
 
         mock_settings = AppSettings(flood_scope="TestRegion")
@@ -992,7 +1025,19 @@ class TestPostConnectSetupOrdering:
                 new_callable=AsyncMock,
                 return_value=mock_settings,
             ),
-            patch("app.radio_sync.sync_and_offload_all", new_callable=AsyncMock, return_value={}),
+            patch(
+                "app.radio_sync.sync_contacts_from_radio",
+                new_callable=AsyncMock,
+                return_value={"synced": 0},
+            ),
+            patch(
+                "app.radio_sync.sync_channels_from_radio",
+                new_callable=AsyncMock,
+                return_value={"synced": 0},
+            ),
+            patch(
+                "app.radio_sync.sync_and_offload_channels", new_callable=AsyncMock, return_value={}
+            ),
             patch("app.radio_sync.start_periodic_sync"),
             patch("app.radio_sync.send_advertisement", new_callable=AsyncMock, return_value=False),
             patch("app.radio_sync.start_periodic_advert"),
@@ -1035,7 +1080,19 @@ class TestPostConnectSetupOrdering:
                 new_callable=AsyncMock,
                 return_value=mock_settings,
             ),
-            patch("app.radio_sync.sync_and_offload_all", new_callable=AsyncMock, return_value={}),
+            patch(
+                "app.radio_sync.sync_contacts_from_radio",
+                new_callable=AsyncMock,
+                return_value={"synced": 0},
+            ),
+            patch(
+                "app.radio_sync.sync_channels_from_radio",
+                new_callable=AsyncMock,
+                return_value={"synced": 0},
+            ),
+            patch(
+                "app.radio_sync.sync_and_offload_channels", new_callable=AsyncMock, return_value={}
+            ),
             patch("app.radio_sync.start_periodic_sync"),
             patch("app.radio_sync.send_advertisement", new_callable=AsyncMock, return_value=False),
             patch("app.radio_sync.start_periodic_advert"),
@@ -1062,6 +1119,7 @@ class TestPostConnectSetupOrdering:
         )
         mock_mc.start_auto_message_fetching = AsyncMock()
         mock_mc.commands.set_flood_scope = AsyncMock()
+        mock_mc.commands.send = AsyncMock()
         rm._meshcore = mock_mc
 
         with (
@@ -1073,7 +1131,19 @@ class TestPostConnectSetupOrdering:
                 new_callable=AsyncMock,
                 return_value=AppSettings(),
             ),
-            patch("app.radio_sync.sync_and_offload_all", new_callable=AsyncMock, return_value={}),
+            patch(
+                "app.radio_sync.sync_contacts_from_radio",
+                new_callable=AsyncMock,
+                return_value={"synced": 0},
+            ),
+            patch(
+                "app.radio_sync.sync_channels_from_radio",
+                new_callable=AsyncMock,
+                return_value={"synced": 0},
+            ),
+            patch(
+                "app.radio_sync.sync_and_offload_channels", new_callable=AsyncMock, return_value={}
+            ),
             patch("app.radio_sync.start_periodic_sync"),
             patch("app.radio_sync.send_advertisement", new_callable=AsyncMock, return_value=False),
             patch("app.radio_sync.start_periodic_advert"),
@@ -1097,6 +1167,7 @@ class TestPostConnectSetupOrdering:
         )
         mock_mc.start_auto_message_fetching = AsyncMock()
         mock_mc.commands.set_flood_scope = AsyncMock()
+        mock_mc.commands.send = AsyncMock()
         rm._meshcore = mock_mc
 
         with (
@@ -1108,7 +1179,19 @@ class TestPostConnectSetupOrdering:
                 new_callable=AsyncMock,
                 return_value=AppSettings(),
             ),
-            patch("app.radio_sync.sync_and_offload_all", new_callable=AsyncMock, return_value={}),
+            patch(
+                "app.radio_sync.sync_contacts_from_radio",
+                new_callable=AsyncMock,
+                return_value={"synced": 0},
+            ),
+            patch(
+                "app.radio_sync.sync_channels_from_radio",
+                new_callable=AsyncMock,
+                return_value={"synced": 0},
+            ),
+            patch(
+                "app.radio_sync.sync_and_offload_channels", new_callable=AsyncMock, return_value={}
+            ),
             patch("app.radio_sync.start_periodic_sync"),
             patch("app.radio_sync.send_advertisement", new_callable=AsyncMock, return_value=False),
             patch("app.radio_sync.start_periodic_advert"),

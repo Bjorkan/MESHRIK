@@ -224,9 +224,13 @@ async def on_channel_message(event: "Event") -> None:
     The shared channel writer uses the same SQL deduplication as raw processing.
     This handler does not initiate a second radio connection.
     """
-    from app.radio_sync import _store_pending_channel_message
+    from app.radio_sync import _store_pending_channel_message, owned_pending_fetch_active
     from app.services.radio_runtime import radio_runtime
 
+    # In a worker-owned get_msg round-trip its caller persists the returned
+    # result. The SDK dispatcher also emits the response as an event.
+    if owned_pending_fetch_active():
+        return
     mc = radio_runtime.meshcore
     if mc is None or not radio_runtime.is_connected:
         logger.warning("Channel pending event received without an active radio context")
@@ -257,6 +261,13 @@ async def on_rx_log_data(event: "Event") -> None:
         snr=payload.get("snr"),
         rssi=payload.get("rssi"),
     )
+
+
+async def on_messages_waiting(event: "Event") -> None:
+    """Coalesce Companion wakeups into the application's single worker."""
+    from app.radio_sync import request_inbound_catchup
+
+    request_inbound_catchup()
 
 
 async def on_path_update(event: "Event") -> None:
@@ -459,6 +470,9 @@ def register_event_handlers(meshcore) -> None:
     _active_subscriptions.append(meshcore.subscribe(EventType.PATH_UPDATE, on_path_update))
     _active_subscriptions.append(meshcore.subscribe(EventType.NEW_CONTACT, on_new_contact))
     _active_subscriptions.append(meshcore.subscribe(EventType.ACK, on_ack))
+    _active_subscriptions.append(
+        meshcore.subscribe(EventType.MESSAGES_WAITING, on_messages_waiting)
+    )
     from app.services.radio_runtime import radio_runtime
 
     generation = radio_runtime.radio_generation

@@ -147,7 +147,20 @@ class TestRunPostConnectSetup:
                 "app.repository.AppSettingsRepository.get",
                 new=AsyncMock(return_value=MagicMock(flood_scope=None)),
             ),
-            patch("app.radio_sync.sync_and_offload_all", new=AsyncMock(return_value={"synced": 0})),
+            patch(
+                "app.radio_sync.sync_contacts_from_radio",
+                new_callable=AsyncMock,
+                return_value={"synced": 0},
+            ),
+            patch(
+                "app.radio_sync.sync_channels_from_radio",
+                new_callable=AsyncMock,
+                return_value={"synced": 0},
+            ),
+            patch(
+                "app.radio_sync.sync_and_offload_channels",
+                new=AsyncMock(return_value={"synced": 0}),
+            ),
             patch("app.radio_sync.send_advertisement", new=AsyncMock(return_value=False)),
             patch("app.radio_sync.drain_pending_messages", new=AsyncMock(return_value=0)),
             patch("app.radio_sync.start_periodic_sync"),
@@ -160,8 +173,6 @@ class TestRunPostConnectSetup:
         # Read-only bootstrap must not export secrets or change the clock.
         mock_export_key.assert_not_awaited()
         mock_sync_time.assert_not_awaited()
-        replacement_mc.start_auto_message_fetching.assert_awaited_once()
-        initial_mc.start_auto_message_fetching.assert_not_called()
         assert radio_manager.max_channels == 8
 
     @pytest.mark.asyncio
@@ -213,7 +224,20 @@ class TestRunPostConnectSetup:
                 "app.repository.AppSettingsRepository.get",
                 new=AsyncMock(return_value=MagicMock(flood_scope=None)),
             ),
-            patch("app.radio_sync.sync_and_offload_all", new=AsyncMock(return_value={"synced": 0})),
+            patch(
+                "app.radio_sync.sync_contacts_from_radio",
+                new_callable=AsyncMock,
+                return_value={"synced": 0},
+            ),
+            patch(
+                "app.radio_sync.sync_channels_from_radio",
+                new_callable=AsyncMock,
+                return_value={"synced": 0},
+            ),
+            patch(
+                "app.radio_sync.sync_and_offload_channels",
+                new=AsyncMock(return_value={"synced": 0}),
+            ),
             patch("app.radio_sync.send_advertisement", new=AsyncMock(return_value=False)),
             patch("app.radio_sync.drain_pending_messages", new=AsyncMock(return_value=0)),
             patch("app.radio_sync.start_periodic_sync"),
