@@ -85,36 +85,24 @@ export function useConversationActions({
 
   const handleSetChannelFloodScopeOverride = useCallback(
     async (channelKey: string, floodScopeOverride: string) => {
-      try {
-        const updated = await api.setChannelFloodScopeOverride(channelKey, floodScopeOverride);
-        mergeChannelIntoList(updated);
-        toast.success(
-          updated.flood_scope_override ? 'Regional override saved' : 'Regional override cleared'
-        );
-      } catch (err) {
-        toast.error('Failed to update regional override', {
-          description: err instanceof Error ? err.message : 'Unknown error',
-        });
-      }
+      const updated = await api.setChannelFloodScopeOverride(channelKey, floodScopeOverride);
+      mergeChannelIntoList(updated);
+      toast.success(
+        updated.flood_scope_override ? 'Regional override saved' : 'Regional override cleared'
+      );
     },
     [mergeChannelIntoList]
   );
 
   const handleSetChannelPathHashModeOverride = useCallback(
     async (channelKey: string, pathHashModeOverride: number | null) => {
-      try {
-        const updated = await api.setChannelPathHashModeOverride(channelKey, pathHashModeOverride);
-        mergeChannelIntoList(updated);
-        toast.success(
-          updated.path_hash_mode_override != null
-            ? 'Path hop width override saved'
-            : 'Path hop width override cleared'
-        );
-      } catch (err) {
-        toast.error('Failed to update path hop width override', {
-          description: err instanceof Error ? err.message : 'Unknown error',
-        });
-      }
+      const updated = await api.setChannelPathHashModeOverride(channelKey, pathHashModeOverride);
+      mergeChannelIntoList(updated);
+      toast.success(
+        updated.path_hash_mode_override != null
+          ? 'Path hop width override saved'
+          : 'Path hop width override cleared'
+      );
     },
     [mergeChannelIntoList]
   );

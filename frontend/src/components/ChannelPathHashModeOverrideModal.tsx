@@ -24,7 +24,7 @@ interface ChannelPathHashModeOverrideModalProps {
   channelName: string;
   currentOverride: number | null;
   radioDefault: number;
-  onSetOverride: (value: number | null) => void;
+  onSetOverride: (value: number | null) => Promise<void>;
 }
 
 export function ChannelPathHashModeOverrideModal({
@@ -35,8 +35,30 @@ export function ChannelPathHashModeOverrideModal({
   radioDefault,
   onSetOverride,
 }: ChannelPathHashModeOverrideModalProps) {
-  const form = useForm({ defaultValues: { selected: null as number | null } });
+  const form = useForm({
+    defaultValues: {
+      selected: null as number | null,
+      submitRequested: false,
+      serverError: '',
+    },
+    onSubmit: async ({ value }) => {
+      if (!value.submitRequested) return;
+      form.setFieldValue('serverError', '');
+      try {
+        await onSetOverride(value.selected);
+        form.reset();
+        onClose();
+      } catch (error) {
+        form.setFieldValue(
+          'serverError',
+          error instanceof Error ? error.message : 'Failed to save path hop width override'
+        );
+      }
+    },
+  });
   const selected = useStore(form.store, (state) => state.values.selected);
+  const serverError = useStore(form.store, (state) => state.values.serverError);
+  const saving = useStore(form.store, (state) => state.isSubmitting);
 
   useEffect(() => {
     if (open) {
@@ -71,7 +93,7 @@ export function ChannelPathHashModeOverrideModal({
   ];
 
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && !saving && onClose()}>
       <DialogContent className="sm:max-w-[520px]">
         <DialogHeader>
           <DialogTitle>Path Hop Width Override</DialogTitle>
@@ -84,7 +106,7 @@ export function ChannelPathHashModeOverrideModal({
 
         <div className="space-y-4">
           <div className="rounded-md border border-border bg-muted/20 p-3 text-sm">
-            <div className="font-medium">{channelName}</div>
+            <div className="break-words font-medium">{channelName}</div>
             <div className="mt-1 text-muted-foreground">
               Current override:{' '}
               {currentOverride != null
@@ -95,17 +117,23 @@ export function ChannelPathHashModeOverrideModal({
 
           <div className="space-y-2">
             <Label>Hop width for this channel</Label>
-            <div className="space-y-1.5">
+            <div className="space-y-1.5" role="radiogroup" aria-label="Hop width for this channel">
               {options.map((opt) => (
                 <button
                   key={String(opt.value)}
                   type="button"
+                  role="radio"
+                  aria-checked={selected === opt.value}
+                  disabled={saving}
                   className={`w-full rounded-md border px-3 py-2 text-left text-sm transition-colors ${
                     selected === opt.value
                       ? 'border-primary bg-primary/10 text-foreground'
                       : 'border-border hover:bg-accent'
                   }`}
-                  onClick={() => form.setFieldValue('selected', opt.value)}
+                  onClick={() => {
+                    form.setFieldValue('selected', opt.value);
+                    form.setFieldValue('serverError', '');
+                  }}
                 >
                   <div className="font-medium">{opt.label}</div>
                   <div className="text-xs text-muted-foreground">{opt.description}</div>
@@ -115,19 +143,35 @@ export function ChannelPathHashModeOverrideModal({
           </div>
         </div>
 
+        {serverError && (
+          <p className="text-sm text-destructive" role="alert">
+            {serverError}
+          </p>
+        )}
+
         <DialogFooter className="gap-2 sm:block sm:space-x-0">
-          <Button
-            type="button"
-            className="w-full"
-            onClick={() => {
-              onSetOverride(selected);
-              onClose();
-            }}
-          >
-            {selected == null
-              ? `Use radio default for ${channelName}`
-              : `Use ${PATH_HASH_MODE_LABELS[selected]} hops for ${channelName}`}
-          </Button>
+          <div className="space-y-2">
+            <Button
+              type="button"
+              className="w-full"
+              disabled={saving}
+              onClick={() => {
+                form.setFieldValue('submitRequested', true);
+                void form.handleSubmit();
+              }}
+            >
+              {saving ? 'Saving...' : 'Save hop width'}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full"
+              disabled={saving}
+              onClick={onClose}
+            >
+              Cancel
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

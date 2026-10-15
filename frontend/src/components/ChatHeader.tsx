@@ -32,8 +32,11 @@ interface ChatHeaderProps {
   onOpenPushSettings?: () => void;
   onToggleFavorite: (type: 'channel' | 'contact', id: string) => void;
   onToggleMute?: (key: string) => void;
-  onSetChannelFloodScopeOverride?: (key: string, floodScopeOverride: string) => void;
-  onSetChannelPathHashModeOverride?: (key: string, pathHashModeOverride: number | null) => void;
+  onSetChannelFloodScopeOverride?: (key: string, floodScopeOverride: string) => Promise<void>;
+  onSetChannelPathHashModeOverride?: (
+    key: string,
+    pathHashModeOverride: number | null
+  ) => Promise<void>;
   onDeleteChannel: (key: string) => void;
   onDeleteContact: (publicKey: string) => void;
   onOpenContactInfo?: (publicKey: string) => void;
@@ -509,6 +512,7 @@ export function ChatHeader({
       )}
       {conversation.type === 'channel' && onSetChannelFloodScopeOverride && (
         <ChannelFloodScopeOverrideModal
+          key={conversation.id}
           open={channelOverrideOpen}
           onClose={() => setChannelOverrideOpen(false)}
           roomName={conversation.name}
@@ -518,6 +522,7 @@ export function ChatHeader({
       )}
       {showPathHashModeOverride && (
         <ChannelPathHashModeOverrideModal
+          key={conversation.id}
           open={pathHashModeOverrideOpen}
           onClose={() => setPathHashModeOverrideOpen(false)}
           channelName={conversation.name}

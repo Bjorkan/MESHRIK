@@ -19,6 +19,7 @@ function makeChannel(key: string, name: string, isHashtag: boolean): Channel {
 }
 
 const noop = () => {};
+const asyncNoop = async () => {};
 
 const baseProps = {
   contacts: [],
@@ -32,7 +33,7 @@ const baseProps = {
   }) as (_: string) => Promise<PathDiscoveryResponse>,
   onToggleNotifications: noop,
   onToggleFavorite: noop,
-  onSetChannelFloodScopeOverride: noop,
+  onSetChannelFloodScopeOverride: asyncNoop,
   onDeleteChannel: noop,
   onDeleteContact: noop,
 };
@@ -345,7 +346,7 @@ describe('ChatHeader key visibility', () => {
     const key = 'CD'.repeat(16);
     const channel = makeChannel(key, '#flightless', true);
     const conversation: Conversation = { type: 'channel', id: key, name: '#flightless' };
-    const onSetChannelFloodScopeOverride = vi.fn();
+    const onSetChannelFloodScopeOverride = vi.fn().mockResolvedValue(undefined);
 
     render(
       <ChatHeader
@@ -360,16 +361,18 @@ describe('ChatHeader key visibility', () => {
 
     expect(await screen.findByRole('dialog')).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Region'), { target: { value: 'Esperance' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Scope #flightless to Esperance' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save regional scope' }));
 
-    expect(onSetChannelFloodScopeOverride).toHaveBeenCalledWith(key, 'Esperance');
+    await waitFor(() =>
+      expect(onSetChannelFloodScopeOverride).toHaveBeenCalledWith(key, 'Esperance')
+    );
   });
 
   it('forces the channel unscoped via the modal (issue #303)', async () => {
     const key = 'CD'.repeat(16);
     const channel = makeChannel(key, '#flightless', true);
     const conversation: Conversation = { type: 'channel', id: key, name: '#flightless' };
-    const onSetChannelFloodScopeOverride = vi.fn();
+    const onSetChannelFloodScopeOverride = vi.fn().mockResolvedValue(undefined);
 
     render(
       <ChatHeader
@@ -382,12 +385,8 @@ describe('ChatHeader key visibility', () => {
 
     fireEvent.click(screen.getByTitle('Set regional override'));
     expect(await screen.findByRole('dialog')).toBeInTheDocument();
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: 'Always send #flightless unscoped (ignore global region)',
-      })
-    );
+    fireEvent.click(screen.getByRole('button', { name: 'Always send unscoped' }));
 
-    expect(onSetChannelFloodScopeOverride).toHaveBeenCalledWith(key, '*');
+    await waitFor(() => expect(onSetChannelFloodScopeOverride).toHaveBeenCalledWith(key, '*'));
   });
 });

@@ -23,7 +23,7 @@ interface ChannelFloodScopeOverrideModalProps {
   onClose: () => void;
   roomName: string;
   currentOverride: string | null;
-  onSetOverride: (value: string) => void;
+  onSetOverride: (value: string) => Promise<void>;
 }
 
 export function ChannelFloodScopeOverrideModal({
@@ -33,8 +33,26 @@ export function ChannelFloodScopeOverrideModal({
   currentOverride,
   onSetOverride,
 }: ChannelFloodScopeOverrideModalProps) {
-  const form = useForm({ defaultValues: { region: '' } });
+  const form = useForm({
+    defaultValues: { region: '', pendingOverride: null as string | null, serverError: '' },
+    onSubmit: async ({ value }) => {
+      if (value.pendingOverride === null) return;
+      form.setFieldValue('serverError', '');
+      try {
+        await onSetOverride(value.pendingOverride);
+        form.reset();
+        onClose();
+      } catch (error) {
+        form.setFieldValue(
+          'serverError',
+          error instanceof Error ? error.message : 'Failed to save regional override'
+        );
+      }
+    },
+  });
   const region = useStore(form.store, (state) => state.values.region);
+  const serverError = useStore(form.store, (state) => state.values.serverError);
+  const saving = useStore(form.store, (state) => state.isSubmitting);
 
   useEffect(() => {
     if (!open) {
@@ -50,6 +68,11 @@ export function ChannelFloodScopeOverrideModal({
 
   const trimmedRegion = region.trim();
 
+  const submitOverride = (value: string) => {
+    form.setFieldValue('pendingOverride', value);
+    void form.handleSubmit();
+  };
+
   const currentOverrideLabel = isUnscopedMarker(currentOverride)
     ? 'unscoped (plain flood)'
     : currentOverride
@@ -57,7 +80,7 @@ export function ChannelFloodScopeOverrideModal({
       : 'inherit global setting';
 
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && !saving && onClose()}>
       <DialogContent className="sm:max-w-[520px]">
         <DialogHeader>
           <DialogTitle>Regional Override</DialogTitle>
@@ -71,7 +94,7 @@ export function ChannelFloodScopeOverrideModal({
 
         <div className="space-y-4">
           <div className="rounded-md border border-border bg-muted/20 p-3 text-sm">
-            <div className="font-medium">{roomName}</div>
+            <div className="break-words font-medium">{roomName}</div>
             <div className="mt-1 text-muted-foreground">
               Current setting: {currentOverrideLabel}
             </div>
@@ -82,49 +105,58 @@ export function ChannelFloodScopeOverrideModal({
             <Input
               id="channel-region-input"
               value={region}
-              onChange={(event) => form.setFieldValue('region', event.target.value)}
+              onChange={(event) => {
+                form.setFieldValue('region', event.target.value);
+                form.setFieldValue('serverError', '');
+              }}
               placeholder="Esperance"
               autoFocus
             />
           </div>
         </div>
 
+        {serverError && (
+          <p className="text-sm text-destructive" role="alert">
+            {serverError}
+          </p>
+        )}
+
         <DialogFooter className="gap-2 sm:block sm:space-x-0">
           <div className="space-y-2">
             <Button
               type="button"
               className="w-full"
-              disabled={trimmedRegion.length === 0}
-              onClick={() => {
-                onSetOverride(trimmedRegion);
-                onClose();
-              }}
+              disabled={trimmedRegion.length === 0 || saving}
+              onClick={() => submitOverride(trimmedRegion)}
             >
-              {trimmedRegion.length > 0
-                ? `Scope ${roomName} to ${trimmedRegion}`
-                : `Scope ${roomName} to a region`}
+              {saving ? 'Saving...' : 'Save regional scope'}
             </Button>
             <Button
               type="button"
               variant="outline"
               className="w-full"
-              onClick={() => {
-                onSetOverride(UNSCOPED_OVERRIDE_MARKER);
-                onClose();
-              }}
+              disabled={saving}
+              onClick={() => submitOverride(UNSCOPED_OVERRIDE_MARKER)}
             >
-              Always send {roomName} unscoped (ignore global region)
+              Always send unscoped
             </Button>
             <Button
               type="button"
               variant="outline"
               className="w-full"
-              onClick={() => {
-                onSetOverride('');
-                onClose();
-              }}
+              disabled={saving}
+              onClick={() => submitOverride('')}
             >
-              Use global region setting for {roomName}
+              Use global region setting
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full"
+              disabled={saving}
+              onClick={onClose}
+            >
+              Cancel
             </Button>
           </div>
         </DialogFooter>
