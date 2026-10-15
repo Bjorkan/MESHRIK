@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Star } from 'lucide-react';
 import { api } from '../api';
 import { formatTime } from '../utils/messageParser';
-import { handleKeyboardActivate } from '../utils/a11y';
+import { copyTextWithFeedback } from '../utils/clipboard';
 import { useEntranceSettled } from '../hooks/useEntranceSettled';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from './ui/sheet';
 import { toast } from './ui/sonner';
@@ -102,19 +102,14 @@ export function ChannelInfoPane({
                   Show Key
                 </button>
               ) : (
-                <span
+                <button
+                  type="button"
                   className="text-xs font-mono text-muted-foreground cursor-pointer hover:text-primary transition-colors block truncate"
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={handleKeyboardActivate}
-                  onClick={() => {
-                    navigator.clipboard.writeText(channel.key);
-                    toast.success('Channel key copied!');
-                  }}
+                  onClick={() => void copyTextWithFeedback(channel.key, 'Channel key copied!')}
                   title="Click to copy"
                 >
                   {channel.key.toLowerCase()}
-                </span>
+                </button>
               )}
               <div className="flex items-center gap-2 mt-1.5">
                 <span className="text-[0.625rem] uppercase tracking-wider px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">

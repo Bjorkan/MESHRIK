@@ -12,7 +12,7 @@ import {
 import type { HealthStatus, RadioConfig } from '../types';
 import { api } from '../api';
 import { toast } from './ui/sonner';
-import { handleKeyboardActivate } from '../utils/a11y';
+import { copyTextWithFeedback } from '../utils/clipboard';
 import { applyTheme, getEffectiveTheme, THEME_CHANGE_EVENT } from '../utils/theme';
 import {
   BATTERY_DISPLAY_CHANGE_EVENT,
@@ -239,20 +239,15 @@ export function StatusBar({
       {config && (
         <div className="hidden lg:flex items-center gap-2 text-muted-foreground">
           <span className="text-foreground font-medium">{config.name || 'Unnamed'}</span>
-          <span
+          <button
+            type="button"
             className="font-mono text-[0.6875rem] text-muted-foreground cursor-pointer hover:text-primary transition-colors"
-            role="button"
-            tabIndex={0}
-            onKeyDown={handleKeyboardActivate}
-            onClick={() => {
-              navigator.clipboard.writeText(config.public_key);
-              toast.success('Public key copied!');
-            }}
+            onClick={() => void copyTextWithFeedback(config.public_key, 'Public key copied!')}
             title="Click to copy public key"
             aria-label="Copy public key"
           >
             {config.public_key.toLowerCase()}
-          </span>
+          </button>
         </div>
       )}
 

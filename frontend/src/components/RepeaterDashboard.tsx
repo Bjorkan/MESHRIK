@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { api } from '../api';
-import { toast } from './ui/sonner';
+import { copyTextWithFeedback } from '../utils/clipboard';
 import { Button } from './ui/button';
 import { Bell, Info, Route, Star, Trash2 } from 'lucide-react';
 import { DirectTraceIcon } from './DirectTraceIcon';
@@ -188,10 +188,7 @@ export function RepeaterDashboard({
               <button
                 type="button"
                 className="max-w-32 truncate rounded text-left font-mono text-xs text-muted-foreground hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                onClick={() => {
-                  void navigator.clipboard.writeText(conversation.id);
-                  toast.success('Contact key copied!');
-                }}
+                onClick={() => void copyTextWithFeedback(conversation.id, 'Contact key copied!')}
                 title="Copy full public key"
                 aria-label="Copy repeater public key"
               >

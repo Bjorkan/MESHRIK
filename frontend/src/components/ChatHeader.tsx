@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { Bell, BellOff, ChevronsLeftRight, Globe2, Info, Route, Star, Trash2 } from 'lucide-react';
-import { toast } from './ui/sonner';
 import { DirectTraceIcon } from './DirectTraceIcon';
 import { ContactPathDiscoveryModal } from './ContactPathDiscoveryModal';
 import { ChannelFloodScopeOverrideModal } from './ChannelFloodScopeOverrideModal';
 import { ChannelPathHashModeOverrideModal } from './ChannelPathHashModeOverrideModal';
-import { handleKeyboardActivate } from '../utils/a11y';
+import { copyTextWithFeedback } from '../utils/clipboard';
 import { isPublicChannelKey } from '../utils/publicChannel';
 import { stripRegionScopePrefix, floodScopeOverrideLabel } from '../utils/regionScope';
 import { isPrefixOnlyContact } from '../utils/pubkey';
@@ -233,15 +232,13 @@ export function ChatHeader({
                   Show Key
                 </button>
               ) : (
-                <span
+                <button
+                  type="button"
                   className="min-w-0 flex-1 truncate font-mono text-[0.6875rem] text-muted-foreground transition-colors hover:text-primary"
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={handleKeyboardActivate}
                   onClick={(e) => {
                     e.stopPropagation();
-                    navigator.clipboard.writeText(conversation.id);
-                    toast.success(
+                    void copyTextWithFeedback(
+                      conversation.id,
                       conversation.type === 'channel'
                         ? 'Channel key copied!'
                         : 'Contact key copied!'
@@ -255,7 +252,7 @@ export function ChatHeader({
                   {conversation.type === 'channel'
                     ? conversation.id.toLowerCase()
                     : conversation.id}
-                </span>
+                </button>
               )}
             </span>
             {conversation.type === 'channel' && activeFloodScopeBadge && (

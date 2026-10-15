@@ -24,6 +24,7 @@ import {
 } from '../utils/pathUtils';
 import { isPublicChannelKey } from '../utils/publicChannel';
 import { handleKeyboardActivate } from '../utils/a11y';
+import { copyTextWithFeedback } from '../utils/clipboard';
 import { ContactAvatar } from './ContactAvatar';
 import { LppSensorRow, formatLppLabel } from './repeater/repeaterPaneShared';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from './ui/sheet';
@@ -318,19 +319,16 @@ export function ContactInfoPane({
                   <h2 className="text-lg font-semibold truncate">
                     {getContactDisplayName(contact.name, contact.public_key, contact.last_advert)}
                   </h2>
-                  <span
+                  <button
+                    type="button"
                     className="text-xs font-mono text-muted-foreground cursor-pointer hover:text-primary transition-colors block truncate"
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={handleKeyboardActivate}
-                    onClick={() => {
-                      navigator.clipboard.writeText(contact.public_key);
-                      toast.success('Public key copied!');
-                    }}
+                    onClick={() =>
+                      void copyTextWithFeedback(contact.public_key, 'Public key copied!')
+                    }
                     title="Click to copy"
                   >
                     {contact.public_key}
-                  </span>
+                  </button>
                   <div className="flex items-center gap-2 mt-1.5">
                     <span className="text-[0.625rem] uppercase tracking-wider px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">
                       {CONTACT_TYPE_LABELS[contact.type] ?? 'Unknown'}

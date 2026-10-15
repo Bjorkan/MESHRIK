@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { RawPacketDetailModal } from '../components/RawPacketDetailModal';
@@ -64,7 +64,7 @@ describe('RawPacketDetailModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Copy' }));
 
     expect(writeText).toHaveBeenCalledWith(BOT_PACKET.data);
-    expect(mockToast.success).toHaveBeenCalledWith('Packet hex copied!');
+    await waitFor(() => expect(mockToast.success).toHaveBeenCalledWith('Packet hex copied!'));
   });
 
   it('renders path hops as nowrap arrow-delimited groups and links hover state to the full packet hex', () => {

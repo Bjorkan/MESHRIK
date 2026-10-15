@@ -8,7 +8,7 @@ import {
   inspectRawPacketWithOptions,
   type PacketByteField,
 } from '../utils/rawPacketInspector';
-import { toast } from './ui/sonner';
+import { copyTextWithFeedback } from '../utils/clipboard';
 import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 
@@ -721,10 +721,7 @@ export function RawPacketInspectionPanel({
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => {
-              navigator.clipboard.writeText(packet.data);
-              toast.success('Packet hex copied!');
-            }}
+            onClick={() => void copyTextWithFeedback(packet.data, 'Packet hex copied!')}
           >
             Copy
           </Button>
