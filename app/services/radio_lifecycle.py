@@ -541,8 +541,12 @@ async def _run_lifecycle_workflow(radio_manager: Any, generation: int) -> None:
             else RadioStartupStage.COMPLETE.value
         )
 
-        # These loops use the normal scheduler path and are only enabled by
-        # explicit full-policy permissions.
+        # Receive-only recovery is independent of destructive FULL maintenance.
+        # get_msg() removes a message from Companion's queue, so this remains
+        # operator-enabled; the persistence journal is responsible for recovery.
+        if settings.enable_message_poll_fallback:
+            start_message_polling()
+
         if policy == StartupPolicy.FULL:
             if settings.startup_reconcile_contacts and contact_snapshot:
                 start_background_contact_reconciliation(
@@ -554,7 +558,7 @@ async def _run_lifecycle_workflow(radio_manager: Any, generation: int) -> None:
                 start_periodic_sync()
             if settings.startup_send_advertisement:
                 start_periodic_advert()
-            if settings.startup_drain_messages:
+            if settings.startup_drain_messages and not settings.enable_message_poll_fallback:
                 start_message_polling()
             if settings.startup_enable_telemetry_collection:
                 start_telemetry_collect()

@@ -726,7 +726,7 @@ def start_message_polling():
     """Start the periodic message polling background task."""
     global _message_poll_task
     if _message_poll_task is None or _message_poll_task.done():
-        _message_poll_task = asyncio.create_task(_message_poll_loop())
+        _message_poll_task = asyncio.create_task(_message_poll_loop(), name="radio-inbound-recovery")
         if settings.enable_message_poll_fallback:
             logger.info(
                 "Started periodic message polling task (aggressive fallback, interval: %ds)",
