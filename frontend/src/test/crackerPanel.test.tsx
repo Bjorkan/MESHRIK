@@ -98,4 +98,35 @@ describe('CrackerPanel', () => {
     expect(getRawPackets().map((packet) => packet.id)).toEqual([2, 3]);
     await waitFor(() => expect(screen.getByText(/Pending:/)).toHaveTextContent('Pending: 3'));
   });
+
+  it('does not duplicate work for an unchanged snapshot or repeated observation', async () => {
+    seedRawPacketStore({ packets: [makePacket(1, 'AA'), makePacket(2, 'BB')] });
+    render(<CrackerPanel channels={[]} onChannelCreate={vi.fn()} visible={false} />);
+
+    await waitFor(() => expect(screen.getByText(/Pending:/)).toHaveTextContent('Pending: 2'));
+
+    act(() => seedRawPacketStore({ packets: getRawPackets() }));
+    act(() => recordRawPacket(makePacket(2, 'BB'), 2));
+
+    expect(getRawPackets().map((packet) => packet.id)).toEqual([1, 2]);
+    expect(screen.getByText(/Pending:/)).toHaveTextContent('Pending: 2');
+  });
+
+  it('queues every addition when one update removes and adds multiple packets', async () => {
+    seedRawPacketStore({
+      packets: [makePacket(1, 'AA'), makePacket(2, 'BB'), makePacket(3, 'CC')],
+    });
+    render(<CrackerPanel channels={[]} onChannelCreate={vi.fn()} visible={false} />);
+
+    await waitFor(() => expect(screen.getByText(/Pending:/)).toHaveTextContent('Pending: 3'));
+
+    act(() => {
+      seedRawPacketStore({
+        packets: [makePacket(3, 'CC'), makePacket(4, 'DD'), makePacket(5, 'EE')],
+      });
+    });
+
+    expect(getRawPackets().map((packet) => packet.id)).toEqual([3, 4, 5]);
+    await waitFor(() => expect(screen.getByText(/Pending:/)).toHaveTextContent('Pending: 5'));
+  });
 });

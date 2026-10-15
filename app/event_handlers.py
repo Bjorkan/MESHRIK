@@ -217,6 +217,26 @@ async def on_contact_message(event: "Event") -> None:
     )
 
 
+async def on_channel_message(event: "Event") -> None:
+    """Ingest a decrypted Companion pending-channel event even without RX_LOG_DATA.
+
+    The Companion delivers queued channel messages independently of raw RX logs.
+    The shared channel writer uses the same SQL deduplication as raw processing.
+    This handler does not initiate a second radio connection.
+    """
+    from app.radio_sync import _store_pending_channel_message
+    from app.services.radio_runtime import radio_runtime
+
+    mc = radio_runtime.meshcore
+    if mc is None or not radio_runtime.is_connected:
+        logger.warning("Channel pending event received without an active radio context")
+        return
+    try:
+        await _store_pending_channel_message(mc, event.payload)
+    except Exception:
+        logger.exception("Unable to ingest queued channel event")
+
+
 async def on_rx_log_data(event: "Event") -> None:
     """Store raw RF packet data and process via centralized packet processor.
 
@@ -414,9 +434,8 @@ async def on_ack(event: "Event") -> None:
 def register_event_handlers(meshcore) -> None:
     """Register event handlers with the MeshCore instance.
 
-    Note: CHANNEL_MSG_RECV and ADVERTISEMENT events are NOT subscribed.
-    These are handled by the packet processor via RX_LOG_DATA to avoid
-    duplicate processing and ensure consistent handling.
+    ADVERTISEMENT is handled by raw RX; CHANNEL_MSG_RECV is subscribed
+    because dequeued Companion messages may have no corresponding raw RX.
 
     This function is safe to call multiple times (e.g., after reconnect).
     Existing handlers are unsubscribed before new ones are registered.
@@ -435,6 +454,7 @@ def register_event_handlers(meshcore) -> None:
 
     # Register handlers and track subscriptions
     _active_subscriptions.append(meshcore.subscribe(EventType.CONTACT_MSG_RECV, on_contact_message))
+    _active_subscriptions.append(meshcore.subscribe(EventType.CHANNEL_MSG_RECV, on_channel_message))
     _active_subscriptions.append(meshcore.subscribe(EventType.RX_LOG_DATA, on_rx_log_data))
     _active_subscriptions.append(meshcore.subscribe(EventType.PATH_UPDATE, on_path_update))
     _active_subscriptions.append(meshcore.subscribe(EventType.NEW_CONTACT, on_new_contact))
