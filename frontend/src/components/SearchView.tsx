@@ -1,7 +1,9 @@
-import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { useDebouncer } from '@tanstack/react-pacer';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { api, isAbortError } from '../api';
+import { api } from '../api';
+import { queryKeys } from '../queryClient';
 import type { Contact, Channel } from '../types';
 import { formatTime } from '../utils/messageParser';
 import {
@@ -101,11 +103,6 @@ export function SearchView({
 }: SearchViewProps) {
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
-  const [results, setResults] = useState<SearchResult[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [hasMore, setHasMore] = useState(false);
-  const [offset, setOffset] = useState(0);
-  const abortRef = useRef<AbortController | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
   const retainedScrollOffsetRef = useRef(0);
@@ -113,6 +110,28 @@ export function SearchView({
   const wasVisibleRef = useRef(visible);
   const committedQuery = searchQuery !== undefined ? searchQuery : debouncedQuery;
   const highlightQuery = getHighlightQuery(committedQuery);
+  const searchResultsQuery = useInfiniteQuery({
+    queryKey: queryKeys.messageSearch(committedQuery, visibilityVersion),
+    queryFn: ({ pageParam, signal }) =>
+      api.getMessages(
+        { q: committedQuery, limit: SEARCH_PAGE_SIZE, offset: pageParam },
+        signal
+      ) as Promise<SearchResult[]>,
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, _allPages, lastPageParam) =>
+      lastPage.length >= SEARCH_PAGE_SIZE ? lastPageParam + lastPage.length : undefined,
+    enabled: committedQuery.length > 0,
+  });
+  const results = useMemo(() => {
+    const uniqueResults = new Map<number, SearchResult>();
+    for (const page of searchResultsQuery.data?.pages ?? []) {
+      for (const result of page) uniqueResults.set(result.id, result);
+    }
+    return [...uniqueResults.values()];
+  }, [searchResultsQuery.data]);
+  const initialError = searchResultsQuery.isError && results.length === 0;
+  const paginationError = searchResultsQuery.isFetchNextPageError && results.length > 0;
+  const loading = searchResultsQuery.isFetching;
   const queryDebouncer = useDebouncer(
     (nextQuery: string) => {
       if (onSearchQueryChange) onSearchQueryChange(nextQuery);
@@ -147,9 +166,6 @@ export function SearchView({
 
   // Reset results when query changes
   useEffect(() => {
-    setResults([]);
-    setOffset(0);
-    setHasMore(false);
     retainedScrollOffsetRef.current = 0;
     virtualizer.scrollToOffset(0);
   }, [committedQuery, visibilityVersion, virtualizer]);
@@ -194,86 +210,6 @@ export function SearchView({
       cancelAnimationFrame(raf);
     };
   }, [visible, virtualizer]);
-
-  useEffect(() => {
-    return () => {
-      const controller = abortRef.current;
-      abortRef.current = null;
-      controller?.abort();
-    };
-  }, []);
-
-  // Fetch search results
-  useEffect(() => {
-    if (!committedQuery) {
-      abortRef.current?.abort();
-      abortRef.current = null;
-      setLoading(false);
-      setResults([]);
-      setHasMore(false);
-      return;
-    }
-
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-
-    setLoading(true);
-    api
-      .getMessages({ q: committedQuery, limit: SEARCH_PAGE_SIZE, offset: 0 }, controller.signal)
-      .then((data) => {
-        if (abortRef.current !== controller) return;
-        setResults(data as SearchResult[]);
-        setHasMore(data.length >= SEARCH_PAGE_SIZE);
-        setOffset(data.length);
-      })
-      .catch((err) => {
-        if (!isAbortError(err)) {
-          console.error('Search failed:', err);
-        }
-      })
-      .finally(() => {
-        if (abortRef.current === controller) {
-          abortRef.current = null;
-          setLoading(false);
-        }
-      });
-
-    return () => controller.abort();
-  }, [committedQuery, visibilityVersion]);
-
-  const loadMore = useCallback(() => {
-    if (!committedQuery || loading) return;
-
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-
-    setLoading(true);
-    api
-      .getMessages({ q: committedQuery, limit: SEARCH_PAGE_SIZE, offset }, controller.signal)
-      .then((data) => {
-        if (abortRef.current !== controller) return;
-        setResults((prev) => {
-          const existingIds = new Set(prev.map((r) => r.id));
-          const unique = (data as SearchResult[]).filter((r) => !existingIds.has(r.id));
-          return [...prev, ...unique];
-        });
-        setHasMore(data.length >= SEARCH_PAGE_SIZE);
-        setOffset((prev) => prev + data.length);
-      })
-      .catch((err) => {
-        if (!isAbortError(err)) {
-          console.error('Search load more failed:', err);
-        }
-      })
-      .finally(() => {
-        if (abortRef.current === controller) {
-          abortRef.current = null;
-          setLoading(false);
-        }
-      });
-  }, [committedQuery, loading, offset]);
 
   // Resolve conversation name from contacts/channels
   const getConversationName = useCallback(
@@ -355,9 +291,20 @@ export function SearchView({
           </div>
         )}
 
-        {committedQuery && results.length === 0 && !loading && (
+        {committedQuery && results.length === 0 && !loading && !initialError && (
           <div className="p-8 text-center text-muted-foreground text-sm">
             No messages found for &ldquo;{committedQuery}&rdquo;
+          </div>
+        )}
+
+        {initialError && (
+          <div className="space-y-3 p-8 text-center" role="alert">
+            <p className="text-sm text-destructive">
+              Search failed. Check your connection and retry.
+            </p>
+            <Button variant="outline" size="sm" onClick={() => void searchResultsQuery.refetch()}>
+              Retry search
+            </Button>
           </div>
         )}
 
@@ -436,15 +383,34 @@ export function SearchView({
           </div>
         )}
 
-        {loading && (
+        {loading && !paginationError && (
           <div className="p-4 text-center text-muted-foreground text-sm" role="status">
-            Searching...
+            {searchResultsQuery.isFetchingNextPage ? 'Loading more...' : 'Searching...'}
           </div>
         )}
 
-        {hasMore && !loading && (
+        {paginationError && (
+          <div className="space-y-2 p-4 text-center" role="alert">
+            <p className="text-sm text-destructive">
+              More results could not be loaded. Your existing results are unchanged.
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void searchResultsQuery.fetchNextPage()}
+            >
+              Retry loading more
+            </Button>
+          </div>
+        )}
+
+        {searchResultsQuery.hasNextPage && !loading && !paginationError && (
           <div className="p-4 text-center">
-            <Button variant="outline" size="sm" onClick={loadMore}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void searchResultsQuery.fetchNextPage()}
+            >
               Load more results
             </Button>
           </div>

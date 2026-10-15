@@ -32,6 +32,8 @@ export const queryKeys = {
       targetMessageId === null ? 'latest' : `around-${targetMessageId}`,
     ] as const,
   messagePages: (params: MessagePageQueryKey) => ['messages', 'pages', params] as const,
+  messageSearch: (query: string, visibilityVersion: number) =>
+    ['messages', 'search', query, visibilityVersion] as const,
 };
 
 export function createAppQueryClient(): QueryClient {

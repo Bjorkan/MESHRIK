@@ -1,4 +1,6 @@
-import { fireEvent, render, screen, act } from '@testing-library/react';
+import { QueryClient, QueryClientProvider, notifyManager } from '@tanstack/react-query';
+import { fireEvent, render as testingRender, screen, act, waitFor } from '@testing-library/react';
+import type { ReactElement, ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Message } from '../types';
 
@@ -22,6 +24,17 @@ vi.mock('../api', () => ({
 }));
 
 import { SearchView } from '../components/SearchView';
+
+function render(ui: ReactElement) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: 0 } },
+  });
+  return testingRender(ui, {
+    wrapper: ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    ),
+  });
+}
 
 function createSearchResult(overrides: Partial<Message> = {}): Message {
   return {
@@ -66,22 +79,23 @@ async function typeAndWaitForResults(query: string) {
   vi.useFakeTimers();
   await act(async () => {
     fireEvent.change(input, { target: { value: query } });
-    vi.advanceTimersByTime(350);
+    await vi.advanceTimersByTimeAsync(350);
+    await vi.runOnlyPendingTimersAsync();
   });
   vi.useRealTimers();
-  // Wait for the mock API promise to resolve and React to commit
-  await act(async () => {
-    await new Promise((r) => setTimeout(r, 0));
-  });
+  await waitFor(() => expect(mockGetMessages).toHaveBeenCalled());
+  await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument());
 }
 
 describe('SearchView', () => {
   beforeEach(() => {
+    notifyManager.setScheduler((callback) => callback());
     vi.clearAllMocks();
     mockGetMessages.mockReset();
   });
 
   afterEach(() => {
+    notifyManager.setScheduler((callback) => setTimeout(callback, 0));
     vi.useRealTimers();
   });
 
@@ -199,7 +213,7 @@ describe('SearchView', () => {
       second.resolve([]);
       await second.promise;
     });
-    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument());
     expect(screen.getByText(/No messages found for “second”/)).toBeInTheDocument();
   });
 
@@ -225,6 +239,26 @@ describe('SearchView', () => {
 
     await typeAndWaitForResults('nonexistent');
 
+    expect(screen.getByText(/No messages found/)).toBeInTheDocument();
+  });
+
+  it.each([
+    ['server error', new Error('500 Internal Server Error')],
+    ['timeout', new Error('Request timed out')],
+    ['offline', new TypeError('Failed to fetch')],
+  ])('shows an actionable error instead of an empty state for %s', async (_label, error) => {
+    mockGetMessages.mockRejectedValueOnce(error).mockResolvedValueOnce([]);
+    render(<SearchView {...defaultProps} />);
+
+    await typeAndWaitForResults('unavailable');
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Search failed');
+    expect(screen.queryByText(/No messages found/)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry search' }));
+    await act(async () => await Promise.resolve());
+
+    expect(mockGetMessages).toHaveBeenCalledTimes(2);
     expect(screen.getByText(/No messages found/)).toBeInTheDocument();
   });
 
@@ -291,6 +325,36 @@ describe('SearchView', () => {
     const resultBtns = screen.getAllByRole('button');
     expect(resultBtns.some((b) => b.textContent?.includes('one'))).toBe(true);
     expect(screen.queryByText('Load more results')).not.toBeInTheDocument();
+  });
+
+  it('keeps loaded results and retries the same page after pagination fails', async () => {
+    const pageResults = Array.from({ length: 50 }, (_, i) =>
+      createSearchResult({ id: i + 1, text: `result ${i}` })
+    );
+    mockGetMessages
+      .mockResolvedValueOnce(pageResults)
+      .mockRejectedValueOnce(new Error('page failed'))
+      .mockResolvedValueOnce([createSearchResult({ id: 51, text: 'recovered result' })]);
+    render(<SearchView {...defaultProps} />);
+
+    await typeAndWaitForResults('result');
+    fireEvent.click(screen.getByRole('button', { name: 'Load more results' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Your existing results are unchanged'
+    );
+    expect(screen.getByRole('button', { name: /result 0/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry loading more' }));
+    await act(async () => await Promise.resolve());
+
+    expect(mockGetMessages.mock.calls[1]?.[0]).toEqual(
+      expect.objectContaining({ q: 'result', offset: 50 })
+    );
+    expect(mockGetMessages.mock.calls[2]?.[0]).toEqual(
+      expect.objectContaining({ q: 'result', offset: 50 })
+    );
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
+    expect(screen.getByLabelText('Message search results')).toHaveStyle({ height: '4182px' });
   });
 
   it('resolves channel name from channels prop', async () => {
@@ -446,10 +510,11 @@ describe('SearchView', () => {
     const { rerender } = render(<SearchView {...defaultProps} visibilityVersion={0} />);
     await typeAndWaitForResults('result');
     fireEvent.click(screen.getByText('Load more results'));
-    expect(screen.getByRole('status')).toHaveTextContent('Searching...');
+    expect(screen.getByRole('status')).toHaveTextContent('Loading more...');
 
     rerender(<SearchView {...defaultProps} visibilityVersion={1} />);
     expect(mockGetMessages).toHaveBeenCalledTimes(3);
+    expect(screen.getByRole('status')).toHaveTextContent('Searching...');
 
     await act(async () => {
       loadMore.reject(new DOMException('Aborted', 'AbortError'));
