@@ -9,3 +9,21 @@ retransmit only by an explicit operator action, with duplicate-send risk.
 
 Queued Companion messages may be evicted while the transport is disconnected;
 MESHRIK can recover surviving queue items but not infer missing RF frames.
+
+## Queued channel slot identity
+
+A queued Companion CHANNEL_MSG_RECV has its original slot number, not its
+channel secret. Once slot residency can change, current `get_channel(slot)`
+cannot prove the historic conversation. Unattested entries remain in the
+persistent `pending_radio_ingress` quarantine instead of leaking plaintext
+into another channel. Reprocessing is permitted only with an independently
+verified complete 16-byte channel identity from the same RX observation.
+This conservative safety rule can leave genuine old messages unresolved.
+
+## Firmware queue overflow visibility
+
+Companion may evict the oldest queued channel item if its offline buffer
+fills. There is no trustworthy firmware eviction counter via Companion v13.
+Health `rx_coverage.drop_count=null` means **unknown**, never zero. The
+transport disconnect interval is recorded as a possible data-loss window;
+receiving all surviving items does not establish uninterrupted RF coverage.

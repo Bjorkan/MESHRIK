@@ -593,6 +593,9 @@ class RadioManager:
         )
         self._connection_info = f"Serial: {port}"
         self._last_connected = True
+        from app.services.rx_coverage import mark_connected
+
+        mark_connected()
         self._setup_complete = False
         logger.debug("Serial connection established")
 
@@ -610,6 +613,9 @@ class RadioManager:
         )
         self._connection_info = f"TCP: {host}:{port}"
         self._last_connected = True
+        from app.services.rx_coverage import mark_connected
+
+        mark_connected()
         self._setup_complete = False
         logger.debug("TCP connection established")
 
@@ -627,10 +633,16 @@ class RadioManager:
         )
         self._connection_info = f"BLE: {address}"
         self._last_connected = True
+        from app.services.rx_coverage import mark_connected
+
+        mark_connected()
         self._setup_complete = False
         logger.debug("BLE connection established")
 
     async def disconnect(self) -> None:
+        from app.services.rx_coverage import mark_disconnected
+
+        mark_disconnected()
         """Fence initialization and disconnect after the active command leaves the slot."""
         from app.radio_sync import stop_background_contact_reconciliation
         from app.services.radio_lifecycle import cancel_radio_lifecycle
