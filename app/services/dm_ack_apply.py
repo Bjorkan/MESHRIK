@@ -11,13 +11,18 @@ async def apply_dm_ack_code(ack_code: str, *, broadcast_fn: BroadcastFn) -> bool
     """
     dm_ack_tracker.cleanup_expired_acks()
 
+    from app.services import dm_ack_persistence
+
     message_id = dm_ack_tracker.pop_pending_ack(ack_code)
+    if message_id is None:
+        message_id = await dm_ack_persistence.lookup(ack_code)
     if message_id is None:
         dm_ack_tracker.buffer_unmatched_ack(ack_code)
         return False
 
-    dm_ack_tracker.clear_pending_acks_for_message(message_id)
     await increment_ack_and_broadcast(message_id=message_id, broadcast_fn=broadcast_fn)
+    await dm_ack_persistence.retire(message_id)
+    dm_ack_tracker.clear_pending_acks_for_message(message_id)
     # Only report a scheduler ACK after the existing DM tracker and durable
     # message update have accepted it. Never consume the ACK a second time.
     from app.services.radio_response_tracker import radio_response_tracker

@@ -505,6 +505,9 @@ async def _apply_direct_message_ack_tracking(
         return 0
 
     timeout_ms = _get_ack_tracking_timeout_ms(result)
+    from app.services import dm_ack_persistence
+
+    await dm_ack_persistence.remember(ack_code, message_id, timeout_ms)
     matched_immediately = track_pending_ack_fn(ack_code, message_id, timeout_ms) is True
     logger.debug("Tracking ACK %s for message %d", ack_code, message_id)
     if matched_immediately:

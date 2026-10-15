@@ -140,6 +140,29 @@ CREATE TABLE IF NOT EXISTS community_observed_neighbors (
     scope_status TEXT NOT NULL DEFAULT 'not_queried'
 );
 
+-- Companion get_msg consumes firmware queue entries before host-side processing.
+-- This bounded recovery inbox retains original payloads for retries after failures.
+CREATE TABLE IF NOT EXISTS pending_dm_ack_correlations (
+    code TEXT PRIMARY KEY,
+    message_id INTEGER NOT NULL,
+    radio_key TEXT NOT NULL,
+    expiry_at INTEGER NOT NULL,
+    FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_dm_ack_expiry ON pending_dm_ack_correlations(expiry_at);
+
+CREATE TABLE IF NOT EXISTS pending_radio_ingress (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    kind TEXT NOT NULL CHECK(kind IN ('CHAN', 'PRIV')),
+    payload TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'unresolved',
+    created_at INTEGER NOT NULL,
+    attempts INTEGER NOT NULL DEFAULT 0,
+    last_error TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_pending_radio_ingress_status
+    ON pending_radio_ingress(status, id);
+
 CREATE TABLE IF NOT EXISTS fanout_configs (
     id TEXT PRIMARY KEY,
     type TEXT NOT NULL,
