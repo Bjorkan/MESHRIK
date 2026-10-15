@@ -1877,11 +1877,15 @@ class TestChannelEchoWatchdog:
 
 
 class TestRadioExceptionMidSend:
-    """Test that radio exceptions during send don't leave orphaned DB state."""
+    """Test the pre-send pending row contract when the radio raises mid-send."""
 
     @pytest.mark.asyncio
-    async def test_dm_send_radio_exception_no_orphan_message(self, test_db):
-        """When mc.commands.send_msg() raises, no message should be stored in DB."""
+    async def test_dm_send_radio_exception_keeps_pending_audit_row(self, test_db):
+        """When mc.commands.send_msg() raises, the staged pending row remains.
+
+        The row is committed before crossing the RF boundary, so a raised
+        exception leaves an uncertain TX intent instead of losing the send.
+        """
         mc = _make_mc()
         pub_key = "ab" * 32
         await _insert_contact(pub_key, "Alice")
@@ -1898,11 +1902,14 @@ class TestRadioExceptionMidSend:
                     SendDirectMessageRequest(destination=pub_key, text="This will fail")
                 )
 
-        # No message should be stored — the exception prevented reaching MessageRepository.create
+        # The staged pending row remains as an uncertain TX intent.
         messages = await MessageRepository.get_all(
             msg_type="PRIV", conversation_key=pub_key, limit=10
         )
-        assert len(messages) == 0
+        assert len(messages) == 1
+        assert messages[0].outgoing is True
+        assert messages[0].send_status == "pending"
+        assert messages[0].acked == 0
 
     @pytest.mark.asyncio
     async def test_dm_send_no_radio_response_returns_408_and_preserves_message(self, test_db):

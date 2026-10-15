@@ -644,7 +644,7 @@ class TestMessagesEndpoint:
                 )
 
             assert exc_info.value.status_code == 422
-            assert "unexpected duplicate" in exc_info.value.detail.lower()
+            assert "could not be staged" in exc_info.value.detail.lower()
 
     @pytest.mark.asyncio
     async def test_send_channel_message_duplicate_returns_422(self, test_db):

@@ -729,6 +729,20 @@ async def send_direct_message_to_contact(
             text=text,
             requested_timestamp=sent_at,
         )
+        # Commit the stable outgoing audit ID before crossing the RF boundary.
+        # On crash/timeout this pending row remains as an uncertain TX intent;
+        # never automatically retransmit it on reconnect.
+        message = await create_outgoing_direct_message(
+            conversation_key=contact.public_key.lower(),
+            text=text,
+            sender_timestamp=sender_timestamp,
+            received_at=sent_at,
+            send_status="pending",
+            broadcast_fn=broadcast_fn,
+            message_repository=message_repository,
+        )
+        if message is None:
+            raise HTTPException(status_code=422, detail="Outgoing DM could not be staged")
         result = await mc.commands.send_msg(
             dst=cached_contact,
             msg=text,
@@ -736,19 +750,8 @@ async def send_direct_message_to_contact(
         )
 
         if result is not None and result.type != EventType.ERROR:
-            message = await create_outgoing_direct_message(
-                conversation_key=contact.public_key.lower(),
-                text=text,
-                sender_timestamp=sender_timestamp,
-                received_at=sent_at,
-                broadcast_fn=broadcast_fn,
-                message_repository=message_repository,
-            )
-            if message is None:
-                raise HTTPException(
-                    status_code=422,
-                    detail="Failed to store outgoing message - unexpected duplicate",
-                )
+            await message_repository.update_send_status(message.id, "confirmed")
+            message.send_status = "confirmed"
             ack_code = _extract_expected_ack_code(result)
             if ack_code:
                 from app.services.radio_producers import reserve_direct_message_ack
@@ -775,25 +778,16 @@ async def send_direct_message_to_contact(
             )
             assert sent_at is not None
             assert sender_timestamp is not None
-            message = await create_outgoing_direct_message(
-                conversation_key=contact.public_key.lower(),
-                text=text,
-                sender_timestamp=sender_timestamp,
-                received_at=sent_at,
-                send_status="unknown",
-                broadcast_fn=broadcast_fn,
-                message_repository=message_repository,
-            )
-            if message is None:
-                raise HTTPException(
-                    status_code=422,
-                    detail="Failed to store outgoing message - unexpected duplicate",
-                )
+            if message is not None:
+                await message_repository.update_send_status(message.id, "unknown")
+                message.send_status = "unknown"
             await contact_repository.update_last_contacted(contact.public_key.lower(), sent_at)
             raise HTTPException(status_code=408, detail=NO_RADIO_RESPONSE_AFTER_SEND_DETAIL)
 
         if result.type == EventType.ERROR:
-            raise HTTPException(status_code=422, detail=f"Failed to send message: {result.payload}")
+            if message is not None:
+                await message_repository.update_send_status(message.id, "failed")
+            raise HTTPException(status_code=422, detail="Radio rejected the DM send command")
 
         logger.debug(
             "Radio send result for direct message to %s: %r",
