@@ -1,12 +1,20 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { StatusBar } from '../components/StatusBar';
+import { api } from '../api';
+import { toast } from '../components/ui/sonner';
 import type { HealthStatus } from '../types';
 import {
   STATUS_DOT_PULSE_DURATION_MS,
   STATUS_DOT_PULSE_PACKET_EVENT,
 } from '../utils/statusDotPulse';
+
+vi.mock('../components/ui/sonner', () => ({
+  toast: { success: vi.fn(), error: vi.fn() },
+}));
+
+const mockedToast = vi.mocked(toast);
 
 const baseHealth: HealthStatus = {
   status: 'degraded',
@@ -20,6 +28,11 @@ const baseHealth: HealthStatus = {
 };
 
 describe('StatusBar', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.clearAllMocks();
+  });
+
   it('shows Radio Initializing while setup is still running', () => {
     render(
       <StatusBar
@@ -63,6 +76,74 @@ describe('StatusBar', () => {
 
     expect(screen.getByRole('status', { name: 'Radio Paused' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Connect' })).toBeInTheDocument();
+  });
+
+  it('reports a successful reconnect only when the API confirms connection', async () => {
+    vi.spyOn(api, 'reconnectRadio').mockResolvedValue({
+      status: 'ok',
+      message: 'Connected over serial',
+      connected: true,
+    });
+    render(<StatusBar health={baseHealth} config={null} onSettingsClick={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reconnect' }));
+
+    await waitFor(() =>
+      expect(mockedToast.success).toHaveBeenCalledWith('Reconnected', {
+        description: 'Connected over serial',
+      })
+    );
+  });
+
+  it('reports HTTP success that still leaves the radio disconnected', async () => {
+    vi.spyOn(api, 'reconnectRadio').mockResolvedValue({
+      status: 'pending',
+      message: 'No radio found yet',
+      connected: false,
+    });
+    render(<StatusBar health={baseHealth} config={null} onSettingsClick={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reconnect' }));
+
+    await waitFor(() =>
+      expect(mockedToast.error).toHaveBeenCalledWith('Radio is still disconnected', {
+        description: 'No radio found yet',
+      })
+    );
+    expect(mockedToast.success).not.toHaveBeenCalled();
+  });
+
+  it('reports a rejected reconnect request separately', async () => {
+    vi.spyOn(api, 'reconnectRadio').mockRejectedValue(new Error('Request timed out'));
+    render(<StatusBar health={baseHealth} config={null} onSettingsClick={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reconnect' }));
+
+    await waitFor(() =>
+      expect(mockedToast.error).toHaveBeenCalledWith('Reconnection failed', {
+        description: 'Request timed out',
+      })
+    );
+    expect(mockedToast.success).not.toHaveBeenCalled();
+  });
+
+  it('blocks duplicate reconnect clicks while the request is pending', async () => {
+    let resolveReconnect!: (value: { status: string; message: string; connected: boolean }) => void;
+    const reconnect = vi.spyOn(api, 'reconnectRadio').mockReturnValue(
+      new Promise((resolve) => {
+        resolveReconnect = resolve;
+      })
+    );
+    render(<StatusBar health={baseHealth} config={null} onSettingsClick={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reconnect' }));
+    const pendingButton = screen.getByRole('button', { name: 'Reconnecting...' });
+    expect(pendingButton).toBeDisabled();
+    fireEvent.click(pendingButton);
+    expect(reconnect).toHaveBeenCalledTimes(1);
+
+    resolveReconnect({ status: 'ok', message: 'Connected', connected: true });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Reconnect' })).toBeEnabled());
   });
 
   it('toggles between classic and light themes from the shortcut button', () => {

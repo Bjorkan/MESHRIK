@@ -108,25 +108,17 @@ export function useRadioControl() {
   }, [setHealth]);
 
   const handleReconnect = useCallback(async () => {
-    await api.reconnectRadio();
+    const result = await api.reconnectRadio();
     const refreshedHealth = await api.getHealth();
     setHealth(refreshedHealth);
-    if (refreshedHealth.radio_connected) {
-      await fetchConfig();
+    if (!result.connected || !refreshedHealth.radio_connected) {
+      throw new Error(result.message || 'Radio is still disconnected');
     }
+    await fetchConfig();
   }, [fetchConfig, setHealth]);
 
   const handleAdvertise = useCallback(async (mode: RadioAdvertMode = 'flood') => {
-    try {
-      await api.sendAdvertisement(mode);
-      toast.success(mode === 'zero_hop' ? 'Zero-hop advertisement sent' : 'Advertisement sent');
-    } catch (err) {
-      const label = mode === 'zero_hop' ? 'zero-hop advertisement' : 'advertisement';
-      console.error(`Failed to send ${label}:`, err);
-      toast.error(`Failed to send ${label}`, {
-        description: err instanceof Error ? err.message : 'Check radio connection',
-      });
-    }
+    await api.sendAdvertisement(mode);
   }, []);
 
   const handleDiscoverMesh = useCallback(async (target: RadioDiscoveryTarget) => {

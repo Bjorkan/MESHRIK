@@ -290,6 +290,35 @@ describe('SettingsModal', () => {
     await waitFor(() => {
       expect(onAdvertise).toHaveBeenCalledWith('zero_hop');
     });
+    expect(
+      screen.getByText(
+        'Zero-hop advertisement accepted by the radio. Peer receipt is not confirmed.'
+      )
+    ).toHaveAttribute('role', 'status');
+  });
+
+  it('blocks duplicate advertisement requests and reports rejection inline', async () => {
+    let rejectAdvert!: (reason?: unknown) => void;
+    const onAdvertise = vi.fn(
+      () =>
+        new Promise<void>((_resolve, reject) => {
+          rejectAdvert = reject;
+        })
+    );
+    renderModal({ onAdvertise });
+    openRadioSection();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send Flood Advertisement' }));
+    const pendingButton = screen.getByRole('button', { name: 'Sending...' });
+    expect(pendingButton).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Send Zero-Hop Advertisement' })).toBeDisabled();
+    fireEvent.click(pendingButton);
+    expect(onAdvertise).toHaveBeenCalledTimes(1);
+
+    rejectAdvert(new Error('Radio disconnected before acceptance'));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Radio disconnected before acceptance'
+    );
   });
 
   it('shows radio-unavailable message when config is null', () => {

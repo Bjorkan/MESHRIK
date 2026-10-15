@@ -519,6 +519,10 @@ export function SettingsRadioSection({
 
   // Advertise state
   const [advertisingMode, setAdvertisingMode] = useState<RadioAdvertMode | null>(null);
+  const [advertiseResult, setAdvertiseResult] = useState<{
+    kind: 'accepted' | 'error';
+    message: string;
+  } | null>(null);
   const [discoverError, setDiscoverError] = useState<string | null>(null);
   const [connectionBusy, setConnectionBusy] = useState(false);
 
@@ -627,9 +631,21 @@ export function SettingsRadioSection({
   const handleSaveAdvertInterval = () => void advertIntervalForm.handleSubmit();
 
   const handleAdvertise = async (mode: RadioAdvertMode) => {
+    if (advertisingMode !== null) return;
+    setAdvertiseResult(null);
     setAdvertisingMode(mode);
     try {
       await onAdvertise(mode);
+      setAdvertiseResult({
+        kind: 'accepted',
+        message: `${mode === 'zero_hop' ? 'Zero-hop' : 'Flood'} advertisement accepted by the radio. Peer receipt is not confirmed.`,
+      });
+    } catch (error) {
+      setAdvertiseResult({
+        kind: 'error',
+        message:
+          error instanceof Error ? error.message : 'The advertisement request was not accepted',
+      });
     } finally {
       setAdvertisingMode(null);
     }
@@ -1595,6 +1611,18 @@ export function SettingsRadioSection({
           </div>
           {!health?.radio_connected && (
             <p className="text-sm text-destructive">Radio not connected</p>
+          )}
+          {advertiseResult && (
+            <p
+              className={
+                advertiseResult.kind === 'error'
+                  ? 'text-sm text-destructive'
+                  : 'text-sm text-muted-foreground'
+              }
+              role={advertiseResult.kind === 'error' ? 'alert' : 'status'}
+            >
+              {advertiseResult.message}
+            </p>
           )}
         </div>
 

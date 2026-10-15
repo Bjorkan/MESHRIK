@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useDebouncer } from '@tanstack/react-pacer';
 import {
   BatteryFull,
@@ -93,6 +93,7 @@ export function StatusBar({
             ? 'Radio OK'
             : 'Radio Disconnected';
   const [reconnecting, setReconnecting] = useState(false);
+  const reconnectingRef = useRef(false);
   // Track the *effective* theme (follow-os is resolved to original/light) so the
   // toggle icon and action match what the user currently sees rendered.
   const [currentTheme, setCurrentTheme] = useState(getEffectiveTheme);
@@ -158,17 +159,22 @@ export function StatusBar({
   }, []);
 
   const handleReconnect = async () => {
+    if (reconnectingRef.current) return;
+    reconnectingRef.current = true;
     setReconnecting(true);
     try {
       const result = await api.reconnectRadio();
       if (result.connected) {
         toast.success('Reconnected', { description: result.message });
+      } else {
+        toast.error('Radio is still disconnected', { description: result.message });
       }
     } catch (err) {
       toast.error('Reconnection failed', {
         description: err instanceof Error ? err.message : 'Check radio connection and power',
       });
     } finally {
+      reconnectingRef.current = false;
       setReconnecting(false);
     }
   };
