@@ -167,7 +167,6 @@ export function decodePacketSummary(
     const pathStr = pathTokens.length > 0 ? ` via ${pathTokens.join(', ')}` : '';
 
     let summary = payloadTypeName;
-    let details: string | undefined;
 
     switch (decoded.payloadType) {
       case PayloadType.TextMessage: {
@@ -242,7 +241,7 @@ export function decodePacketSummary(
         break;
     }
 
-    return { summary, routeType, details };
+    return { summary, routeType };
   } catch {
     return { summary: 'Decode error', routeType: 'Unknown' };
   }
