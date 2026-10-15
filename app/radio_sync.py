@@ -447,11 +447,22 @@ async def _store_pending_channel_message(
         normalized_channel_idx = int(channel_idx)
         if not 0 <= normalized_channel_idx <= 255:
             raise ValueError("Invalid channel slot")
+        # A Companion queued frame contains only its *historical* channel_idx.
+        # Reading get_channel(idx) now cannot prove what occupied that slot
+        # when the frame was received. Never assign plaintext to a newly
+        # occupied slot solely on this lookup (issue #150).
+        verified_key = payload.get("verified_channel_key")
+        if not isinstance(verified_key, str) or len(verified_key) != 32:
+            raise ValueError("Unproven historic channel-slot identity")
+        try:
+            bytes.fromhex(verified_key)
+        except ValueError as exc:
+            raise ValueError("Invalid verified channel identity") from exc
         channel_key, channel_name = await _resolve_channel_for_pending_message(
             mc, normalized_channel_idx
         )
-        if channel_key is None:
-            raise ValueError("Unresolved channel slot")
+        if channel_key is None or channel_key.upper() != verified_key.upper():
+            raise ValueError("Channel slot differs from verified RX provenance")
         received_at = int(time.time())
         ts = payload.get("sender_timestamp")
         sender_timestamp = ts if ts is not None else received_at

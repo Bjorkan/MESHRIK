@@ -1513,6 +1513,7 @@ class TestPendingChannelMessageFallback:
             "txt_type": 0,
             "path": "aabb",
             "path_len": 2,
+            "verified_channel_key": channel_key,
         }
 
         no_more = MagicMock()
@@ -1561,6 +1562,7 @@ class TestPendingChannelMessageFallback:
             "text": "Bob: polled message",
             "sender_timestamp": 1700000010,
             "txt_type": 0,
+            "verified_channel_key": channel_key,
         }
 
         no_more = MagicMock()
@@ -1578,6 +1580,92 @@ class TestPendingChannelMessageFallback:
         stored = await MessageRepository.get_all(msg_type="CHAN", conversation_key=channel_key)
         assert len(stored) == 1
         assert stored[0].text == "Bob: polled message"
+
+    @pytest.mark.asyncio
+    async def test_drain_quarantines_channel_message_without_verified_identity(self, test_db):
+        """A queued frame without a receive-time identity is never stored on a guess."""
+        from app.radio_sync import drain_pending_messages
+        from app.services import pending_radio_ingress
+
+        channel_key = "44" * 16
+        await ChannelRepository.upsert(key=channel_key, name="#quarantine")
+        radio_manager.remember_pending_message_channel_slot(channel_key, 5)
+
+        channel_message = MagicMock()
+        channel_message.type = EventType.CHANNEL_MSG_RECV
+        channel_message.payload = {
+            "channel_idx": 5,
+            "text": "Eve: unproven",
+            "sender_timestamp": 1700000100,
+            "txt_type": 0,
+        }
+
+        no_more = MagicMock()
+        no_more.type = EventType.NO_MORE_MSGS
+        no_more.payload = {}
+
+        empty_slot = MagicMock()
+        empty_slot.type = EventType.ERROR
+        empty_slot.payload = {"error": "slot empty"}
+
+        mock_mc = MagicMock()
+        mock_mc.commands.get_msg = AsyncMock(side_effect=[channel_message, no_more])
+        mock_mc.commands.get_channel = AsyncMock(return_value=empty_slot)
+
+        with patch("app.radio_sync.broadcast_event"):
+            drained = await drain_pending_messages(mock_mc)
+
+        assert drained == 0
+        stored = await MessageRepository.get_all(msg_type="CHAN", conversation_key=channel_key)
+        assert stored == []
+        quarantined = await pending_radio_ingress.unresolved()
+        assert len(quarantined) == 1
+        _, kind, payload = quarantined[0]
+        assert kind == "CHAN"
+        assert payload["channel_idx"] == 5
+
+    @pytest.mark.asyncio
+    async def test_drain_quarantines_channel_message_when_slot_key_differs(self, test_db):
+        """A mismatched verified identity must not leak plaintext into another channel."""
+        from app.radio_sync import drain_pending_messages
+        from app.services import pending_radio_ingress
+
+        slot_key = "66" * 16
+        verified_key = "55" * 16
+        await ChannelRepository.upsert(key=slot_key, name="#slots")
+        radio_manager.remember_pending_message_channel_slot(slot_key, 7)
+
+        channel_message = MagicMock()
+        channel_message.type = EventType.CHANNEL_MSG_RECV
+        channel_message.payload = {
+            "channel_idx": 7,
+            "text": "Eve: wrong room",
+            "sender_timestamp": 1700000200,
+            "txt_type": 0,
+            "verified_channel_key": verified_key,
+        }
+
+        no_more = MagicMock()
+        no_more.type = EventType.NO_MORE_MSGS
+        no_more.payload = {}
+
+        empty_slot = MagicMock()
+        empty_slot.type = EventType.ERROR
+        empty_slot.payload = {"error": "slot empty"}
+
+        mock_mc = MagicMock()
+        mock_mc.commands.get_msg = AsyncMock(side_effect=[channel_message, no_more])
+        mock_mc.commands.get_channel = AsyncMock(return_value=empty_slot)
+
+        with patch("app.radio_sync.broadcast_event"):
+            drained = await drain_pending_messages(mock_mc)
+
+        assert drained == 0
+        stored = await MessageRepository.get_all(msg_type="CHAN", conversation_key=slot_key)
+        assert stored == []
+        quarantined = await pending_radio_ingress.unresolved()
+        assert len(quarantined) == 1
+        assert quarantined[0][2]["verified_channel_key"] == verified_key
 
 
 class TestEnsureDefaultChannels:
