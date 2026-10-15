@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING
 from meshcore import EventType
 
 from app.models import CONTACT_TYPE_ROOM, Contact, ContactUpsert
-from app.packet_processor import process_raw_packet
 from app.repository import (
     ContactRepository,
 )
@@ -242,25 +241,10 @@ async def on_channel_message(event: "Event") -> None:
 
 
 async def on_rx_log_data(event: "Event") -> None:
-    """Store raw RF packet data and process via centralized packet processor.
+    """Admit RX into one bounded worker without blocking the SDK dispatcher."""
+    from app.services.rx_ingress import rx_ingress
 
-    This is the unified entry point for all RF packets. The packet processor
-    handles channel messages (GROUP_TEXT) and advertisements (ADVERT).
-    """
-    payload = event.payload
-    logger.debug("Received RX log data packet")
-
-    if "payload" not in payload:
-        logger.warning("RX_LOG_DATA event missing 'payload' field")
-        return
-
-    raw_hex = payload["payload"]
-    raw_bytes = bytes.fromhex(raw_hex)
-    await process_raw_packet(
-        raw_bytes=raw_bytes,
-        snr=payload.get("snr"),
-        rssi=payload.get("rssi"),
-    )
+    rx_ingress.submit(event.payload if isinstance(event.payload, dict) else {})
 
 
 async def on_messages_waiting(event: "Event") -> None:
