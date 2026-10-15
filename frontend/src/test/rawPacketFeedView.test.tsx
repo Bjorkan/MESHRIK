@@ -149,6 +149,44 @@ describe('RawPacketFeedView', () => {
     expect((screen.getByLabelText('Autoscroll') as HTMLInputElement).checked).toBe(false);
   });
 
+  it('opens and closes mobile filters repeatedly with an accessible stable toggle', () => {
+    renderView();
+
+    const toggle = screen.getByRole('button', { name: 'Show Filters' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(toggle).toHaveAttribute('aria-controls', 'raw-packet-mobile-filters');
+
+    toggle.focus();
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAccessibleName('Hide Filters');
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(document.getElementById('raw-packet-mobile-filters')).toBeInTheDocument();
+
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAccessibleName('Show Filters');
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(document.getElementById('raw-packet-mobile-filters')).not.toBeInTheDocument();
+
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAccessibleName('Hide Filters');
+    expect(toggle).toHaveFocus();
+  });
+
+  it('keeps narrow headers wrapping and defers the wide stats minimum to xl', () => {
+    const { container } = renderView();
+
+    expect(screen.getByRole('button', { name: 'Analyze Packet' }).parentElement).toHaveClass(
+      'flex-wrap',
+      'w-full',
+      'sm:w-auto'
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /show stats/i }));
+    const stats = container.querySelector('aside');
+    expect(stats).toHaveClass('md:w-[42%]', 'xl:min-w-[30rem]');
+    expect(stats).not.toHaveClass('md:min-w-[30rem]');
+  });
+
   it('analyzes a pasted raw packet without adding it to the live feed', () => {
     renderView({ channels: [TEST_CHANNEL] });
 

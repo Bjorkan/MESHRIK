@@ -638,14 +638,14 @@ export function RawPacketFeedView({ contacts, channels }: RawPacketFeedViewProps
   return (
     <>
       <div className="border-b border-border px-4 py-2.5">
-        <div className="flex items-center justify-between gap-3">
-          <div>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
             <h2 className="font-semibold text-base text-foreground">Raw Packet Feed</h2>
             <p className="hidden md:block text-xs text-muted-foreground">
               Collecting stats since {formatTimestamp(rawPacketStatsSession.sessionStartedAt)}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
             <Button
               type="button"
               variant="outline"
@@ -672,36 +672,36 @@ export function RawPacketFeedView({ contacts, channels }: RawPacketFeedViewProps
         </div>
         <p className="md:hidden text-xs text-muted-foreground">
           Collecting stats since {formatTimestamp(rawPacketStatsSession.sessionStartedAt)}
-          {!mobileFiltersOpen && (
-            <>
-              {' · '}
-              <button
-                type="button"
-                className="text-primary hover:text-primary/80 transition-colors"
-                onClick={() => setMobileFiltersOpen(true)}
-              >
-                Show Filters
-              </button>
-            </>
-          )}
+          {' · '}
+          <button
+            type="button"
+            className="text-primary hover:text-primary/80 transition-colors"
+            onClick={() => setMobileFiltersOpen((current) => !current)}
+            aria-expanded={mobileFiltersOpen}
+            aria-controls="raw-packet-mobile-filters"
+          >
+            {mobileFiltersOpen ? 'Hide Filters' : 'Show Filters'}
+          </button>
         </p>
 
         {mobileFiltersOpen && (
-          <FeedFilterControls
-            className="flex md:hidden"
-            allTypesEnabled={allTypesEnabled}
-            enabledTypes={enabledTypes}
-            onToggleAll={handleToggleAll}
-            onToggleType={handleToggleType}
-            onOnly={handleOnly}
-            autoScroll={autoScroll}
-            onAutoScrollChange={setAutoScroll}
-            hexFilter={hexFilter}
-            onHexFilterChange={setHexFilter}
-            hexInvalid={hexInvalid}
-            matchCount={filteredPackets.length}
-            totalCount={packets.length}
-          />
+          <div id="raw-packet-mobile-filters" className="md:hidden">
+            <FeedFilterControls
+              className="flex"
+              allTypesEnabled={allTypesEnabled}
+              enabledTypes={enabledTypes}
+              onToggleAll={handleToggleAll}
+              onToggleType={handleToggleType}
+              onOnly={handleOnly}
+              autoScroll={autoScroll}
+              onAutoScrollChange={setAutoScroll}
+              hexFilter={hexFilter}
+              onHexFilterChange={setHexFilter}
+              hexInvalid={hexInvalid}
+              matchCount={filteredPackets.length}
+              totalCount={packets.length}
+            />
+          </div>
         )}
 
         <FeedFilterControls
@@ -735,7 +735,7 @@ export function RawPacketFeedView({ contacts, channels }: RawPacketFeedViewProps
           className={cn(
             'shrink-0 overflow-hidden border-t border-border transition-all duration-300 md:border-l md:border-t-0',
             statsOpen
-              ? 'max-h-[42rem] md:max-h-none md:w-1/2 md:min-w-[30rem]'
+              ? 'max-h-[42rem] md:max-h-none md:w-[42%] xl:min-w-[30rem]'
               : 'max-h-0 md:w-0 md:min-w-0 border-transparent'
           )}
         >
