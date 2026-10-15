@@ -143,13 +143,14 @@ class TestAckEventHandler:
         """Matching ACK code updates message and broadcasts."""
         from app.event_handlers import on_ack
 
-        # Insert a real message to get a valid ID
+        # Insert a real outgoing message to get a valid ID
         msg_id = await MessageRepository.create(
             msg_type="PRIV",
             text="Hello",
             received_at=1700000000,
             conversation_key="aa" * 32,
             sender_timestamp=1700000000,
+            outgoing=True,
         )
 
         # Setup pending ACK with the real message ID
@@ -455,6 +456,7 @@ class TestContactMessageCLIFiltering:
             received_at=1700000000,
             conversation_key="bb" * 32,
             sender_timestamp=1700000000,
+            outgoing=True,
         )
         track_pending_ack("ackshape", message_id=msg_id, timeout_ms=10000)
 

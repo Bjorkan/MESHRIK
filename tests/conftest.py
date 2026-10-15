@@ -38,6 +38,7 @@ async def test_db():
         settings,
     )
     from app.repository import fanout as fanout_repo
+    from app.services import dm_ack_persistence
 
     db = Database(":memory:")
     await db.connect()
@@ -51,6 +52,7 @@ async def test_db():
         fanout_repo,
         repeater_telemetry,
         contact_telemetry,
+        dm_ack_persistence,
     ]
     originals = [(mod, mod.db) for mod in submodules]
 

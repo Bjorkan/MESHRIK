@@ -75,3 +75,51 @@ async def retire(message_id: int) -> None:
         logger.warning(
             "Failed to retire ACK correlations for message %s", message_id, exc_info=True
         )
+
+
+async def confirm(code: str, fallback_message_id: int | None = None) -> tuple[int, int] | None:
+    """Atomically ACK one outgoing DM and retire all sibling correlations.
+
+    The operation remains retryable if SQLite fails or the task is cancelled
+    before COMMIT. A repeated ACK cannot increment the same row twice.
+    """
+    if not _db_connected():
+        return None
+    identity = own_radio_key()
+    try:
+        async with db.tx() as conn:
+            found_id = None
+            if identity:
+                async with conn.execute(
+                    "SELECT message_id FROM pending_dm_ack_correlations "
+                    "WHERE code=? AND radio_key=? AND expiry_at>=?",
+                    (code, identity, int(time.time())),
+                ) as cursor:
+                    row = await cursor.fetchone()
+                    if row is not None:
+                        found_id = row["message_id"]
+            if found_id is None:
+                found_id = fallback_message_id
+            if found_id is None:
+                return None
+            async with conn.execute(
+                "UPDATE messages SET acked=acked+1 WHERE id=? AND type='PRIV' "
+                "AND outgoing=1 AND acked=0",
+                (found_id,),
+            ) as cursor:
+                changed = cursor.rowcount
+            if changed == 0:
+                # Already confirmed (or not an outgoing DM); a replay must not
+                # broadcast a second confirmation for the same message.
+                return None
+            async with conn.execute("SELECT acked FROM messages WHERE id=?", (found_id,)) as cursor:
+                row = await cursor.fetchone()
+            if row is None:
+                return None
+            await conn.execute(
+                "DELETE FROM pending_dm_ack_correlations WHERE message_id=?", (found_id,)
+            )
+            return found_id, row["acked"]
+    except Exception:
+        logger.warning("Failed to confirm ACK correlation %s", code, exc_info=True)
+        return None

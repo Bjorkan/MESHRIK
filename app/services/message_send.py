@@ -26,7 +26,6 @@ from app.services.messages import (
     build_stored_outgoing_channel_message,
     create_outgoing_channel_message,
     create_outgoing_direct_message,
-    increment_ack_and_broadcast,
 )
 
 logger = logging.getLogger(__name__)
@@ -511,11 +510,12 @@ async def _apply_direct_message_ack_tracking(
     matched_immediately = track_pending_ack_fn(ack_code, message_id, timeout_ms) is True
     logger.debug("Tracking ACK %s for message %d", ack_code, message_id)
     if matched_immediately:
+        committed = await dm_ack_persistence.confirm(ack_code, message_id)
+        if committed is None:
+            return 0
         dm_ack_tracker.clear_pending_acks_for_message(message_id)
-        count = await increment_ack_and_broadcast(
-            message_id=message_id,
-            broadcast_fn=broadcast_fn,
-        )
+        count = committed[1]
+        broadcast_fn("message_acked", {"message_id": message_id, "ack_count": count})
         # A buffered early ACK has now been durably associated with this
         # message; only now may an optional scheduler waiter complete.
         from app.services.radio_response_tracker import radio_response_tracker

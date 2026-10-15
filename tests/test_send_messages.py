@@ -400,7 +400,9 @@ class TestOutgoingDMBroadcast:
             )
             await on_ack(MockAckEvent())
             sleep_gate.set()
-            await asyncio.gather(*retry_tasks)
+            # The ACK cancels the owned retry task; collect the cancellation
+            # instead of letting it propagate out of gather().
+            await asyncio.gather(*retry_tasks, return_exceptions=True)
 
         ack_count, _ = await MessageRepository.get_ack_and_paths(message.id)
         assert ack_count == 1

@@ -64,6 +64,12 @@ def cleanup_expired_acks() -> None:
         logger.debug("Expired buffered ACK %s", code)
 
 
+def peek_pending_ack(ack_code: str) -> int | None:
+    """Non-destructive lookup; the SQLite write must commit before removal."""
+    pending = _pending_acks.get(ack_code)
+    return pending[0] if pending else None
+
+
 def pop_pending_ack(ack_code: str) -> int | None:
     """Claim the tracked message ID for an ACK code if present."""
     pending = _pending_acks.pop(ack_code, None)
