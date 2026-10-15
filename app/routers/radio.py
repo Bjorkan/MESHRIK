@@ -949,3 +949,10 @@ async def get_community_radio_presets() -> dict:
     from app.services.community_radio_presets import get_suggested_presets
 
     return await get_suggested_presets()
+
+
+@router.get("/advanced-diagnostics")
+async def advanced_companion_radio_diagnostics() -> dict:
+    from app.services.radio_advanced_diagnostics import read_advanced_radio_diagnostics
+
+    return await read_advanced_radio_diagnostics()
