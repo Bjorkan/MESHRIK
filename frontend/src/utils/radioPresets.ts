@@ -1,5 +1,6 @@
 // Radio presets for common LoRa configurations
-interface RadioPreset {
+export interface RadioPreset {
+  path_hash_size?: number | null;
   name: string;
   freq: number;
   bw: number;

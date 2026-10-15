@@ -942,3 +942,10 @@ async def remote_companion_cli(request: RemoteCliRequest) -> dict[str, str]:
         command=request.command,
         consent=request.consent_to_transmit,
     )
+
+
+@router.get("/presets")
+async def get_community_radio_presets() -> dict:
+    from app.services.community_radio_presets import get_suggested_presets
+
+    return await get_suggested_presets()

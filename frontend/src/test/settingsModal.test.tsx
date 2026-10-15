@@ -1210,12 +1210,16 @@ describe('SettingsModal', () => {
       },
     };
 
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(JSON.stringify(mockStats), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      })
-    );
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        const body = url === '/api/radio/presets' ? { stale: false, presets: [] } : mockStats;
+        return new Response(JSON.stringify(body), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      });
 
     renderModal({
       mobile: true,
@@ -1223,7 +1227,9 @@ describe('SettingsModal', () => {
       desktopSection: 'radio',
     });
 
-    expect(fetchSpy).not.toHaveBeenCalled();
+    // The radio section eagerly loads optional presets; statistics must still
+    // wait for the explicit expand.
+    expect(fetchSpy).not.toHaveBeenCalledWith('/api/statistics', expect.any(Object));
     fireEvent.click(screen.getByRole('button', { name: /Statistics/i }));
 
     await waitFor(() => {

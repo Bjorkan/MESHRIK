@@ -346,6 +346,41 @@ export function SettingsRadioSection({
     serverError: error,
   } = radioValues;
   const [gettingLocation, setGettingLocation] = useState(false);
+  const [officialPresets, setOfficialPresets] = useState<typeof RADIO_PRESETS>([]);
+  const [officialPresetsStatus, setOfficialPresetsStatus] = useState(
+    'Bundled presets (offline fallback)'
+  );
+  const allRadioPresets = useMemo(
+    () => [
+      ...RADIO_PRESETS,
+      ...officialPresets.filter((p) => !RADIO_PRESETS.some((b) => b.name === p.name)),
+    ],
+    [officialPresets]
+  );
+
+  useEffect(() => {
+    let active = true;
+    fetch('/api/radio/presets', { credentials: 'same-origin' })
+      .then((response) => {
+        if (!response.ok) throw new Error('presets unavailable');
+        return response.json();
+      })
+      .then((result: { stale: boolean; presets: typeof RADIO_PRESETS }) => {
+        if (!active) return;
+        if (Array.isArray(result.presets)) {
+          setOfficialPresets(result.presets);
+          setOfficialPresetsStatus(
+            result.stale ? 'Cached suggestions (offline)' : 'Official community suggestions'
+          );
+        }
+      })
+      .catch(() => {
+        if (active) setOfficialPresetsStatus('Bundled presets (offline fallback)');
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const identityForm = useForm({
     defaultValues: { privateKey: '', serverError: '' },
@@ -523,7 +558,7 @@ export function SettingsRadioSection({
     const sfNum = parseInt(sf, 10);
     const crNum = parseInt(cr, 10);
 
-    for (const preset of RADIO_PRESETS) {
+    for (const preset of allRadioPresets) {
       if (
         preset.freq === freqNum &&
         preset.bw === bwNum &&
@@ -534,16 +569,20 @@ export function SettingsRadioSection({
       }
     }
     return 'custom';
-  }, [freq, bw, sf, cr]);
+  }, [freq, bw, sf, cr, allRadioPresets]);
 
   const handlePresetChange = (presetName: string) => {
     if (presetName === 'custom') return;
-    const preset = RADIO_PRESETS.find((p) => p.name === presetName);
+    const preset = allRadioPresets.find((p) => p.name === presetName);
     if (preset) {
       radioForm.setFieldValue('freq', String(preset.freq));
       radioForm.setFieldValue('bw', String(preset.bw));
       radioForm.setFieldValue('sf', String(preset.sf));
       radioForm.setFieldValue('cr', String(preset.cr));
+      // Optional path hash size is only a *draft*, never applied automatically.
+      if ('path_hash_size' in preset && typeof preset.path_hash_size === 'number') {
+        radioForm.setFieldValue('pathHashMode', String(preset.path_hash_size - 1));
+      }
     }
   };
 
@@ -981,12 +1020,16 @@ export function SettingsRadioSection({
           className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
         >
           <option value="custom">Custom</option>
-          {RADIO_PRESETS.map((preset) => (
+          {allRadioPresets.map((preset) => (
             <option key={preset.name} value={preset.name}>
               {preset.name}
             </option>
           ))}
         </select>
+        <p className="text-xs text-muted-foreground">
+          {officialPresetsStatus}. Suggestions do not change the radio until saved. Verify local
+          radio regulations.
+        </p>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
