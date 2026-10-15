@@ -141,6 +141,12 @@ export interface HealthStatus {
   startup_stage?: string | null;
   startup_error_stage?: string | null;
   startup_skipped_stages?: string[];
+  radio_scheduler?: {
+    quarantined: boolean;
+    last_job_kind: string | null;
+    recoverable_after_reconnect: boolean;
+    requires_restart: boolean;
+  };
   connection_info: string | null;
   app_info?: AppInfo | null;
   radio_device_info?: {

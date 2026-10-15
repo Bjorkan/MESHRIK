@@ -869,15 +869,24 @@ export function SettingsRadioSection({
   const radioReady = transportConnected && (radioState === 'ready' || radioState === 'connected');
   const radioDegraded = transportConnected && radioState === 'degraded';
   const radioSetupFailed = transportConnected && radioState === 'failed';
-  const connectionActionLabel =
-    radioState === 'paused' ? 'Reconnect' : transportConnected ? 'Disconnect' : 'Stop Trying';
+  const setupNeedsRetry = radioDegraded || radioSetupFailed;
+  const workerQuarantined = health?.radio_scheduler?.quarantined === true;
+  const connectionActionLabel = workerQuarantined
+    ? 'Restart required'
+    : setupNeedsRetry
+      ? 'Retry setup'
+      : radioState === 'paused'
+        ? 'Reconnect'
+        : transportConnected
+          ? 'Disconnect'
+          : 'Stop Trying';
 
   const connectionStatusLabel = radioReady
     ? health?.connection_info || 'Connected'
     : radioDegraded
-      ? `Connected (degraded${health?.startup_error_stage ? ` at ${health.startup_error_stage}` : ''})`
+      ? `Transport connected — setup degraded${health?.startup_error_stage ? ` at ${health.startup_error_stage}` : ''}`
       : radioSetupFailed
-        ? `Connected — setup failed${health?.startup_error_stage ? ` at ${health.startup_error_stage}` : ''}`
+        ? `Transport connected — setup failed${health?.startup_error_stage ? ` at ${health.startup_error_stage}` : ''}`
         : radioState === 'initializing'
           ? `Initializing ${health?.connection_info || 'radio'}`
           : radioState === 'connecting'
@@ -916,11 +925,12 @@ export function SettingsRadioSection({
   }, [health?.radio_device_info]);
 
   const handleConnectionAction = async () => {
+    if (workerQuarantined) return;
     setConnectionBusy(true);
     try {
-      if (radioState === 'paused') {
+      if (radioState === 'paused' || setupNeedsRetry) {
         await onReconnect();
-        toast.success('Reconnect requested');
+        toast.success(setupNeedsRetry ? 'Radio setup ready' : 'Radio reconnected');
       } else {
         await onDisconnect();
         toast.success('Radio connection paused');
@@ -961,19 +971,51 @@ export function SettingsRadioSection({
         </div>
         {deviceInfoLabel && <p className="text-sm text-muted-foreground">{deviceInfoLabel}</p>}
 
+        {(setupNeedsRetry || workerQuarantined) && (
+          <div
+            className="space-y-1 rounded-md border border-warning/40 bg-warning/10 p-3 text-xs"
+            role={radioSetupFailed || workerQuarantined ? 'alert' : 'status'}
+          >
+            {workerQuarantined ? (
+              <p>
+                Radio command worker is quarantined
+                {health?.radio_scheduler?.last_job_kind
+                  ? ` after ${health.radio_scheduler.last_job_kind}`
+                  : ''}
+                . Restart MESHRIK before sending more radio commands.
+              </p>
+            ) : (
+              <p>
+                {radioSetupFailed
+                  ? 'The transport is connected, but radio setup failed.'
+                  : 'The transport is connected and usable, but radio setup is degraded.'}
+              </p>
+            )}
+            {health?.startup_stage && <p>Current setup stage: {health.startup_stage}</p>}
+            {health?.startup_error_stage && <p>Last failed stage: {health.startup_error_stage}</p>}
+            {(health?.startup_skipped_stages?.length ?? 0) > 0 && (
+              <p>Skipped stages: {health?.startup_skipped_stages?.join(', ')}</p>
+            )}
+          </div>
+        )}
+
         {health?.radio_stats && <RadioDetailsCollapsible stats={health.radio_stats} />}
 
         <Button
           type="button"
           variant="outline"
           onClick={handleConnectionAction}
-          disabled={connectionBusy}
+          disabled={connectionBusy || workerQuarantined}
           className="w-full"
         >
           {connectionBusy ? `${connectionActionLabel}...` : connectionActionLabel}
         </Button>
         <p className="text-[0.8125rem] text-muted-foreground">
-          Disconnect pauses automatic reconnect attempts so another device can use the radio.
+          {workerQuarantined
+            ? 'A normal setup retry cannot safely recover an ambiguous or timed-out radio command.'
+            : setupNeedsRetry
+              ? 'Retries setup on the current transport without disconnecting or enabling destructive maintenance.'
+              : 'Disconnect pauses automatic reconnect attempts so another device can use the radio.'}
         </p>
       </div>
 

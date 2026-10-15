@@ -403,15 +403,15 @@ describe('SettingsModal', () => {
     {
       state: 'degraded' as const,
       connected: true,
-      label: 'Connected (degraded at channel sync)',
-      action: 'Disconnect',
+      label: 'Transport connected — setup degraded at channel sync',
+      action: 'Retry setup',
       indicatorClass: 'bg-warning',
     },
     {
       state: 'failed' as const,
       connected: true,
-      label: 'Connected — setup failed at device bootstrap',
-      action: 'Disconnect',
+      label: 'Transport connected — setup failed at device bootstrap',
+      action: 'Retry setup',
       indicatorClass: 'bg-status-disconnected',
     },
     {
@@ -471,6 +471,61 @@ describe('SettingsModal', () => {
 
     expect(screen.getByRole('status', { name: 'Not connected' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Disconnect' })).not.toBeInTheDocument();
+  });
+
+  it.each(['degraded', 'failed'] as const)(
+    'retries %s setup without pausing the connected transport',
+    async (radioState) => {
+      const onReconnect = vi.fn(async () => {});
+      const onDisconnect = vi.fn(async () => {});
+      renderModal({
+        onReconnect,
+        onDisconnect,
+        health: {
+          ...baseHealth,
+          radio_state: radioState,
+          startup_stage: 'recovery_required',
+          startup_error_stage: 'device_info',
+        },
+      });
+      openRadioSection();
+
+      expect(screen.getByText('Current setup stage: recovery_required')).toBeInTheDocument();
+      expect(screen.getByText('Last failed stage: device_info')).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Retry setup' }));
+
+      await waitFor(() => expect(onReconnect).toHaveBeenCalledTimes(1));
+      expect(onDisconnect).not.toHaveBeenCalled();
+    }
+  );
+
+  it('blocks setup retry and shows restart guidance while the radio worker is quarantined', () => {
+    const onReconnect = vi.fn(async () => {});
+    const onDisconnect = vi.fn(async () => {});
+    renderModal({
+      onReconnect,
+      onDisconnect,
+      health: {
+        ...baseHealth,
+        radio_state: 'failed',
+        startup_stage: 'recovery_required',
+        startup_error_stage: 'device_info',
+        radio_scheduler: {
+          quarantined: true,
+          last_job_kind: 'radio_config',
+          recoverable_after_reconnect: false,
+          requires_restart: true,
+        },
+      },
+    });
+    openRadioSection();
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Radio command worker is quarantined after radio_config'
+    );
+    expect(screen.getByRole('button', { name: 'Restart required' })).toBeDisabled();
+    expect(onReconnect).not.toHaveBeenCalled();
+    expect(onDisconnect).not.toHaveBeenCalled();
   });
 
   it('runs repeater mesh discovery from the radio tab', async () => {
