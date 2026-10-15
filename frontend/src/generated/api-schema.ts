@@ -1443,6 +1443,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/radio/local-cli': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Local Companion Cli */
+    post: operations['local_companion_cli_api_radio_local_cli_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/radio/private-key': {
     parameters: {
       query?: never;
@@ -3112,6 +3129,21 @@ export interface components {
         | 'unavailable_export'
         | 'unavailable_key'
         | 'invalid_contact_key';
+    };
+    /** LocalCliRequest */
+    LocalCliRequest: {
+      /**
+       * Command
+       * @enum {string}
+       */
+      command: 'get radio' | 'get cad' | 'get radio.rxgain' | 'get agc.reset.interval';
+    };
+    /** LocalCliResponse */
+    LocalCliResponse: {
+      /** Command */
+      command: string;
+      /** Response */
+      response: string;
     };
     /**
      * LppSensor
@@ -17414,6 +17446,175 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['RadioJobCancelResponse'];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Authentication required */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Request timed out */
+      408: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+      /** @description Radio unavailable or locked */
+      423: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Server error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+    };
+  };
+  local_companion_cli_api_radio_local_cli_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['LocalCliRequest'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['LocalCliResponse'];
         };
       };
       /** @description Bad request */

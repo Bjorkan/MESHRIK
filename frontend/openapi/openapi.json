@@ -2873,6 +2873,43 @@
         "title": "HistoricalDmDecryptStart",
         "type": "object"
       },
+      "LocalCliRequest": {
+        "properties": {
+          "command": {
+            "enum": [
+              "get radio",
+              "get cad",
+              "get radio.rxgain",
+              "get agc.reset.interval"
+            ],
+            "title": "Command",
+            "type": "string"
+          }
+        },
+        "required": [
+          "command"
+        ],
+        "title": "LocalCliRequest",
+        "type": "object"
+      },
+      "LocalCliResponse": {
+        "properties": {
+          "command": {
+            "title": "Command",
+            "type": "string"
+          },
+          "response": {
+            "title": "Response",
+            "type": "string"
+          }
+        },
+        "required": [
+          "command",
+          "response"
+        ],
+        "title": "LocalCliResponse",
+        "type": "object"
+      },
       "LppSensor": {
         "description": "A single CayenneLPP sensor reading from req_telemetry_sync.",
         "properties": {
@@ -26827,6 +26864,271 @@
         "summary": "Cancel Radio Job",
         "tags": [
           "radio-jobs"
+        ]
+      }
+    },
+    "/api/radio/local-cli": {
+      "post": {
+        "operationId": "local_companion_cli_api_radio_local_cli_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocalCliRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocalCliResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "detail": {
+                      "description": "Human-readable error detail or structured validation detail.",
+                      "oneOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "items": {},
+                          "type": "array"
+                        },
+                        {
+                          "additionalProperties": true,
+                          "type": "object"
+                        }
+                      ]
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Bad request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "detail": {
+                      "description": "Human-readable error detail or structured validation detail.",
+                      "oneOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "items": {},
+                          "type": "array"
+                        },
+                        {
+                          "additionalProperties": true,
+                          "type": "object"
+                        }
+                      ]
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Authentication required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "detail": {
+                      "description": "Human-readable error detail or structured validation detail.",
+                      "oneOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "items": {},
+                          "type": "array"
+                        },
+                        {
+                          "additionalProperties": true,
+                          "type": "object"
+                        }
+                      ]
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "detail": {
+                      "description": "Human-readable error detail or structured validation detail.",
+                      "oneOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "items": {},
+                          "type": "array"
+                        },
+                        {
+                          "additionalProperties": true,
+                          "type": "object"
+                        }
+                      ]
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "408": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "detail": {
+                      "description": "Human-readable error detail or structured validation detail.",
+                      "oneOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "items": {},
+                          "type": "array"
+                        },
+                        {
+                          "additionalProperties": true,
+                          "type": "object"
+                        }
+                      ]
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Request timed out"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "detail": {
+                      "description": "Human-readable error detail or structured validation detail.",
+                      "oneOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "items": {},
+                          "type": "array"
+                        },
+                        {
+                          "additionalProperties": true,
+                          "type": "object"
+                        }
+                      ]
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "detail": {
+                      "description": "Human-readable error detail or structured validation detail.",
+                      "oneOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "items": {},
+                          "type": "array"
+                        },
+                        {
+                          "additionalProperties": true,
+                          "type": "object"
+                        }
+                      ]
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Radio unavailable or locked"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "detail": {
+                      "description": "Human-readable error detail or structured validation detail.",
+                      "oneOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "items": {},
+                          "type": "array"
+                        },
+                        {
+                          "additionalProperties": true,
+                          "type": "object"
+                        }
+                      ]
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Server error"
+          }
+        },
+        "summary": "Local Companion Cli",
+        "tags": [
+          "radio"
         ]
       }
     },

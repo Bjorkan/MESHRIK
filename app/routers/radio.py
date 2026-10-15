@@ -907,3 +907,21 @@ async def reconnect_radio() -> dict:
 
     logger.info("Manual reconnect requested")
     return await _attempt_reconnect()
+
+
+# MeshCore 1.18 / protocol-14 read-only local diagnostics.
+class LocalCliRequest(BaseModel):
+    command: Literal["get radio", "get cad", "get radio.rxgain", "get agc.reset.interval"]
+
+
+class LocalCliResponse(BaseModel):
+    command: str
+    response: str
+
+
+@router.post("/local-cli", response_model=LocalCliResponse)
+async def local_companion_cli(request: LocalCliRequest) -> LocalCliResponse:
+    from app.services.companion_cli import run_safe_local_cli
+
+    result = await run_safe_local_cli(request.command)
+    return LocalCliResponse(command=request.command, response=result)
