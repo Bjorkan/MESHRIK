@@ -1,8 +1,10 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { tableFeatures, useTable, type ColumnDef } from '@tanstack/react-table';
 import { Separator } from '../ui/separator';
+import { Button } from '../ui/button';
 import { api } from '../../api';
-import type { RegionScopeStats, StatisticsResponse } from '../../types';
+import type { RegionScopeStats } from '../../types';
 import { formatLocaleNumber } from '@/utils/localeNumber';
 import { TanStackBarChart, TanStackTimeSeriesChart } from '../charts/TanStackChart';
 
@@ -162,9 +164,28 @@ function NoiseFloorChart({
 }
 
 export function SettingsStatisticsSection({ className }: { className?: string }) {
-  const [stats, setStats] = useState<StatisticsResponse | null>(null);
-  const [statsLoading, setStatsLoading] = useState(false);
-  const [statsError, setStatsError] = useState(false);
+  const {
+    data: stats = null,
+    dataUpdatedAt,
+    error,
+    isError,
+    isFetching,
+    isPending,
+    refetch,
+  } = useQuery({
+    queryKey: ['statistics'],
+    queryFn: () => api.getStatistics(),
+    retry: false,
+  });
+  const hasStoredActivity = Boolean(
+    stats &&
+    (stats.contact_count > 0 ||
+      stats.channel_count > 0 ||
+      stats.total_packets > 0 ||
+      stats.total_dms > 0 ||
+      stats.total_channel_messages > 0 ||
+      stats.packets_per_hour_72h.length > 0)
+  );
   const activityRows = useMemo<ActivityRow[]>(
     () =>
       stats
@@ -198,37 +219,67 @@ export function SettingsStatisticsSection({ className }: { className?: string })
     getRowId: (row) => row.label,
   });
 
-  useEffect(() => {
-    let cancelled = false;
-    setStatsLoading(true);
-    setStatsError(false);
-    api.getStatistics().then(
-      (data) => {
-        if (!cancelled) {
-          setStats(data);
-          setStatsLoading(false);
-        }
-      },
-      () => {
-        if (!cancelled) {
-          setStatsError(true);
-          setStatsLoading(false);
-        }
-      }
-    );
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   return (
-    <div className={className}>
-      {statsLoading && !stats ? (
+    <div className={className} aria-busy={isFetching}>
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold">Statistics</h2>
+          {dataUpdatedAt > 0 && (
+            <p className="text-xs text-muted-foreground" role="status">
+              Last updated {new Date(dataUpdatedAt).toLocaleString()}
+            </p>
+          )}
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={isFetching}
+          onClick={() => void refetch()}
+        >
+          {isFetching && stats ? 'Refreshing…' : 'Refresh'}
+        </Button>
+      </div>
+
+      {isPending && !stats ? (
         <div className="py-8 text-center text-muted-foreground">
           Loading statistics... this can take a while if you have a lot of stored packets.
         </div>
+      ) : isError && !stats ? (
+        <div className="space-y-3 py-8 text-center" role="alert">
+          <p className="text-destructive">
+            Failed to load statistics
+            {error instanceof Error && error.message ? `: ${error.message}` : '.'}
+          </p>
+          <Button type="button" variant="outline" onClick={() => void refetch()}>
+            Retry
+          </Button>
+        </div>
       ) : stats ? (
         <div className="space-y-6">
+          {isError && (
+            <div className="rounded-md border border-warning/50 bg-warning/10 p-3" role="alert">
+              <p className="text-sm text-warning">
+                Refresh failed. Showing statistics from the last successful update.
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-2"
+                disabled={isFetching}
+                onClick={() => void refetch()}
+              >
+                Retry refresh
+              </Button>
+            </div>
+          )}
+          {!hasStoredActivity && (
+            <div className="rounded-md border border-border bg-muted/30 p-3 text-sm text-muted-foreground">
+              No stored mesh activity yet. Statistics will appear after packets or messages are
+              recorded.
+            </div>
+          )}
           {/* Network */}
           <div>
             <h3 className="text-base font-semibold tracking-tight mb-2">Network</h3>
@@ -443,8 +494,6 @@ export function SettingsStatisticsSection({ className }: { className?: string })
             </>
           )}
         </div>
-      ) : statsError ? (
-        <div className="py-8 text-center text-muted-foreground">Failed to load statistics.</div>
       ) : null}
     </div>
   );
