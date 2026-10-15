@@ -191,7 +191,7 @@ function renderChannelReferences(
           type="button"
           className={cn(
             className,
-            'inline border-0 bg-transparent p-0 align-baseline hover:text-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+            'inline border-0 bg-transparent p-0 align-baseline hover:text-primary/80 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring'
           )}
           onClick={() => onChannelReferenceClick(reference.label)}
         >
@@ -1078,7 +1078,7 @@ export function MessageList({
         )}
         <div
           ref={virtualSpacerRef}
-          className="relative w-full flex-shrink-0"
+          className="relative w-full shrink-0"
           style={{ height: virtualizer.getTotalSize() }}
         >
           {virtualRows.map((virtualRow) => {
@@ -1198,7 +1198,7 @@ export function MessageList({
                     <button
                       ref={setUnreadMarkerElement}
                       type="button"
-                      className="my-2 flex w-full items-center gap-3 text-left text-xs font-medium text-primary transition-colors hover:text-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      className="my-2 flex w-full items-center gap-3 text-left text-xs font-medium text-primary transition-colors hover:text-primary/80 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                       onClick={onDismissUnreadMarker}
                     >
                       <span className="h-px flex-1 bg-border" />
@@ -1228,13 +1228,13 @@ export function MessageList({
                   )}
                 >
                   {!msg.outgoing && (
-                    <div className="w-10 flex-shrink-0 flex items-start pt-0.5">
+                    <div className="w-10 shrink-0 flex items-start pt-0.5">
                       {showAvatar &&
                         avatarKey &&
                         (onOpenContactInfo ? (
                           <button
                             type="button"
-                            className="avatar-action-button rounded-full border-none bg-transparent p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            className="avatar-action-button rounded-full border-none bg-transparent p-0 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                             aria-label={avatarActionLabel}
                             onClick={() =>
                               onOpenContactInfo(
@@ -1306,7 +1306,7 @@ export function MessageList({
                         {msg.region && <RegionBadge region={msg.region} />}
                       </div>
                     )}
-                    <div className="break-words whitespace-pre-wrap">
+                    <div className="wrap-break-word whitespace-pre-wrap">
                       {(renderRichPayloads &&
                         renderMeshcoreOpenPayload(content, radioName, onChannelReferenceClick)) ||
                         content.split('\n').map((line, i, arr) => (
@@ -1447,7 +1447,7 @@ export function MessageList({
                 setJumpToUnreadDismissed(true);
                 setShowJumpToUnread(false);
               }}
-              className="h-full px-3 text-sm font-medium hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="h-full px-3 text-sm font-medium hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
             >
               Jump to unread
             </button>
@@ -1457,7 +1457,7 @@ export function MessageList({
                 setJumpToUnreadDismissed(true);
                 setShowJumpToUnread(false);
               }}
-              className="flex h-full w-9 items-center justify-center border-l border-border text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex h-full w-9 items-center justify-center border-l border-border text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
               aria-label="Dismiss jump to unread"
               title="Dismiss jump to unread"
             >
@@ -1469,7 +1469,7 @@ export function MessageList({
       {showScrollToBottom && (
         <button
           onClick={scrollToBottom}
-          className="absolute bottom-4 right-4 w-9 h-9 rounded-full bg-card hover:bg-accent border border-border flex items-center justify-center shadow-lg transition-all hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="absolute bottom-4 right-4 w-9 h-9 rounded-full bg-card hover:bg-accent border border-border flex items-center justify-center shadow-lg transition-all hover:scale-105 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
           title="Scroll to bottom"
           aria-label="Scroll to bottom"
         >

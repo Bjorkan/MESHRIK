@@ -354,7 +354,7 @@ export function BulkDeleteContactsModal({
 
             <div
               ref={selectionScrollRef}
-              className="flex-1 overflow-auto min-h-0 border border-border rounded-md [contain:layout_paint]"
+              className="flex-1 overflow-auto min-h-0 border border-border rounded-md contain-[layout_paint]"
             >
               {filteredContacts.length === 0 ? (
                 <div className="p-4 text-center text-sm text-muted-foreground">
@@ -362,7 +362,7 @@ export function BulkDeleteContactsModal({
                 </div>
               ) : (
                 <table className="w-full text-sm">
-                  <thead className="sticky top-0 bg-muted/90 backdrop-blur-sm">
+                  <thead className="sticky top-0 bg-muted/90 backdrop-blur-xs">
                     {table.getHeaderGroups().map((group) => (
                       <tr key={group.id} className="text-left text-xs text-muted-foreground">
                         {group.headers.map((header) => {
@@ -419,13 +419,13 @@ export function BulkDeleteContactsModal({
                               className="rounded border-input"
                             />
                           </td>
-                          <td className="px-3 py-1.5 truncate max-w-[10rem]">
+                          <td className="px-3 py-1.5 truncate max-w-40">
                             {getContactDisplayName(c.name, c.public_key, c.last_advert)}
                           </td>
                           <td className="px-3 py-1.5 hidden sm:table-cell text-xs text-muted-foreground">
                             {CONTACT_TYPE_LABELS[c.type] ?? 'Unknown'}
                           </td>
-                          <td className="px-3 py-1.5 font-mono text-xs text-muted-foreground truncate max-w-[8rem]">
+                          <td className="px-3 py-1.5 font-mono text-xs text-muted-foreground truncate max-w-32">
                             {c.public_key.slice(0, 12)}
                           </td>
                           <td className="px-3 py-1.5 hidden sm:table-cell text-xs text-muted-foreground">
@@ -462,10 +462,10 @@ export function BulkDeleteContactsModal({
           <>
             <div
               ref={confirmationScrollRef}
-              className="flex-1 overflow-auto min-h-0 border border-border rounded-md [contain:layout_paint]"
+              className="flex-1 overflow-auto min-h-0 border border-border rounded-md contain-[layout_paint]"
             >
               <table className="w-full text-sm">
-                <thead className="sticky top-0 bg-muted/90 backdrop-blur-sm">
+                <thead className="sticky top-0 bg-muted/90 backdrop-blur-xs">
                   {confirmationTable.getHeaderGroups().map((group) => (
                     <tr key={group.id} className="text-left text-xs text-muted-foreground">
                       {group.headers.map((header) => (
@@ -495,13 +495,13 @@ export function BulkDeleteContactsModal({
                         className="absolute left-0 top-0 table w-full table-fixed border-t border-border"
                         style={{ transform: `translateY(${virtualRow.start}px)` }}
                       >
-                        <td className="px-3 py-1.5 truncate max-w-[12rem]">
+                        <td className="px-3 py-1.5 truncate max-w-48">
                           {getContactDisplayName(c.name, c.public_key, c.last_advert)}
                         </td>
                         <td className="px-3 py-1.5 text-xs text-muted-foreground">
                           {CONTACT_TYPE_LABELS[c.type] ?? 'Unknown'}
                         </td>
-                        <td className="px-3 py-1.5 font-mono text-xs text-muted-foreground truncate max-w-[8rem]">
+                        <td className="px-3 py-1.5 font-mono text-xs text-muted-foreground truncate max-w-32">
                           {c.public_key.slice(0, 12)}
                         </td>
                         <td className="px-3 py-1.5 hidden sm:table-cell text-xs text-muted-foreground">

@@ -167,17 +167,17 @@ export function RepeaterDashboard({
         <span className="flex min-w-0 flex-col">
           <span className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
             <span className="flex min-w-0 flex-1 items-baseline gap-2">
-              <h2 className="min-w-0 flex-shrink font-semibold text-base">
+              <h2 className="min-w-0 shrink font-semibold text-base">
                 {onOpenContactInfo ? (
                   <button
                     type="button"
-                    className="flex max-w-full min-w-0 items-center gap-1.5 overflow-hidden rounded-sm text-left transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="flex max-w-full min-w-0 items-center gap-1.5 overflow-hidden rounded-sm text-left transition-colors hover:text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                     aria-label={`View info for ${conversation.name}`}
                     onClick={() => onOpenContactInfo(conversation.id)}
                   >
                     <span className="truncate">{conversation.name}</span>
                     <Info
-                      className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground/80"
+                      className="h-3.5 w-3.5 shrink-0 text-muted-foreground/80"
                       aria-hidden="true"
                     />
                   </button>
@@ -187,7 +187,7 @@ export function RepeaterDashboard({
               </h2>
               <button
                 type="button"
-                className="max-w-32 truncate rounded text-left font-mono text-xs text-muted-foreground hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="max-w-32 truncate rounded text-left font-mono text-xs text-muted-foreground hover:text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                 onClick={() => void copyTextWithFeedback(conversation.id, 'Contact key copied!')}
                 title="Copy full public key"
                 aria-label="Copy repeater public key"
@@ -216,7 +216,7 @@ export function RepeaterDashboard({
           )}
           {contact && (
             <button
-              className="p-1 rounded hover:bg-accent text-lg leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="p-1 rounded hover:bg-accent text-lg leading-none transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
               onClick={() => setPathDiscoveryOpen(true)}
               title="Path Discovery. Send a routed probe and inspect the forward and return paths"
               aria-label="Path Discovery"
@@ -225,7 +225,7 @@ export function RepeaterDashboard({
             </button>
           )}
           <button
-            className="p-1 rounded hover:bg-accent text-lg leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="p-1 rounded hover:bg-accent text-lg leading-none transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
             onClick={onTrace}
             title="Direct Trace"
             aria-label="Direct Trace"
@@ -234,7 +234,7 @@ export function RepeaterDashboard({
           </button>
           {notificationsSupported && (
             <button
-              className="flex items-center gap-1 rounded px-1 py-1 hover:bg-accent text-lg leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex items-center gap-1 rounded px-1 py-1 hover:bg-accent text-lg leading-none transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
               onClick={onToggleNotifications}
               title={
                 notificationsEnabled
@@ -262,7 +262,7 @@ export function RepeaterDashboard({
             </button>
           )}
           <button
-            className="p-1 rounded hover:bg-accent text-lg leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="p-1 rounded hover:bg-accent text-lg leading-none transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
             onClick={() => onToggleFavorite('contact', conversation.id)}
             title={
               isFav
@@ -278,7 +278,7 @@ export function RepeaterDashboard({
             )}
           </button>
           <button
-            className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive text-lg leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive text-lg leading-none transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
             onClick={() => onDeleteContact(conversation.id)}
             title="Delete"
             aria-label="Delete"

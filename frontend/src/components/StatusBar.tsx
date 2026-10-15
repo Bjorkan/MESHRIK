@@ -261,7 +261,7 @@ export function StatusBar({
         <button
           onClick={handleReconnect}
           disabled={reconnecting}
-          className="px-3 py-1 bg-warning/10 border border-warning/20 text-warning rounded-md text-xs cursor-pointer hover:bg-warning/15 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="px-3 py-1 bg-warning/10 border border-warning/20 text-warning rounded-md text-xs cursor-pointer hover:bg-warning/15 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
         >
           {reconnecting ? 'Reconnecting...' : radioState === 'paused' ? 'Connect' : 'Reconnect'}
         </button>
@@ -269,7 +269,7 @@ export function StatusBar({
       <button
         onClick={onSettingsClick}
         className={cn(
-          'px-3 py-1.5 rounded-md text-xs cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+          'px-3 py-1.5 rounded-md text-xs cursor-pointer transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
           settingsMode
             ? 'bg-status-connected/15 border border-status-connected/30 text-status-connected hover:bg-status-connected/25'
             : 'bg-secondary border border-border text-muted-foreground hover:bg-accent hover:text-foreground'
@@ -279,7 +279,7 @@ export function StatusBar({
       </button>
       <button
         onClick={handleThemeToggle}
-        className="p-0.5 text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+        className="p-0.5 text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
         title={currentTheme === 'light' ? 'Switch to classic theme' : 'Switch to light theme'}
         aria-label={currentTheme === 'light' ? 'Switch to classic theme' : 'Switch to light theme'}
       >

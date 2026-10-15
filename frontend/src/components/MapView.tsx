@@ -859,7 +859,7 @@ export function MapView({
                   onClick={() => setSinceId(preset.id)}
                   aria-pressed={sinceId === preset.id}
                   className={cn(
-                    'rounded px-1.5 py-0.5 text-[0.625rem] uppercase tracking-wider transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                    'rounded px-1.5 py-0.5 text-[0.625rem] uppercase tracking-wider transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
                     sinceId === preset.id
                       ? 'bg-primary/10 text-primary font-medium'
                       : 'bg-muted hover:bg-accent'
@@ -873,7 +873,7 @@ export function MapView({
                 onClick={() => setSinceId('custom')}
                 aria-pressed={sinceId === 'custom'}
                 className={cn(
-                  'rounded px-1.5 py-0.5 text-[0.625rem] uppercase tracking-wider transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  'rounded px-1.5 py-0.5 text-[0.625rem] uppercase tracking-wider transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
                   sinceId === 'custom'
                     ? 'bg-primary/10 text-primary font-medium'
                     : 'bg-muted hover:bg-accent'
@@ -888,13 +888,13 @@ export function MapView({
                     value={customSince}
                     onChange={(e) => setCustomSince(e.target.value)}
                     aria-label="Show nodes heard since (local time)"
-                    className="rounded border border-input bg-background px-1.5 py-0.5 text-[0.6875rem] text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="rounded border border-input bg-background px-1.5 py-0.5 text-[0.6875rem] text-foreground outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                   />
                   {customSince && (
                     <button
                       type="button"
                       onClick={() => setCustomSince('')}
-                      className="rounded px-1.5 py-0.5 text-[0.625rem] uppercase tracking-wider bg-muted hover:bg-accent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      className="rounded px-1.5 py-0.5 text-[0.625rem] uppercase tracking-wider bg-muted hover:bg-accent transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       Clear
                     </button>
@@ -1055,13 +1055,13 @@ export function MapView({
 
           {showPackets && <ParticleOverlay mapRef={mapRef} particles={particles} />}
         </MapLibreMap>
-        <label className="absolute left-2 top-2 z-10 rounded bg-background/95 px-2 py-1 text-xs shadow">
+        <label className="absolute left-2 top-2 z-10 rounded bg-background/95 px-2 py-1 text-xs shadow-sm">
           <span className="sr-only">Map style</span>
           <select
             aria-label="Map style"
             value={selectedLayerId}
             onChange={(event) => setMapStyle(event.target.value)}
-            className="bg-transparent text-foreground outline-none"
+            className="bg-transparent text-foreground outline-hidden"
           >
             <option value={MAP_STYLE_AUTO_ID}>Auto (app theme)</option>
             {MAP_STYLES.map((style) => (

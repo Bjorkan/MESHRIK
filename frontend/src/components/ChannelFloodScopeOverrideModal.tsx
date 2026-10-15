@@ -94,7 +94,7 @@ export function ChannelFloodScopeOverrideModal({
 
         <div className="space-y-4">
           <div className="rounded-md border border-border bg-muted/20 p-3 text-sm">
-            <div className="break-words font-medium">{roomName}</div>
+            <div className="wrap-break-word font-medium">{roomName}</div>
             <div className="mt-1 text-muted-foreground">
               Current setting: {currentOverrideLabel}
             </div>

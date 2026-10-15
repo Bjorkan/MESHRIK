@@ -36,7 +36,7 @@ export function VisualizerTooltip({
     .filter((neighbor): neighbor is NonNullable<typeof neighbor> => neighbor !== null);
 
   return (
-    <div className="absolute top-4 right-4 bg-background/90 backdrop-blur-sm rounded-lg p-3 text-xs border border-border z-10 max-w-72 max-h-[calc(100%-2rem)] overflow-y-auto">
+    <div className="absolute top-4 right-4 bg-background/90 backdrop-blur-xs rounded-lg p-3 text-xs border border-border z-10 max-w-72 max-h-[calc(100%-2rem)] overflow-y-auto">
       <div className="flex flex-col gap-1">
         <div className="font-medium">
           {node.name || (node.type === 'self' ? 'Me' : node.id.slice(0, 8))}

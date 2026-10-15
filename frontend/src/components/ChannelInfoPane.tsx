@@ -215,7 +215,7 @@ export function ChannelInfoPane({
                       className="flex justify-between items-center text-sm"
                     >
                       <span className="truncate">{sender.sender_name}</span>
-                      <span className="text-xs text-muted-foreground flex-shrink-0 ml-2">
+                      <span className="text-xs text-muted-foreground shrink-0 ml-2">
                         {sender.message_count.toLocaleString()} msg
                         {sender.message_count !== 1 ? 's' : ''}
                       </span>
@@ -271,7 +271,7 @@ function HopWidthChart({ stats, ready }: { stats: PathHashWidthStats; ready: boo
 
   return (
     <div className="flex items-center gap-3">
-      <div className="flex-shrink-0" style={{ width: 90, height: 90 }}>
+      <div className="shrink-0" style={{ width: 90, height: 90 }}>
         {/* Reserve the box while the pane animates in (see #317). */}
         {ready && (
           <TanStackDonutChart data={data} height={90} ariaLabel="Path hash width distribution" />
@@ -281,10 +281,7 @@ function HopWidthChart({ stats, ready }: { stats: PathHashWidthStats; ready: boo
       <div className="flex-1 space-y-1">
         {data.map((d) => (
           <div key={d.name} className="flex items-center gap-1.5">
-            <span
-              className="w-2 h-2 rounded-full flex-shrink-0"
-              style={{ backgroundColor: d.color }}
-            />
+            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: d.color }} />
             <span className="text-[0.6875rem] text-muted-foreground flex-1">{d.name}</span>
             <span className="text-[0.6875rem] font-medium tabular-nums">
               {d.value.toLocaleString()}

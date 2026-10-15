@@ -514,7 +514,7 @@ export function ContactInfoPane({
                           className="flex justify-between items-center text-sm"
                         >
                           <span className="truncate">{r.name || r.public_key.slice(0, 12)}</span>
-                          <span className="text-xs text-muted-foreground flex-shrink-0 ml-2">
+                          <span className="text-xs text-muted-foreground shrink-0 ml-2">
                             {r.path_len === 0
                               ? 'direct'
                               : `${r.path_len} hop${r.path_len > 1 ? 's' : ''}`}{' '}
@@ -549,7 +549,7 @@ export function ContactInfoPane({
                       <span className="font-mono text-xs break-all">
                         {p.path ? parsePathHops(p.path, p.path_len).join(' → ') : '(direct)'}
                       </span>
-                      <span className="text-xs text-muted-foreground flex-shrink-0">
+                      <span className="text-xs text-muted-foreground shrink-0">
                         {p.heard_count}x · {formatTime(p.last_seen)}
                       </span>
                     </div>
@@ -572,7 +572,7 @@ export function ContactInfoPane({
                   {analytics.name_history.map((h) => (
                     <div key={h.name} className="flex justify-between items-center text-sm">
                       <span className="font-medium truncate">{h.name}</span>
-                      <span className="text-xs text-muted-foreground flex-shrink-0 ml-2">
+                      <span className="text-xs text-muted-foreground shrink-0 ml-2">
                         {formatTime(h.first_seen)} &ndash; {formatTime(h.last_seen)}
                       </span>
                     </div>
@@ -697,7 +697,7 @@ function MostActiveChannelsSection({
                 ? channel.channel_name
                 : `#${channel.channel_name}`}
             </span>
-            <span className="text-xs text-muted-foreground flex-shrink-0 ml-2">
+            <span className="text-xs text-muted-foreground shrink-0 ml-2">
               {channel.message_count.toLocaleString()} msg
               {channel.message_count !== 1 ? 's' : ''}
             </span>
@@ -895,7 +895,7 @@ function NearbyRepeatersSection({
         {nearby.map((r) => (
           <div key={r.publicKey} className="flex justify-between items-center text-sm">
             <span className="truncate">{r.name}</span>
-            <span className="text-xs text-muted-foreground flex-shrink-0 ml-2">
+            <span className="text-xs text-muted-foreground shrink-0 ml-2">
               {formatDistance(r.distance, distanceUnit)}
             </span>
           </div>

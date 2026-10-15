@@ -174,7 +174,7 @@ export function ChatHeader({
         {conversation.type === 'contact' && onOpenContactInfo && (
           <button
             type="button"
-            className="avatar-action-button flex-shrink-0 cursor-pointer rounded-full border-none bg-transparent p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="avatar-action-button shrink-0 cursor-pointer rounded-full border-none bg-transparent p-0 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
             onClick={() => onOpenContactInfo(conversation.id)}
             title="View contact info"
             aria-label={`View info for ${conversation.name}`}
@@ -191,11 +191,11 @@ export function ChatHeader({
         <span className="flex min-w-0 flex-1 flex-col">
           <span className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
             <span className="flex min-w-0 flex-1 items-baseline gap-2 whitespace-nowrap">
-              <h2 className="min-w-0 flex-shrink font-semibold text-base">
+              <h2 className="min-w-0 shrink font-semibold text-base">
                 {titleClickable ? (
                   <button
                     type="button"
-                    className="flex max-w-full min-w-0 items-center gap-1.5 overflow-hidden rounded-sm text-left transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="flex max-w-full min-w-0 items-center gap-1.5 overflow-hidden rounded-sm text-left transition-colors hover:text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                     aria-label={`View info for ${conversation.name}`}
                     onClick={handleOpenConversationInfo}
                   >
@@ -208,7 +208,7 @@ export function ChatHeader({
                       {conversation.name}
                     </span>
                     <Info
-                      className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground/80"
+                      className="h-3.5 w-3.5 shrink-0 text-muted-foreground/80"
                       aria-hidden="true"
                     />
                   </button>
@@ -225,7 +225,7 @@ export function ChatHeader({
               </h2>
               {isPrivateChannel && !showKey ? (
                 <button
-                  className="min-w-0 flex-shrink text-[0.6875rem] font-mono text-muted-foreground transition-colors hover:text-primary"
+                  className="min-w-0 shrink text-[0.6875rem] font-mono text-muted-foreground transition-colors hover:text-primary"
                   onClick={(e) => {
                     e.stopPropagation();
                     setShowKey(true);
@@ -266,7 +266,7 @@ export function ChatHeader({
                 aria-label="Set regional override"
               >
                 <Globe2
-                  className="h-3.5 w-3.5 flex-shrink-0 text-[hsl(var(--region-override))]"
+                  className="h-3.5 w-3.5 shrink-0 text-[hsl(var(--region-override))]"
                   aria-hidden="true"
                 />
                 <span className="min-w-0 truncate text-[0.6875rem] font-medium text-[hsl(var(--region-override))]">
@@ -289,7 +289,7 @@ export function ChatHeader({
       <div className="flex items-center justify-end gap-0.5">
         {conversation.type === 'contact' && !activeContactIsRoomServer && (
           <button
-            className="p-1 rounded hover:bg-accent text-lg leading-none transition-colors disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="p-1 rounded hover:bg-accent text-lg leading-none transition-colors disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
             onClick={() => setPathDiscoveryOpen(true)}
             title={
               activeContactIsPrefixOnly
@@ -304,7 +304,7 @@ export function ChatHeader({
         )}
         {conversation.type === 'contact' && !activeContactIsRoomServer && (
           <button
-            className="p-1 rounded hover:bg-accent text-lg leading-none transition-colors disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="p-1 rounded hover:bg-accent text-lg leading-none transition-colors disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
             onClick={onTrace}
             title={
               activeContactIsPrefixOnly
@@ -323,7 +323,7 @@ export function ChatHeader({
           !activeContactIsRoomServer && (
             <div className="relative" ref={notifDropdownRef}>
               <button
-                className="p-1 rounded hover:bg-accent text-lg leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="p-1 rounded hover:bg-accent text-lg leading-none transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                 onClick={() => setNotifDropdownOpen((v) => !v)}
                 title="Notification settings"
                 aria-label="Notification settings"
@@ -347,7 +347,7 @@ export function ChatHeader({
                 )}
               </button>
               {notifDropdownOpen && (
-                <div className="absolute right-[-4.5rem] sm:right-0 top-full z-50 mt-1 w-[calc(100vw-2rem)] sm:w-72 max-w-72 rounded-md border border-border bg-popover p-3 shadow-lg space-y-3">
+                <div className="absolute -right-18 sm:right-0 top-full z-50 mt-1 w-[calc(100vw-2rem)] sm:w-72 max-w-72 rounded-md border border-border bg-popover p-3 shadow-lg space-y-3">
                   {notificationsSupported && (
                     <label className="flex items-start gap-2.5 cursor-pointer group">
                       <input
@@ -402,7 +402,7 @@ export function ChatHeader({
                               setNotifDropdownOpen(false);
                               onOpenPushSettings();
                             }}
-                            className="text-primary hover:underline transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                            className="text-primary hover:underline transition-colors focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
                           >
                             Settings &rarr; Local
                           </button>
@@ -438,7 +438,7 @@ export function ChatHeader({
           )}
         {conversation.type === 'channel' && onSetChannelFloodScopeOverride && (
           <button
-            className="flex shrink-0 items-center gap-1 rounded px-1 py-1 text-lg leading-none transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex shrink-0 items-center gap-1 rounded px-1 py-1 text-lg leading-none transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
             onClick={handleEditFloodScopeOverride}
             title="Set regional override"
             aria-label="Set regional override"
@@ -456,7 +456,7 @@ export function ChatHeader({
         )}
         {showPathHashModeOverride && (
           <button
-            className="flex shrink-0 items-center gap-1 rounded px-1 py-1 text-lg leading-none transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex shrink-0 items-center gap-1 rounded px-1 py-1 text-lg leading-none transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
             onClick={handleEditPathHashModeOverride}
             title="Set path hop width override"
             aria-label="Set path hop width override"
@@ -469,7 +469,7 @@ export function ChatHeader({
         )}
         {(conversation.type === 'channel' || conversation.type === 'contact') && (
           <button
-            className="p-1 rounded hover:bg-accent text-lg leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="p-1 rounded hover:bg-accent text-lg leading-none transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
             onClick={() =>
               onToggleFavorite(conversation.type as 'channel' | 'contact', conversation.id)
             }
@@ -485,7 +485,7 @@ export function ChatHeader({
         )}
         {!(conversation.type === 'channel' && isPublicChannelKey(conversation.id)) && (
           <button
-            className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive text-lg leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive text-lg leading-none transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
             onClick={() => {
               if (conversation.type === 'channel') {
                 onDeleteChannel(conversation.id);

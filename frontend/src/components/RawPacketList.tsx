@@ -115,14 +115,14 @@ export function RawPacketList({
 
   if (packets.length === 0) {
     return (
-      <div className="h-full overflow-y-auto p-5 text-center text-muted-foreground [contain:layout_paint]">
+      <div className="h-full overflow-y-auto p-5 text-center text-muted-foreground contain-[layout_paint]">
         No packets received yet. Packets will appear here in real-time.
       </div>
     );
   }
 
   return (
-    <div className="h-full overflow-y-auto p-4 [contain:layout_paint]" ref={listRef}>
+    <div className="h-full overflow-y-auto p-4 contain-[layout_paint]" ref={listRef}>
       <div className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>
         {virtualizer.getVirtualItems().map((virtualRow) => {
           const item = sortedPackets[virtualRow.index];
@@ -180,7 +180,7 @@ export function RawPacketList({
           const className = cn(
             'rounded-md border border-border/50 bg-card px-3 py-2 text-left',
             onPacketClick &&
-              'cursor-pointer transition-colors hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+              'cursor-pointer transition-colors hover:bg-accent/40 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring'
           );
 
           if (onPacketClick) {
