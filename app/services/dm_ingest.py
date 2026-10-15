@@ -4,7 +4,7 @@ import time
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from app.models import CONTACT_TYPE_REPEATER, CONTACT_TYPE_ROOM, Contact, ContactUpsert, Message
+from app.models import CONTACT_TYPE_ROOM, Contact, ContactUpsert, Message
 from app.repository import (
     AmbiguousPublicKeyPrefixError,
     ContactRepository,
@@ -46,9 +46,8 @@ async def _prepare_resolved_contact(
     conversation_key = contact.public_key.lower()
     await claim_prefix_messages_for_contact(public_key=conversation_key, log=log or logger)
 
-    if contact.type == CONTACT_TYPE_REPEATER:
-        return conversation_key, True
-
+    # Repeater contact type is not proof of a CLI reply. Only the verified
+    # txt_type=1 protocol field suppresses CLI content in both ingest paths.
     return conversation_key, False
 
 

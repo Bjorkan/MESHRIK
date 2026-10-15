@@ -165,7 +165,7 @@ async def on_contact_message(event: "Event") -> None:
     )
     if context.skip_storage:
         logger.debug(
-            "Skipping message from repeater %s (not stored in chat history)",
+            "Skipping protected non-chat message from %s",
             context.conversation_key[:12],
         )
         return

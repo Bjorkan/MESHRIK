@@ -1604,11 +1604,10 @@ class TestDMDecryptionFunction:
 
 
 class TestRepeaterMessageFiltering:
-    """Test that messages from repeaters are not stored in chat history.
+    """Repeater contact type alone must not suppress ordinary direct text.
 
-    Repeaters only send CLI responses (not chat messages), and these are handled
-    by the command endpoint. The packet processor filters them out based on
-    contact type to prevent duplicate storage.
+    Only the verified txt_type=1 protocol field marks CLI replies, which are
+    handled by the command endpoint and stay out of chat history.
     """
 
     # A repeater contact
@@ -1619,8 +1618,8 @@ class TestRepeaterMessageFiltering:
     OUR_PUB = "FACE123334789E2B81519AFDBC39A3C9EB7EA3457AD367D3243597A484847E46"
 
     @pytest.mark.asyncio
-    async def test_repeater_message_not_stored(self, test_db, captured_broadcasts):
-        """Messages from repeaters should not be stored in database."""
+    async def test_repeater_text_message_is_stored(self, test_db, captured_broadcasts):
+        """Ordinary direct text (txt_type=0) from a repeater is stored in chat history."""
         from app.decoder import DecryptedDirectMessage
         from app.models import CONTACT_TYPE_REPEATER
         from app.packet_processor import create_dm_message_from_decrypted
@@ -1640,10 +1639,62 @@ class TestRepeaterMessageFiltering:
         # Store a raw packet
         packet_id, _ = await RawPacketRepository.create(b"\x09\x00test", 1700000000)
 
-        # Create a DecryptedDirectMessage (simulating a CLI response from repeater)
+        # Create a DecryptedDirectMessage (ordinary text from a repeater)
         decrypted = DecryptedDirectMessage(
             timestamp=1700000000,
-            flags=0,  # flags don't matter - we filter by contact type
+            flags=0,  # txt_type=0: ordinary text, not a CLI reply
+            message="Hello from a repeater",
+            dest_hash="fa",
+            src_hash="a1",
+        )
+
+        broadcasts, mock_broadcast = captured_broadcasts
+
+        with patch("app.packet_processor.broadcast_event", mock_broadcast):
+            msg_id = await create_dm_message_from_decrypted(
+                packet_id=packet_id,
+                decrypted=decrypted,
+                their_public_key=self.REPEATER_PUB,
+                our_public_key=self.OUR_PUB,
+                received_at=1700000001,
+                outgoing=False,
+            )
+
+        # Should be stored: contact type alone is not proof of a CLI reply
+        assert msg_id is not None
+
+        # Should broadcast one message event
+        assert len(broadcasts) == 1
+
+        messages = await MessageRepository.get_all(
+            msg_type="PRIV", conversation_key=self.REPEATER_PUB.lower(), limit=10
+        )
+        assert len(messages) == 1
+        assert messages[0].text == "Hello from a repeater"
+
+    @pytest.mark.asyncio
+    async def test_repeater_cli_response_not_stored(self, test_db, captured_broadcasts):
+        """CLI replies (txt_type=1) from repeaters stay out of chat history."""
+        from app.decoder import DecryptedDirectMessage
+        from app.models import CONTACT_TYPE_REPEATER
+        from app.packet_processor import create_dm_message_from_decrypted
+        from app.repository import ContactRepository, MessageRepository, RawPacketRepository
+
+        await ContactRepository.upsert(
+            {
+                "public_key": self.REPEATER_PUB,
+                "name": "Test Repeater",
+                "type": CONTACT_TYPE_REPEATER,
+                "flags": 0,
+                "on_radio": False,
+            }
+        )
+
+        packet_id, _ = await RawPacketRepository.create(b"\x09\x00test", 1700000000)
+
+        decrypted = DecryptedDirectMessage(
+            timestamp=1700000000,
+            flags=(1 << 2),  # txt_type=1: CLI reply
             message="cli response: version 1.0",
             dest_hash="fa",
             src_hash="a1",
@@ -1661,7 +1712,7 @@ class TestRepeaterMessageFiltering:
                 outgoing=False,
             )
 
-        # Should return None (not stored because sender is a repeater)
+        # Should return None (not stored because txt_type=1 marks a CLI reply)
         assert msg_id is None
 
         # Should not broadcast
