@@ -10,17 +10,6 @@ import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import { NewMessageModal } from '../components/NewMessageModal';
-import { toast } from '../components/ui/sonner';
-
-// Mock sonner (toast)
-vi.mock('../components/ui/sonner', () => ({
-  toast: { success: vi.fn(), error: vi.fn() },
-}));
-
-const mockToast = toast as unknown as {
-  success: ReturnType<typeof vi.fn>;
-  error: ReturnType<typeof vi.fn>;
-};
 
 describe('NewMessageModal form reset', () => {
   const onClose = vi.fn();
@@ -162,6 +151,15 @@ describe('NewMessageModal form reset', () => {
       expect(screen.queryByRole('tab', { name: 'Bulk Add Channel' })).toBeNull();
     });
 
+    it('wraps the tabs into two columns on narrow screens', () => {
+      renderModal(true, { showBulkAddChannelTab: true });
+
+      expect(screen.getByRole('tablist')).toHaveClass('grid-cols-2', 'sm:grid-cols-4');
+      for (const tab of screen.getAllByRole('tab')) {
+        expect(tab).toHaveClass('whitespace-normal');
+      }
+    });
+
     it('opens on the bulk tab when enabled and submits normalized channel names', async () => {
       const user = userEvent.setup();
       renderModal(true, { showBulkAddChannelTab: true });
@@ -261,7 +259,7 @@ describe('NewMessageModal form reset', () => {
       expect(onClose).toHaveBeenCalled();
     });
 
-    it('toasts when creation fails', async () => {
+    it('shows one inline error and keeps the draft when creation fails', async () => {
       const user = userEvent.setup();
       onCreateChannel.mockRejectedValueOnce(new Error('Bad key'));
       renderModal();
@@ -271,12 +269,35 @@ describe('NewMessageModal form reset', () => {
       await user.type(screen.getByPlaceholderText('Pre-shared key (hex)'), 'cc'.repeat(16));
       await user.click(screen.getByRole('button', { name: 'Create' }));
 
-      await waitFor(() => {
-        expect(mockToast.error).toHaveBeenCalledWith('Failed to create conversation', {
-          description: 'Bad key',
-        });
-      });
-      expect(screen.getByText('Bad key')).toBeTruthy();
+      expect(await screen.findByRole('alert')).toHaveTextContent('Bad key');
+      expect(screen.getAllByText('Bad key')).toHaveLength(1);
+      expect(screen.getByPlaceholderText('Channel name')).toHaveValue('MyRoom');
+      expect(screen.getByPlaceholderText('Pre-shared key (hex)')).toHaveValue('cc'.repeat(16));
+    });
+
+    it('cannot be cancelled or dismissed while creation is pending', async () => {
+      const user = userEvent.setup();
+      let finishCreation: (() => void) | undefined;
+      onCreateChannel.mockImplementationOnce(
+        () =>
+          new Promise<void>((resolve) => {
+            finishCreation = resolve;
+          })
+      );
+      renderModal();
+      await switchToTab(user, 'Private Channel');
+
+      await user.type(screen.getByPlaceholderText('Channel name'), 'MyRoom');
+      await user.type(screen.getByPlaceholderText('Pre-shared key (hex)'), 'cc'.repeat(16));
+      await user.click(screen.getByRole('button', { name: 'Create' }));
+
+      expect(await screen.findByRole('status')).toHaveTextContent('Creation is in progress');
+      expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
+      await user.keyboard('{Escape}');
+      expect(onClose).not.toHaveBeenCalled();
+
+      finishCreation?.();
+      await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
     });
   });
 

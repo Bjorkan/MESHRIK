@@ -14,7 +14,6 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Checkbox } from './ui/checkbox';
 import { Button } from './ui/button';
-import { toast } from './ui/sonner';
 
 type Tab = 'new-contact' | 'new-channel' | 'hashtag' | 'bulk-hashtag';
 
@@ -176,9 +175,6 @@ export function NewMessageModal({
         form.reset();
         onClose();
       } catch (err) {
-        toast.error('Failed to create conversation', {
-          description: err instanceof Error ? err.message : undefined,
-        });
         form.setFieldValue('serverError', err instanceof Error ? err.message : 'Failed to create');
       }
     },
@@ -247,7 +243,7 @@ export function NewMessageModal({
     <Dialog
       open={open}
       onOpenChange={(isOpen) => {
-        if (!isOpen) {
+        if (!isOpen && !loading) {
           resetForm();
           onClose();
         }
@@ -273,14 +269,36 @@ export function NewMessageModal({
         >
           <TabsList
             className={
-              showBulkAddChannelTab ? 'grid w-full grid-cols-4' : 'grid w-full grid-cols-3'
+              showBulkAddChannelTab
+                ? 'grid h-auto min-h-10 w-full grid-cols-2 sm:grid-cols-4'
+                : 'grid h-auto min-h-10 w-full grid-cols-2 sm:grid-cols-3'
             }
           >
-            <TabsTrigger value="new-contact">Contact</TabsTrigger>
-            <TabsTrigger value="new-channel">Private Channel</TabsTrigger>
-            <TabsTrigger value="hashtag">Hashtag Channel</TabsTrigger>
+            <TabsTrigger
+              value="new-contact"
+              className="min-h-10 whitespace-normal py-2 text-center leading-tight"
+            >
+              Contact
+            </TabsTrigger>
+            <TabsTrigger
+              value="new-channel"
+              className="min-h-10 whitespace-normal py-2 text-center leading-tight"
+            >
+              Private Channel
+            </TabsTrigger>
+            <TabsTrigger
+              value="hashtag"
+              className="min-h-10 whitespace-normal py-2 text-center leading-tight"
+            >
+              Hashtag Channel
+            </TabsTrigger>
             {showBulkAddChannelTab && (
-              <TabsTrigger value="bulk-hashtag">Bulk Add Channel</TabsTrigger>
+              <TabsTrigger
+                value="bulk-hashtag"
+                className="min-h-10 whitespace-normal py-2 text-center leading-tight"
+              >
+                Bulk Add Channel
+              </TabsTrigger>
             )}
           </TabsList>
 
@@ -472,9 +490,16 @@ export function NewMessageModal({
           </div>
         )}
 
+        {loading && (
+          <p className="text-sm text-muted-foreground" role="status">
+            Creation is in progress. This dialog will stay open until the request finishes.
+          </p>
+        )}
+
         <DialogFooter>
           <Button
             variant="outline"
+            disabled={loading}
             onClick={() => {
               resetForm();
               onClose();
