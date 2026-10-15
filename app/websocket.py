@@ -15,75 +15,88 @@ logger = logging.getLogger(__name__)
 SEND_TIMEOUT_SECONDS = 5.0
 
 
+MAX_WS_CLIENT_BACKLOG = 512
+
+
 class WebSocketManager:
-    """Manages WebSocket connections and broadcasts events."""
+    """One FIFO writer per client; a stalled browser never blocks another."""
 
     def __init__(self):
         self.active_connections: list[WebSocket] = []
         self._lock = asyncio.Lock()
+        self._outboxes: dict[WebSocket, asyncio.Queue[str]] = {}
+        self._writers: dict[WebSocket, asyncio.Task] = {}
+        self.enqueued = 0
+        self.submitted_to_socket = 0
+        self.failed = 0
+        self.overflows = 0
 
     async def connect(self, websocket: WebSocket) -> None:
         await websocket.accept()
         async with self._lock:
-            self.active_connections.append(websocket)
+            if websocket not in self.active_connections:
+                self.active_connections.append(websocket)
+                self._outboxes[websocket] = asyncio.Queue(maxsize=MAX_WS_CLIENT_BACKLOG)
+                self._writers[websocket] = asyncio.create_task(
+                    self._write_client(websocket), name="websocket-client-writer"
+                )
         logger.info("WebSocket client connected (%d total)", len(self.active_connections))
 
     async def disconnect(self, websocket: WebSocket) -> None:
         async with self._lock:
             if websocket in self.active_connections:
                 self.active_connections.remove(websocket)
+            self._outboxes.pop(websocket, None)
+            writer = self._writers.pop(websocket, None)
+        if writer is not None and writer is not asyncio.current_task():
+            writer.cancel()
         logger.info("WebSocket client disconnected (%d remaining)", len(self.active_connections))
 
-    async def broadcast(self, event_type: str, data: Any) -> None:
-        """Broadcast an event to all connected clients.
+    async def _write_client(self, websocket: WebSocket) -> None:
+        try:
+            while True:
+                queue = self._outboxes.get(websocket)
+                if queue is None:
+                    return
+                body = await queue.get()
+                try:
+                    await asyncio.wait_for(websocket.send_text(body), timeout=SEND_TIMEOUT_SECONDS)
+                    self.submitted_to_socket += 1
+                except Exception:
+                    self.failed += 1
+                    return
+                finally:
+                    queue.task_done()
+        finally:
+            await self.disconnect(websocket)
 
-        Uses a copy-then-send pattern to avoid holding the lock during I/O:
-        1. Copy connection list while holding lock
-        2. Release lock before sending
-        3. Send to all clients concurrently with timeout
-        4. Re-acquire lock to clean up disconnected clients
-        """
+    def enqueue(self, event_type: str, data: Any) -> None:
+        """Synchronous enqueue preserves event call order before any await."""
         message = dump_ws_event(event_type, data)
-
-        # Copy connection list under lock to avoid holding lock during I/O
-        async with self._lock:
-            connections = list(self.active_connections)
-
-        if not connections:
-            return
-
-        # Send to all clients concurrently, collect failures
-        disconnected: list[WebSocket] = []
-
-        async def send_to_client(connection: WebSocket) -> None:
+        for conn, queue in list(self._outboxes.items()):
             try:
-                # Timeout prevents blocking on slow/unresponsive clients
-                await asyncio.wait_for(connection.send_text(message), timeout=SEND_TIMEOUT_SECONDS)
-            except TimeoutError:
-                logger.debug("Timeout sending to WebSocket client, marking disconnected")
-                disconnected.append(connection)
-            except Exception as e:
-                logger.debug("Failed to send to client: %s", e)
-                disconnected.append(connection)
+                queue.put_nowait(message)
+                self.enqueued += 1
+            except asyncio.QueueFull:
+                self.overflows += 1
+                # Force reconnect + canonical REST refetch instead of
+                # showing a silently incomplete stream.
+                writer = self._writers.get(conn)
+                if writer is not None:
+                    writer.cancel()
 
-        # Send to all clients concurrently
-        await asyncio.gather(*[send_to_client(conn) for conn in connections])
-
-        # Clean up disconnected clients (re-acquire lock)
-        if disconnected:
-            async with self._lock:
-                for conn in disconnected:
-                    if conn in self.active_connections:
-                        self.active_connections.remove(conn)
-            logger.debug("Removed %d disconnected WebSocket clients", len(disconnected))
+    async def broadcast(self, event_type: str, data: Any) -> None:
+        self.enqueue(event_type, data)
 
     async def send_personal(self, websocket: WebSocket, event_type: str, data: Any) -> None:
-        """Send an event to a specific client."""
-        message = dump_ws_event(event_type, data)
-        try:
-            await websocket.send_text(message)
-        except Exception as e:
-            logger.debug("Failed to send to client: %s", e)
+        queue = self._outboxes.get(websocket)
+        if queue is not None:
+            try:
+                queue.put_nowait(dump_ws_event(event_type, data))
+            except asyncio.QueueFull:
+                writer = self._writers.get(websocket)
+                if writer is not None:
+                    writer.cancel()
 
 
 # Global instance
@@ -101,7 +114,7 @@ def broadcast_event(event_type: str, data: dict, *, realtime: bool = True) -> No
         data: Event payload dict
         realtime: If False, skip fanout dispatch (used for historical decryption)
     """
-    asyncio.create_task(ws_manager.broadcast(event_type, data))
+    ws_manager.enqueue(event_type, data)
 
     if realtime:
         from app.fanout.manager import fanout_manager
@@ -126,7 +139,7 @@ def broadcast_error(message: str, details: str | None = None) -> None:
     data = {"message": message}
     if details:
         data["details"] = details
-    asyncio.create_task(ws_manager.broadcast("error", data))
+    ws_manager.enqueue("error", data)
 
 
 def broadcast_success(message: str, details: str | None = None) -> None:
@@ -137,7 +150,7 @@ def broadcast_success(message: str, details: str | None = None) -> None:
     data = {"message": message}
     if details:
         data["details"] = details
-    asyncio.create_task(ws_manager.broadcast("success", data))
+    ws_manager.enqueue("success", data)
 
 
 _last_radio_activity_status: tuple[bool, str, int] | None = None
