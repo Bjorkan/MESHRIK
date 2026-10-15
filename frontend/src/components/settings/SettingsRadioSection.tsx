@@ -843,24 +843,32 @@ export function SettingsRadioSection({
   };
 
   const radioState =
-    health?.radio_state ?? (health?.radio_initializing ? 'initializing' : 'disconnected');
+    health?.radio_state ??
+    (health?.radio_initializing
+      ? 'initializing'
+      : health?.radio_connected
+        ? 'connected'
+        : 'disconnected');
+  const transportConnected = health?.radio_connected === true;
+  const radioReady = transportConnected && (radioState === 'ready' || radioState === 'connected');
+  const radioDegraded = transportConnected && radioState === 'degraded';
+  const radioSetupFailed = transportConnected && radioState === 'failed';
   const connectionActionLabel =
-    radioState === 'paused'
-      ? 'Reconnect'
-      : radioState === 'connected' || radioState === 'initializing'
-        ? 'Disconnect'
-        : 'Stop Trying';
+    radioState === 'paused' ? 'Reconnect' : transportConnected ? 'Disconnect' : 'Stop Trying';
 
-  const connectionStatusLabel =
-    radioState === 'connected'
-      ? health?.connection_info || 'Connected'
-      : radioState === 'initializing'
-        ? `Initializing ${health?.connection_info || 'radio'}`
-        : radioState === 'connecting'
-          ? `Attempting to connect${health?.connection_info ? ` to ${health.connection_info}` : ''}`
-          : radioState === 'paused'
-            ? `Connection paused${health?.connection_info ? ` (${health.connection_info})` : ''}`
-            : 'Not connected';
+  const connectionStatusLabel = radioReady
+    ? health?.connection_info || 'Connected'
+    : radioDegraded
+      ? `Connected (degraded${health?.startup_error_stage ? ` at ${health.startup_error_stage}` : ''})`
+      : radioSetupFailed
+        ? `Connected — setup failed${health?.startup_error_stage ? ` at ${health.startup_error_stage}` : ''}`
+        : radioState === 'initializing'
+          ? `Initializing ${health?.connection_info || 'radio'}`
+          : radioState === 'connecting'
+            ? `Attempting to connect${health?.connection_info ? ` to ${health.connection_info}` : ''}`
+            : radioState === 'paused'
+              ? `Connection paused${health?.connection_info ? ` (${health.connection_info})` : ''}`
+              : 'Not connected';
 
   const deviceInfoLabel = useMemo(() => {
     const info = health?.radio_device_info;
@@ -915,12 +923,12 @@ export function SettingsRadioSection({
       {/* ── Connection ── */}
       <div className="space-y-3">
         <h3 className="text-base font-semibold tracking-tight">Connection</h3>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2" role="status" aria-label={connectionStatusLabel}>
           <div
             className={`w-2 h-2 rounded-full ${
-              radioState === 'connected'
+              radioReady
                 ? 'bg-status-connected'
-                : radioState === 'initializing' || radioState === 'connecting'
+                : radioDegraded || radioState === 'initializing' || radioState === 'connecting'
                   ? 'bg-warning'
                   : 'bg-status-disconnected'
             }`}

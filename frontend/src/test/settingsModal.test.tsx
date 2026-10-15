@@ -324,13 +324,116 @@ describe('SettingsModal', () => {
     ).toBeInTheDocument();
   });
 
-  it('shows reconnect action when radio connection is paused', () => {
+  it('shows and dispatches reconnect when radio connection is paused', async () => {
+    const onReconnect = vi.fn(async () => {});
     renderModal({
       health: { ...baseHealth, radio_state: 'paused' },
+      onReconnect,
     });
     openRadioSection();
 
-    expect(screen.getByRole('button', { name: 'Reconnect' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Reconnect' }));
+    await waitFor(() => expect(onReconnect).toHaveBeenCalledTimes(1));
+  });
+
+  it('shows a ready Heltec transport as connected with a disconnect action', async () => {
+    const onDisconnect = vi.fn(async () => {});
+    renderModal({
+      onDisconnect,
+      health: {
+        ...baseHealth,
+        radio_connected: true,
+        radio_state: 'ready',
+        connection_info: 'Serial: /dev/ttyUSB0',
+        radio_device_info: {
+          model: 'Heltec V3',
+          firmware_build: null,
+          firmware_version: '1.17.1',
+          max_contacts: 350,
+          max_channels: 40,
+        },
+      },
+    });
+    openRadioSection();
+
+    expect(screen.getByRole('status', { name: 'Serial: /dev/ttyUSB0' })).toBeInTheDocument();
+    expect(screen.queryByText('Not connected')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Disconnect' }));
+    await waitFor(() => expect(onDisconnect).toHaveBeenCalledTimes(1));
+  });
+
+  it.each([
+    {
+      state: 'degraded' as const,
+      connected: true,
+      label: 'Connected (degraded at channel sync)',
+      action: 'Disconnect',
+      indicatorClass: 'bg-warning',
+    },
+    {
+      state: 'failed' as const,
+      connected: true,
+      label: 'Connected — setup failed at device bootstrap',
+      action: 'Disconnect',
+      indicatorClass: 'bg-status-disconnected',
+    },
+    {
+      state: 'initializing' as const,
+      connected: true,
+      label: 'Initializing Serial: /dev/ttyUSB0',
+      action: 'Disconnect',
+      indicatorClass: 'bg-warning',
+    },
+    {
+      state: 'connecting' as const,
+      connected: false,
+      label: 'Attempting to connect to Serial: /dev/ttyUSB0',
+      action: 'Stop Trying',
+      indicatorClass: 'bg-warning',
+    },
+    {
+      state: 'disconnected' as const,
+      connected: false,
+      label: 'Not connected',
+      action: 'Stop Trying',
+      indicatorClass: 'bg-status-disconnected',
+    },
+    {
+      state: 'paused' as const,
+      connected: false,
+      label: 'Connection paused (Serial: /dev/ttyUSB0)',
+      action: 'Reconnect',
+      indicatorClass: 'bg-status-disconnected',
+    },
+  ])(
+    'maps $state lifecycle state to truthful connection UI',
+    ({ state, connected, label, action, indicatorClass }) => {
+      renderModal({
+        health: {
+          ...baseHealth,
+          radio_connected: connected,
+          radio_state: state,
+          startup_error_stage:
+            state === 'degraded' ? 'channel sync' : state === 'failed' ? 'device bootstrap' : null,
+        },
+      });
+      openRadioSection();
+
+      const status = screen.getByRole('status', { name: label });
+      expect(status).toBeInTheDocument();
+      expect(status.firstElementChild).toHaveClass(indicatorClass);
+      expect(screen.getByRole('button', { name: action })).toBeInTheDocument();
+    }
+  );
+
+  it('uses physical transport presence when lifecycle state and connection disagree', () => {
+    renderModal({
+      health: { ...baseHealth, radio_connected: false, radio_state: 'ready' },
+    });
+    openRadioSection();
+
+    expect(screen.getByRole('status', { name: 'Not connected' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Disconnect' })).not.toBeInTheDocument();
   });
 
   it('runs repeater mesh discovery from the radio tab', async () => {
