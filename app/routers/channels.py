@@ -428,3 +428,28 @@ async def delete_channel(key: str) -> DeleteChannelResponse:
     broadcast_event("channel_deleted", {"key": key})
 
     return DeleteChannelResponse(status="ok")
+
+
+class ChannelDatagramRequest(BaseModel):
+    channel_key: str = Field(pattern=r"^[0-9a-fA-F]{32}$")
+    data_type: int = Field(ge=65280, le=65535)
+    payload_hex: str = Field(max_length=326, pattern=r"^(?:[0-9a-fA-F]{2})*$")
+    consent_to_transmit: bool = False
+    path_hex: str | None = Field(default=None, max_length=126, pattern=r"^(?:[0-9a-fA-F]{2})*$")
+    path_hash_mode: int = Field(default=0, ge=0, le=2)
+
+
+@router.post("/datagrams")
+async def send_channel_datagram(request: ChannelDatagramRequest) -> dict[str, str]:
+    """Developer-namespace binary TX. This is NOT a guaranteed RF delivery."""
+    from app.services.channel_data_tx import send_binary_channel_data
+
+    outcome = await send_binary_channel_data(
+        key=request.channel_key.upper(),
+        data_type=request.data_type,
+        data=bytes.fromhex(request.payload_hex),
+        path=bytes.fromhex(request.path_hex) if request.path_hex is not None else None,
+        path_hash_mode=request.path_hash_mode,
+        consent=request.consent_to_transmit,
+    )
+    return {"status": outcome}

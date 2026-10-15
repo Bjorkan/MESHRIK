@@ -580,6 +580,59 @@
         "title": "Channel",
         "type": "object"
       },
+      "ChannelDatagramRequest": {
+        "properties": {
+          "channel_key": {
+            "pattern": "^[0-9a-fA-F]{32}$",
+            "title": "Channel Key",
+            "type": "string"
+          },
+          "consent_to_transmit": {
+            "default": false,
+            "title": "Consent To Transmit",
+            "type": "boolean"
+          },
+          "data_type": {
+            "maximum": 65535.0,
+            "minimum": 65280.0,
+            "title": "Data Type",
+            "type": "integer"
+          },
+          "path_hash_mode": {
+            "default": 0,
+            "maximum": 2.0,
+            "minimum": 0.0,
+            "title": "Path Hash Mode",
+            "type": "integer"
+          },
+          "path_hex": {
+            "anyOf": [
+              {
+                "maxLength": 126,
+                "pattern": "^(?:[0-9a-fA-F]{2})*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Path Hex"
+          },
+          "payload_hex": {
+            "maxLength": 326,
+            "pattern": "^(?:[0-9a-fA-F]{2})*$",
+            "title": "Payload Hex",
+            "type": "string"
+          }
+        },
+        "required": [
+          "channel_key",
+          "data_type",
+          "payload_hex"
+        ],
+        "title": "ChannelDatagramRequest",
+        "type": "object"
+      },
       "ChannelDetail": {
         "description": "Comprehensive channel profile data.",
         "properties": {
@@ -7333,6 +7386,276 @@
           }
         },
         "summary": "Bulk Create Hashtag Channels",
+        "tags": [
+          "channels"
+        ]
+      }
+    },
+    "/api/channels/datagrams": {
+      "post": {
+        "description": "Developer-namespace binary TX. This is NOT a guaranteed RF delivery.",
+        "operationId": "send_channel_datagram_api_channels_datagrams_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChannelDatagramRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Send Channel Datagram Api Channels Datagrams Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "detail": {
+                      "description": "Human-readable error detail or structured validation detail.",
+                      "oneOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "items": {},
+                          "type": "array"
+                        },
+                        {
+                          "additionalProperties": true,
+                          "type": "object"
+                        }
+                      ]
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Bad request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "detail": {
+                      "description": "Human-readable error detail or structured validation detail.",
+                      "oneOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "items": {},
+                          "type": "array"
+                        },
+                        {
+                          "additionalProperties": true,
+                          "type": "object"
+                        }
+                      ]
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Authentication required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "detail": {
+                      "description": "Human-readable error detail or structured validation detail.",
+                      "oneOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "items": {},
+                          "type": "array"
+                        },
+                        {
+                          "additionalProperties": true,
+                          "type": "object"
+                        }
+                      ]
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "detail": {
+                      "description": "Human-readable error detail or structured validation detail.",
+                      "oneOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "items": {},
+                          "type": "array"
+                        },
+                        {
+                          "additionalProperties": true,
+                          "type": "object"
+                        }
+                      ]
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "408": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "detail": {
+                      "description": "Human-readable error detail or structured validation detail.",
+                      "oneOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "items": {},
+                          "type": "array"
+                        },
+                        {
+                          "additionalProperties": true,
+                          "type": "object"
+                        }
+                      ]
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Request timed out"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "detail": {
+                      "description": "Human-readable error detail or structured validation detail.",
+                      "oneOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "items": {},
+                          "type": "array"
+                        },
+                        {
+                          "additionalProperties": true,
+                          "type": "object"
+                        }
+                      ]
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "detail": {
+                      "description": "Human-readable error detail or structured validation detail.",
+                      "oneOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "items": {},
+                          "type": "array"
+                        },
+                        {
+                          "additionalProperties": true,
+                          "type": "object"
+                        }
+                      ]
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Radio unavailable or locked"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "detail": {
+                      "description": "Human-readable error detail or structured validation detail.",
+                      "oneOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "items": {},
+                          "type": "array"
+                        },
+                        {
+                          "additionalProperties": true,
+                          "type": "object"
+                        }
+                      ]
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Server error"
+          }
+        },
+        "summary": "Send Channel Datagram",
         "tags": [
           "channels"
         ]

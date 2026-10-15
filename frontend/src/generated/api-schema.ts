@@ -48,6 +48,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/channels/datagrams': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Send Channel Datagram
+     * @description Developer-namespace binary TX. This is NOT a guaranteed RF delivery.
+     */
+    post: operations['send_channel_datagram_api_channels_datagrams_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/channels/{key}': {
     parameters: {
       query?: never;
@@ -2127,6 +2147,27 @@ export interface components {
        * @enum {string}
        */
       radio_residency: 'database_only' | 'confirmed' | 'stale';
+    };
+    /** ChannelDatagramRequest */
+    ChannelDatagramRequest: {
+      /** Channel Key */
+      channel_key: string;
+      /**
+       * Consent To Transmit
+       * @default false
+       */
+      consent_to_transmit: boolean;
+      /** Data Type */
+      data_type: number;
+      /**
+       * Path Hash Mode
+       * @default 0
+       */
+      path_hash_mode: number;
+      /** Path Hex */
+      path_hex?: string | null;
+      /** Payload Hex */
+      payload_hex: string;
     };
     /**
      * ChannelDetail
@@ -5398,6 +5439,177 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['BulkCreateHashtagChannelsResponse'];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Authentication required */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Request timed out */
+      408: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+      /** @description Radio unavailable or locked */
+      423: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+      /** @description Server error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            /** @description Human-readable error detail or structured validation detail. */
+            detail?:
+              | string
+              | unknown[]
+              | {
+                  [key: string]: unknown;
+                };
+          };
+        };
+      };
+    };
+  };
+  send_channel_datagram_api_channels_datagrams_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ChannelDatagramRequest'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            [key: string]: string;
+          };
         };
       };
       /** @description Bad request */
