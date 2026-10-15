@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -35,6 +36,17 @@ const baseHealth: HealthStatus = {
   basic_auth_enabled: false,
 };
 
+function renderWarning(health: HealthStatus = baseHealth) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <SecurityWarningModal health={health} />
+    </QueryClientProvider>
+  );
+}
+
 describe('SecurityWarningModal', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -47,7 +59,7 @@ describe('SecurityWarningModal', () => {
   });
 
   it('shows the warning when bots are enabled and basic auth is off', () => {
-    render(<SecurityWarningModal health={baseHealth} />);
+    renderWarning();
 
     expect(screen.getByText('Unprotected bot execution is enabled')).toBeInTheDocument();
     expect(
@@ -56,13 +68,13 @@ describe('SecurityWarningModal', () => {
   });
 
   it('does not show when bots are disabled', () => {
-    render(<SecurityWarningModal health={{ ...baseHealth, bots_disabled: true }} />);
+    renderWarning({ ...baseHealth, bots_disabled: true });
 
     expect(screen.queryByText('Unprotected bot execution is enabled')).not.toBeInTheDocument();
   });
 
   it('does not show when basic auth is enabled', () => {
-    render(<SecurityWarningModal health={{ ...baseHealth, basic_auth_enabled: true }} />);
+    renderWarning({ ...baseHealth, basic_auth_enabled: true });
 
     expect(screen.queryByText('Unprotected bot execution is enabled')).not.toBeInTheDocument();
   });
@@ -70,7 +82,7 @@ describe('SecurityWarningModal', () => {
   it('persists dismissal only after the checkbox is acknowledged', async () => {
     const user = userEvent.setup();
 
-    render(<SecurityWarningModal health={baseHealth} />);
+    renderWarning();
 
     const dismissButton = screen.getByRole('button', {
       name: 'Do Not Warn Me On This Device Again',
@@ -87,7 +99,7 @@ describe('SecurityWarningModal', () => {
   it('disables bots until restart from the warning modal', async () => {
     const user = userEvent.setup();
 
-    render(<SecurityWarningModal health={baseHealth} />);
+    renderWarning();
 
     await user.click(screen.getByRole('button', { name: 'Disable Bots Until Server Restart' }));
 
@@ -96,21 +108,53 @@ describe('SecurityWarningModal', () => {
     expect(screen.queryByText('Unprotected bot execution is enabled')).not.toBeInTheDocument();
   });
 
+  it('leaves the warning actionable when disabling bots is rejected', async () => {
+    const user = userEvent.setup();
+    mocks.disableBotsUntilRestart.mockRejectedValue(new Error('Server unavailable'));
+    renderWarning();
+
+    const disableButton = screen.getByRole('button', {
+      name: 'Disable Bots Until Server Restart',
+    });
+    await user.click(disableButton);
+
+    await waitFor(() => {
+      expect(mocks.toast.error).toHaveBeenCalledWith('Failed to disable bots', {
+        description: 'Server unavailable',
+      });
+    });
+    expect(screen.getByText('Unprotected bot execution is enabled')).toBeInTheDocument();
+    expect(disableButton).toBeEnabled();
+  });
+
   it('shows the warning again after temporary bot disable disappears on a later health update', async () => {
     const user = userEvent.setup();
-    const { rerender } = render(<SecurityWarningModal health={baseHealth} />);
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    const { rerender } = render(
+      <QueryClientProvider client={queryClient}>
+        <SecurityWarningModal health={baseHealth} />
+      </QueryClientProvider>
+    );
 
     await user.click(screen.getByRole('button', { name: 'Disable Bots Until Server Restart' }));
     expect(screen.queryByText('Unprotected bot execution is enabled')).not.toBeInTheDocument();
 
     rerender(
-      <SecurityWarningModal
-        health={{ ...baseHealth, bots_disabled: true, bots_disabled_source: 'until_restart' }}
-      />
+      <QueryClientProvider client={queryClient}>
+        <SecurityWarningModal
+          health={{ ...baseHealth, bots_disabled: true, bots_disabled_source: 'until_restart' }}
+        />
+      </QueryClientProvider>
     );
     expect(screen.queryByText('Unprotected bot execution is enabled')).not.toBeInTheDocument();
 
-    rerender(<SecurityWarningModal health={baseHealth} />);
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <SecurityWarningModal health={baseHealth} />
+      </QueryClientProvider>
+    );
 
     await waitFor(() => {
       expect(screen.getByText('Unprotected bot execution is enabled')).toBeInTheDocument();

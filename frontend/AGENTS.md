@@ -54,10 +54,15 @@ Keep it aligned with `frontend/src` source code.
   and accessible labels; Recharts is not part of the dependency graph.
 - TanStack Form owns editable values, validation, dirty state, reset behavior, and submission
   status for settings, integration editors, destructive confirmations, login, conversation
-  creation, routing overrides, the message composer, and repeater console. Remote settings are
-  copied into a pristine form only; a dirty draft is preserved when a background refresh arrives.
-  Numeric radio fields reject empty, partial, non-finite, and non-integer values where applicable.
-  API/Query state must not be mirrored into a second field-by-field `useState` form controller.
+  creation, routing overrides, the message composer, repeater console, trace-path/custom-hop
+  builder, channel-finder controls, and security acknowledgement. Remote settings are copied into
+  a pristine form only; a dirty draft is preserved when a background refresh arrives. Numeric
+  radio fields reject empty, partial, non-finite, and non-integer values where applicable. Query
+  mutations own network writes and never retry radio commands automatically; Form awaits those
+  mutations and owns the corresponding submit/error presentation. API/Query state must not be
+  mirrored into a second field-by-field `useState` form controller. Live filters and one-off view
+  controls (search, chart range, packet paste analysis) remain local UI state rather than being
+  wrapped in artificial Form instances.
 - TanStack Virtual owns the mounted window for every large or unbounded list: messages, sidebar
   entities, search results, raw packets, Radio Activity history/events, and bulk-contact Table
   rows. `utils/virtualization.ts` supplies the shared non-zero viewport and row-measurement

@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useForm, useStore } from '@tanstack/react-form';
+import { useMutation } from '@tanstack/react-query';
 import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, Plus, X } from 'lucide-react';
 
 import type {
@@ -240,18 +242,13 @@ export function TracePane({ contacts, config, onRunTracePath }: TracePaneProps) 
   const { distanceUnit } = useDistanceUnit();
   const [searchQuery, setSearchQuery] = useState('');
   const [sortMode, setSortMode] = useState<TraceSortMode>('alpha');
-  const [draftHops, setDraftHops] = useState<TraceDraftHop[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<RadioTraceResponse | null>(null);
   const [customDialogOpen, setCustomDialogOpen] = useState(false);
-  const [customHopBytesDraft, setCustomHopBytesDraft] = useState<CustomHopBytes>(1);
-  const [customHopHexDraft, setCustomHopHexDraft] = useState('');
-  const [customHopError, setCustomHopError] = useState<string | null>(null);
   const [recentTraces, setRecentTraces] = useState<SavedTrace[]>(loadRecentTraces);
   const [recentTracesOpen, setRecentTracesOpen] = useState(false);
   const [recentNodeKeys, setRecentNodeKeys] = useState<string[]>(loadRecentNodeKeys);
   const activeRunTokenRef = useRef(0);
+  const savedHopsOverrideRef = useRef<SavedTraceHop[] | null>(null);
 
   const repeaters = useMemo(() => {
     const deduped = new Map<string, Contact>();
@@ -270,6 +267,76 @@ export function TracePane({ contacts, config, onRunTracePath }: TracePaneProps) 
     () => new Map(repeaters.map((contact) => [contact.public_key, contact])),
     [repeaters]
   );
+
+  const traceMutation = useMutation({
+    mutationFn: ({
+      hopHashBytes,
+      hops,
+    }: {
+      hopHashBytes: CustomHopBytes;
+      hops: RadioTraceHopRequest[];
+    }) => onRunTracePath(hopHashBytes, hops),
+    retry: false,
+  });
+  const traceForm = useForm({
+    defaultValues: {
+      draftHops: [] as TraceDraftHop[],
+      serverError: null as string | null,
+    },
+    onSubmit: async ({ value }) => {
+      if (value.draftHops.length === 0) return;
+      const customHop = value.draftHops.find((hop) => hop.kind === 'custom');
+      const hopHashBytes: CustomHopBytes = customHop?.hopBytes ?? 4;
+      const runToken = activeRunTokenRef.current + 1;
+      activeRunTokenRef.current = runToken;
+      traceForm.setFieldValue('serverError', null);
+      setResult(null);
+      try {
+        const traceResult = await traceMutation.mutateAsync({
+          hopHashBytes,
+          hops: value.draftHops.map((hop) =>
+            hop.kind === 'repeater' ? { public_key: hop.publicKey } : { hop_hex: hop.hopHex }
+          ),
+        });
+        if (activeRunTokenRef.current !== runToken) return;
+        setResult(traceResult);
+        const savedHops =
+          savedHopsOverrideRef.current ??
+          value.draftHops.map((hop): SavedTraceHop => {
+            if (hop.kind === 'repeater') {
+              const contact = repeatersByKey.get(hop.publicKey);
+              return {
+                kind: 'repeater',
+                publicKey: hop.publicKey,
+                displayName: getContactDisplayName(
+                  contact?.name,
+                  hop.publicKey,
+                  contact?.last_advert ?? null
+                ),
+              };
+            }
+            return {
+              kind: 'custom',
+              hopHex: hop.hopHex,
+              hopBytes: hop.hopBytes,
+              displayName: `${hop.hopHex.toUpperCase()} (${hop.hopBytes}B)`,
+            };
+          });
+        recordTraceRun(savedHops);
+      } catch (err) {
+        if (activeRunTokenRef.current !== runToken) return;
+        traceForm.setFieldValue(
+          'serverError',
+          err instanceof Error ? err.message : 'Unknown error'
+        );
+      } finally {
+        savedHopsOverrideRef.current = null;
+      }
+    },
+  });
+  const traceValues = useStore(traceForm.store, (state) => state.values);
+  const loading = useStore(traceForm.store, (state) => state.isSubmitting);
+  const { draftHops, serverError: error } = traceValues;
 
   const tracedIndexByKey = useMemo(
     () => new Map(recentNodeKeys.map((key, index) => [key, index])),
@@ -343,23 +410,70 @@ export function TracePane({ contacts, config, onRunTracePath }: TracePaneProps) 
     [draftHops]
   );
   const effectiveHopHashBytes: CustomHopBytes = customHopBytesLocked ?? 4;
+  const customHopForm = useForm({
+    defaultValues: {
+      hopBytes: (customHopBytesLocked ?? 1) as CustomHopBytes,
+      hopHex: '',
+      error: null as string | null,
+    },
+    onSubmit: ({ value }) => {
+      const hopBytes = customHopBytesLocked ?? value.hopBytes;
+      const hopHex = normalizeCustomHopHex(value.hopHex);
+      if (hopHex.length !== hopBytes * 2) {
+        customHopForm.setFieldValue(
+          'error',
+          `Custom hop must be exactly ${hopBytes * 2} hex characters.`
+        );
+        return;
+      }
+      clearPendingResult();
+      updateDraftHops((current) => [
+        ...current,
+        {
+          id: nextDraftHopId('custom', current.length),
+          kind: 'custom',
+          hopHex,
+          hopBytes,
+        },
+      ]);
+      setCustomDialogOpen(false);
+    },
+  });
+  const customHopValues = useStore(customHopForm.store, (state) => state.values);
+  const {
+    hopBytes: customHopBytesDraft,
+    hopHex: customHopHexDraft,
+    error: customHopError,
+  } = customHopValues;
 
   useEffect(() => {
     if (!customDialogOpen) return;
-    setCustomHopBytesDraft(customHopBytesLocked ?? 1);
-    setCustomHopHexDraft('');
-    setCustomHopError(null);
-  }, [customDialogOpen, customHopBytesLocked]);
+    customHopForm.reset({
+      hopBytes: customHopBytesLocked ?? 1,
+      hopHex: '',
+      error: null,
+    });
+  }, [customDialogOpen, customHopBytesLocked, customHopForm]);
 
   const clearPendingResult = () => {
     activeRunTokenRef.current += 1;
-    setLoading(false);
+    traceForm.reset({
+      draftHops: traceForm.state.values.draftHops,
+      serverError: null,
+    });
     if (result) setResult(null);
-    if (error) setError(null);
+  };
+
+  const updateDraftHops = (
+    update: TraceDraftHop[] | ((current: TraceDraftHop[]) => TraceDraftHop[])
+  ) => {
+    const current = traceForm.state.values.draftHops;
+    traceForm.setFieldValue('draftHops', typeof update === 'function' ? update(current) : update);
   };
 
   const handleAddRepeater = (publicKey: string) => {
-    setDraftHops((current) => [
+    clearPendingResult();
+    updateDraftHops((current) => [
       ...current,
       {
         id: nextDraftHopId('repeater', current.length),
@@ -367,44 +481,24 @@ export function TracePane({ contacts, config, onRunTracePath }: TracePaneProps) 
         publicKey,
       },
     ]);
-    clearPendingResult();
-  };
-
-  const handleAddCustomHop = () => {
-    const hopBytes = customHopBytesLocked ?? customHopBytesDraft;
-    const hopHex = normalizeCustomHopHex(customHopHexDraft);
-    if (hopHex.length !== hopBytes * 2) {
-      setCustomHopError(`Custom hop must be exactly ${hopBytes * 2} hex characters.`);
-      return;
-    }
-    setDraftHops((current) => [
-      ...current,
-      {
-        id: nextDraftHopId('custom', current.length),
-        kind: 'custom',
-        hopHex,
-        hopBytes,
-      },
-    ]);
-    clearPendingResult();
-    setCustomDialogOpen(false);
   };
 
   const handleRemoveHop = (id: string) => {
-    setDraftHops((current) => current.filter((hop) => hop.id !== id));
     clearPendingResult();
+    updateDraftHops((current) => current.filter((hop) => hop.id !== id));
   };
 
   const handleMoveHop = (index: number, direction: -1 | 1) => {
-    setDraftHops((current) => moveHop(current, index, direction));
     clearPendingResult();
+    updateDraftHops((current) => moveHop(current, index, direction));
   };
 
   // Append the reversed hop chain (minus the current endpoint) to build a return
   // path, e.g. [R1, R2, R3] -> [R1, R2, R3, R2, R1]. A single hop is left as-is.
   // See issue #287. Reverses every queued hop, including custom prefixes.
   const handleReverseLink = () => {
-    setDraftHops((current) => {
+    clearPendingResult();
+    updateDraftHops((current) => {
       if (current.length < 2) return current;
       const returnHops = [...current]
         .reverse()
@@ -415,7 +509,6 @@ export function TracePane({ contacts, config, onRunTracePath }: TracePaneProps) 
         }));
       return [...current, ...returnHops];
     });
-    clearPendingResult();
   };
 
   const recordTraceRun = (hops: SavedTraceHop[]) => {
@@ -441,88 +534,12 @@ export function TracePane({ contacts, config, onRunTracePath }: TracePaneProps) 
         hopBytes: h.hopBytes ?? (1 as CustomHopBytes),
       };
     });
-    setDraftHops(hops);
-
-    // Determine hop hash bytes from the loaded hops
-    const customHop = hops.find((h) => h.kind === 'custom');
-    const hopHashBytes: CustomHopBytes = customHop?.hopBytes ?? 4;
-
-    // Run the trace immediately
-    const runToken = activeRunTokenRef.current + 1;
-    activeRunTokenRef.current = runToken;
-    setLoading(true);
-    setError(null);
-    setResult(null);
-    try {
-      const traceResult = await onRunTracePath(
-        hopHashBytes,
-        hops.map((hop) =>
-          hop.kind === 'repeater' ? { public_key: hop.publicKey } : { hop_hex: hop.hopHex }
-        )
-      );
-      if (activeRunTokenRef.current !== runToken) return;
-      setResult(traceResult);
-
-      // Re-save to bump this trace and its nodes to the top of recents
-      recordTraceRun(trace.hops);
-    } catch (err) {
-      if (activeRunTokenRef.current !== runToken) return;
-      setError(err instanceof Error ? err.message : 'Unknown error');
-    } finally {
-      if (activeRunTokenRef.current === runToken) setLoading(false);
-    }
+    updateDraftHops(hops);
+    savedHopsOverrideRef.current = trace.hops;
+    await traceForm.handleSubmit();
   };
 
-  const handleRunTrace = async () => {
-    if (draftHops.length === 0) {
-      return;
-    }
-    const runToken = activeRunTokenRef.current + 1;
-    activeRunTokenRef.current = runToken;
-    setLoading(true);
-    setError(null);
-    setResult(null);
-    try {
-      const traceResult = await onRunTracePath(
-        effectiveHopHashBytes,
-        draftHops.map((hop) =>
-          hop.kind === 'repeater' ? { public_key: hop.publicKey } : { hop_hex: hop.hopHex }
-        )
-      );
-      if (activeRunTokenRef.current !== runToken) {
-        return;
-      }
-      setResult(traceResult);
-
-      // Persist to recent traces
-      const savedHops: SavedTraceHop[] = draftHops.map((hop) => {
-        if (hop.kind === 'repeater') {
-          const c = repeatersByKey.get(hop.publicKey);
-          return {
-            kind: 'repeater',
-            publicKey: hop.publicKey,
-            displayName: getContactDisplayName(c?.name, hop.publicKey, c?.last_advert ?? null),
-          };
-        }
-        return {
-          kind: 'custom',
-          hopHex: hop.hopHex,
-          hopBytes: hop.hopBytes,
-          displayName: `${hop.hopHex.toUpperCase()} (${hop.hopBytes}B)`,
-        };
-      });
-      recordTraceRun(savedHops);
-    } catch (err) {
-      if (activeRunTokenRef.current !== runToken) {
-        return;
-      }
-      setError(err instanceof Error ? err.message : 'Unknown error');
-    } finally {
-      if (activeRunTokenRef.current === runToken) {
-        setLoading(false);
-      }
-    }
-  };
+  const handleRunTrace = () => traceForm.handleSubmit();
 
   const resultNodes: RadioTraceNode[] = result
     ? [
@@ -751,8 +768,8 @@ export function TracePane({ contacts, config, onRunTracePath }: TracePaneProps) 
                     variant="ghost"
                     className="text-muted-foreground"
                     onClick={() => {
-                      setDraftHops([]);
                       clearPendingResult();
+                      updateDraftHops([]);
                     }}
                   >
                     Clear
@@ -866,7 +883,7 @@ export function TracePane({ contacts, config, onRunTracePath }: TracePaneProps) 
                   className="shrink-0 text-muted-foreground"
                   onClick={() => {
                     setResult(null);
-                    setError(null);
+                    traceForm.setFieldValue('serverError', null);
                   }}
                 >
                   Clear
@@ -874,7 +891,10 @@ export function TracePane({ contacts, config, onRunTracePath }: TracePaneProps) 
               </div>
               <div className="min-h-0 flex-1 space-y-2 p-4 lg:overflow-y-auto">
                 {error ? (
-                  <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                  <div
+                    role="alert"
+                    className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+                  >
                     {error}
                   </div>
                 ) : null}
@@ -944,7 +964,7 @@ export function TracePane({ contacts, config, onRunTracePath }: TracePaneProps) 
                       size="sm"
                       variant={active ? 'default' : 'outline'}
                       disabled={locked}
-                      onClick={() => setCustomHopBytesDraft(value)}
+                      onClick={() => customHopForm.setFieldValue('hopBytes', value)}
                     >
                       {value}-byte
                     </Button>
@@ -966,15 +986,21 @@ export function TracePane({ contacts, config, onRunTracePath }: TracePaneProps) 
                 id="custom-hop-hex"
                 value={customHopHexDraft}
                 onChange={(event) =>
-                  setCustomHopHexDraft(normalizeCustomHopHex(event.target.value))
+                  customHopForm.setFieldValue('hopHex', normalizeCustomHopHex(event.target.value))
                 }
                 placeholder={`${(customHopBytesLocked ?? customHopBytesDraft) * 2} hex chars`}
+                aria-invalid={customHopError ? true : undefined}
+                aria-describedby={customHopError ? 'custom-hop-error' : 'custom-hop-help'}
               />
-              <p className="text-xs text-muted-foreground">
+              <p id="custom-hop-help" className="text-xs text-muted-foreground">
                 Enter exactly {(customHopBytesLocked ?? customHopBytesDraft) * 2} hex characters.
               </p>
               {customHopError ? (
-                <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                <div
+                  id="custom-hop-error"
+                  role="alert"
+                  className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+                >
                   {customHopError}
                 </div>
               ) : null}
@@ -985,7 +1011,7 @@ export function TracePane({ contacts, config, onRunTracePath }: TracePaneProps) 
             <Button type="button" variant="secondary" onClick={() => setCustomDialogOpen(false)}>
               Cancel
             </Button>
-            <Button type="button" onClick={handleAddCustomHop}>
+            <Button type="button" onClick={() => void customHopForm.handleSubmit()}>
               Add custom hop
             </Button>
           </DialogFooter>

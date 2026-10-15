@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useForm, useStore } from '@tanstack/react-form';
+import { useMutation } from '@tanstack/react-query';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Button } from '../ui/button';
@@ -23,6 +24,39 @@ export function SettingsDatabaseSection({
   className?: string;
 }) {
   const saveChainRef = useRef<Promise<void>>(Promise.resolve());
+  const maintenanceMutation = useMutation({
+    mutationFn: (action: { kind: 'cleanup'; days: number } | { kind: 'purge' }) =>
+      action.kind === 'cleanup'
+        ? api.runMaintenance({ pruneUndecryptedDays: action.days })
+        : api.runMaintenance({ purgeLinkedRawPackets: true }),
+    retry: false,
+    onSuccess: async (result, action) => {
+      if (action.kind === 'cleanup') {
+        toast.success('Database cleanup complete', {
+          description: `Deleted ${result.packets_deleted} old packet${result.packets_deleted === 1 ? '' : 's'}`,
+        });
+      } else {
+        toast.success('Decrypted raw packets purged', {
+          description: `Deleted ${result.packets_deleted} raw packet${result.packets_deleted === 1 ? '' : 's'}`,
+        });
+      }
+      await onHealthRefresh();
+    },
+    onError: (err, action) => {
+      console.error(
+        action.kind === 'cleanup'
+          ? 'Failed to run maintenance:'
+          : 'Failed to purge decrypted raw packets:',
+        err
+      );
+      toast.error(
+        action.kind === 'cleanup'
+          ? 'Database cleanup failed'
+          : 'Failed to purge decrypted raw packets',
+        { description: err instanceof Error ? err.message : 'Unknown error' }
+      );
+    },
+  });
   const form = useForm({
     defaultValues: {
       retentionDays: '14',
@@ -38,34 +72,12 @@ export function SettingsDatabaseSection({
           return;
         }
         form.setFieldValue('retentionError', '');
-        try {
-          const result = await api.runMaintenance({ pruneUndecryptedDays: days });
-          toast.success('Database cleanup complete', {
-            description: `Deleted ${result.packets_deleted} old packet${result.packets_deleted === 1 ? '' : 's'}`,
-          });
-          await onHealthRefresh();
-        } catch (err) {
-          console.error('Failed to run maintenance:', err);
-          toast.error('Database cleanup failed', {
-            description: err instanceof Error ? err.message : 'Unknown error',
-          });
-        }
+        await maintenanceMutation.mutateAsync({ kind: 'cleanup', days }).catch(() => undefined);
         return;
       }
 
       if (value.action === 'purge') {
-        try {
-          const result = await api.runMaintenance({ purgeLinkedRawPackets: true });
-          toast.success('Decrypted raw packets purged', {
-            description: `Deleted ${result.packets_deleted} raw packet${result.packets_deleted === 1 ? '' : 's'}`,
-          });
-          await onHealthRefresh();
-        } catch (err) {
-          console.error('Failed to purge decrypted raw packets:', err);
-          toast.error('Failed to purge decrypted raw packets', {
-            description: err instanceof Error ? err.message : 'Unknown error',
-          });
-        }
+        await maintenanceMutation.mutateAsync({ kind: 'purge' }).catch(() => undefined);
       }
     },
   });
@@ -149,11 +161,20 @@ export function SettingsDatabaseSection({
                 value={retentionDays}
                 onChange={(e) => form.setFieldValue('retentionDays', e.target.value)}
                 className="w-24"
+                aria-invalid={retentionError ? true : undefined}
+                aria-describedby={retentionError ? 'retention-days-error' : undefined}
               />
             </div>
             <Button
               variant="outline"
               onClick={() => {
+                if (
+                  !window.confirm(
+                    `Permanently delete undecrypted packets older than ${retentionDays || '?'} days?`
+                  )
+                ) {
+                  return;
+                }
                 form.setFieldValue('action', 'cleanup');
                 void form.handleSubmit();
               }}
@@ -164,7 +185,7 @@ export function SettingsDatabaseSection({
             </Button>
           </div>
           {retentionError && (
-            <p className="text-xs text-destructive" role="alert">
+            <p id="retention-days-error" className="text-xs text-destructive" role="alert">
               {retentionError}
             </p>
           )}
@@ -180,6 +201,11 @@ export function SettingsDatabaseSection({
           <Button
             variant="outline"
             onClick={() => {
+              if (
+                !window.confirm('Permanently purge raw packet bytes linked to decrypted messages?')
+              ) {
+                return;
+              }
               form.setFieldValue('action', 'purge');
               void form.handleSubmit();
             }}

@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { useForm, useStore } from '@tanstack/react-form';
+import { useMutation } from '@tanstack/react-query';
 import { AlertTriangle } from 'lucide-react';
 
 import { api } from '../api';
@@ -38,9 +40,28 @@ interface SecurityWarningModalProps {
 
 export function SecurityWarningModal({ health }: SecurityWarningModalProps) {
   const [acknowledged, setAcknowledged] = useState(readAcknowledgedState);
-  const [confirmedRisk, setConfirmedRisk] = useState(false);
-  const [disablingBots, setDisablingBots] = useState(false);
   const [botsDisabledLocally, setBotsDisabledLocally] = useState(false);
+  const acknowledgementForm = useForm({
+    defaultValues: { confirmedRisk: false },
+    onSubmit: () => {
+      writeAcknowledgedState();
+      setAcknowledged(true);
+    },
+  });
+  const confirmedRisk = useStore(acknowledgementForm.store, (state) => state.values.confirmedRisk);
+  const disableBotsMutation = useMutation({
+    mutationFn: () => api.disableBotsUntilRestart(),
+    retry: false,
+    onSuccess: () => {
+      setBotsDisabledLocally(true);
+      toast.success('Bots disabled until restart');
+    },
+    onError: (err) => {
+      toast.error('Failed to disable bots', {
+        description: err instanceof Error ? err.message : undefined,
+      });
+    },
+  });
 
   const shouldWarn =
     health !== null &&
@@ -51,9 +72,9 @@ export function SecurityWarningModal({ health }: SecurityWarningModalProps) {
 
   useEffect(() => {
     if (!shouldWarn) {
-      setConfirmedRisk(false);
+      acknowledgementForm.reset();
     }
-  }, [shouldWarn]);
+  }, [acknowledgementForm, shouldWarn]);
 
   useEffect(() => {
     if (health?.bots_disabled !== true) {
@@ -128,23 +149,12 @@ export function SecurityWarningModal({ health }: SecurityWarningModalProps) {
           <Button
             type="button"
             className="h-auto w-full whitespace-normal py-3 text-center"
-            disabled={disablingBots}
-            onClick={async () => {
-              setDisablingBots(true);
-              try {
-                await api.disableBotsUntilRestart();
-                setBotsDisabledLocally(true);
-                toast.success('Bots disabled until restart');
-              } catch (err) {
-                toast.error('Failed to disable bots', {
-                  description: err instanceof Error ? err.message : undefined,
-                });
-              } finally {
-                setDisablingBots(false);
-              }
-            }}
+            disabled={disableBotsMutation.isPending}
+            onClick={() => disableBotsMutation.mutate()}
           >
-            {disablingBots ? 'Disabling Bots...' : 'Disable Bots Until Server Restart'}
+            {disableBotsMutation.isPending
+              ? 'Disabling Bots...'
+              : 'Disable Bots Until Server Restart'}
           </Button>
         </div>
 
@@ -152,7 +162,9 @@ export function SecurityWarningModal({ health }: SecurityWarningModalProps) {
           <label className="flex items-start gap-3">
             <Checkbox
               checked={confirmedRisk}
-              onCheckedChange={(checked) => setConfirmedRisk(checked === true)}
+              onCheckedChange={(checked) =>
+                acknowledgementForm.setFieldValue('confirmedRisk', checked === true)
+              }
               aria-label="Acknowledge bot security risk"
               className="mt-0.5"
             />
@@ -166,11 +178,8 @@ export function SecurityWarningModal({ health }: SecurityWarningModalProps) {
             type="button"
             className="h-auto w-full whitespace-normal py-3 text-center"
             variant="outline"
-            disabled={!confirmedRisk || disablingBots}
-            onClick={() => {
-              writeAcknowledgedState();
-              setAcknowledged(true);
-            }}
+            disabled={!confirmedRisk || disableBotsMutation.isPending}
+            onClick={() => void acknowledgementForm.handleSubmit()}
           >
             Do Not Warn Me On This Device Again
           </Button>

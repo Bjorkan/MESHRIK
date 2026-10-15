@@ -1,4 +1,6 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import type { ReactElement } from 'react';
+import { act, fireEvent, render as testingRender, screen, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { TracePane } from '../components/TracePane';
@@ -43,6 +45,13 @@ const config: RadioConfig = {
   path_hash_mode: 0,
   path_hash_mode_supported: true,
 };
+
+function render(ui: ReactElement) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  return testingRender(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
+}
 
 describe('TracePane', () => {
   beforeEach(() => {
@@ -226,7 +235,9 @@ describe('TracePane', () => {
     fireEvent.change(screen.getByLabelText('Repeater prefix'), { target: { value: 'ae' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add custom hop' }));
 
-    expect(screen.getByText(/1 hop selected · 1-byte trace/)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(/1 hop selected · 1-byte trace/)).toBeInTheDocument();
+    });
     expect(screen.getByText('AE (1-byte)')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /^add repeater relay alpha/i }));
@@ -243,6 +254,21 @@ describe('TracePane', () => {
     expect(screen.getByRole('button', { name: '2-byte' })).toBeDisabled();
     expect(screen.getByRole('button', { name: '4-byte' })).toBeDisabled();
     expect(screen.getByText(/custom hops are locked to 1-byte prefixes/i)).toBeInTheDocument();
+  });
+
+  it('keeps invalid custom-hop validation beside the field and accessible', async () => {
+    const relay = makeContact('11'.repeat(32), 'Relay Alpha');
+    render(<TracePane config={config} onRunTracePath={vi.fn()} contacts={[relay]} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Custom path' }));
+    const prefix = screen.getByLabelText('Repeater prefix');
+    fireEvent.change(prefix, { target: { value: 'a' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add custom hop' }));
+
+    const error = await screen.findByRole('alert');
+    expect(error).toHaveTextContent('Custom hop must be exactly 2 hex characters.');
+    expect(prefix).toHaveAttribute('aria-invalid', 'true');
+    expect(prefix).toHaveAttribute('aria-describedby', error.id);
   });
 
   it('Traced lists only trace-used repeaters in MRU order, persisted locally (issue #286)', async () => {

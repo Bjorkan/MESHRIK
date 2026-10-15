@@ -75,6 +75,16 @@ describe('CrackerPanel', () => {
     fireEvent.change(maxLengthInput, { target: { value: '' } });
 
     expect(maxLengthInput.value).toBe('');
+    const error = screen.getByText('Max length must be a whole number from 1–10.');
+    expect(error).toHaveTextContent('Max length must be a whole number from 1–10.');
+    expect(maxLengthInput).toHaveAttribute('aria-invalid', 'true');
+    expect(maxLengthInput).toHaveAttribute('aria-describedby', error.id);
+
+    fireEvent.blur(maxLengthInput);
+    expect(maxLengthInput).toHaveValue(6);
+    expect(
+      screen.queryByText('Max length must be a whole number from 1–10.')
+    ).not.toBeInTheDocument();
   });
 
   it('queues a new valid packet when the full rolling buffer keeps the same length', async () => {

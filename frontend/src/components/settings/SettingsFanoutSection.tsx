@@ -8,7 +8,7 @@ import {
   Suspense,
   type ReactNode,
 } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm, useStore } from '@tanstack/react-form';
 import { ChevronDown, Info } from 'lucide-react';
 import { Input } from '../ui/input';
@@ -34,6 +34,8 @@ import communityPresets from '../../config/community_presets.json';
 const BotCodeEditor = lazy(() =>
   import('../BotCodeEditor').then((m) => ({ default: m.BotCodeEditor }))
 );
+
+const FANOUT_CONFIGS_QUERY_KEY = ['fanout', 'configs'] as const;
 
 const TYPE_LABELS: Record<string, string> = {
   mqtt_private: 'Private MQTT',
@@ -891,16 +893,12 @@ function MqttHaConfigEditor({
     queryKey: queryKeys.settings(),
     queryFn: ({ signal }) => api.getSettings(signal),
   });
+  const { data: radioConfig = null } = useQuery({
+    queryKey: queryKeys.radioConfig(),
+    queryFn: () => api.getRadioConfig(),
+  });
   const trackedRepeaters = appSettings?.tracked_telemetry_repeaters ?? EMPTY_TRACKED_KEYS;
   const [contactSearch, setContactSearch] = useState('');
-  const [radioConfig, setRadioConfig] = useState<{ public_key: string; name: string } | null>(null);
-
-  useEffect(() => {
-    api
-      .getRadioConfig()
-      .then((radio) => setRadioConfig({ public_key: radio.public_key, name: radio.name }))
-      .catch(console.error);
-  }, []);
 
   const selectedContacts = (config.tracked_contacts as string[]) || EMPTY_TRACKED_KEYS;
   const selectedRepeaters = (config.tracked_repeaters as string[]) || EMPTY_TRACKED_KEYS;
@@ -3072,8 +3070,14 @@ function WebhookConfigEditor({
           value={headersText}
           onChange={(e) => handleHeadersChange(e.target.value)}
           placeholder='{"Authorization": "Bearer ..."}'
+          aria-invalid={headersError ? true : undefined}
+          aria-describedby={headersError ? 'fanout-webhook-headers-error' : undefined}
         />
-        {headersError && <p className="text-xs text-destructive">{headersError}</p>}
+        {headersError && (
+          <p id="fanout-webhook-headers-error" className="text-xs text-destructive" role="alert">
+            {headersError}
+          </p>
+        )}
       </div>
 
       <Separator />
@@ -3199,7 +3203,11 @@ export function SettingsFanoutSection({
   onHealthRefresh?: () => Promise<void>;
   className?: string;
 }) {
-  const [configs, setConfigs] = useState<FanoutConfig[]>([]);
+  const queryClient = useQueryClient();
+  const { data: configs = [] } = useQuery({
+    queryKey: FANOUT_CONFIGS_QUERY_KEY,
+    queryFn: () => api.getFanoutConfigs(),
+  });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [inlineEditingId, setInlineEditingId] = useState<string | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -3207,6 +3215,36 @@ export function SettingsFanoutSection({
     integrationName: string;
     error: string;
   } | null>(null);
+  const saveConfigMutation = useMutation({
+    mutationFn: (
+      operation:
+        | { kind: 'create'; payload: Parameters<typeof api.createFanoutConfig>[0] }
+        | {
+            kind: 'update';
+            id: string;
+            payload: Parameters<typeof api.updateFanoutConfig>[1];
+          }
+    ) =>
+      operation.kind === 'create'
+        ? api.createFanoutConfig(operation.payload)
+        : api.updateFanoutConfig(operation.id, operation.payload),
+    retry: false,
+  });
+  const renameConfigMutation = useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) =>
+      api.updateFanoutConfig(id, { name }),
+    retry: false,
+  });
+  const toggleConfigMutation = useMutation({
+    mutationFn: (cfg: FanoutConfig) => api.updateFanoutConfig(cfg.id, { enabled: !cfg.enabled }),
+    retry: false,
+  });
+  const deleteConfigMutation = useMutation({
+    mutationFn: (id: string) => api.deleteFanoutConfig(id),
+    retry: false,
+  });
+  const refreshConfigs = () =>
+    queryClient.invalidateQueries({ queryKey: FANOUT_CONFIGS_QUERY_KEY });
   const editForm = useForm({
     defaultValues: {
       draftType: null as DraftType | null,
@@ -3214,36 +3252,46 @@ export function SettingsFanoutSection({
       scope: {} as Record<string, unknown>,
       name: '',
       enabled: true,
+      serverError: null as string | null,
     },
     onSubmit: async ({ value }) => {
       if (!editingId && !value.draftType) return;
+      editForm.setFieldValue('serverError', null);
       if (!value.name.trim()) {
+        editForm.setFieldValue('serverError', 'Name cannot be empty');
         toast.error('Name cannot be empty');
         return;
       }
       try {
         if (value.draftType) {
           const recipe = getCreateIntegrationDefinition(value.draftType);
-          await api.createFanoutConfig({
-            type: recipe.savedType,
-            name: normalizeDraftName(value.draftType, value.name.trim(), configs),
-            config: normalizeDraftConfig(value.draftType, value.config),
-            scope: normalizeDraftScope(value.draftType, value.scope),
-            enabled: value.enabled,
+          await saveConfigMutation.mutateAsync({
+            kind: 'create',
+            payload: {
+              type: recipe.savedType,
+              name: normalizeDraftName(value.draftType, value.name.trim(), configs),
+              config: normalizeDraftConfig(value.draftType, value.config),
+              scope: normalizeDraftScope(value.draftType, value.scope),
+              enabled: value.enabled,
+            },
           });
         } else {
           if (!editingId) throw new Error('Missing fanout config id for update');
           const editingType = configs.find((cfg) => cfg.id === editingId)?.type ?? '';
-          await api.updateFanoutConfig(editingId, {
-            name: value.name,
-            config: normalizeIntegrationConfigForSave(editingType, value.config),
-            scope: value.scope,
-            enabled: value.enabled,
+          await saveConfigMutation.mutateAsync({
+            kind: 'update',
+            id: editingId,
+            payload: {
+              name: value.name,
+              config: normalizeIntegrationConfigForSave(editingType, value.config),
+              scope: value.scope,
+              enabled: value.enabled,
+            },
           });
         }
         editForm.reset();
         setEditingId(null);
-        await loadConfigs();
+        await refreshConfigs();
         if (onHealthRefresh) {
           try {
             await onHealthRefresh();
@@ -3253,7 +3301,9 @@ export function SettingsFanoutSection({
         }
         toast.success(value.enabled ? 'Integration saved and enabled' : 'Integration saved');
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Failed to save');
+        const message = err instanceof Error ? err.message : 'Failed to save';
+        editForm.setFieldValue('serverError', message);
+        toast.error(message);
       }
     },
   });
@@ -3263,6 +3313,7 @@ export function SettingsFanoutSection({
   const editConfig = editValues.config;
   const editScope = editValues.scope;
   const editName = editValues.name;
+  const editServerError = editValues.serverError;
   const setEditConfig = (config: Record<string, unknown>) =>
     editForm.setFieldValue('config', config);
   const setEditScope = (scope: Record<string, unknown>) => editForm.setFieldValue('scope', scope);
@@ -3284,9 +3335,9 @@ export function SettingsFanoutSection({
         return;
       }
       try {
-        await api.updateFanoutConfig(cfg.id, { name: nextName });
+        await renameConfigMutation.mutateAsync({ id: cfg.id, name: nextName });
         if (editingId === cfg.id) editForm.setFieldValue('name', nextName);
-        await loadConfigs();
+        await refreshConfigs();
         toast.success('Name updated');
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Failed to update name');
@@ -3301,19 +3352,6 @@ export function SettingsFanoutSection({
     defaultValues: { selectedType: null as DraftType | null },
   });
   const selectedCreateType = useStore(createForm.store, (state) => state.values.selectedType);
-
-  const loadConfigs = useCallback(async () => {
-    try {
-      const data = await api.getFanoutConfigs();
-      setConfigs(data);
-    } catch (err) {
-      console.error('Failed to load fanout configs:', err);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadConfigs();
-  }, [loadConfigs]);
 
   const availableCreateOptions = useMemo(
     () =>
@@ -3340,8 +3378,8 @@ export function SettingsFanoutSection({
 
   const handleToggleEnabled = async (cfg: FanoutConfig) => {
     try {
-      await api.updateFanoutConfig(cfg.id, { enabled: !cfg.enabled });
-      await loadConfigs();
+      await toggleConfigMutation.mutateAsync(cfg);
+      await refreshConfigs();
       if (onHealthRefresh) await onHealthRefresh();
       toast.success(cfg.enabled ? 'Integration disabled' : 'Integration enabled');
     } catch (err) {
@@ -3404,9 +3442,9 @@ export function SettingsFanoutSection({
     const cfg = configs.find((c) => c.id === id);
     if (!confirm(`Delete "${cfg?.name}"? This cannot be undone.`)) return;
     try {
-      await api.deleteFanoutConfig(id);
+      await deleteConfigMutation.mutateAsync(id);
       if (editingId === id) setEditingId(null);
-      await loadConfigs();
+      await refreshConfigs();
       if (onHealthRefresh) await onHealthRefresh();
       toast.success('Integration deleted');
     } catch (err) {
@@ -3463,6 +3501,8 @@ export function SettingsFanoutSection({
             type="text"
             value={editName}
             onChange={(e) => editForm.setFieldValue('name', e.target.value)}
+            aria-invalid={editServerError ? true : undefined}
+            aria-describedby={editServerError ? 'fanout-save-error' : undefined}
           />
         </div>
 
@@ -3546,6 +3586,12 @@ export function SettingsFanoutSection({
         )}
 
         <Separator />
+
+        {editServerError ? (
+          <p id="fanout-save-error" className="text-sm text-destructive" role="alert">
+            {editServerError}
+          </p>
+        ) : null}
 
         <div className="flex gap-2">
           <Button

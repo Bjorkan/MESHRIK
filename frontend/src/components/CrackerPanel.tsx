@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useForm, useStore } from '@tanstack/react-form';
 import { useDebouncer } from '@tanstack/react-pacer';
 import { GroupTextCracker, type ProgressReport } from 'meshcore-hashtag-cracker';
 import NoSleep from 'nosleep.js';
@@ -39,12 +40,27 @@ export function CrackerPanel({
 }: CrackerPanelProps) {
   const undecryptedGroupText = useCrackableRawPackets();
   const [isRunning, setIsRunning] = useState(false);
-  const [maxLength, setMaxLength] = useState(6);
-  const [maxLengthInput, setMaxLengthInput] = useState('6');
-  const [retryFailedAtNextLength, setRetryFailedAtNextLength] = useState(false);
-  const [decryptHistorical, setDecryptHistorical] = useState(true);
-  const [turboMode, setTurboMode] = useState(false);
-  const [twoWordMode, setTwoWordMode] = useState(false);
+  const controlsForm = useForm({
+    defaultValues: {
+      maxLength: 6,
+      maxLengthInput: '6',
+      maxLengthError: null as string | null,
+      retryFailedAtNextLength: false,
+      decryptHistorical: true,
+      turboMode: false,
+      twoWordMode: false,
+    },
+  });
+  const controls = useStore(controlsForm.store, (state) => state.values);
+  const {
+    maxLength,
+    maxLengthInput,
+    maxLengthError,
+    retryFailedAtNextLength,
+    decryptHistorical,
+    turboMode,
+    twoWordMode,
+  } = controls;
   const [progress, setProgress] = useState<ProgressReport | null>(null);
   const [queue, setQueue] = useState<Map<number, QueueItem>>(new Map());
   const [crackedChannels, setCrackedChannels] = useState<CrackedChannel[]>([]);
@@ -199,10 +215,6 @@ export function CrackerPanel({
 
   useEffect(() => {
     maxLengthRef.current = maxLength;
-  }, [maxLength]);
-
-  useEffect(() => {
-    setMaxLengthInput(String(maxLength));
   }, [maxLength]);
 
   useEffect(() => {
@@ -464,31 +476,41 @@ export function CrackerPanel({
             value={maxLengthInput}
             onChange={(e) => {
               const nextValue = e.target.value;
-              setMaxLengthInput(nextValue);
-              if (nextValue === '') return;
-              const parsed = Number.parseInt(nextValue, 10);
-              if (Number.isNaN(parsed)) return;
-              setMaxLength(Math.min(10, Math.max(1, parsed)));
+              controlsForm.setFieldValue('maxLengthInput', nextValue);
+              const parsed = Number(nextValue);
+              if (!Number.isInteger(parsed) || parsed < 1 || parsed > 10) {
+                controlsForm.setFieldValue(
+                  'maxLengthError',
+                  'Max length must be a whole number from 1–10.'
+                );
+                return;
+              }
+              controlsForm.setFieldValue('maxLengthError', null);
+              controlsForm.setFieldValue('maxLength', parsed);
             }}
             onBlur={() => {
-              const parsed = Number.parseInt(maxLengthInput, 10);
-              const nextValue = Number.isNaN(parsed)
-                ? maxLength
-                : Math.min(10, Math.max(1, parsed));
-              setMaxLengthInput(String(nextValue));
-              if (nextValue !== maxLength) {
-                setMaxLength(nextValue);
-              }
+              controlsForm.setFieldValue('maxLengthInput', String(maxLength));
+              controlsForm.setFieldValue('maxLengthError', null);
             }}
             className="w-14 px-2 py-1 text-sm bg-muted border border-border rounded"
+            aria-invalid={maxLengthError ? true : undefined}
+            aria-describedby={maxLengthError ? 'cracker-max-length-error' : undefined}
           />
         </div>
+
+        {maxLengthError ? (
+          <span id="cracker-max-length-error" className="text-xs text-destructive" role="alert">
+            {maxLengthError}
+          </span>
+        ) : null}
 
         <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
           <input
             type="checkbox"
             checked={retryFailedAtNextLength}
-            onChange={(e) => setRetryFailedAtNextLength(e.target.checked)}
+            onChange={(e) =>
+              controlsForm.setFieldValue('retryFailedAtNextLength', e.target.checked)
+            }
             className="rounded"
           />
           Retry failed at n+1
@@ -498,7 +520,7 @@ export function CrackerPanel({
           <input
             type="checkbox"
             checked={decryptHistorical}
-            onChange={(e) => setDecryptHistorical(e.target.checked)}
+            onChange={(e) => controlsForm.setFieldValue('decryptHistorical', e.target.checked)}
             className="rounded"
           />
           Decrypt historical packets if key found
@@ -515,7 +537,7 @@ export function CrackerPanel({
           <input
             type="checkbox"
             checked={twoWordMode}
-            onChange={(e) => setTwoWordMode(e.target.checked)}
+            onChange={(e) => controlsForm.setFieldValue('twoWordMode', e.target.checked)}
             className="rounded"
           />
           Try word pairs
@@ -525,7 +547,7 @@ export function CrackerPanel({
           <input
             type="checkbox"
             checked={turboMode}
-            onChange={(e) => setTurboMode(e.target.checked)}
+            onChange={(e) => controlsForm.setFieldValue('turboMode', e.target.checked)}
             className="rounded"
           />
           Turbo mode (experimental)

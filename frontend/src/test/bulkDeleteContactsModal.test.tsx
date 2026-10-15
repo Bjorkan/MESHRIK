@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { BulkDeleteContactsModal } from '../components/settings/BulkDeleteContactsModal';
@@ -44,10 +45,23 @@ function makeContact(index: number, overrides: Partial<Contact> = {}): Contact {
 function renderModal(contacts: Contact[]) {
   const onClose = vi.fn();
   const onDeleted = vi.fn();
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  const renderDialog = (nextContacts: Contact[]) => (
+    <QueryClientProvider client={queryClient}>
+      <BulkDeleteContactsModal
+        open
+        contacts={nextContacts}
+        onClose={onClose}
+        onDeleted={onDeleted}
+      />
+    </QueryClientProvider>
+  );
+  const view = render(renderDialog(contacts));
   return {
-    ...render(
-      <BulkDeleteContactsModal open contacts={contacts} onClose={onClose} onDeleted={onDeleted} />
-    ),
+    ...view,
+    rerenderContacts: (nextContacts: Contact[]) => view.rerender(renderDialog(nextContacts)),
     onClose,
     onDeleted,
   };
@@ -84,14 +98,7 @@ describe('BulkDeleteContactsModal TanStack Table state', () => {
     );
 
     fireEvent.change(screen.getByRole('combobox'), { target: { value: '2' } });
-    view.rerender(
-      <BulkDeleteContactsModal
-        open
-        contacts={[{ ...alice, name: 'Alice updated' }, bob, carol]}
-        onClose={view.onClose}
-        onDeleted={view.onDeleted}
-      />
-    );
+    view.rerenderContacts([{ ...alice, name: 'Alice updated' }, bob, carol]);
     expect(screen.getByText(/2 contacts shown \(filtered\)/)).toBeInTheDocument();
     expect(screen.getByText(/1 selected/)).toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: /Name/ })).toHaveAttribute(
@@ -105,20 +112,53 @@ describe('BulkDeleteContactsModal TanStack Table state', () => {
     expect(screen.queryByText('Bob')).not.toBeInTheDocument();
     expect(screen.queryByText('Carol')).not.toBeInTheDocument();
 
-    view.rerender(
-      <BulkDeleteContactsModal
-        open
-        contacts={[bob, carol, makeContact(4, { name: 'Dave', type: 2 })]}
-        onClose={view.onClose}
-        onDeleted={view.onDeleted}
-      />
-    );
+    view.rerenderContacts([bob, carol, makeContact(4, { name: 'Dave', type: 2 })]);
     expect(screen.getByText('Alice updated')).toBeInTheDocument();
     expect(screen.queryByText('Dave')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /I confirm permanent/ }));
     await waitFor(() => expect(mocks.bulkDeleteContacts).toHaveBeenCalledWith([alice.public_key]));
     expect(view.onDeleted).toHaveBeenCalledWith([alice.public_key]);
+  });
+
+  it('reports partial radio deletion without losing the successful database result', async () => {
+    const alice = makeContact(1, { name: 'Alice' });
+    mocks.bulkDeleteContacts.mockResolvedValue({
+      deleted: 1,
+      radio_deleted: 0,
+      radio_failed: 1,
+      failed_keys: [alice.public_key],
+    });
+    const view = renderModal([alice]);
+
+    fireEvent.click(await rowCheckbox('Alice'));
+    fireEvent.click(screen.getByRole('button', { name: 'Proceed to confirmation (1)' }));
+    fireEvent.click(screen.getByRole('button', { name: /I confirm permanent/ }));
+
+    await waitFor(() => {
+      expect(mocks.toast.warning).toHaveBeenCalledWith('Deleted 1 contact', {
+        description: '1 could not be removed from the radio and may return during synchronization.',
+      });
+    });
+    expect(view.onDeleted).toHaveBeenCalledWith([alice.public_key]);
+  });
+
+  it('keeps destructive confirmation open when the server rejects deletion', async () => {
+    const alice = makeContact(1, { name: 'Alice' });
+    mocks.bulkDeleteContacts.mockRejectedValue(new Error('Radio disconnected'));
+    const view = renderModal([alice]);
+
+    fireEvent.click(await rowCheckbox('Alice'));
+    fireEvent.click(screen.getByRole('button', { name: 'Proceed to confirmation (1)' }));
+    fireEvent.click(screen.getByRole('button', { name: /I confirm permanent/ }));
+
+    await waitFor(() => {
+      expect(mocks.toast.error).toHaveBeenCalledWith('Bulk delete failed', {
+        description: 'Radio disconnected',
+      });
+    });
+    expect(screen.getByRole('heading', { name: 'Confirm Deletion' })).toBeInTheDocument();
+    expect(view.onDeleted).not.toHaveBeenCalled();
   });
 
   it.each([100, 1000, 5000])(

@@ -578,6 +578,37 @@ describe('SettingsFanoutSection', () => {
     );
   });
 
+  it('keeps invalid webhook header JSON in the Form draft with an accessible field error', async () => {
+    mockedApi.getFanoutConfigs.mockResolvedValue([webhookConfig]);
+    renderSection();
+    await waitFor(() => expect(screen.getByText('Test Hook')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+
+    const headers = await screen.findByLabelText('Extra Headers (JSON)');
+    fireEvent.change(headers, { target: { value: '["not-an-object"]' } });
+
+    const error = screen.getByRole('alert');
+    expect(error).toHaveTextContent('Must be a JSON object');
+    expect(headers).toHaveAttribute('aria-invalid', 'true');
+    expect(headers).toHaveAttribute('aria-describedby', error.id);
+  });
+
+  it('keeps the editor open and exposes a server rejection beside the form', async () => {
+    mockedApi.getFanoutConfigs.mockResolvedValue([webhookConfig]);
+    mockedApi.updateFanoutConfig.mockRejectedValue(new Error('Endpoint rejected configuration'));
+    renderSection();
+    await waitFor(() => expect(screen.getByText('Test Hook')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    await waitFor(() => expect(screen.getByText('← Back to list')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save as Enabled' }));
+
+    const error = await screen.findByRole('alert');
+    expect(error).toHaveTextContent('Endpoint rejected configuration');
+    expect(screen.getByLabelText('Name')).toHaveAttribute('aria-describedby', error.id);
+    expect(screen.getByText('← Back to list')).toBeInTheDocument();
+  });
+
   it('creates Apprise with outgoing forwarding disabled by default', async () => {
     const createdApprise: FanoutConfig = {
       id: 'ap-new',

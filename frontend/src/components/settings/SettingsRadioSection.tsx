@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useForm, useStore } from '@tanstack/react-form';
+import { useMutation } from '@tanstack/react-query';
 import { ChevronDown, Download, MapPinned, Upload } from 'lucide-react';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -282,6 +283,19 @@ export function SettingsRadioSection({
   onClose: () => void;
   className?: string;
 }) {
+  const saveRadioMutation = useMutation({
+    mutationFn: (update: RadioConfigUpdate) => onSave(update),
+    retry: false,
+  });
+  const saveAppSettingsMutation = useMutation({
+    mutationFn: (update: AppSettingsUpdate) => onSaveAppSettings(update),
+    retry: false,
+  });
+  const setPrivateKeyMutation = useMutation({
+    mutationFn: (key: string) => onSetPrivateKey(key),
+    retry: false,
+  });
+  const rebootMutation = useMutation({ mutationFn: () => onReboot(), retry: false });
   const radioForm = useForm({
     defaultValues: radioDraftFromConfig(config),
     onSubmit: async ({ value }) => {
@@ -295,10 +309,10 @@ export function SettingsRadioSection({
         return;
       }
       try {
-        await onSave(update);
+        await saveRadioMutation.mutateAsync(update);
         if (value.rebootAfterSave) {
           toast.success('Radio config saved, rebooting...');
-          await onReboot();
+          await rebootMutation.mutateAsync();
           if (!pageMode) onClose();
         } else {
           toast.success('Radio config saved');
@@ -342,10 +356,10 @@ export function SettingsRadioSection({
       }
       identityForm.setFieldValue('serverError', '');
       try {
-        await onSetPrivateKey(value.privateKey.trim());
+        await setPrivateKeyMutation.mutateAsync(value.privateKey.trim());
         identityForm.setFieldValue('privateKey', '');
         toast.success('Private key set, rebooting...');
-        await onReboot();
+        await rebootMutation.mutateAsync();
         if (!pageMode) onClose();
       } catch (err) {
         identityForm.setFieldValue(
@@ -390,7 +404,7 @@ export function SettingsRadioSection({
         if (newMaxRadioContacts !== appSettings.max_radio_contacts) {
           update.max_radio_contacts = newMaxRadioContacts;
         }
-        if (Object.keys(update).length > 0) await onSaveAppSettings(update);
+        if (Object.keys(update).length > 0) await saveAppSettingsMutation.mutateAsync(update);
         toast.success('Settings saved');
       } catch (err) {
         floodForm.setFieldValue(
@@ -422,7 +436,7 @@ export function SettingsRadioSection({
       try {
         const newAdvertInterval = hours * 3600;
         if (newAdvertInterval !== appSettings.advert_interval) {
-          await onSaveAppSettings({ advert_interval: newAdvertInterval });
+          await saveAppSettingsMutation.mutateAsync({ advert_interval: newAdvertInterval });
         }
         toast.success('Advertising interval saved');
       } catch (err) {
@@ -448,13 +462,13 @@ export function SettingsRadioSection({
       radioForm.setFieldValue('serverError', '');
       try {
         if (typeof data.private_key === 'string' && data.private_key) {
-          await onSetPrivateKey(data.private_key);
+          await setPrivateKeyMutation.mutateAsync(data.private_key);
           toast.success('Config + private key imported, saving & rebooting...');
         } else {
           toast.success('Config imported, saving & rebooting...');
         }
-        await onSave(update);
-        await onReboot();
+        await saveRadioMutation.mutateAsync(update);
+        await rebootMutation.mutateAsync();
         if (!pageMode) onClose();
       } catch (err) {
         radioForm.setFieldValue(
@@ -930,6 +944,8 @@ export function SettingsRadioSection({
           value={privateKey}
           onChange={(e) => identityForm.setFieldValue('privateKey', e.target.value)}
           placeholder="64-character hex private key"
+          aria-invalid={identityError ? true : undefined}
+          aria-describedby={identityError ? 'private-key-error' : undefined}
         />
         <Button
           onClick={handleSetPrivateKey}
@@ -944,7 +960,7 @@ export function SettingsRadioSection({
       </div>
 
       {identityError && (
-        <div className="text-sm text-destructive" role="alert">
+        <div id="private-key-error" className="text-sm text-destructive" role="alert">
           {identityError}
         </div>
       )}
@@ -982,6 +998,8 @@ export function SettingsRadioSection({
             step="any"
             value={freq}
             onChange={(e) => radioForm.setFieldValue('freq', e.target.value)}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? 'radio-config-error' : undefined}
           />
         </div>
         <div className="space-y-2">
@@ -992,6 +1010,8 @@ export function SettingsRadioSection({
             step="any"
             value={bw}
             onChange={(e) => radioForm.setFieldValue('bw', e.target.value)}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? 'radio-config-error' : undefined}
           />
         </div>
       </div>
@@ -1006,6 +1026,8 @@ export function SettingsRadioSection({
             max="12"
             value={sf}
             onChange={(e) => radioForm.setFieldValue('sf', e.target.value)}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? 'radio-config-error' : undefined}
           />
         </div>
         <div className="space-y-2">
@@ -1017,6 +1039,8 @@ export function SettingsRadioSection({
             max="8"
             value={cr}
             onChange={(e) => radioForm.setFieldValue('cr', e.target.value)}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? 'radio-config-error' : undefined}
           />
         </div>
       </div>
@@ -1029,6 +1053,8 @@ export function SettingsRadioSection({
             type="number"
             value={txPower}
             onChange={(e) => radioForm.setFieldValue('txPower', e.target.value)}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? 'radio-config-error' : undefined}
           />
         </div>
         <div className="space-y-2">
@@ -1114,6 +1140,8 @@ export function SettingsRadioSection({
               step="any"
               value={lat}
               onChange={(e) => radioForm.setFieldValue('lat', e.target.value)}
+              aria-invalid={error ? true : undefined}
+              aria-describedby={error ? 'radio-config-error' : undefined}
             />
           </div>
           <div className="space-y-2">
@@ -1126,6 +1154,8 @@ export function SettingsRadioSection({
               step="any"
               value={lon}
               onChange={(e) => radioForm.setFieldValue('lon', e.target.value)}
+              aria-invalid={error ? true : undefined}
+              aria-describedby={error ? 'radio-config-error' : undefined}
             />
           </div>
         </div>
@@ -1213,7 +1243,7 @@ export function SettingsRadioSection({
       </div>
 
       {error && (
-        <div className="text-sm text-destructive" role="alert">
+        <div id="radio-config-error" className="text-sm text-destructive" role="alert">
           {error}
         </div>
       )}
@@ -1425,6 +1455,8 @@ export function SettingsRadioSection({
           max="1000"
           value={maxRadioContacts}
           onChange={(e) => floodForm.setFieldValue('maxRadioContacts', e.target.value)}
+          aria-invalid={floodError ? true : undefined}
+          aria-describedby={floodError ? 'max-contacts-error' : undefined}
         />
         <p className="text-[0.8125rem] text-muted-foreground">
           Configured radio contact capacity. Favorites reload first, then background maintenance
@@ -1440,7 +1472,7 @@ export function SettingsRadioSection({
       </div>
 
       {floodError && (
-        <div className="text-sm text-destructive" role="alert">
+        <div id="max-contacts-error" className="text-sm text-destructive" role="alert">
           {floodError}
         </div>
       )}
@@ -1465,6 +1497,8 @@ export function SettingsRadioSection({
               value={advertIntervalHours}
               onChange={(e) => advertIntervalForm.setFieldValue('hours', e.target.value)}
               className="w-28"
+              aria-invalid={advertIntervalError ? true : undefined}
+              aria-describedby={advertIntervalError ? 'advert-interval-error' : undefined}
             />
             <span className="text-sm text-muted-foreground">hours (0 = off)</span>
           </div>
@@ -1473,7 +1507,7 @@ export function SettingsRadioSection({
             Recommended: 24 hours or higher.
           </p>
           {advertIntervalError && (
-            <div className="text-sm text-destructive" role="alert">
+            <div id="advert-interval-error" className="text-sm text-destructive" role="alert">
               {advertIntervalError}
             </div>
           )}

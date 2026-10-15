@@ -110,6 +110,8 @@ export function ContactRoutingOverrideModal({
               placeholder='Examples: "ae,f1" or "ae92,f13e"'
               autoFocus
               disabled={saving}
+              aria-invalid={error ? true : undefined}
+              aria-describedby={error ? 'routing-override-error' : undefined}
             />
             <div className="space-y-1 text-xs text-muted-foreground">
               <p>Use comma-separated 1, 2, or 3 byte hop IDs for an explicit path.</p>
@@ -150,6 +152,7 @@ export function ContactRoutingOverrideModal({
 
           {error && (
             <div
+              id="routing-override-error"
               role="alert"
               className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
             >

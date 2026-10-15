@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { SettingsModal } from '../components/SettingsModal';
@@ -145,16 +146,22 @@ function renderModal(overrides?: {
     contacts: overrides?.contacts,
     trackedTelemetryRepeaters: overrides?.trackedTelemetryRepeaters,
   };
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  const renderSettings = (
+    desktopSection: SettingsSection = overrides?.desktopSection ?? 'radio'
+  ) => (
+    <QueryClientProvider client={queryClient}>
+      {overrides?.externalSidebarNav ? (
+        <SettingsModal {...commonProps} externalSidebarNav desktopSection={desktopSection} />
+      ) : (
+        <SettingsModal {...commonProps} />
+      )}
+    </QueryClientProvider>
+  );
 
-  const view = overrides?.externalSidebarNav
-    ? render(
-        <SettingsModal
-          {...commonProps}
-          externalSidebarNav
-          desktopSection={overrides.desktopSection ?? 'radio'}
-        />
-      )
-    : render(<SettingsModal {...commonProps} />);
+  const view = render(renderSettings());
 
   return {
     onSaveAppSettings,
@@ -169,9 +176,7 @@ function renderModal(overrides?: {
     onDiscoverMesh,
     onDiscoverRegions,
     rerenderDesktopSection: (desktopSection: SettingsSection) =>
-      view.rerender(
-        <SettingsModal {...commonProps} externalSidebarNav desktopSection={desktopSection} />
-      ),
+      view.rerender(renderSettings(desktopSection)),
     setMobile,
     view,
   };
@@ -226,6 +231,7 @@ function openDatabaseSection() {
 describe('SettingsModal', () => {
   beforeEach(() => {
     vi.spyOn(api, 'getFanoutConfigs').mockResolvedValue([]);
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
   });
 
   afterEach(() => {
@@ -471,6 +477,35 @@ describe('SettingsModal', () => {
     });
   });
 
+  it('rejects incomplete radio numbers and connects the accessible error to the fields', async () => {
+    const { onSave } = renderModal();
+    openRadioSection();
+
+    const frequency = screen.getByLabelText('Frequency (MHz)');
+    fireEvent.change(frequency, { target: { value: '' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save Radio Config' }));
+
+    const error = await screen.findByRole('alert');
+    expect(error).toHaveTextContent('All numeric fields must contain complete, valid values');
+    expect(frequency).toHaveAttribute('aria-invalid', 'true');
+    expect(frequency).toHaveAttribute('aria-describedby', error.id);
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it('keeps a disconnected-radio rejection beside the submitted radio fields', async () => {
+    const onSave = vi.fn(async () => {
+      throw new Error('Radio disconnected');
+    });
+    renderModal({ onSave });
+    openRadioSection();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save Radio Config' }));
+
+    const error = await screen.findByRole('alert');
+    expect(error).toHaveTextContent('Radio disconnected');
+    expect(screen.getByLabelText('Frequency (MHz)')).toHaveAttribute('aria-describedby', error.id);
+  });
+
   it('saves changed max contacts value through onSaveAppSettings', async () => {
     const { onSaveAppSettings } = renderModal();
     openRadioSection();
@@ -632,6 +667,20 @@ describe('SettingsModal', () => {
 
     expect(screen.getByText('Windows 95')).toBeInTheDocument();
     expect(screen.getByText('iPhone')).toBeInTheDocument();
+  });
+
+  it('reports invalid local JSON beside the editor without persisting it', async () => {
+    renderModal();
+    openLocalSection();
+
+    fireEvent.click(screen.getByLabelText('Replace as you Type'));
+    const editor = screen.getByLabelText('Text replacement map (JSON)');
+    fireEvent.change(editor, { target: { value: '{broken' } });
+
+    const error = await screen.findByRole('alert');
+    expect(error).toHaveTextContent('Invalid JSON');
+    expect(editor).toHaveAttribute('aria-invalid', 'true');
+    expect(editor).toHaveAttribute('aria-describedby', error.id);
   });
 
   it('reverts checkbox state when auto-persist fails on the database section', async () => {
@@ -868,6 +917,30 @@ describe('SettingsModal', () => {
     await waitFor(() => {
       expect(runMaintenanceSpy).toHaveBeenCalledWith({ purgeLinkedRawPackets: true });
     });
+  });
+
+  it('validates cleanup numbers and honors destructive confirmation', async () => {
+    const runMaintenanceSpy = vi.spyOn(api, 'runMaintenance').mockResolvedValue({
+      packets_deleted: 0,
+      vacuumed: false,
+    });
+    renderModal();
+    openDatabaseSection();
+
+    const days = screen.getByLabelText('Older than (days)');
+    fireEvent.change(days, { target: { value: '1.5' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+
+    const error = await screen.findByRole('alert');
+    expect(error).toHaveTextContent('whole number from 1–365');
+    expect(days).toHaveAttribute('aria-invalid', 'true');
+    expect(days).toHaveAttribute('aria-describedby', error.id);
+    expect(runMaintenanceSpy).not.toHaveBeenCalled();
+
+    vi.mocked(window.confirm).mockReturnValue(false);
+    fireEvent.change(days, { target: { value: '14' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    expect(runMaintenanceSpy).not.toHaveBeenCalled();
   });
 
   it('renders statistics section with fetched data', async () => {

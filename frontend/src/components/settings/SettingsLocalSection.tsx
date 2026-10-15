@@ -562,9 +562,11 @@ export function SettingsLocalSection({
                     textReplaceError ? 'border-destructive' : 'border-input'
                   )}
                   aria-label="Text replacement map (JSON)"
+                  aria-invalid={textReplaceError ? true : undefined}
+                  aria-describedby={textReplaceError ? 'text-replace-error' : undefined}
                 />
                 {textReplaceError && (
-                  <p className="text-xs text-destructive" role="alert">
+                  <p id="text-replace-error" className="text-xs text-destructive" role="alert">
                     {textReplaceError} Changes are not saved until this is resolved.
                   </p>
                 )}

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useForm, useStore } from '@tanstack/react-form';
+import { useMutation } from '@tanstack/react-query';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import {
   createFilteredRowModel,
@@ -112,6 +113,10 @@ export function BulkDeleteContactsModal({
   const selectionScrollRef = useRef<HTMLDivElement>(null);
   const confirmationScrollRef = useRef<HTMLDivElement>(null);
   const pendingDeletionRef = useRef<PendingDeletion | null>(null);
+  const deleteMutation = useMutation({
+    mutationFn: (keys: string[]) => api.bulkDeleteContacts(keys),
+    retry: false,
+  });
   const form = useForm({
     defaultValues: {
       step: 'select' as 'select' | 'confirm',
@@ -125,7 +130,7 @@ export function BulkDeleteContactsModal({
       const keysToDelete = pendingDeletionRef.current?.keys ?? [];
       if (keysToDelete.length === 0) return;
       try {
-        const result = await api.bulkDeleteContacts(keysToDelete);
+        const result = await deleteMutation.mutateAsync(keysToDelete);
         const deletedLabel = `Deleted ${result.deleted} contact${result.deleted === 1 ? '' : 's'}`;
         if (result.radio_failed > 0) {
           toast.warning(deletedLabel, {
