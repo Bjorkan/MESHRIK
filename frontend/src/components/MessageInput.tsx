@@ -61,11 +61,13 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(fu
   const form = useForm({
     defaultValues: { text: '' },
     onSubmit: async ({ value }) => {
-      const trimmed = value.text.trim();
-      if (!trimmed || disabled) return;
+      // Preserve the authored payload byte-for-byte. Whitespace is meaningful
+      // in chat text; only an entirely whitespace-only draft is not sendable.
+      const payloadText = value.text;
+      if (!payloadText.trim() || disabled) return;
 
       try {
-        await onSend(trimmed);
+        await onSend(payloadText);
         form.reset();
       } catch (err) {
         console.error('Failed to send message:', err);
@@ -129,7 +131,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(fu
     return null; // Raw/other - no limits
   }, [conversationType, senderName]);
 
-  // UTF-8 byte length of the current text (LoRa packets are byte-constrained)
+  // UTF-8 byte length of the exact payload passed to onSend.
   const textByteLen = useMemo(() => byteLen(text), [text]);
 
   // Determine current limit state
@@ -207,9 +209,10 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(fu
   const canSubmit = text.trim().length > 0 && limitState !== 'error';
 
   // Show counter for messages (not raw).
-  // Desktop: always visible. Mobile: only show count after 100 characters.
+  // Desktop: always visible. Mobile: show once the encoded payload reaches
+  // 100 bytes, so emoji/CJK drafts get the same early warning as ASCII.
   const showCharCounter = limits !== null;
-  const showMobileCounterValue = text.length > 100;
+  const showMobileCounterValue = textByteLen >= 100;
 
   return (
     <form
@@ -272,7 +275,10 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(fu
           </div>
 
           {(showMobileCounterValue || warningMessage) && (
-            <div className="flex sm:hidden items-center justify-end gap-2 text-xs">
+            <div
+              className="flex sm:hidden items-center justify-end gap-2 text-xs"
+              data-testid="mobile-byte-counter"
+            >
               {showMobileCounterValue && (
                 <span
                   className={cn(

@@ -5,7 +5,7 @@
  * behavior for both DM and channel conversations.
  */
 
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import { MessageInput } from '../components/MessageInput';
@@ -116,6 +116,14 @@ describe('MessageInput', () => {
       expect(bytes).toBe(4);
       expect(screen.getByText(new RegExp(`${bytes}/156`))).toBeTruthy();
     });
+
+    it('shows the mobile counter based on UTF-8 bytes rather than character count', () => {
+      renderInput({ conversationType: 'contact' });
+      const text = '界'.repeat(34); // 34 characters, 102 UTF-8 bytes
+      fireEvent.change(getInput(), { target: { value: text } });
+
+      expect(screen.getByTestId('mobile-byte-counter')).toHaveTextContent('102/156');
+    });
   });
 
   describe('channel limit adjusts for sender name', () => {
@@ -209,6 +217,35 @@ describe('MessageInput', () => {
 
       expect(onSend).not.toHaveBeenCalled();
       expect(getInput()).toHaveValue('こんにちは');
+    });
+  });
+
+  describe('payload whitespace policy', () => {
+    it('sends leading and trailing whitespace exactly as authored', async () => {
+      renderInput({ conversationType: 'contact' });
+      const payload = '  indented message  ';
+      fireEvent.change(getInput(), { target: { value: payload } });
+      fireEvent.click(getSendButton());
+
+      await waitFor(() => expect(onSend).toHaveBeenCalledWith(payload));
+    });
+
+    it('does not submit an all-whitespace payload', () => {
+      const { container } = renderInput({ conversationType: 'contact' });
+      fireEvent.change(getInput(), { target: { value: ' \n\t ' } });
+      fireEvent.submit(container.querySelector('form')!);
+
+      expect(onSend).not.toHaveBeenCalled();
+      expect(getSendButton()).toBeDisabled();
+    });
+
+    it('counts surrounding whitespace in the enforced payload limit', () => {
+      renderInput({ conversationType: 'contact' });
+      const payload = ` ${'x'.repeat(154)} `;
+      fireEvent.change(getInput(), { target: { value: payload } });
+
+      expect(screen.getAllByText(/156\/156/).length).toBeGreaterThan(0);
+      expect(getSendButton()).toBeDisabled();
     });
   });
 
