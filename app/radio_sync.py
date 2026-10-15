@@ -418,54 +418,80 @@ async def _resolve_channel_for_pending_message(
     return cached_key, channel.name if channel else None
 
 
-async def _store_pending_direct_message(event) -> None:
-    """Route a CONTACT_MSG_RECV event pulled via get_msg() through the DM ingest path."""
+async def _store_pending_direct_message(event, *, journal_id: int | None = None) -> bool:
+    """Stage before processing; failures remain recoverable after radio dequeue."""
+    from app.services import pending_radio_ingress as journal
+
+    entry_id = journal_id if journal_id is not None else await journal.stage("PRIV", event.payload)
     try:
         await on_contact_message(event)
-    except Exception:
-        logger.warning("Failed to store pending direct message", exc_info=True)
+    except Exception as exc:
+        await journal.settle(entry_id, stored=False, reason=type(exc).__name__)
+        logger.warning("Queued direct message remained unresolved (%s)", type(exc).__name__)
+        return False
+    await journal.settle(entry_id, stored=True)
+    return True
 
 
-async def _store_pending_channel_message(mc: MeshCore, payload: dict) -> None:
-    """Persist a CHANNEL_MSG_RECV event pulled via get_msg()."""
-    channel_idx = payload.get("channel_idx")
-    if channel_idx is None:
-        logger.warning("Pending channel message missing channel_idx; dropping payload")
-        return
+async def _store_pending_channel_message(
+    mc: MeshCore, payload: dict, *, journal_id: int | None = None
+) -> bool:
+    """Stage original event, then resolve its slot and persist chat idempotently."""
+    from app.services import pending_radio_ingress as journal
 
+    entry_id = journal_id if journal_id is not None else await journal.stage("CHAN", payload)
     try:
+        channel_idx = payload.get("channel_idx")
+        if isinstance(channel_idx, bool) or channel_idx is None:
+            raise ValueError("Missing channel slot")
         normalized_channel_idx = int(channel_idx)
-    except (TypeError, ValueError):
-        logger.warning("Pending channel message had invalid channel_idx=%r", channel_idx)
-        return
-
-    channel_key, channel_name = await _resolve_channel_for_pending_message(
-        mc, normalized_channel_idx
-    )
-    if channel_key is None:
-        logger.warning(
-            "Could not resolve channel slot %d for pending message; message cannot be stored",
-            normalized_channel_idx,
+        if not 0 <= normalized_channel_idx <= 255:
+            raise ValueError("Invalid channel slot")
+        channel_key, channel_name = await _resolve_channel_for_pending_message(
+            mc, normalized_channel_idx
         )
-        return
+        if channel_key is None:
+            raise ValueError("Unresolved channel slot")
+        received_at = int(time.time())
+        ts = payload.get("sender_timestamp")
+        sender_timestamp = ts if ts is not None else received_at
+        sender_name, message_text = _split_channel_sender_and_text(payload.get("text", ""))
+        await create_fallback_channel_message(
+            conversation_key=channel_key,
+            message_text=message_text,
+            sender_timestamp=sender_timestamp,
+            received_at=received_at,
+            path=payload.get("path"),
+            path_len=payload.get("path_len"),
+            txt_type=payload.get("txt_type", 0),
+            sender_name=sender_name,
+            channel_name=channel_name,
+            broadcast_fn=broadcast_event,
+        )
+    except Exception as exc:
+        await journal.settle(entry_id, stored=False, reason=type(exc).__name__)
+        logger.warning("Queued channel message quarantined (%s)", type(exc).__name__)
+        return False
+    await journal.settle(entry_id, stored=True)
+    return True
 
-    received_at = int(time.time())
-    ts = payload.get("sender_timestamp")
-    sender_timestamp = ts if ts is not None else received_at
-    sender_name, message_text = _split_channel_sender_and_text(payload.get("text", ""))
 
-    await create_fallback_channel_message(
-        conversation_key=channel_key,
-        message_text=message_text,
-        sender_timestamp=sender_timestamp,
-        received_at=received_at,
-        path=payload.get("path"),
-        path_len=payload.get("path_len"),
-        txt_type=payload.get("txt_type", 0),
-        sender_name=sender_name,
-        channel_name=channel_name,
-        broadcast_fn=broadcast_event,
-    )
+async def retry_quarantined_messages(mc: MeshCore) -> int:
+    """Retry bounded unresolved rows after channel sync / database recovery."""
+    from types import SimpleNamespace
+
+    from app.services import pending_radio_ingress as journal
+
+    persisted = 0
+    for entry_id, kind, payload in await journal.unresolved():
+        if kind == "CHAN":
+            ok = await _store_pending_channel_message(mc, payload, journal_id=entry_id)
+        else:
+            ok = await _store_pending_direct_message(
+                SimpleNamespace(payload=payload), journal_id=entry_id
+            )
+        persisted += int(ok)
+    return persisted
 
 
 async def ensure_default_channels() -> None:
@@ -559,10 +585,10 @@ async def drain_pending_messages(mc: MeshCore) -> int:
                 break
             elif result.type in (EventType.CONTACT_MSG_RECV, EventType.CHANNEL_MSG_RECV):
                 if result.type == EventType.CHANNEL_MSG_RECV:
-                    await _store_pending_channel_message(mc, result.payload)
-                elif result.type == EventType.CONTACT_MSG_RECV:
-                    await _store_pending_direct_message(result)
-                count += 1
+                    saved = await _store_pending_channel_message(mc, result.payload)
+                else:
+                    saved = await _store_pending_direct_message(result)
+                count += int(saved)
 
             # Small delay between fetches
             await asyncio.sleep(0.1)
@@ -598,10 +624,10 @@ async def poll_for_messages(mc: MeshCore) -> int:
             return 0
         elif result.type in (EventType.CONTACT_MSG_RECV, EventType.CHANNEL_MSG_RECV):
             if result.type == EventType.CHANNEL_MSG_RECV:
-                await _store_pending_channel_message(mc, result.payload)
-            elif result.type == EventType.CONTACT_MSG_RECV:
-                await _store_pending_direct_message(result)
-            count += 1
+                saved = await _store_pending_channel_message(mc, result.payload)
+            else:
+                saved = await _store_pending_direct_message(result)
+            count += int(saved)
             # If we got a message, there might be more - drain them
             count += await drain_pending_messages(mc)
 
@@ -726,7 +752,9 @@ def start_message_polling():
     """Start the periodic message polling background task."""
     global _message_poll_task
     if _message_poll_task is None or _message_poll_task.done():
-        _message_poll_task = asyncio.create_task(_message_poll_loop(), name="radio-inbound-recovery")
+        _message_poll_task = asyncio.create_task(
+            _message_poll_loop(), name="radio-inbound-recovery"
+        )
         if settings.enable_message_poll_fallback:
             logger.info(
                 "Started periodic message polling task (aggressive fallback, interval: %ds)",
