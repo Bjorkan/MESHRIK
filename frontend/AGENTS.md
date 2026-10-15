@@ -465,6 +465,9 @@ action before keyup. Route destinations still belong to TanStack Router through 
 conversation navigation callback. Radix dialogs retain their accessible Escape-to-close behavior;
 do not register a competing global Escape handler. Local `onKeyDown` remains correct for
 MessageInput Enter-to-send/IME handling and for Enter/Space activation of custom interactive rows.
+The Hotkeys lifecycle suite runs under StrictMode and crosses route scope, blocking-dialog state,
+component unmount/remount, and final provider teardown; each remount dispatches once and inactive or
+unmounted scopes dispatch nothing.
 
 ### Radio settings behavior
 

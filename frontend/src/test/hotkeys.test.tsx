@@ -19,6 +19,13 @@ interface HarnessProps {
   onRadioActivity?: () => void;
 }
 
+interface LifecycleHarnessProps {
+  route: 'map' | 'search';
+  dialogOpen: boolean;
+  componentMounted: boolean;
+  onMap: () => void;
+}
+
 function HotkeyHarness({
   commandPaletteEnabled = true,
   navigationEnabled = true,
@@ -53,6 +60,22 @@ function renderHarness(props: HarnessProps = {}) {
       <HotkeyHarness {...props} />
     </HotkeysProvider>
   );
+}
+
+function LifecycleHarness({ route, dialogOpen, componentMounted, onMap }: LifecycleHarnessProps) {
+  return (
+    <>
+      {componentMounted && route === 'map' && (
+        <HotkeyHarness navigationEnabled={!dialogOpen} onMap={onMap} />
+      )}
+      {dialogOpen && <div role="dialog">Blocking dialog</div>}
+    </>
+  );
+}
+
+function pressMapSequence() {
+  fireEvent.keyDown(document, { key: 'g', code: 'KeyG' });
+  fireEvent.keyDown(document, { key: 'm', code: 'KeyM' });
 }
 
 describe('application hotkeys', () => {
@@ -127,6 +150,48 @@ describe('application hotkeys', () => {
     fireEvent.keyDown(document, { key: 'g', code: 'KeyG' });
     fireEvent.keyDown(document, { key: 'm', code: 'KeyM' });
     expect(onMap).toHaveBeenCalledTimes(1);
+  });
+
+  it('registers exactly once across route, dialog, remount, and StrictMode lifecycles', () => {
+    const onMap = vi.fn();
+    const renderLifecycle = (props: Omit<LifecycleHarnessProps, 'onMap'>) => (
+      <StrictMode>
+        <HotkeysProvider>
+          <LifecycleHarness {...props} onMap={onMap} />
+        </HotkeysProvider>
+      </StrictMode>
+    );
+    const { rerender, unmount } = render(
+      renderLifecycle({ route: 'map', dialogOpen: false, componentMounted: true })
+    );
+
+    pressMapSequence();
+    expect(onMap).toHaveBeenCalledTimes(1);
+
+    rerender(renderLifecycle({ route: 'search', dialogOpen: false, componentMounted: true }));
+    pressMapSequence();
+    expect(onMap).toHaveBeenCalledTimes(1);
+
+    rerender(renderLifecycle({ route: 'map', dialogOpen: true, componentMounted: true }));
+    expect(screen.getByRole('dialog')).toHaveTextContent('Blocking dialog');
+    pressMapSequence();
+    expect(onMap).toHaveBeenCalledTimes(1);
+
+    rerender(renderLifecycle({ route: 'map', dialogOpen: false, componentMounted: true }));
+    pressMapSequence();
+    expect(onMap).toHaveBeenCalledTimes(2);
+
+    rerender(renderLifecycle({ route: 'map', dialogOpen: false, componentMounted: false }));
+    pressMapSequence();
+    expect(onMap).toHaveBeenCalledTimes(2);
+
+    rerender(renderLifecycle({ route: 'map', dialogOpen: false, componentMounted: true }));
+    pressMapSequence();
+    expect(onMap).toHaveBeenCalledTimes(3);
+
+    unmount();
+    pressMapSequence();
+    expect(onMap).toHaveBeenCalledTimes(3);
   });
 
   it('builds shortcut help from live metadata registrations', async () => {
