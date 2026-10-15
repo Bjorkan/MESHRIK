@@ -266,7 +266,7 @@ describe('Radio Activity presentation regressions', () => {
     createView();
     const history = await screen.findByRole('region', { name: 'History' });
     expect(within(history).getByRole('group', { name: 'Job history list' })).toHaveClass(
-      'max-h-104'
+      'max-h-[26rem]'
     );
     expect(
       within(history).getByRole('checkbox', { name: 'Include routine background jobs' })

@@ -642,7 +642,7 @@ export function Sidebar({
       <div
         key={row.key}
         className={cn(
-          'px-3 py-2 cursor-pointer flex items-center gap-2 border-l-2 border-transparent hover:bg-accent transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
+          'px-3 py-2 cursor-pointer flex items-center gap-2 border-l-2 border-transparent hover:bg-accent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
           isActive(row.type, row.id) && 'bg-accent border-l-primary',
           row.unreadCount > 0 && '[&_.name]:font-semibold [&_.name]:text-foreground'
         )}
@@ -716,7 +716,7 @@ export function Sidebar({
       key={key}
       data-active={active ? 'true' : undefined}
       className={cn(
-        'sidebar-action-row px-3 py-2 cursor-pointer flex items-center gap-2 border-l-2 border-transparent hover:bg-accent transition-colors text-[0.8125rem] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
+        'sidebar-action-row px-3 py-2 cursor-pointer flex items-center gap-2 border-l-2 border-transparent hover:bg-accent transition-colors text-[0.8125rem] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         active && 'bg-accent border-l-primary'
       )}
       role="button"
@@ -865,7 +865,7 @@ export function Sidebar({
       <div className="flex justify-between items-center px-3 py-2 pt-3.5">
         <button
           className={cn(
-            'flex items-center gap-1.5 text-[0.625rem] uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring rounded',
+            'flex items-center gap-1.5 text-[0.625rem] uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded',
             isSearching && 'cursor-default'
           )}
           aria-expanded={!effectiveCollapsed}
@@ -885,7 +885,7 @@ export function Sidebar({
           <div className="ml-auto flex items-center gap-1.5">
             {sortSection && sectionSortOrder && (
               <button
-                className="bg-transparent text-muted-foreground/60 px-1 py-0.5 text-[0.625rem] rounded hover:text-foreground transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring whitespace-nowrap"
+                className="bg-transparent text-muted-foreground/60 px-1 py-0.5 text-[0.625rem] rounded hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring whitespace-nowrap"
                 onClick={() => handleSortToggle(sortSection)}
                 aria-label={`Sort ${title} ${sortOrderDescription(
                   nextSortOrder(sortSection, sectionSortOrder)
@@ -953,7 +953,7 @@ export function Sidebar({
       estimate: 38,
       node: (
         <div
-          className="px-3 py-2 cursor-pointer flex items-center gap-2 border-l-2 border-transparent hover:bg-accent transition-colors text-[0.8125rem] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+          className="px-3 py-2 cursor-pointer flex items-center gap-2 border-l-2 border-transparent hover:bg-accent transition-colors text-[0.8125rem] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           role="button"
           tabIndex={0}
           onKeyDown={handleKeyboardActivate}
@@ -1103,7 +1103,7 @@ export function Sidebar({
           />
           {searchQuery && (
             <button
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-lg leading-none transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring rounded"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-lg leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
               onClick={() => setSearchQuery('')}
               title="Clear search"
               aria-label="Clear search"
@@ -1115,7 +1115,7 @@ export function Sidebar({
       </div>
 
       {/* Scalable channel/contact/repeater rows share one scroll window. */}
-      <div ref={sidebarScrollRef} className="flex-1 min-h-0 overflow-y-auto contain-[layout_paint]">
+      <div ref={sidebarScrollRef} className="flex-1 min-h-0 overflow-y-auto [contain:layout_paint]">
         <div
           className="relative w-full"
           style={{ height: sidebarVirtualizer.getTotalSize() }}

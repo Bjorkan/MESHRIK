@@ -238,12 +238,16 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(fu
           className={cn(
             'flex-1 min-w-0 resize-none overflow-y-auto',
             'rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background',
-            'placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+            'placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
             'disabled:cursor-not-allowed disabled:opacity-50 md:text-sm'
           )}
           style={{ minHeight: '40px', maxHeight: '160px' }}
         />
-        <Button type="submit" disabled={disabled || sending || !canSubmit} className="shrink-0">
+        <Button
+          type="submit"
+          disabled={disabled || sending || !canSubmit}
+          className="flex-shrink-0"
+        >
           {sending ? 'Sending...' : 'Send'}
         </Button>
       </div>

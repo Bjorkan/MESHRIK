@@ -1,4 +1,4 @@
-import { useHotkey } from '@tanstack/react-hotkeys';
+import { useHotkey, useHotkeySequence } from '@tanstack/react-hotkeys';
 
 import { APP_HOTKEYS } from '../hotkeys';
 
@@ -41,12 +41,12 @@ export function useAppHotkeys({
     meta: APP_HOTKEYS.shortcutHelp.meta,
     requireReset: true,
   });
-  useHotkey(APP_HOTKEYS.map.binding, onOpenMap, {
+  useHotkeySequence(APP_HOTKEYS.map.binding, onOpenMap, {
     enabled: navigationEnabled,
     ignoreInputs: true,
     meta: APP_HOTKEYS.map.meta,
   });
-  useHotkey(APP_HOTKEYS.radioActivity.binding, onOpenRadioActivity, {
+  useHotkeySequence(APP_HOTKEYS.radioActivity.binding, onOpenRadioActivity, {
     enabled: navigationEnabled,
     ignoreInputs: true,
     meta: APP_HOTKEYS.radioActivity.meta,

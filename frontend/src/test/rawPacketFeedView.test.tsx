@@ -183,8 +183,8 @@ describe('RawPacketFeedView', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /show stats/i }));
     const stats = container.querySelector('aside');
-    expect(stats).toHaveClass('md:w-[42%]', 'xl:min-w-120');
-    expect(stats).not.toHaveClass('md:min-w-120');
+    expect(stats).toHaveClass('md:w-[42%]', 'xl:min-w-[30rem]');
+    expect(stats).not.toHaveClass('md:min-w-[30rem]');
   });
 
   it('analyzes a pasted raw packet without adding it to the live feed', () => {

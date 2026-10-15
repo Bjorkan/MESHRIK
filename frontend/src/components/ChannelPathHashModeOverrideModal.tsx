@@ -106,7 +106,7 @@ export function ChannelPathHashModeOverrideModal({
 
         <div className="space-y-4">
           <div className="rounded-md border border-border bg-muted/20 p-3 text-sm">
-            <div className="wrap-break-word font-medium">{channelName}</div>
+            <div className="break-words font-medium">{channelName}</div>
             <div className="mt-1 text-muted-foreground">
               Current override:{' '}
               {currentOverride != null

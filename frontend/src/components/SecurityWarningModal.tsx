@@ -90,7 +90,7 @@ export function SecurityWarningModal({ health }: SecurityWarningModalProps) {
     <Dialog open>
       <DialogContent
         hideCloseButton
-        className="w-[calc(100vw-1rem)] max-w-2xl gap-5 overflow-y-auto px-4 py-5 max-h-[calc(100dvh-2rem)] sm:w-full sm:max-h-[min(85dvh,48rem)] sm:px-6"
+        className="w-[calc(100vw-1rem)] max-w-[42rem] gap-5 overflow-y-auto px-4 py-5 max-h-[calc(100dvh-2rem)] sm:w-full sm:max-h-[min(85dvh,48rem)] sm:px-6"
         onEscapeKeyDown={(event) => event.preventDefault()}
         onInteractOutside={(event) => event.preventDefault()}
       >
@@ -107,7 +107,7 @@ export function SecurityWarningModal({ health }: SecurityWarningModalProps) {
 
         <hr className="border-border" />
 
-        <div className="space-y-3 wrap-break-word text-sm leading-6 text-muted-foreground">
+        <div className="space-y-3 break-words text-sm leading-6 text-muted-foreground">
           <DialogDescription>
             Bots are not disabled, and app-wide Basic Auth is not configured.
           </DialogDescription>

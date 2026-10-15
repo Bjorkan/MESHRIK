@@ -21,30 +21,41 @@ function displayHotkey(hotkey: Parameters<typeof formatForDisplay>[0]): string {
 }
 
 export function ShortcutHelpDialog({ open, onOpenChange }: ShortcutHelpDialogProps) {
-  const registrations = useHotkeyRegistrations();
-  const entries: ShortcutHelpEntry[] = registrations
-    .flatMap((registration) => {
+  const { hotkeys, sequences } = useHotkeyRegistrations();
+  const entries: ShortcutHelpEntry[] = [
+    ...hotkeys.flatMap((registration) => {
       const { meta } = registration.options;
       if (!meta?.name) return [];
       return [
         {
           id: registration.id,
-          binding:
-            registration.kind === 'sequence'
-              ? registration.hotkey.map(displayHotkey).join(' then ')
-              : displayHotkey(registration.hotkey),
+          binding: displayHotkey(registration.hotkey),
           enabled: registration.options.enabled !== false,
           name: meta.name,
           description: meta.description,
           group: meta.group ?? 'Other',
         },
       ];
-    })
-    .sort((left, right) =>
-      left.group === right.group
-        ? left.name.localeCompare(right.name)
-        : left.group.localeCompare(right.group)
-    );
+    }),
+    ...sequences.flatMap((registration) => {
+      const { meta } = registration.options;
+      if (!meta?.name) return [];
+      return [
+        {
+          id: registration.id,
+          binding: registration.sequence.map(displayHotkey).join(' then '),
+          enabled: registration.options.enabled !== false,
+          name: meta.name,
+          description: meta.description,
+          group: meta.group ?? 'Other',
+        },
+      ];
+    }),
+  ].sort((left, right) =>
+    left.group === right.group
+      ? left.name.localeCompare(right.name)
+      : left.group.localeCompare(right.group)
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

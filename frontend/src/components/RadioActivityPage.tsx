@@ -291,7 +291,7 @@ function VirtualJobHistory({
   return (
     <div
       ref={scrollRef}
-      className="max-h-104 overflow-y-auto min-w-0 contain-[layout_paint]"
+      className="max-h-[26rem] overflow-y-auto min-w-0 [contain:layout_paint]"
       role="group"
       aria-label="Job history list"
     >
@@ -336,7 +336,7 @@ function VirtualActivityList({ events }: { events: ActivityRecord[] }) {
   return (
     <div
       ref={scrollRef}
-      className="min-w-0 max-h-104 overflow-y-auto contain-[layout_paint]"
+      className="min-w-0 max-h-[26rem] overflow-y-auto [contain:layout_paint]"
       role="list"
       aria-label="Recent received events"
     >

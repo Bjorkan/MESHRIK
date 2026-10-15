@@ -1041,7 +1041,7 @@ export function SettingsRadioSection({
           id="preset"
           value={currentPreset}
           onChange={(e) => handlePresetChange(e.target.value)}
-          className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2"
+          className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
         >
           <option value="custom">Custom</option>
           {allRadioPresets.map((preset) => (
@@ -1156,7 +1156,7 @@ export function SettingsRadioSection({
             id="path-hash-mode"
             value={pathHashMode}
             onChange={(e) => radioForm.setFieldValue('pathHashMode', e.target.value)}
-            className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
           >
             <option value="0">1 byte — up to 63 hops (default)</option>
             <option value="1">2 bytes — up to 32 hops</option>
@@ -1234,7 +1234,7 @@ export function SettingsRadioSection({
             onChange={(e) =>
               radioForm.setFieldValue('advertLocationSource', e.target.value as 'off' | 'current')
             }
-            className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
           >
             <option value="off">Off</option>
             <option value="current">Include Node Location</option>
@@ -1269,7 +1269,7 @@ export function SettingsRadioSection({
               id="telemetry-mode-base"
               value={telemetryModeBase}
               onChange={(e) => radioForm.setFieldValue('telemetryModeBase', Number(e.target.value))}
-              className="w-full h-9 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              className="w-full h-9 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
             >
               <option value={0}>Deny</option>
               <option value={1}>Per-Contact</option>
@@ -1284,7 +1284,7 @@ export function SettingsRadioSection({
               id="telemetry-mode-loc"
               value={telemetryModeLoc}
               onChange={(e) => radioForm.setFieldValue('telemetryModeLoc', Number(e.target.value))}
-              className="w-full h-9 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              className="w-full h-9 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
             >
               <option value={0}>Deny</option>
               <option value={1}>Per-Contact</option>
@@ -1299,7 +1299,7 @@ export function SettingsRadioSection({
               id="telemetry-mode-env"
               value={telemetryModeEnv}
               onChange={(e) => radioForm.setFieldValue('telemetryModeEnv', Number(e.target.value))}
-              className="w-full h-9 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              className="w-full h-9 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
             >
               <option value={0}>Deny</option>
               <option value={1}>Per-Contact</option>
@@ -1437,7 +1437,7 @@ export function SettingsRadioSection({
           rows={4}
           placeholder={'nl-gr\nde-by\nMyRegion'}
           spellCheck={false}
-          className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono ring-offset-background placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
         />
         <p className="text-[0.8125rem] text-muted-foreground">
           One region name per line. Incoming region-scoped (TransportFlood/TransportDirect) packets
