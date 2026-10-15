@@ -18,6 +18,7 @@
   "dependencyDashboardApproval": false,
   "prCreation": "immediate",
   "automerge": false,
+  "npmrc": "optional=false",
   "ignorePaths": [
     "**/node_modules/**",
     "**/bower_components/**",
