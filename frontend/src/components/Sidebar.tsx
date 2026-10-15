@@ -1116,7 +1116,11 @@ export function Sidebar({
 
       {/* Scalable channel/contact/repeater rows share one scroll window. */}
       <div ref={sidebarScrollRef} className="flex-1 min-h-0 overflow-y-auto [contain:layout_paint]">
-        <div className="relative w-full" style={{ height: sidebarVirtualizer.getTotalSize() }}>
+        <div
+          className="relative w-full"
+          style={{ height: sidebarVirtualizer.getTotalSize() }}
+          data-virtual-viewport="sidebar"
+        >
           {sidebarVirtualizer.getVirtualItems().map((virtualRow) => {
             const item = sidebarItems[virtualRow.index];
             if (!item) return null;
@@ -1125,6 +1129,7 @@ export function Sidebar({
                 key={virtualRow.key}
                 ref={sidebarVirtualizer.measureElement}
                 data-index={virtualRow.index}
+                data-virtual-row={String(virtualRow.key)}
                 className="absolute left-0 top-0 w-full"
                 style={{ transform: `translateY(${virtualRow.start}px)` }}
               >

@@ -362,7 +362,13 @@ export function AppShell({
                   </div>
                 }
               >
-                <SearchView {...searchProps} focusRequestVersion={searchFocusRequestVersion} />
+                <SearchView
+                  {...searchProps}
+                  focusRequestVersion={searchFocusRequestVersion}
+                  visible={
+                    conversationPaneProps.activeConversation?.type === 'search' && !showSettings
+                  }
+                />
               </Suspense>
             </div>
           )}

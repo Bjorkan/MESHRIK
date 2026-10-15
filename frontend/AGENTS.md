@@ -609,7 +609,9 @@ The `SearchView` component (`components/SearchView.tsx`) provides full-text sear
 - **Same-conversation clear**: when `targetMessageId` is cleared after the target is reached, the hook preserves the around-loaded mid-history view instead of replacing it with the latest page.
 - **Persistence**: browser back/forward restores the URL-owned query and message anchor. `SearchView`
   stays mounted after first open using the same `hidden` class pattern as `CrackerPanel`, while its
-  text field is synchronized from Router state.
+  text field is synchronized from Router state. While another route is active the query becomes
+  uncontrolled so the retained results are not cleared; returning to search restores the TanStack
+  Virtual scroll offset and focused result after the hidden viewport becomes measurable again.
 - **Jump-to-message**: `useConversationMessages` handles optional `targetMessageId` by calling `api.getMessagesAround()` instead of the normal latest-page fetch, loading context around the target message. `MessageList` resolves the target to an index and calls `virtualizer.scrollToIndex(...)`, then applies a `message-highlight` CSS animation. A pending target suppresses the bottom-pin (see Virtualization below), since the around-load clears the list first and would otherwise be yanked to the newest message.
 - **Bidirectional pagination**: After jumping mid-history, `hasNewerMessages` enables forward pagination via `fetchNewerMessages`. The scroll-to-bottom button calls `jumpToBottom` (re-fetches latest page) instead of just scrolling.
 - **WS message suppression**: When `hasNewerMessages` is true, incoming WS messages for the active conversation are not added to the message list (the user is viewing historical context, not the latest page).

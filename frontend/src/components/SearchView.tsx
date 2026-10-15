@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { useDebouncer } from '@tanstack/react-pacer';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { api, isAbortError } from '../api';
@@ -40,6 +40,7 @@ export interface SearchViewProps {
   channels: Channel[];
   visibilityVersion?: number;
   focusRequestVersion?: number;
+  visible?: boolean;
   onNavigateToMessage: (target: SearchNavigateTarget) => void;
   searchQuery?: string;
   onSearchQueryChange?: (query: string) => void;
@@ -93,6 +94,7 @@ export function SearchView({
   channels,
   visibilityVersion = 0,
   focusRequestVersion = 0,
+  visible = true,
   onNavigateToMessage,
   searchQuery,
   onSearchQueryChange,
@@ -106,6 +108,9 @@ export function SearchView({
   const abortRef = useRef<AbortController | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
+  const retainedScrollOffsetRef = useRef(0);
+  const focusedResultIdRef = useRef<number | null>(null);
+  const wasVisibleRef = useRef(visible);
   const committedQuery = searchQuery !== undefined ? searchQuery : debouncedQuery;
   const highlightQuery = getHighlightQuery(committedQuery);
   const queryDebouncer = useDebouncer(
@@ -145,8 +150,50 @@ export function SearchView({
     setResults([]);
     setOffset(0);
     setHasMore(false);
+    retainedScrollOffsetRef.current = 0;
     virtualizer.scrollToOffset(0);
   }, [committedQuery, visibilityVersion, virtualizer]);
+
+  // AppShell keeps SearchView mounted while a result route is open. A display:none
+  // ancestor gives Virtual a zero-sized viewport, so retain and restore the real
+  // scroll offset explicitly when the view becomes visible again. Restore focus
+  // after Virtual has rebuilt the retained window so keyboard navigation resumes
+  // on the same result instead of falling back to document.body.
+  useLayoutEffect(() => {
+    const resultsElement = resultsRef.current;
+    const wasVisible = wasVisibleRef.current;
+    wasVisibleRef.current = visible;
+    if (!resultsElement) return;
+
+    if (!visible) return;
+    if (wasVisible) return;
+
+    const retainedOffset = retainedScrollOffsetRef.current;
+    resultsElement.scrollTop = retainedOffset;
+    virtualizer.scrollToOffset(retainedOffset);
+
+    let frame = 0;
+    let cancelled = false;
+    const restore = () => {
+      if (cancelled) return;
+      const focusedResultId = focusedResultIdRef.current;
+      const row =
+        focusedResultId === null
+          ? null
+          : resultsElement.querySelector<HTMLElement>(`[data-message-id="${focusedResultId}"]`);
+      if (row) {
+        row.focus({ preventScroll: true });
+        return;
+      }
+      frame += 1;
+      if (frame < 4) requestAnimationFrame(restore);
+    };
+    const raf = requestAnimationFrame(restore);
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf);
+    };
+  }, [visible, virtualizer]);
 
   useEffect(() => {
     return () => {
@@ -277,13 +324,22 @@ export function SearchView({
           placeholder="Search all messages..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          onFocus={() => {
+            focusedResultIdRef.current = null;
+          }}
           className="h-9 text-sm"
           aria-label="Search messages"
         />
       </div>
 
       {/* Results */}
-      <div ref={resultsRef} className="flex-1 overflow-y-auto [contain:layout_paint]">
+      <div
+        ref={resultsRef}
+        className="flex-1 overflow-y-auto [contain:layout_paint]"
+        onScroll={(event) => {
+          if (visible) retainedScrollOffsetRef.current = event.currentTarget.scrollTop;
+        }}
+      >
         {!committedQuery && (
           <div className="p-8 text-center text-muted-foreground text-sm">
             <p>Type to search across all messages</p>
@@ -310,6 +366,7 @@ export function SearchView({
             className="relative w-full"
             style={{ height: virtualizer.getTotalSize() }}
             aria-label="Message search results"
+            data-virtual-viewport="search-results"
           >
             {virtualizer.getVirtualItems().map((virtualRow) => {
               const result = results[virtualRow.index];
@@ -322,6 +379,7 @@ export function SearchView({
                   key={virtualRow.key}
                   ref={virtualizer.measureElement}
                   data-index={virtualRow.index}
+                  data-virtual-row={String(virtualRow.key)}
                   className="absolute left-0 top-0 w-full"
                   style={{ transform: `translateY(${virtualRow.start}px)` }}
                 >
@@ -329,6 +387,10 @@ export function SearchView({
                     className="px-4 py-3 border-b border-border/50 cursor-pointer hover:bg-accent/50 transition-colors"
                     role="button"
                     tabIndex={0}
+                    data-message-id={result.id}
+                    onFocus={() => {
+                      focusedResultIdRef.current = result.id;
+                    }}
                     onClick={() => handleResultClick(result)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {

@@ -77,7 +77,11 @@ export function RoutedApp() {
     return null;
   }, [channelMatch, contactMatch]);
   const routeTargetMessageId = channelMatch?.search.message ?? contactMatch?.search.message ?? null;
-  const routeSearchQuery = searchMatch?.search.q ?? '';
+  // SearchView deliberately remains mounted while another route is active so its
+  // virtual window, focus and loaded pages survive a jump to a result. Passing an
+  // empty controlled value while /search is inactive would clear that retained
+  // state and reset the virtualizer to the first row.
+  const routeSearchQuery = searchMatch ? (searchMatch.search.q ?? '') : undefined;
 
   const handleNavigateConversation = useCallback(
     (
