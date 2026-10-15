@@ -233,6 +233,70 @@ async def run_historical_dm_decryption(
         )
 
 
+class HistoricalDecryptSupervisor:
+    """One bounded, coalesced historical scan worker, never per-advert tasks."""
+
+    def __init__(self, cap: int = 128):
+        self.pending: asyncio.Queue[tuple[str, str | None]] = asyncio.Queue(maxsize=cap)
+        self.known: set[str] = set()
+        self.worker: asyncio.Task | None = None
+        self.failed = 0
+        self.completed = 0
+
+    def admit(self, contact_key: str, name: str | None) -> bool:
+        if contact_key in self.known:
+            return True
+        try:
+            self.pending.put_nowait((contact_key, name))
+        except asyncio.QueueFull:
+            logger.warning("Historical decrypt queue saturated; scan must be requested again")
+            return False
+        self.known.add(contact_key)
+        if self.worker is None or self.worker.done():
+            self.worker = asyncio.create_task(self._run(), name="historical-dm-decrypt-worker")
+        return True
+
+    async def _run(self) -> None:
+        try:
+            while True:
+                contact_key, name = await self.pending.get()
+                try:
+                    private = get_private_key()
+                    if private is None:
+                        self.failed += 1
+                        continue
+                    await run_historical_dm_decryption(
+                        private, bytes.fromhex(contact_key), contact_key, name
+                    )
+                    self.completed += 1
+                except Exception as exc:
+                    self.failed += 1
+                    logger.warning("Historical DM decrypt deferred (%s)", type(exc).__name__)
+                finally:
+                    self.known.discard(contact_key)
+                    self.pending.task_done()
+                # Yield to live RX and ACK SQLite commits between large scans.
+                await asyncio.sleep(0)
+        except asyncio.CancelledError:
+            raise
+
+    async def stop(self) -> None:
+        if self.worker is not None:
+            self.worker.cancel()
+            try:
+                await self.worker
+            except asyncio.CancelledError:
+                pass
+            self.worker = None
+        while not self.pending.empty():
+            self.pending.get_nowait()
+            self.pending.task_done()
+        self.known.clear()
+
+
+historical_decrypt_supervisor = HistoricalDecryptSupervisor()
+
+
 async def start_historical_dm_decryption(
     background_tasks,
     contact_public_key_hex: str,
@@ -296,24 +360,21 @@ async def start_historical_dm_decryption(
             status="invalid_contact_key",
             message="The contact public key is invalid, so historical decryption was not started.",
         )
-
-    logger.info("Starting historical DM decryption for contact %s", contact_public_key_hex[:12])
-    if background_tasks is None:
-        asyncio.create_task(
-            run_historical_dm_decryption(
-                private_key_bytes,
-                contact_public_key_bytes,
-                contact_public_key_hex.lower(),
-                display_name,
-            )
+    if len(contact_public_key_bytes) != 32:
+        logger.warning(
+            "Cannot start historical DM decryption: contact key must be 32 bytes (%d given)",
+            len(contact_public_key_bytes),
         )
-    else:
-        background_tasks.add_task(
-            run_historical_dm_decryption,
-            private_key_bytes,
-            contact_public_key_bytes,
-            contact_public_key_hex.lower(),
-            display_name,
+        return HistoricalDmDecryptStart(
+            status="invalid_contact_key",
+            message="The contact public key is invalid, so historical decryption was not started.",
+        )
+
+    # Queue stores only the contact identity, not private key bytes.
+    # All callers share one worker even when FastAPI BackgroundTasks is used.
+    if not historical_decrypt_supervisor.admit(contact_public_key_hex.lower(), display_name):
+        return HistoricalDmDecryptStart(
+            status="unavailable_key", message="Historical decrypt queue is full; retry later."
         )
     return HistoricalDmDecryptStart(
         status="started",

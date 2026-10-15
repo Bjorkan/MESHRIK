@@ -7,6 +7,7 @@ The fixtures in fixtures/websocket_events.json define the contract
 between backend and frontend - both sides test against the same data.
 """
 
+import asyncio
 import json
 from pathlib import Path
 from types import SimpleNamespace
@@ -141,30 +142,35 @@ class TestHistoricalDmDecryptionStart:
         assert result.status == expected_status
 
     @pytest.mark.asyncio
-    async def test_available_key_schedules_background_work_after_an_unavailable_attempt(self):
+    async def test_available_key_admits_contact_to_supervisor_after_unavailable_attempt(self):
         import app.packet_processor as packet_processor
 
         packet_processor._last_historical_dm_skip_status = "unavailable_policy"
         background_tasks = MagicMock()
         private_key = b"k" * 64
+        supervisor = packet_processor.historical_decrypt_supervisor
 
-        with (
-            patch("app.packet_processor.has_private_key", return_value=True),
-            patch("app.packet_processor.get_private_key", return_value=private_key),
-        ):
-            result = await packet_processor.start_historical_dm_decryption(
-                background_tasks, "aa" * 32, "Alice"
+        try:
+            with (
+                patch("app.packet_processor.has_private_key", return_value=True),
+                patch("app.packet_processor.get_private_key", return_value=private_key),
+                patch(
+                    "app.packet_processor.run_historical_dm_decryption", new_callable=AsyncMock
+                ) as run_decrypt,
+            ):
+                result = await packet_processor.start_historical_dm_decryption(
+                    background_tasks, "aa" * 32, "Alice"
+                )
+                await asyncio.wait_for(supervisor.pending.join(), timeout=5)
+
+            assert result.status == "started"
+            assert packet_processor._last_historical_dm_skip_status is None
+            background_tasks.add_task.assert_not_called()
+            run_decrypt.assert_awaited_once_with(
+                private_key, bytes.fromhex("aa" * 32), "aa" * 32, "Alice"
             )
-
-        assert result.status == "started"
-        assert packet_processor._last_historical_dm_skip_status is None
-        background_tasks.add_task.assert_called_once_with(
-            packet_processor.run_historical_dm_decryption,
-            private_key,
-            bytes.fromhex("aa" * 32),
-            "aa" * 32,
-            "Alice",
-        )
+        finally:
+            await supervisor.stop()
 
 
 class TestChannelMessagePipeline:

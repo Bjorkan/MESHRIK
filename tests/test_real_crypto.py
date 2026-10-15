@@ -9,6 +9,7 @@ Test data:
   - Channel: #six77 (hashtag room, key derived from SHA-256 of name)
 """
 
+import asyncio
 from hashlib import sha256
 from unittest.mock import MagicMock, patch
 
@@ -440,6 +441,7 @@ class TestHistoricalDMDecryptionPipeline:
     @pytest.mark.asyncio
     async def test_exported_keystore_key_runs_real_historical_decrypt(self, test_db):
         """A key made available by radio export can start and finish a later job."""
+        import app.packet_processor as packet_processor
         from app.keystore import clear_keys, set_private_key
         from app.packet_processor import start_historical_dm_decryption
 
@@ -461,13 +463,14 @@ class TestHistoricalDMDecryptionPipeline:
                 "Client1",
             )
             assert result.status == "started"
+            background_tasks.add_task.assert_not_called()
 
-            task, *args = background_tasks.add_task.call_args.args
+            supervisor = packet_processor.historical_decrypt_supervisor
             with (
                 patch("app.packet_processor.broadcast_event"),
                 patch("app.websocket.broadcast_success"),
             ):
-                await task(*args)
+                await asyncio.wait_for(supervisor.pending.join(), timeout=5)
 
             messages = await MessageRepository.get_all(
                 msg_type="PRIV", conversation_key=CLIENT1_PUBLIC_HEX, limit=10
@@ -477,6 +480,7 @@ class TestHistoricalDMDecryptionPipeline:
             ]
         finally:
             clear_keys()
+            await packet_processor.historical_decrypt_supervisor.stop()
 
 
 class TestLiveDMDecryptionPipeline:
