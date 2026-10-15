@@ -62,6 +62,7 @@ export function useWebSocket(options: UseWebSocketOptions) {
     const ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
+      if (wsRef.current !== ws) return;
       optionsRef.current.onConnectionChange?.('live');
       // Connection established (or re-established after disconnect)
       if (reconnectTimeoutRef.current) {
@@ -75,6 +76,7 @@ export function useWebSocket(options: UseWebSocketOptions) {
     };
 
     ws.onclose = () => {
+      if (wsRef.current !== ws) return;
       optionsRef.current.onConnectionChange?.('offline');
       // Connection lost — will auto-reconnect after delay
       wsRef.current = null;
@@ -88,16 +90,20 @@ export function useWebSocket(options: UseWebSocketOptions) {
         clearTimeout(reconnectTimeoutRef.current);
       }
       reconnectTimeoutRef.current = window.setTimeout(() => {
+        reconnectTimeoutRef.current = null;
+        if (!shouldReconnectRef.current || wsRef.current !== null) return;
         // Reconnect attempt after disconnect
         connect();
       }, 3000);
     };
 
     ws.onerror = (error) => {
+      if (wsRef.current !== ws) return;
       console.error('WebSocket error:', error);
     };
 
     ws.onmessage = (event) => {
+      if (wsRef.current !== ws) return;
       try {
         const msg = parseWsEvent(event.data);
         // Access handlers through ref to always use current versions
@@ -192,9 +198,9 @@ export function useWebSocket(options: UseWebSocketOptions) {
         clearTimeout(reconnectTimeoutRef.current);
         reconnectTimeoutRef.current = null;
       }
-      if (wsRef.current) {
-        wsRef.current.close();
-      }
+      const activeSocket = wsRef.current;
+      wsRef.current = null;
+      activeSocket?.close();
     };
   }, [connect]);
 }

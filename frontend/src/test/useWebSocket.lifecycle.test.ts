@@ -1,4 +1,5 @@
 import { act, renderHook } from '@testing-library/react';
+import { createElement, StrictMode, type PropsWithChildren } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useWebSocket } from '../useWebSocket';
@@ -24,10 +25,27 @@ class MockWebSocket {
 
   close(): void {
     this.readyState = MockWebSocket.CLOSED;
-    this.onclose?.();
   }
 
   send(): void {}
+
+  emitOpen(): void {
+    this.readyState = MockWebSocket.OPEN;
+    this.onopen?.();
+  }
+
+  emitClose(): void {
+    this.readyState = MockWebSocket.CLOSED;
+    this.onclose?.();
+  }
+
+  emitMessage(data: string): void {
+    this.onmessage?.({ data });
+  }
+}
+
+function strictWrapper({ children }: PropsWithChildren) {
+  return createElement(StrictMode, null, children);
 }
 
 const originalWebSocket = globalThis.WebSocket;
@@ -68,5 +86,66 @@ describe('useWebSocket lifecycle', () => {
 
     // Unmount-triggered socket close should not start a new connection.
     expect(MockWebSocket.instances).toHaveLength(1);
+  });
+
+  it('ignores delayed callbacks from a superseded StrictMode socket', () => {
+    const onConnectionChange = vi.fn();
+    const onHealth = vi.fn();
+    renderHook(() => useWebSocket({ onConnectionChange, onHealth }), {
+      wrapper: strictWrapper,
+    });
+
+    expect(MockWebSocket.instances).toHaveLength(2);
+    const [superseded, active] = MockWebSocket.instances;
+
+    act(() => {
+      active.emitOpen();
+      superseded.emitOpen();
+      superseded.emitMessage(JSON.stringify({ type: 'health', data: { status: 'stale' } }));
+      superseded.emitClose();
+      vi.advanceTimersByTime(3100);
+    });
+
+    expect(MockWebSocket.instances).toHaveLength(2);
+    expect(onConnectionChange).toHaveBeenCalledTimes(1);
+    expect(onConnectionChange).toHaveBeenLastCalledWith('live');
+    expect(onHealth).not.toHaveBeenCalled();
+  });
+
+  it('reconnects once after the active socket closes and reports recovery', () => {
+    const onConnectionChange = vi.fn();
+    const onReconnect = vi.fn();
+    renderHook(() => useWebSocket({ onConnectionChange, onReconnect }));
+    const first = MockWebSocket.instances[0];
+
+    act(() => first.emitOpen());
+    act(() => first.emitClose());
+    expect(onConnectionChange).toHaveBeenLastCalledWith('offline');
+
+    act(() => vi.advanceTimersByTime(3000));
+    expect(MockWebSocket.instances).toHaveLength(2);
+
+    act(() => MockWebSocket.instances[1].emitOpen());
+    expect(onConnectionChange).toHaveBeenLastCalledWith('live');
+    expect(onReconnect).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps delayed socket callbacks inert after unmount', () => {
+    const onConnectionChange = vi.fn();
+    const onHealth = vi.fn();
+    const { unmount } = renderHook(() => useWebSocket({ onConnectionChange, onHealth }));
+    const socket = MockWebSocket.instances[0];
+
+    unmount();
+    act(() => {
+      socket.emitOpen();
+      socket.emitMessage(JSON.stringify({ type: 'health', data: { status: 'stale' } }));
+      socket.emitClose();
+      vi.advanceTimersByTime(3100);
+    });
+
+    expect(MockWebSocket.instances).toHaveLength(1);
+    expect(onConnectionChange).not.toHaveBeenCalled();
+    expect(onHealth).not.toHaveBeenCalled();
   });
 });
