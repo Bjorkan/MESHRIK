@@ -24,6 +24,7 @@ export function SettingsDatabaseSection({
   className?: string;
 }) {
   const saveChainRef = useRef<Promise<void>>(Promise.resolve());
+  const maintenanceSubmitRef = useRef(false);
   const maintenanceMutation = useMutation({
     mutationFn: (action: { kind: 'cleanup'; days: number } | { kind: 'purge' }) =>
       action.kind === 'cleanup'
@@ -86,6 +87,17 @@ export function SettingsDatabaseSection({
   const { retentionDays, autoDecryptOnAdvert, retentionError } = values;
   const cleaning = isSubmitting && values.action === 'cleanup';
   const purgingDecryptedRaw = isSubmitting && values.action === 'purge';
+  const maintenanceBusy = isSubmitting || maintenanceMutation.isPending;
+
+  const submitMaintenance = (action: 'cleanup' | 'purge') => {
+    if (maintenanceSubmitRef.current) return;
+    maintenanceSubmitRef.current = true;
+    form.setFieldValue('action', action);
+    void form.handleSubmit().finally(() => {
+      maintenanceSubmitRef.current = false;
+      form.setFieldValue('action', null);
+    });
+  };
 
   useEffect(() => {
     if (form.getFieldMeta('autoDecryptOnAdvert')?.isDirty) return;
@@ -175,10 +187,9 @@ export function SettingsDatabaseSection({
                 ) {
                   return;
                 }
-                form.setFieldValue('action', 'cleanup');
-                void form.handleSubmit();
+                submitMaintenance('cleanup');
               }}
-              disabled={cleaning}
+              disabled={maintenanceBusy}
               className="border-destructive/50 text-destructive hover:bg-destructive/10"
             >
               {cleaning ? 'Deleting...' : 'Delete'}
@@ -206,10 +217,9 @@ export function SettingsDatabaseSection({
               ) {
                 return;
               }
-              form.setFieldValue('action', 'purge');
-              void form.handleSubmit();
+              submitMaintenance('purge');
             }}
-            disabled={purgingDecryptedRaw}
+            disabled={maintenanceBusy}
             className="w-full border-warning/50 text-warning hover:bg-warning/10"
           >
             {purgingDecryptedRaw ? 'Purging...' : 'Purge Archival Packets'}

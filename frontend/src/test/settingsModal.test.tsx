@@ -31,6 +31,14 @@ import {
   MIN_FONT_SCALE,
 } from '../utils/fontScale';
 
+function deferredMaintenance() {
+  let resolve!: (result: { packets_deleted: number; vacuumed: boolean }) => void;
+  const promise = new Promise<{ packets_deleted: number; vacuumed: boolean }>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
+}
+
 const baseConfig: RadioConfig = {
   public_key: 'aa'.repeat(32),
   name: 'TestNode',
@@ -1020,6 +1028,48 @@ describe('SettingsModal', () => {
     await waitFor(() => {
       expect(runMaintenanceSpy).toHaveBeenCalledWith({ purgeLinkedRawPackets: true });
     });
+  });
+
+  it('keeps cleanup identity immutable and blocks purge while cleanup is pending', async () => {
+    const pending = deferredMaintenance();
+    const runMaintenanceSpy = vi.spyOn(api, 'runMaintenance').mockReturnValue(pending.promise);
+    renderModal();
+    openDatabaseSection();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+
+    await waitFor(() => expect(runMaintenanceSpy).toHaveBeenCalledTimes(1));
+    expect(screen.getByRole('button', { name: 'Deleting...' })).toBeDisabled();
+    const purgeButton = screen.getByRole('button', { name: 'Purge Archival Packets' });
+    expect(purgeButton).toBeDisabled();
+    fireEvent.click(purgeButton);
+    expect(runMaintenanceSpy).toHaveBeenCalledTimes(1);
+    expect(runMaintenanceSpy).toHaveBeenCalledWith({ pruneUndecryptedDays: 14 });
+
+    pending.resolve({ packets_deleted: 2, vacuumed: false });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Delete' })).toBeEnabled());
+  });
+
+  it('keeps purge identity immutable and blocks cleanup while purge is pending', async () => {
+    const pending = deferredMaintenance();
+    const runMaintenanceSpy = vi.spyOn(api, 'runMaintenance').mockReturnValue(pending.promise);
+    renderModal();
+    openDatabaseSection();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Purge Archival Packets' }));
+
+    await waitFor(() => expect(runMaintenanceSpy).toHaveBeenCalledTimes(1));
+    expect(screen.getByRole('button', { name: 'Purging...' })).toBeDisabled();
+    const cleanupButton = screen.getByRole('button', { name: 'Delete' });
+    expect(cleanupButton).toBeDisabled();
+    fireEvent.click(cleanupButton);
+    expect(runMaintenanceSpy).toHaveBeenCalledTimes(1);
+    expect(runMaintenanceSpy).toHaveBeenCalledWith({ purgeLinkedRawPackets: true });
+
+    pending.resolve({ packets_deleted: 3, vacuumed: true });
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Purge Archival Packets' })).toBeEnabled()
+    );
   });
 
   it('validates cleanup numbers and honors destructive confirmation', async () => {
