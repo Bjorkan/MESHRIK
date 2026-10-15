@@ -925,3 +925,20 @@ async def local_companion_cli(request: LocalCliRequest) -> LocalCliResponse:
 
     result = await run_safe_local_cli(request.command)
     return LocalCliResponse(command=request.command, response=result)
+
+
+class RemoteCliRequest(BaseModel):
+    contact_public_key: str = Field(pattern=r"^[0-9a-fA-F]{64}$")
+    command: Literal["get radio", "get cad", "get dutycycle"]
+    consent_to_transmit: bool = False
+
+
+@router.post("/remote-companion-cli")
+async def remote_companion_cli(request: RemoteCliRequest) -> dict[str, str]:
+    from app.services.remote_companion_cli import remote_read_command
+
+    return await remote_read_command(
+        public_key=request.contact_public_key,
+        command=request.command,
+        consent=request.consent_to_transmit,
+    )

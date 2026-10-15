@@ -203,6 +203,12 @@ async def fetch_contact_cli_response(
                 await _store_pending_direct_message(result)
                 continue
 
+            if result.type == EventType.CHANNEL_DATA_RECV:
+                from app.services.channel_datagrams import stage_channel_datagram
+
+                await stage_channel_datagram(result.payload)
+                continue
+
             if result.type == EventType.CHANNEL_MSG_RECV:
                 logger.debug(
                     "Storing channel message (channel_idx=%s) consumed during CLI fetch",
