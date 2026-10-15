@@ -48,7 +48,10 @@ Keep it aligned with `frontend/src` source code.
   selectors so an RF observation does not re-render unrelated application state.
 - TanStack Table owns column definitions and row models for every semantic table. Interactive
   neighbor and bulk-contact tables delegate sorting/filtering to Table state; read-only ACL,
-  confirmation, and statistics tables use the same schema-driven rendering path.
+  confirmation, and statistics tables use the same schema-driven rendering path. Bulk-contact
+  sort, filter, and stable-key selection survive live entity replacements and the select/confirm
+  page transition, while a component remount resets them because no table preference is documented
+  as persistent.
 - TanStack Charts owns every statistics, telemetry, activity, and distribution chart. Shared
   typed bar, time-series, and donut adapters define responsive marks, scales, axes, tooltips,
   and accessible labels; Recharts is not part of the dependency graph.

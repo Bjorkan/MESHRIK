@@ -121,6 +121,50 @@ describe('BulkDeleteContactsModal TanStack Table state', () => {
     expect(view.onDeleted).toHaveBeenCalledWith([alice.public_key]);
   });
 
+  it('preserves sort, filter, and stable-ID selection across live updates and page transitions', async () => {
+    const alice = makeContact(1, { name: 'Alice', type: 1 });
+    const bob = makeContact(2, { name: 'Bob', type: 2 });
+    const carol = makeContact(3, { name: 'Carol', type: 2 });
+    const view = renderModal([alice, bob]);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Name' }));
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: '2' } });
+    fireEvent.click(await rowCheckbox('Bob'));
+
+    const liveBob = { ...bob, name: 'Bob live' };
+    view.rerenderContacts([carol, alice, liveBob]);
+
+    expect(screen.getByRole('combobox')).toHaveValue('2');
+    expect(screen.getByRole('columnheader', { name: /Name/ })).toHaveAttribute(
+      'aria-sort',
+      'ascending'
+    );
+    expect(screen.getByText(/2 contacts shown \(filtered\)/)).toBeInTheDocument();
+    expect(screen.getByText(/1 selected/)).toBeInTheDocument();
+    expect(await rowCheckbox('Bob live')).toBeChecked();
+    expect(await rowCheckbox('Carol')).not.toBeChecked();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Proceed to confirmation (1)' }));
+    expect(screen.getByRole('heading', { name: 'Confirm Deletion' })).toBeInTheDocument();
+    expect(screen.getByText('Bob live')).toBeInTheDocument();
+    expect(screen.queryByText('Carol')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+    expect(screen.getByRole('combobox')).toHaveValue('2');
+    expect(screen.getByRole('columnheader', { name: /Name/ })).toHaveAttribute(
+      'aria-sort',
+      'ascending'
+    );
+    expect(screen.getByText(/1 selected/)).toBeInTheDocument();
+    expect(await rowCheckbox('Bob live')).toBeChecked();
+    expect(await rowCheckbox('Carol')).not.toBeChecked();
+
+    const newestBob = { ...bob, name: 'Bob newest' };
+    view.rerenderContacts([alice, newestBob, carol]);
+    expect(await rowCheckbox('Bob newest')).toBeChecked();
+    expect(await rowCheckbox('Carol')).not.toBeChecked();
+  });
+
   it('reports partial radio deletion without losing the successful database result', async () => {
     const alice = makeContact(1, { name: 'Alice' });
     mocks.bulkDeleteContacts.mockResolvedValue({
@@ -196,7 +240,7 @@ describe('BulkDeleteContactsModal TanStack Table state', () => {
     15_000
   );
 
-  it('resets non-persistent filters, sorting and selection after a remount', () => {
+  it('reload/remount restores no undocumented table preferences', () => {
     const contacts = Array.from({ length: 100 }, (_, index) => makeContact(index + 1));
     const first = renderModal(contacts);
     fireEvent.click(screen.getByRole('button', { name: 'Select all' }));
