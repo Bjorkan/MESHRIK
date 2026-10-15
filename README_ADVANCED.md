@@ -175,3 +175,9 @@ replayed on restart. The existing SQLite message rows remain authoritative.
 Rollback for these foundational changes is to stop the process and restore the
 previous backend version; no database migrations or wire protocol changes are
 involved. The scheduler is not yet the source of truth for any existing send.
+
+## MeshCore 1.18 / Companion protocol 14
+
+See [MeshCore 1.18 compatibility and safe operator workflow](docs/MESHCORE_118_COMPATIBILITY.md)
+for local/remote CLI restrictions, binary datagram handling, SDK 2.3.16 and
+optional single-radio smoke checks.
