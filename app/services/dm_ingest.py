@@ -293,11 +293,8 @@ async def ingest_decrypted_direct_message(
 ) -> Message | None:
     conversation_key = their_public_key.lower()
 
-    if not outgoing and decrypted.txt_type == 1:
-        logger.debug(
-            "Skipping CLI response from %s (txt_type=1)",
-            conversation_key[:12],
-        )
+    if not outgoing and decrypted.txt_type in (1, 3):
+        logger.debug("Skipping non-chat Companion message type %s", decrypted.txt_type)
         return None
 
     contact = await contact_repository.get_by_key(conversation_key)

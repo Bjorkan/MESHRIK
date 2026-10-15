@@ -146,10 +146,10 @@ async def on_contact_message(event: "Event") -> None:
     from app.services.radio_jobs import RadioActivityKind
 
     radio_job_scheduler.record_activity(RadioActivityKind.CONTACT_MESSAGE_OBSERVED)
-    # Skip CLI command responses (txt_type=1) - these are handled by the command endpoint
+    # Never treat CLI responses (1) or remote CLI commands (3) as private chat.
     txt_type = payload.get("txt_type", 0)
-    if txt_type == 1:
-        logger.debug("Skipping CLI response from %s (txt_type=1)", payload.get("pubkey_prefix"))
+    if txt_type in (1, 3):
+        logger.debug("Skipping non-chat Companion message type %s", txt_type)
         return
 
     # Get full public key if available, otherwise use prefix
