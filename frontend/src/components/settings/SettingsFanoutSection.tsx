@@ -53,6 +53,7 @@ const DEFAULT_COMMUNITY_BROKER_HOST = 'mqtt-us-v1.letsmesh.net';
 const DEFAULT_COMMUNITY_BROKER_HOST_EU = 'mqtt-eu-v1.letsmesh.net';
 const DEFAULT_COMMUNITY_BROKER_PORT = 443;
 const DEFAULT_COMMUNITY_TRANSPORT = 'websockets';
+const DEFAULT_COMMUNITY_WEBSOCKET_PATH = '/';
 const DEFAULT_COMMUNITY_AUTH_MODE = 'token';
 const DEFAULT_MESHRANK_BROKER_HOST = 'meshrank.net';
 const DEFAULT_MESHRANK_BROKER_PORT = 8883;
@@ -67,6 +68,8 @@ function createCommunityConfigDefaults(
     broker_host: DEFAULT_COMMUNITY_BROKER_HOST,
     broker_port: DEFAULT_COMMUNITY_BROKER_PORT,
     transport: DEFAULT_COMMUNITY_TRANSPORT,
+    websocket_path: DEFAULT_COMMUNITY_WEBSOCKET_PATH,
+    _websocket_path_source: 'default',
     use_tls: true,
     tls_verify: true,
     auth_mode: DEFAULT_COMMUNITY_AUTH_MODE,
@@ -445,6 +448,12 @@ function normalizeIntegrationConfigForSave(
       normalized.profile === 'meshrank'
         ? topicTemplate
         : topicTemplate || DEFAULT_COMMUNITY_PACKET_TOPIC_TEMPLATE;
+
+    if (normalized.transport === 'websockets') {
+      normalized.websocket_path = normalizeCommunityWebsocketPath(normalized.websocket_path);
+    }
+    if (!normalized.preset) delete normalized.preset;
+    delete normalized._websocket_path_source;
   }
 
   if (configType === 'map_upload') {
@@ -458,6 +467,24 @@ function normalizeIntegrationConfigForSave(
   }
 
   return normalized;
+}
+
+function normalizeCommunityWebsocketPath(value: unknown): string {
+  const path = String(value ?? '').trim();
+  if (!path) return DEFAULT_COMMUNITY_WEBSOCKET_PATH;
+  if (!path.startsWith('/') || /\s|[?#]/.test(path)) {
+    throw new Error('WebSocket Path must start with / and contain no spaces, ? or #');
+  }
+  return path;
+}
+
+function getCommunityWebsocketPathError(value: unknown): string | null {
+  try {
+    normalizeCommunityWebsocketPath(value);
+    return null;
+  } catch (error) {
+    return error instanceof Error ? error.message : 'Invalid WebSocket Path';
+  }
 }
 
 function isDraftType(value: string): value is DraftType {
@@ -1505,6 +1532,16 @@ function MqttCommunityConfigEditor({
 }) {
   const authMode = (config.auth_mode as string) || DEFAULT_COMMUNITY_AUTH_MODE;
   const isMeshRank = config.profile === 'meshrank';
+  const websocketPathError = getCommunityWebsocketPathError(config.websocket_path);
+  const configuredPreset = config.preset
+    ? communityPresets[config.preset as keyof typeof communityPresets]
+    : undefined;
+  const websocketPathIsPresetGenerated =
+    config._websocket_path_source === 'preset' ||
+    Boolean(
+      configuredPreset &&
+      String(config.websocket_path ?? '').trim() === configuredPreset.websocket_path
+    );
 
   return (
     <div className="space-y-3">
@@ -1523,6 +1560,21 @@ function MqttCommunityConfigEditor({
             const key = e.target.value as keyof typeof communityPresets;
             const preset = communityPresets[key];
             if (!preset) return;
+            const currentPath = String(config.websocket_path ?? '').trim();
+            const pathSource = config._websocket_path_source;
+            const canReplacePath =
+              !currentPath ||
+              currentPath === preset.websocket_path ||
+              pathSource === 'default' ||
+              websocketPathIsPresetGenerated;
+            if (
+              !canReplacePath &&
+              !window.confirm(
+                `Replace your custom WebSocket path (${currentPath}) with ${preset.websocket_path}?`
+              )
+            ) {
+              return;
+            }
             onChange({
               ...config,
               preset: key,
@@ -1531,6 +1583,7 @@ function MqttCommunityConfigEditor({
               broker_port: preset.port,
               transport: preset.transport,
               websocket_path: preset.websocket_path,
+              _websocket_path_source: 'preset',
               auth_mode: preset.auth_mode,
               use_tls: true,
               tls_verify: true,
@@ -1563,7 +1616,19 @@ function MqttCommunityConfigEditor({
             type="text"
             placeholder={DEFAULT_COMMUNITY_BROKER_HOST}
             value={(config.broker_host as string | undefined) ?? ''}
-            onChange={(e) => onChange({ ...config, broker_host: e.target.value })}
+            onChange={(e) =>
+              onChange({
+                ...config,
+                broker_host: e.target.value,
+                preset: '',
+                ...(websocketPathIsPresetGenerated
+                  ? {
+                      websocket_path: DEFAULT_COMMUNITY_WEBSOCKET_PATH,
+                      _websocket_path_source: 'default',
+                    }
+                  : {}),
+              })
+            }
           />
         </div>
         <div className="space-y-2">
@@ -1590,7 +1655,18 @@ function MqttCommunityConfigEditor({
           <select
             id="fanout-comm-transport"
             value={(config.transport as string) || DEFAULT_COMMUNITY_TRANSPORT}
-            onChange={(e) => onChange({ ...config, transport: e.target.value })}
+            onChange={(e) =>
+              onChange({
+                ...config,
+                transport: e.target.value,
+                ...(!config.websocket_path && e.target.value === 'websockets'
+                  ? {
+                      websocket_path: DEFAULT_COMMUNITY_WEBSOCKET_PATH,
+                      _websocket_path_source: 'default',
+                    }
+                  : {}),
+              })
+            }
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
           >
             <option value="websockets">WebSockets</option>
@@ -1624,10 +1700,24 @@ function MqttCommunityConfigEditor({
               type="text"
               placeholder="/"
               value={(config.websocket_path as string | undefined) ?? ''}
-              onChange={(e) => onChange({ ...config, websocket_path: e.target.value })}
+              aria-invalid={websocketPathError ? true : undefined}
+              aria-describedby={websocketPathError ? 'fanout-comm-ws-path-error' : undefined}
+              onChange={(e) =>
+                onChange({
+                  ...config,
+                  websocket_path: e.target.value,
+                  _websocket_path_source: 'custom',
+                })
+              }
             />
+            {websocketPathError && (
+              <p id="fanout-comm-ws-path-error" role="alert" className="text-xs text-destructive">
+                {websocketPathError}
+              </p>
+            )}
             <p className="text-[0.8125rem] text-muted-foreground">
-              Defaults to <code>/</code> — use <code>/mqtt</code> for brokers that require a path
+              Blank values normalize to <code>/</code>. Use <code>/mqtt</code> only for brokers that
+              require it; paths cannot contain spaces, <code>?</code> or <code>#</code>.
             </p>
           </div>
         </div>

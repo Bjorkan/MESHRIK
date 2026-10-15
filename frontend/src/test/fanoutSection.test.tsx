@@ -813,6 +813,7 @@ describe('SettingsFanoutSection', () => {
         broker_host: 'mqtt-us-v1.letsmesh.net',
         broker_port: 443,
         transport: 'websockets',
+        websocket_path: '/',
         use_tls: true,
         tls_verify: true,
         iata: 'LAX',
@@ -925,6 +926,7 @@ describe('SettingsFanoutSection', () => {
           broker_host: 'mqtt-us-v1.letsmesh.net',
           broker_port: 443,
           transport: 'websockets',
+          websocket_path: '/',
           use_tls: true,
           tls_verify: true,
           auth_mode: 'token',
@@ -980,6 +982,7 @@ describe('SettingsFanoutSection', () => {
         broker_host: 'mqtt-us-v1.letsmesh.net',
         broker_port: 443,
         transport: 'websockets',
+        websocket_path: '/',
         use_tls: true,
         tls_verify: true,
         auth_mode: 'token',
@@ -1262,6 +1265,7 @@ describe('SettingsFanoutSection', () => {
           broker_host: 'mqtt-us-v1.letsmesh.net',
           broker_port: 443,
           transport: 'websockets',
+          websocket_path: '/',
           use_tls: true,
           tls_verify: true,
           auth_mode: 'token',
@@ -1374,6 +1378,7 @@ describe('SettingsFanoutSection', () => {
           broker_host: 'mqtt-eu-v1.letsmesh.net',
           broker_port: 443,
           transport: 'websockets',
+          websocket_path: '/',
           use_tls: true,
           tls_verify: true,
           auth_mode: 'token',
@@ -1402,6 +1407,69 @@ describe('SettingsFanoutSection', () => {
     expect(screen.getByLabelText('Broker Host')).toBeInTheDocument();
     expect(screen.getByLabelText('Authentication')).toBeInTheDocument();
     expect(screen.getByLabelText('Packet Topic Template')).toBeInTheDocument();
+    expect(screen.getByLabelText('WebSocket Path')).toHaveValue('/');
+  });
+
+  it('switches preset-generated WebSocket paths without carrying stale values', async () => {
+    renderSection();
+    await openCreateIntegrationDialog();
+    selectCreateIntegration('Community MQTT/meshcoretomqtt');
+    confirmCreateIntegration();
+    await waitFor(() => expect(screen.getByText('← Back to list')).toBeInTheDocument());
+
+    const preset = screen.getByLabelText('Verified broker profile');
+    const path = screen.getByLabelText('WebSocket Path');
+    fireEvent.change(preset, { target: { value: 'meshmapper' } });
+    expect(path).toHaveValue('/mqtt');
+
+    fireEvent.change(preset, { target: { value: 'letsmesh-us' } });
+    expect(path).toHaveValue('/');
+
+    fireEvent.change(preset, { target: { value: 'meshmapper' } });
+    fireEvent.change(screen.getByLabelText('Broker Host'), {
+      target: { value: 'custom.example' },
+    });
+    expect(path).toHaveValue('/');
+  });
+
+  it('preserves a custom WebSocket path unless preset replacement is confirmed', async () => {
+    renderSection();
+    await openCreateIntegrationDialog();
+    selectCreateIntegration('Community MQTT/meshcoretomqtt');
+    confirmCreateIntegration();
+    await waitFor(() => expect(screen.getByText('← Back to list')).toBeInTheDocument());
+
+    const preset = screen.getByLabelText('Verified broker profile');
+    const path = screen.getByLabelText('WebSocket Path');
+    fireEvent.change(path, { target: { value: '/custom' } });
+    vi.mocked(window.confirm).mockReturnValueOnce(false);
+    fireEvent.change(preset, { target: { value: 'meshmapper' } });
+    expect(path).toHaveValue('/custom');
+
+    vi.mocked(window.confirm).mockReturnValueOnce(true);
+    fireEvent.change(preset, { target: { value: 'meshmapper' } });
+    expect(path).toHaveValue('/mqtt');
+  });
+
+  it('shows WebSocket path validation and blocks an invalid save', async () => {
+    renderSection();
+    await openCreateIntegrationDialog();
+    selectCreateIntegration('Community MQTT/meshcoretomqtt');
+    confirmCreateIntegration();
+    await waitFor(() => expect(screen.getByText('← Back to list')).toBeInTheDocument());
+
+    fireEvent.change(screen.getByLabelText('WebSocket Path'), {
+      target: { value: 'mqtt bad' },
+    });
+    expect(screen.getByRole('alert')).toHaveTextContent('must start with /');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save as Disabled' }));
+    await waitFor(() =>
+      expect(
+        screen.getAllByText('WebSocket Path must start with / and contain no spaces, ? or #')
+      ).not.toHaveLength(0)
+    );
+    expect(mockedApi.createFanoutConfig).not.toHaveBeenCalled();
   });
 
   it('private MQTT list shows broker and topic summary', async () => {

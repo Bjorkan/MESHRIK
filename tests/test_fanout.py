@@ -4,6 +4,7 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from fastapi import HTTPException
 
 from app.database import Database
 from app.fanout.base import FanoutModule
@@ -13,6 +14,7 @@ from app.fanout.manager import (
     _scope_matches_message,
     _scope_matches_raw,
 )
+from app.routers.fanout import _validate_and_normalize_config
 
 # ---------------------------------------------------------------------------
 # Scope matching unit tests
@@ -87,6 +89,42 @@ class TestScopeMatchesRaw:
 
     def test_missing_key_does_not_match(self):
         assert not _scope_matches_raw({}, {})
+
+
+class TestCommunityMqttWebsocketPath:
+    def test_blank_path_normalizes_to_root(self):
+        config = _validate_and_normalize_config(
+            "mqtt_community",
+            {
+                "profile": "custom",
+                "auth_mode": "none",
+                "transport": "websockets",
+                "websocket_path": "   ",
+            },
+        )
+
+        assert config["websocket_path"] == "/"
+
+    @pytest.mark.parametrize("path", ["mqtt", "/mqtt bad", "/mqtt?query=1", "/mqtt#fragment"])
+    def test_invalid_path_is_rejected(self, path):
+        with pytest.raises(HTTPException, match="websocket_path must start with /"):
+            _validate_and_normalize_config(
+                "mqtt_community",
+                {
+                    "profile": "custom",
+                    "auth_mode": "none",
+                    "transport": "websockets",
+                    "websocket_path": path,
+                },
+            )
+
+    def test_tcp_does_not_require_or_add_websocket_path(self):
+        config = _validate_and_normalize_config(
+            "mqtt_community",
+            {"profile": "custom", "auth_mode": "none", "transport": "tcp"},
+        )
+
+        assert "websocket_path" not in config
 
 
 # ---------------------------------------------------------------------------

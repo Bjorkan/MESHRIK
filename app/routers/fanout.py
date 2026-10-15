@@ -185,6 +185,14 @@ def _validate_mqtt_community_config(config: dict) -> None:
     config["transport"] = transport
     config["use_tls"] = bool(config.get("use_tls", True))
     config["tls_verify"] = bool(config.get("tls_verify", True))
+    if transport == "websockets":
+        websocket_path = str(config.get("websocket_path", "")).strip() or "/"
+        if not websocket_path.startswith("/") or re.search(r"\s|[?#]", websocket_path):
+            raise HTTPException(
+                status_code=400,
+                detail="websocket_path must start with / and contain no spaces, ? or #",
+            )
+        config["websocket_path"] = websocket_path
 
     auth_mode = str(config.get("auth_mode", _DEFAULT_COMMUNITY_MQTT_AUTH_MODE)).strip().lower()
     if auth_mode not in _ALLOWED_COMMUNITY_MQTT_AUTH_MODES:
