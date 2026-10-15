@@ -66,7 +66,7 @@ OutgoingReservationKey = tuple[str, str, str]
 RetryTaskScheduler = Callable[[Any], Any]
 
 # Channel echo watchdog: delay before checking for echoes
-ECHO_WATCHDOG_DELAY_SECONDS = 2.0
+ECHO_WATCHDOG_DELAY_SECONDS = 30.0
 
 # Byte-perfect resend window (must match router's RESEND_WINDOW_SECONDS)
 RESEND_WINDOW_SECONDS = 30
@@ -844,83 +844,20 @@ async def _channel_echo_watchdog(
     broadcast_fn: BroadcastFn,
     error_broadcast_fn: BroadcastFn,
 ) -> None:
-    """One-shot watchdog: if no echo heard after delay, attempt one byte-perfect resend.
+    """Observe echoes only; lack of echo is not proof of RF non-delivery.
 
-    Spawned as a fire-and-forget task after a channel send when auto_resend_channel is enabled.
-    Uses non-blocking radio lock so it never stalls user actions.
+    On stock Companion 13 there is no TX-complete event and no reliable
+    channel-broadcast ACK. Unattended resend risks duplicate RF and clobbering
+    a radio channel slot, even when the legacy auto-resend setting is enabled.
     """
-    try:
-        await asyncio.sleep(ECHO_WATCHDOG_DELAY_SECONDS)
-
-        msg = await MessageRepository.get_by_id(message_id)
-        if not msg:
-            return
-        if msg.acked > 0:
-            logger.debug(
-                "Echo watchdog: message %d already has %d echo(s), skipping", message_id, msg.acked
-            )
-            return
-        if msg.sender_timestamp is None:
-            return
-
-        elapsed = int(_time.time()) - msg.sender_timestamp
-        if elapsed > RESEND_WINDOW_SECONDS:
-            logger.debug(
-                "Echo watchdog: message %d outside resend window (%ds)", message_id, elapsed
-            )
-            return
-
-        channel = await ChannelRepository.get_by_key(msg.conversation_key)
-        if not channel:
-            return
-
-        logger.info(
-            "Echo watchdog: no echo for message %d after %.0fs, attempting byte-perfect resend",
-            message_id,
-            ECHO_WATCHDOG_DELAY_SECONDS,
-        )
-
-        try:
-            key_bytes = bytes.fromhex(msg.conversation_key)
-        except ValueError:
-            return
-
-        timestamp_bytes = msg.sender_timestamp.to_bytes(4, "little")
-
-        # Strip the historical sender prefix. The radio may have been renamed
-        # since the original send and will add its current name itself.
-        async def resend(mc):
-            radio_name = mc.self_info.get("name", "") if mc.self_info else ""
-            text_to_send = _channel_message_body(
-                text=msg.text,
-                sender_name=msg.sender_name,
-                radio_name=radio_name,
-            )
-
-            result = await send_channel_message_with_effective_scope(
-                mc=mc,
-                channel=channel,
-                channel_key=msg.conversation_key,
-                key_bytes=key_bytes,
-                text=text_to_send,
-                timestamp_bytes=timestamp_bytes,
-                action_label="echo watchdog resend",
-                radio_manager=radio_manager,
-                temp_radio_slot=WATCHDOG_TEMP_RADIO_SLOT,
-                error_broadcast_fn=error_broadcast_fn,
-                channel_broadcast_fn=broadcast_fn,
-            )
-            if result is not None and result.type != EventType.ERROR:
-                logger.info("Echo watchdog: resent message %d successfully", message_id)
-            else:
-                logger.debug("Echo watchdog: resend got no/error result for message %d", message_id)
-
-        await _run_radio_command(radio_manager, "echo_watchdog_resend", resend, blocking=False)
-
-    except RadioOperationBusyError:
-        logger.debug("Echo watchdog: radio busy, skipping resend for message %d", message_id)
-    except Exception:
-        logger.debug("Echo watchdog: resend failed for message %d", message_id, exc_info=True)
+    await asyncio.sleep(ECHO_WATCHDOG_DELAY_SECONDS)
+    msg = await MessageRepository.get_by_id(message_id)
+    if msg is None or msg.acked:
+        return
+    logger.info(
+        "Channel message %d has no observed echo; manual retransmission required",
+        message_id,
+    )
 
 
 async def send_channel_message_to_channel(

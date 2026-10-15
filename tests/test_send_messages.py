@@ -1763,8 +1763,8 @@ class TestChannelEchoWatchdog:
         mc.commands.send_chan_msg.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_watchdog_resends_when_no_echo(self, test_db):
-        """Watchdog resends byte-perfect when no echo has arrived."""
+    async def test_watchdog_does_not_resend_on_missing_echo(self, test_db):
+        """Watchdog observes but does not unattended-resend; lack of echo is not proof of RF non-delivery."""
         chan_key = "e3" * 16
         await ChannelRepository.upsert(key=chan_key, name="#resend")
 
@@ -1788,13 +1788,11 @@ class TestChannelEchoWatchdog:
                 error_broadcast_fn=MagicMock(),
             )
 
-        mc.commands.send_chan_msg.assert_awaited_once()
-        call_kwargs = mc.commands.send_chan_msg.await_args.kwargs
-        assert call_kwargs["msg"] == "payload"  # sender prefix stripped
-        assert call_kwargs["timestamp"] == now.to_bytes(4, "little")
+        # Unattended resend is disabled; watchdog only observes
+        mc.commands.send_chan_msg.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_watchdog_strips_historical_sender_prefix_after_radio_rename(self, test_db):
+    async def test_watchdog_no_longer_resends_after_radio_rename(self, test_db):
         chan_key = "e9" * 16
         await ChannelRepository.upsert(key=chan_key, name="#renamed-watchdog")
 
@@ -1820,7 +1818,8 @@ class TestChannelEchoWatchdog:
                 error_broadcast_fn=MagicMock(),
             )
 
-        assert mc.commands.send_chan_msg.await_args.kwargs["msg"] == "payload"
+        # Unattended resend is disabled; watchdog only observes
+        mc.commands.send_chan_msg.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_watchdog_handles_radio_busy_gracefully(self, test_db):
