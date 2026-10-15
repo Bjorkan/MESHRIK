@@ -456,6 +456,16 @@ def register_event_handlers(meshcore) -> None:
     _active_subscriptions.append(meshcore.subscribe(EventType.CONTACT_MSG_RECV, on_contact_message))
     _active_subscriptions.append(meshcore.subscribe(EventType.CHANNEL_MSG_RECV, on_channel_message))
     _active_subscriptions.append(meshcore.subscribe(EventType.RX_LOG_DATA, on_rx_log_data))
+    # SDK 2.3.16 emits this for a queued binary channel frame. Never decode
+    # as channel text; the historical channel slot has unknown provenance.
+    from app.services.channel_datagrams import stage_channel_datagram
+
+    async def on_binary_channel_data(event: "Event") -> None:
+        await stage_channel_datagram(event.payload)
+
+    _active_subscriptions.append(
+        meshcore.subscribe(EventType.CHANNEL_DATA_RECV, on_binary_channel_data)
+    )
     _active_subscriptions.append(meshcore.subscribe(EventType.PATH_UPDATE, on_path_update))
     _active_subscriptions.append(meshcore.subscribe(EventType.NEW_CONTACT, on_new_contact))
     _active_subscriptions.append(meshcore.subscribe(EventType.ACK, on_ack))

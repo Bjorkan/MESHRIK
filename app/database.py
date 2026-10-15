@@ -80,6 +80,20 @@ CREATE TABLE IF NOT EXISTS raw_packets (
     FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE SET NULL
 );
 
+-- Opaque Companion channel datagrams are *not* attributed to channels
+-- by current slot index (queued frames may predate channel slot reuse).
+CREATE TABLE IF NOT EXISTS companion_channel_datagrams (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    received_at INTEGER NOT NULL,
+    channel_idx INTEGER NOT NULL,
+    data_type INTEGER NOT NULL,
+    payload BLOB NOT NULL,
+    snr REAL,
+    path_len INTEGER,
+    identity_hash BLOB NOT NULL UNIQUE,
+    attribution_status TEXT NOT NULL DEFAULT 'unresolved'
+);
+
 CREATE TABLE IF NOT EXISTS contact_advert_paths (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     public_key TEXT NOT NULL,

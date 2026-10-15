@@ -657,6 +657,11 @@ async def drain_pending_messages(mc: MeshCore) -> int:
             elif result.type == EventType.ERROR:
                 logger.debug("Error during message drain: %s", result.payload)
                 break
+            elif result.type == EventType.CHANNEL_DATA_RECV:
+                from app.services.channel_datagrams import stage_channel_datagram
+
+                await stage_channel_datagram(result.payload)
+                count += 1
             elif result.type in (EventType.CONTACT_MSG_RECV, EventType.CHANNEL_MSG_RECV):
                 if result.type == EventType.CHANNEL_MSG_RECV:
                     saved = await _store_pending_channel_message(mc, result.payload)
@@ -696,6 +701,12 @@ async def poll_for_messages(mc: MeshCore) -> int:
             return 0
         elif result.type == EventType.ERROR:
             return 0
+        elif result.type == EventType.CHANNEL_DATA_RECV:
+            from app.services.channel_datagrams import stage_channel_datagram
+
+            await stage_channel_datagram(result.payload)
+            count += 1
+            count += await drain_pending_messages(mc)
         elif result.type in (EventType.CONTACT_MSG_RECV, EventType.CHANNEL_MSG_RECV):
             if result.type == EventType.CHANNEL_MSG_RECV:
                 saved = await _store_pending_channel_message(mc, result.payload)
