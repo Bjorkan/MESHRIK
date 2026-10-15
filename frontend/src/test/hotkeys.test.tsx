@@ -54,7 +54,6 @@ function renderHarness(props: HarnessProps = {}) {
     <HotkeysProvider
       defaultOptions={{
         hotkey: { conflictBehavior: 'error' },
-        hotkeySequence: { conflictBehavior: 'error' },
       }}
     >
       <HotkeyHarness {...props} />

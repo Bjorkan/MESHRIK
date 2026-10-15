@@ -22,7 +22,6 @@ createRoot(document.getElementById('root')!).render(
     <HotkeysProvider
       defaultOptions={{
         hotkey: { conflictBehavior: 'error' },
-        hotkeySequence: { conflictBehavior: 'error' },
       }}
     >
       <PushSubscriptionProvider>
