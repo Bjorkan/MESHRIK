@@ -1,4 +1,5 @@
 """Radio transport coverage gaps (possible firmware queue eviction)."""
+
 import time
 
 _disconnected_at: int | None = None

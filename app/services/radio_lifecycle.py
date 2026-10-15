@@ -362,6 +362,22 @@ async def _run_lifecycle_workflow(radio_manager: Any, generation: int) -> None:
             )
         )
 
+        # Capture the existing Companion queue before potentially slow contact
+        # enumeration (up to 60s) and sequential channel reads. Pending frames
+        # are journaled first; unverifiable historic slots remain quarantined.
+        async def early_backlog(current: Any) -> None:
+            await drain_pending_messages(current)
+
+        stages.append(
+            (
+                RadioStartupStage.MESSAGE_DRAIN,
+                RadioJobKind.LIFECYCLE_MESSAGE_DRAIN,
+                early_backlog,
+                MAINTENANCE_STAGE_TIMEOUT_SECONDS,
+                False,
+            )
+        )
+
         if policy in {StartupPolicy.SYNC, StartupPolicy.FULL}:
 
             async def contact_sync(current: Any) -> None:
@@ -477,20 +493,6 @@ async def _run_lifecycle_workflow(radio_manager: Any, generation: int) -> None:
                         RadioJobKind.LIFECYCLE_ADVERTISEMENT,
                         advertise,
                         READ_ONLY_STAGE_TIMEOUT_SECONDS,
-                        False,
-                    )
-                )
-            if settings.startup_drain_messages:
-
-                async def drain(current: Any) -> None:
-                    await drain_pending_messages(current)
-
-                stages.append(
-                    (
-                        RadioStartupStage.MESSAGE_DRAIN,
-                        RadioJobKind.LIFECYCLE_MESSAGE_DRAIN,
-                        drain,
-                        MAINTENANCE_STAGE_TIMEOUT_SECONDS,
                         False,
                     )
                 )

@@ -2783,6 +2783,11 @@
               }
             ]
           },
+          "rx_coverage": {
+            "additionalProperties": true,
+            "title": "Rx Coverage",
+            "type": "object"
+          },
           "startup_error_stage": {
             "anyOf": [
               {

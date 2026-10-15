@@ -135,6 +135,11 @@ async def on_contact_message(event: "Event") -> None:
     This handler adapts CONTACT_MSG_RECV payloads into the shared DM ingest
     workflow, which reconciles duplicates against the packet pipeline when possible.
     """
+    from app.radio_sync import owned_pending_fetch_active
+
+    if owned_pending_fetch_active():
+        # Only the worker that issued get_msg may persist that response.
+        return
     payload = event.payload
 
     from app.services.radio_job_worker import radio_job_scheduler

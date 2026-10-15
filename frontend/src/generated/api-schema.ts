@@ -3072,6 +3072,10 @@ export interface components {
         | 'disconnected'
         | 'paused';
       radio_stats?: components['schemas']['RadioStatsSnapshot'] | null;
+      /** Rx Coverage */
+      rx_coverage?: {
+        [key: string]: unknown;
+      };
       /** Startup Error Stage */
       startup_error_stage?: string | null;
       /**

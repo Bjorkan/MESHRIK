@@ -66,7 +66,9 @@ async def test_passive_startup_only_queries_device_and_receives(monkeypatch):
         await run_post_connect_setup(manager)
     register.assert_called_once_with(mc)
     mc.commands.send_device_query.assert_awaited_once()
-    for call in (export, time_sync, settings_get, scope, offload, advert, drain):
+    # Receiving includes draining the Companion backlog; that is non-destructive.
+    drain.assert_awaited_once()
+    for call in (export, time_sync, settings_get, scope, offload, advert):
         call.assert_not_awaited()
     for call in (sync_loop, advert_loop, poll_loop, telemetry_loop):
         call.assert_not_called()

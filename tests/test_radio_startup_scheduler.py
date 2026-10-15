@@ -87,6 +87,7 @@ async def test_passive_bootstrap_runs_as_worker_job_and_blocks_user_admission(mo
         assert all(job.state == RadioJobState.COMPLETED for job in scheduler.list_jobs())
         assert [job.kind for job in scheduler.list_jobs()] == [
             RadioJobKind.LIFECYCLE_DEVICE_INFO,
+            RadioJobKind.LIFECYCLE_MESSAGE_DRAIN,
             RadioJobKind.LIFECYCLE_AUTO_FETCH,
         ]
         manager.meshcore.commands.set_time.assert_not_called()
@@ -133,7 +134,9 @@ async def test_sync_policy_reads_but_cannot_offload_or_advertise(monkeypatch):
             await asyncio.wait_for(run_post_connect_setup(manager), 2)
             assert manager.readiness_state == "ready"
             assert all(job.state == RadioJobState.COMPLETED for job in scheduler.list_jobs())
-            assert len(scheduler.list_jobs()) == 4  # bootstrap, contacts, channels, auto-fetch
+            assert (
+                len(scheduler.list_jobs()) == 5
+            )  # bootstrap, drain, contacts, channels, auto-fetch
             contacts.assert_awaited_once()
             channels.assert_awaited_once()
             for mutation in (offload, advert, clock, key):
@@ -284,6 +287,7 @@ async def test_concurrent_duplicate_startup_events_coalesce_per_generation(monke
             await asyncio.wait_for(asyncio.gather(first, second), 2)
             assert [j.kind for j in scheduler.list_jobs()] == [
                 RadioJobKind.LIFECYCLE_DEVICE_INFO,
+                RadioJobKind.LIFECYCLE_MESSAGE_DRAIN,
                 RadioJobKind.LIFECYCLE_AUTO_FETCH,
             ]
             manager.meshcore.commands.send_device_query.assert_awaited_once()
@@ -317,6 +321,7 @@ async def test_partial_contact_snapshot_failure_is_degraded_not_ready(monkeypatc
             assert manager.is_setup_complete
             assert [j.kind for j in scheduler.list_jobs()] == [
                 RadioJobKind.LIFECYCLE_DEVICE_INFO,
+                RadioJobKind.LIFECYCLE_MESSAGE_DRAIN,
                 RadioJobKind.LIFECYCLE_CONTACT_SYNC,
                 RadioJobKind.LIFECYCLE_CHANNEL_SYNC,
                 RadioJobKind.LIFECYCLE_AUTO_FETCH,
@@ -341,6 +346,7 @@ async def test_repeated_idle_disconnect_and_reconnect_has_one_workflow_each(monk
                 ]
                 assert [j.kind for j in jobs] == [
                     RadioJobKind.LIFECYCLE_DEVICE_INFO,
+                    RadioJobKind.LIFECYCLE_MESSAGE_DRAIN,
                     RadioJobKind.LIFECYCLE_AUTO_FETCH,
                 ]
                 assert all(j.state == RadioJobState.COMPLETED for j in jobs)
@@ -365,7 +371,6 @@ async def test_repeated_idle_disconnect_and_reconnect_has_one_workflow_each(monk
         (StartupPolicy.FULL, "startup_send_advertisement", RadioJobKind.LIFECYCLE_ADVERTISEMENT),
         (StartupPolicy.FULL, "startup_sync_clock", RadioJobKind.LIFECYCLE_CLOCK_SYNC),
         (StartupPolicy.FULL, "startup_export_private_key", RadioJobKind.LIFECYCLE_KEY_EXPORT),
-        (StartupPolicy.FULL, "startup_drain_messages", RadioJobKind.LIFECYCLE_MESSAGE_DRAIN),
         (StartupPolicy.FULL, "startup_clear_channel_slots", RadioJobKind.LIFECYCLE_CHANNEL_CLEAR),
     ],
 )
@@ -405,6 +410,8 @@ async def test_startup_policy_selectively_admits_only_the_consented_command(
         try:
             await asyncio.wait_for(run_post_connect_setup(manager), 2)
             kinds = [job.kind for job in scheduler.list_jobs()]
+            # The bounded backlog drain is unconditional for every policy.
+            assert kinds.count(RadioJobKind.LIFECYCLE_MESSAGE_DRAIN) == 1
             if expected_stage is not None:
                 assert kinds.count(expected_stage) == 1
             allowed = [
@@ -415,7 +422,6 @@ async def test_startup_policy_selectively_admits_only_the_consented_command(
                     RadioJobKind.LIFECYCLE_KEY_EXPORT,
                     RadioJobKind.LIFECYCLE_CLOCK_SYNC,
                     RadioJobKind.LIFECYCLE_ADVERTISEMENT,
-                    RadioJobKind.LIFECYCLE_MESSAGE_DRAIN,
                     RadioJobKind.LIFECYCLE_CHANNEL_CLEAR,
                 }
             ]
@@ -424,10 +430,10 @@ async def test_startup_policy_selectively_admits_only_the_consented_command(
                 (RadioJobKind.LIFECYCLE_ADVERTISEMENT, advert),
                 (RadioJobKind.LIFECYCLE_CLOCK_SYNC, clock),
                 (RadioJobKind.LIFECYCLE_KEY_EXPORT, export),
-                (RadioJobKind.LIFECYCLE_MESSAGE_DRAIN, drain),
                 (RadioJobKind.LIFECYCLE_CHANNEL_CLEAR, clear),
             ):
                 assert operation.await_count == (1 if expected_stage == kind else 0)
+            assert drain.await_count == 1
             assert manager.readiness_state == "ready"
         finally:
             await worker.stop()
@@ -463,7 +469,7 @@ async def test_manual_force_retry_recovers_degraded_generation_using_worker(monk
             assert manager.readiness_state == "ready"
             assert manager.startup_error_stage is None
             assert contacts.await_count == 2
-            assert len(scheduler.list_jobs()) == previous + 4
+            assert len(scheduler.list_jobs()) == previous + 5
             assert all(j.kind.name.startswith("LIFECYCLE_") for j in scheduler.list_jobs())
         finally:
             await worker.stop()
@@ -581,13 +587,13 @@ async def test_full_policy_with_all_optins_dispatches_only_worker_lifecycle_stag
             assert manager.readiness_state == "ready"
             assert [j.kind for j in scheduler.list_jobs()] == [
                 RadioJobKind.LIFECYCLE_DEVICE_INFO,
+                RadioJobKind.LIFECYCLE_MESSAGE_DRAIN,
                 RadioJobKind.LIFECYCLE_CONTACT_SYNC,
                 RadioJobKind.LIFECYCLE_CHANNEL_CLEAR,
                 RadioJobKind.LIFECYCLE_KEY_EXPORT,
                 RadioJobKind.LIFECYCLE_CLOCK_SYNC,
                 RadioJobKind.LIFECYCLE_FLOOD_SCOPE,
                 RadioJobKind.LIFECYCLE_ADVERTISEMENT,
-                RadioJobKind.LIFECYCLE_MESSAGE_DRAIN,
                 RadioJobKind.LIFECYCLE_AUTO_FETCH,
             ]
             for action in (clear, clock, advert, drain, export, flood):
