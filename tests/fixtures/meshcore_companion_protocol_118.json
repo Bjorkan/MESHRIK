@@ -1,0 +1,11 @@
+{
+  "source": "MeshCore-main v1.18.0, examples/companion_radio/MyMesh.h / MyMesh.cpp; meshcore_py 2.3.16",
+  "legacy": {"firmware_protocol": 13, "device_query": 22, "get_pending_message": 10},
+  "companion_118": {"firmware_protocol": 14, "local_cli_command": 66, "local_cli_reply": 29,
+    "remote_cli_txt_type": 3, "channel_data_command": 62, "channel_data_reply": 27},
+  "sample_frames": {
+    "cli_reply": "1d3e206f6e",
+    "channel_data_direct": "1bfc000001ff230104deadbeef",
+    "channel_data_flood_tx": "3e01ffffffa1b2c3"
+  }
+}

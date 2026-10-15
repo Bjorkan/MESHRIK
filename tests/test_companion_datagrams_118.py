@@ -1,3 +1,5 @@
+import pytest
+
 from app.services.channel_datagrams import decode_channel_datagram
 
 
@@ -21,3 +23,27 @@ def test_invalid_or_truncated_binary_datagram_is_rejected():
         {"data_type": "42"},
     ):
         assert decode_channel_datagram(template | update) is None
+
+
+@pytest.mark.asyncio
+async def test_binary_ingress_persists_and_deduplicates(test_db, monkeypatch):
+    from app.services import channel_datagrams
+
+    monkeypatch.setattr(channel_datagrams, "db", test_db)
+    payload = {
+        "payload": "deadbeef",
+        "channel_idx": 2,
+        "data_type": 0xFF01,
+        "path_len": 255,
+        "SNR": -5.5,
+    }
+    assert await channel_datagrams.stage_channel_datagram(payload) is True
+    assert await channel_datagrams.stage_channel_datagram(payload) is False
+    async with test_db.readonly() as conn:
+        async with conn.execute("SELECT * FROM companion_channel_datagrams") as cursor:
+            rows = await cursor.fetchall()
+    assert len(rows) == 1
+    assert rows[0]["channel_idx"] == 2
+    assert rows[0]["data_type"] == 0xFF01
+    assert rows[0]["payload"] == bytes.fromhex("deadbeef")
+    assert rows[0]["attribution_status"] == "unresolved"
