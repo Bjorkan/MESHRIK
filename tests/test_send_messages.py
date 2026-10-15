@@ -1930,7 +1930,9 @@ class TestRadioExceptionMidSend:
         assert len(messages) == 1
         assert messages[0].text == "Did this send?"
         assert messages[0].outgoing is True
+        assert messages[0].acked == 0
         assert messages[0].send_status == "unknown"
+        mc.commands.send_msg.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_channel_send_no_radio_response_returns_408_and_preserves_message(self, test_db):
@@ -1959,7 +1961,9 @@ class TestRadioExceptionMidSend:
         assert len(messages) == 1
         assert messages[0].text == "TestNode: Did this send?"
         assert messages[0].outgoing is True
+        assert messages[0].acked == 0
         assert messages[0].send_status == "unknown"
+        mc.commands.send_chan_msg.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_channel_send_radio_exception_no_orphan_message(self, test_db):

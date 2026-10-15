@@ -4,6 +4,7 @@ Verifies that the primary RF packet entry point correctly extracts hex payload,
 SNR, and RSSI from MeshCore events and passes them to process_raw_packet.
 """
 
+import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -35,6 +36,40 @@ class TestOnRxLogData:
                 snr=7.5,
                 rssi=-85,
             )
+
+    @pytest.mark.asyncio
+    async def test_burst_forwards_every_distinct_packet_exactly_once(self):
+        """RX ingress is lossless and is not routed through a latest-value pacer."""
+        from app.event_handlers import on_rx_log_data
+
+        events = []
+        expected = []
+        for index in range(100):
+            raw_bytes = index.to_bytes(4, "big")
+            snr = float(index % 10)
+            rssi = -120 + index
+            events.append(
+                MagicMock(
+                    payload={
+                        "payload": raw_bytes.hex(),
+                        "snr": snr,
+                        "rssi": rssi,
+                    }
+                )
+            )
+            expected.append(
+                {
+                    "raw_bytes": raw_bytes,
+                    "snr": snr,
+                    "rssi": rssi,
+                }
+            )
+
+        with patch("app.event_handlers.process_raw_packet", new_callable=AsyncMock) as process:
+            await asyncio.gather(*(on_rx_log_data(event) for event in events))
+
+        assert process.await_count == len(events)
+        assert [call.kwargs for call in process.await_args_list] == expected
 
     @pytest.mark.asyncio
     async def test_missing_payload_field_returns_early(self):

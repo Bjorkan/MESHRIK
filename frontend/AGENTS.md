@@ -441,7 +441,10 @@ confirmation countdowns. These are not alternative debounce/throttle implementat
 The Pacer regression tests use fake clocks for the 300 ms search and 250 ms read/pulse windows. The
 visualizer burst case enqueues 100 distinct keys and asserts that all 100 are published; the unread
 suite also switches conversations inside one debounce window and asserts that both exact boundaries
-reach their respective mutations.
+reach their respective mutations. Backend boundary tests concurrently inject 100 distinct RX frames
+and paired replays of 32 distinct ACKs, proving those lossless protocol paths never enter a frontend
+pacer. Fake-radio no-response cases also assert one RF command, a durable `unknown` row with zero
+ACKs, and no automatic duplicate send.
 
 ### Keyboard shortcuts
 

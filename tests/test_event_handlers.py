@@ -4,6 +4,7 @@ These tests verify the ACK tracking mechanism for direct message
 delivery confirmation, contact message handling, and event registration.
 """
 
+import asyncio
 import time
 from unittest.mock import MagicMock, patch
 
@@ -172,6 +173,44 @@ class TestAckEventHandler:
 
             # Verify pending ACK removed
             assert "deadbeef" not in _pending_acks
+
+    @pytest.mark.asyncio
+    async def test_ack_burst_applies_each_distinct_code_once_and_replays_are_idempotent(
+        self, test_db
+    ):
+        """A concurrent ACK burst cannot drop codes or confirm one message twice."""
+        from app.event_handlers import on_ack
+
+        message_ids = []
+        events = []
+        for index in range(32):
+            message_id = await MessageRepository.create(
+                msg_type="PRIV",
+                text=f"burst message {index}",
+                received_at=1700000000 + index,
+                conversation_key="ab" * 32,
+                sender_timestamp=1700000000 + index,
+                outgoing=True,
+            )
+            assert message_id is not None
+            code = f"{index:08x}"
+            track_pending_ack(code, message_id=message_id, timeout_ms=10000)
+            message_ids.append(message_id)
+            events.append(MagicMock(payload={"code": code}))
+
+        with patch("app.event_handlers.broadcast_event") as broadcast:
+            # Include a replay of every code in the same burst. Exactly one of
+            # each pair may claim the pending correlation and update SQLite.
+            await asyncio.gather(
+                *(on_ack(event) for event in events),
+                *(on_ack(event) for event in events),
+            )
+
+        assert broadcast.call_count == len(message_ids)
+        assert {call.args[1]["message_id"] for call in broadcast.call_args_list} == set(message_ids)
+        for message_id in message_ids:
+            ack_count, _ = await MessageRepository.get_ack_and_paths(message_id)
+            assert ack_count == 1
 
     @pytest.mark.asyncio
     async def test_ack_no_match_does_nothing(self, test_db):
