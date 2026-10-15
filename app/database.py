@@ -62,7 +62,8 @@ CREATE TABLE IF NOT EXISTS messages (
     acked INTEGER DEFAULT 0,
     send_status TEXT NOT NULL DEFAULT 'confirmed',
     sender_name TEXT,
-    sender_key TEXT
+    sender_key TEXT,
+    wire_packet_id INTEGER
     -- Deduplication: channel echoes/repeats use a content/time unique index so
     -- duplicate observations reconcile onto a single stored row. Legacy
     -- databases may also gain an incoming-DM content index via migration 44.
@@ -176,12 +177,11 @@ CREATE TABLE IF NOT EXISTS push_subscriptions (
 # creation runs.
 SCHEMA_INDEXES = """
 CREATE INDEX IF NOT EXISTS idx_messages_received ON messages(received_at);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_messages_dedup_null_safe
-    ON messages(type, conversation_key, text, COALESCE(sender_timestamp, 0))
-    WHERE type = 'CHAN';
-CREATE UNIQUE INDEX IF NOT EXISTS idx_messages_incoming_priv_dedup
-    ON messages(type, conversation_key, text, COALESCE(sender_timestamp, 0), COALESCE(sender_key, ''))
-    WHERE type = 'PRIV' AND outgoing = 0;
+CREATE INDEX IF NOT EXISTS idx_messages_content_fallback
+    ON messages(type, conversation_key, sender_timestamp);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_messages_wire_identity
+    ON messages(type, conversation_key, wire_packet_id)
+    WHERE wire_packet_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_messages_sender_key ON messages(sender_key);
 CREATE INDEX IF NOT EXISTS idx_messages_pagination
     ON messages(type, conversation_key, received_at DESC, id DESC);

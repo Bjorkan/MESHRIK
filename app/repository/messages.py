@@ -68,6 +68,7 @@ class MessageRepository:
         sender_key: str | None = None,
         transport_code: int | None = None,
         region: str | None = None,
+        wire_packet_id: int | None = None,
     ) -> int | None:
         """Create a message, returning the ID or None if duplicate.
 
@@ -94,13 +95,23 @@ class MessageRepository:
         normalized_sender_key = sender_key.lower() if sender_key else sender_key
 
         async with db.tx() as conn:
+            # No wire identity: conservative best-effort matching for SDK
+            # queued/fallback messages, whose sender timestamp is only seconds.
+            if wire_packet_id is None:
+                async with conn.execute(
+                    "SELECT id FROM messages WHERE type=? AND conversation_key=? "
+                    "AND text=? AND sender_timestamp IS ? AND outgoing=? LIMIT 1",
+                    (msg_type, conversation_key, text, sender_timestamp, int(outgoing)),
+                ) as old:
+                    if await old.fetchone():
+                        return None
             async with conn.execute(
                 """
                 INSERT OR IGNORE INTO messages (type, conversation_key, text, sender_timestamp,
                                                 received_at, paths, txt_type, signature, outgoing,
                                                 send_status, sender_name, sender_key,
-                                                transport_code, region)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                                transport_code, region, wire_packet_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     msg_type,
@@ -117,6 +128,7 @@ class MessageRepository:
                     normalized_sender_key,
                     transport_code,
                     region,
+                    wire_packet_id,
                 ),
             ) as cursor:
                 rowcount = cursor.rowcount

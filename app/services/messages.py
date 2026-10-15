@@ -304,6 +304,7 @@ async def create_message_from_decrypted(
         sender_key=resolved_sender_key,
         transport_code=transport_code,
         region=region,
+        wire_packet_id=packet_id,
     )
 
     if msg_id is None:
