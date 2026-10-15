@@ -187,14 +187,15 @@ async def reconcile_duplicate_message(
         existing_msg.outgoing,
     )
 
+    is_new_echo = False
     if path is not None:
-        paths = await MessageRepository.add_path(
+        paths, is_new_echo = await MessageRepository.add_path_with_status(
             existing_msg.id, path, received_at, path_len, rssi=rssi, snr=snr
         )
     else:
         paths = existing_msg.paths or []
 
-    if existing_msg.outgoing and existing_msg.type == "CHAN":
+    if is_new_echo and existing_msg.outgoing and existing_msg.type == "CHAN":
         ack_count = await MessageRepository.increment_ack_count(existing_msg.id)
     else:
         ack_count = existing_msg.acked
@@ -203,7 +204,7 @@ async def reconcile_duplicate_message(
         existing_msg.packet_id if existing_msg.packet_id is not None else packet_id
     )
 
-    if existing_msg.outgoing or path is not None:
+    if is_new_echo:
         broadcast_message_acked(
             message_id=existing_msg.id,
             ack_count=ack_count,

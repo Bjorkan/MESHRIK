@@ -139,6 +139,48 @@ class MessageRepository:
         return lastrowid
 
     @staticmethod
+    async def add_path_with_status(
+        message_id: int,
+        path: str,
+        received_at: int | None = None,
+        path_len: int | None = None,
+        rssi: int | None = None,
+        snr: float | None = None,
+    ) -> tuple[list[MessagePath], bool]:
+        """Add at most one observation per distinct path, capped at 16 rows."""
+        entry: dict = {"path": path, "received_at": received_at or int(time.time())}
+        if path_len is not None:
+            entry["path_len"] = path_len
+        if rssi is not None:
+            entry["rssi"] = rssi
+        if snr is not None:
+            entry["snr"] = snr
+        async with db.tx() as conn:
+            async with conn.execute(
+                "SELECT paths FROM messages WHERE id=?", (message_id,)
+            ) as cursor:
+                row = await cursor.fetchone()
+            if row is None:
+                return [], False
+            try:
+                paths = json.loads(row["paths"] or "[]")
+                if not isinstance(paths, list):
+                    paths = []
+            except (TypeError, ValueError):
+                paths = []
+            if any(
+                isinstance(p, dict) and p.get("path") == path and p.get("path_len") == path_len
+                for p in paths
+            ):
+                return [MessagePath(**p) for p in paths[:16]], False
+            # Keep earliest evidence and the latest 15 distinct observations.
+            paths = ([paths[0]] + paths[-14:] if len(paths) >= 16 else paths) + [entry]
+            await conn.execute(
+                "UPDATE messages SET paths=? WHERE id=?", (json.dumps(paths), message_id)
+            )
+        return [MessagePath(**p) for p in paths], True
+
+    @staticmethod
     async def add_path(
         message_id: int,
         path: str,
@@ -147,46 +189,10 @@ class MessageRepository:
         rssi: int | None = None,
         snr: float | None = None,
     ) -> list[MessagePath]:
-        """Add a new path to an existing message.
-
-        This is used when a repeat/echo of a message arrives via a different route.
-        Returns the updated list of paths.
-        """
-        ts = received_at if received_at is not None else int(time.time())
-
-        # Atomic append: use json_insert to avoid read-modify-write race when
-        # multiple duplicate packets arrive concurrently for the same message.
-        entry: dict = {"path": path, "received_at": ts}
-        if path_len is not None:
-            entry["path_len"] = path_len
-        if rssi is not None:
-            entry["rssi"] = rssi
-        if snr is not None:
-            entry["snr"] = snr
-        new_entry = json.dumps(entry)
-        async with db.tx() as conn:
-            async with conn.execute(
-                """UPDATE messages SET paths = json_insert(
-                    COALESCE(paths, '[]'), '$[#]', json(?)
-                ) WHERE id = ?""",
-                (new_entry, message_id),
-            ):
-                pass
-
-            # Read back the full list for the return value, same transaction.
-            async with conn.execute(
-                "SELECT paths FROM messages WHERE id = ?", (message_id,)
-            ) as cursor:
-                row = await cursor.fetchone()
-        if not row or not row["paths"]:
-            return []
-
-        try:
-            all_paths = json.loads(row["paths"])
-        except json.JSONDecodeError:
-            return []
-
-        return [MessagePath(**p) for p in all_paths]
+        paths, _new = await MessageRepository.add_path_with_status(
+            message_id, path, received_at, path_len, rssi, snr
+        )
+        return paths
 
     @staticmethod
     async def claim_prefix_messages(full_key: str) -> int:
