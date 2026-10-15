@@ -977,8 +977,9 @@ async def send_channel_message_to_channel(
             )
             broadcast_message(message=unknown_message, broadcast_fn=broadcast_fn)
         elif outgoing_message is not None:
-            await message_repository.delete_by_id(outgoing_message.id)
-            outgoing_message = None
+            # Even a reported 422 can follow a partially written command.
+            # Preserve the audit row instead of inviting a duplicate TX.
+            await message_repository.update_send_status(outgoing_message.id, "unknown")
         logger.warning(
             "Channel message send %s to %s ended with HTTP %d after %.3fs",
             message_id if message_id is not None else "unstored",
@@ -990,8 +991,10 @@ async def send_channel_message_to_channel(
     except Exception:
         message_id = outgoing_message.id if outgoing_message is not None else None
         if outgoing_message is not None:
-            await message_repository.delete_by_id(outgoing_message.id)
-            outgoing_message = None
+            try:
+                await message_repository.update_send_status(outgoing_message.id, "unknown")
+            except Exception:
+                logger.warning("Channel TX outcome remains pending after SQLite update failure")
         logger.error(
             "Channel message send %s to %s failed after %.3fs",
             message_id if message_id is not None else "unstored",
@@ -1165,13 +1168,14 @@ async def resend_channel_message_record(
             )
             broadcast_message(message=unknown_message, broadcast_fn=broadcast_fn)
         elif new_message is not None:
-            await message_repository.delete_by_id(new_message.id)
-            new_message = None
+            await message_repository.update_send_status(new_message.id, "unknown")
         raise
     except Exception:
         if new_message is not None:
-            await message_repository.delete_by_id(new_message.id)
-            new_message = None
+            try:
+                await message_repository.update_send_status(new_message.id, "unknown")
+            except Exception:
+                logger.warning("Resend outcome remains pending after SQLite failure")
         raise
     finally:
         if new_timestamp and sent_at is not None:
