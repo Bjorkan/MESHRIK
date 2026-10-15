@@ -1,10 +1,10 @@
 import logging
 import time
 from collections.abc import AsyncIterator
-from hashlib import sha256
 
 from app.database import db
-from app.decoder import PayloadType, extract_payload, get_packet_payload_type
+from app.decoder import PayloadType, get_packet_payload_type
+from app.path_utils import canonical_packet_digest
 
 logger = logging.getLogger(__name__)
 
@@ -26,13 +26,7 @@ class RawPacketRepository:
         """
         ts = timestamp if timestamp is not None else int(time.time())
 
-        # Compute payload hash for deduplication
-        payload = extract_payload(data)
-        if payload:
-            payload_hash = sha256(payload).digest()
-        else:
-            # For malformed packets, hash the full data
-            payload_hash = sha256(data).digest()
+        payload_hash = canonical_packet_digest(data)
 
         async with db.tx() as conn:
             async with conn.execute(

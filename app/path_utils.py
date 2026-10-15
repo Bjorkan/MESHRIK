@@ -367,28 +367,25 @@ def bucket_region_scope(rows: Iterable) -> dict[str, int | float]:
     }
 
 
-def calculate_packet_hash(raw_bytes: bytes) -> str:
-    """Calculate packet hash matching MeshCore's Packet::calculatePacketHash().
+def canonical_packet_digest(raw_bytes: bytes) -> bytes:
+    """MeshCore canonical SHA256 digest shared by raw repository and packet UI.
 
-    Parses the packet structure to extract payload type and payload data,
-    then hashes: payload_type(1 byte) [+ path_len(2 bytes LE) for TRACE] + payload_data.
-    Returns first 16 hex characters (uppercase).
+    TRACE includes the raw encoded path byte; normal path routing does not.
+    Invalid envelopes use a disjoint full-frame digest rather than collapsing.
     """
-    if not raw_bytes:
+    envelope = parse_packet_envelope(raw_bytes)
+    if envelope is None:
+        return hashlib.sha256(b"\xff" + raw_bytes).digest()
+    digest = hashlib.sha256()
+    digest.update(bytes([envelope.payload_type]))
+    if envelope.payload_type == 9:
+        digest.update(envelope.path_byte.to_bytes(2, "little"))
+    digest.update(envelope.payload)
+    return digest.digest()
+
+
+def calculate_packet_hash(raw_bytes: bytes) -> str:
+    """16-digit UI prefix of the canonical full SHA256 packet identity."""
+    if parse_packet_envelope(raw_bytes) is None:
         return "0" * 16
-
-    try:
-        envelope = parse_packet_envelope(raw_bytes)
-        if envelope is None:
-            return "0" * 16
-
-        hash_obj = hashlib.sha256()
-        hash_obj.update(bytes([envelope.payload_type]))
-        # TRACE hash uses the raw wire byte (not decoded hop count) to match firmware.
-        if envelope.payload_type == 9:  # PAYLOAD_TYPE_TRACE
-            hash_obj.update(envelope.path_byte.to_bytes(2, byteorder="little"))
-        hash_obj.update(envelope.payload)
-
-        return hash_obj.hexdigest()[:16].upper()
-    except Exception:
-        return "0" * 16
+    return canonical_packet_digest(raw_bytes).hex()[:16].upper()
