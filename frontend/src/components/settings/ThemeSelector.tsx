@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { THEMES, getSavedTheme, applyTheme } from '../../utils/theme';
+import { useSyncExternalStore } from 'react';
+import { THEMES, getSavedTheme, applyTheme, subscribeThemePreference } from '../../utils/theme';
 
 /** 3x2 grid of colored dots previewing a theme's palette. */
 function ThemeSwatch({ colors }: { colors: readonly string[] }) {
@@ -17,10 +17,9 @@ function ThemeSwatch({ colors }: { colors: readonly string[] }) {
 }
 
 export function ThemeSelector() {
-  const [current, setCurrent] = useState(getSavedTheme);
+  const current = useSyncExternalStore(subscribeThemePreference, getSavedTheme, () => 'original');
 
   const handleChange = (themeId: string) => {
-    setCurrent(themeId);
     applyTheme(themeId);
   };
 

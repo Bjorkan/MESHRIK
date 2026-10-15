@@ -120,11 +120,13 @@ export function getEffectiveTheme(): string {
   return saved === FOLLOW_OS_THEME_ID ? resolveFollowOS() : saved;
 }
 
-export function applyTheme(themeId: string): void {
-  try {
-    localStorage.setItem(THEME_KEY, themeId);
-  } catch {
-    // localStorage may be unavailable
+function applyThemeToDocument(themeId: string, persist: boolean): void {
+  if (persist) {
+    try {
+      localStorage.setItem(THEME_KEY, themeId);
+    } catch {
+      // localStorage may be unavailable
+    }
   }
 
   const effective = themeId === FOLLOW_OS_THEME_ID ? resolveFollowOS() : themeId;
@@ -149,6 +151,30 @@ export function applyTheme(themeId: string): void {
     // the rendered appearance should call getEffectiveTheme().
     window.dispatchEvent(new CustomEvent(THEME_CHANGE_EVENT, { detail: themeId }));
   }
+}
+
+export function applyTheme(themeId: string): void {
+  applyThemeToDocument(themeId, true);
+}
+
+/** Subscribe to the saved theme preference shared by every theme control. */
+export function subscribeThemePreference(onStoreChange: () => void): () => void {
+  if (typeof window === 'undefined') return () => {};
+
+  const handleThemeChange = () => onStoreChange();
+  const handleStorage = (event: StorageEvent) => {
+    if (event.key !== THEME_KEY) return;
+    // Storage events represent another document. Apply the remote preference
+    // locally without writing it back, then notify all existing listeners.
+    applyThemeToDocument(event.newValue ?? 'original', false);
+  };
+
+  window.addEventListener(THEME_CHANGE_EVENT, handleThemeChange);
+  window.addEventListener('storage', handleStorage);
+  return () => {
+    window.removeEventListener(THEME_CHANGE_EVENT, handleThemeChange);
+    window.removeEventListener('storage', handleStorage);
+  };
 }
 
 let followOSInitialized = false;
