@@ -9,6 +9,7 @@ between backend and frontend - both sides test against the same data.
 
 import asyncio
 import json
+import logging
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -2112,6 +2113,37 @@ class TestProcessDirectMessageDispatch:
         assert len(messages) == 1
         assert messages[0].text == "Real message"
         assert messages[0].outgoing is False
+
+    @pytest.mark.asyncio
+    async def test_decrypted_dm_debug_log_excludes_plaintext(self, test_db, caplog):
+        """Incoming decrypted DM text must not enter app or diagnostic logs."""
+        from app.decoder import DecryptedDirectMessage
+        from app.packet_processor import _process_direct_message
+
+        sentinel = "PRIVATE-SENTINEL-incoming-debug-827f"
+        packet_info = self._make_packet_info(0xFA, 0xA1)
+        await ContactRepository.upsert(
+            {"public_key": self.CONTACT_PUB_HEX, "name": "Alice", "type": 1}
+        )
+        mock_decrypted = DecryptedDirectMessage(
+            timestamp=1000, flags=0, message=sentinel, dest_hash="fa", src_hash="a1"
+        )
+        caplog.set_level(logging.DEBUG, logger="app.packet_processor")
+
+        with self._keystore_patches(has_key=True):
+            with patch("app.packet_processor.try_decrypt_dm", return_value=mock_decrypted):
+                with patch(
+                    "app.packet_processor.create_dm_message_from_decrypted",
+                    new=AsyncMock(return_value=1),
+                ):
+                    result = await _process_direct_message(
+                        b"\x09\x00" + b"\x00" * 30, 1, 1000, packet_info
+                    )
+
+        assert result is not None
+        captured = "\n".join(record.getMessage() for record in caplog.records)
+        assert sentinel not in captured
+        assert "UTF-8 bytes" in captured
 
 
 class TestProcessRawPacketIntegration:

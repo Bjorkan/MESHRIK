@@ -197,6 +197,24 @@ class _RepeatSquelch(logging.Filter):
             return True
 
 
+class _SensitiveMeshcorePayloadFilter(logging.Filter):
+    """Drop dependency DEBUG records that contain user-authored payloads.
+
+    meshcore-py formats these messages before handing them to logging, so the
+    payload cannot be safely separated from ``record.args``.  MESHRIK emits its
+    own metadata-only operation logs around these calls instead.
+    """
+
+    _SENSITIVE_PREFIXES = (
+        "Sending message to ",
+        "Sending channel message to channel ",
+        "Sending command to ",
+    )
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        return not record.getMessage().startswith(self._SENSITIVE_PREFIXES)
+
+
 def setup_logging() -> None:
     """Configure logging for the application."""
     logging.config.dictConfig(
@@ -270,4 +288,10 @@ def setup_logging() -> None:
 
     # Squelch repeated messages from the meshcore library (e.g. rapid-fire
     # "Serial Connection started" when the port is contended).
-    logging.getLogger("meshcore").addFilter(_RepeatSquelch())
+    meshcore_logger = logging.getLogger("meshcore")
+    if not any(isinstance(item, _RepeatSquelch) for item in meshcore_logger.filters):
+        meshcore_logger.addFilter(_RepeatSquelch())
+    if not any(
+        isinstance(item, _SensitiveMeshcorePayloadFilter) for item in meshcore_logger.filters
+    ):
+        meshcore_logger.addFilter(_SensitiveMeshcorePayloadFilter())

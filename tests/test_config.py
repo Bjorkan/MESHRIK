@@ -19,6 +19,27 @@ def test_sql_debug_parameters_are_suppressed():
     assert logging.getLogger("aiosqlite").getEffectiveLevel() == logging.WARNING
 
 
+def test_meshcore_debug_message_payloads_are_suppressed(caplog):
+    """Dependency debug logs must not expose chat or CLI text."""
+    setup_logging()
+    sentinel = "PRIVATE-SENTINEL-meshcore-debug-31d8"
+    caplog.set_level(logging.DEBUG, logger="meshcore")
+
+    dependency_logger = logging.getLogger("meshcore")
+    dependency_logger.addHandler(caplog.handler)
+    try:
+        dependency_logger.debug("Sending message to aabbcc: %s", sentinel)
+        dependency_logger.debug("Sending channel message to channel 3: %s", sentinel)
+        dependency_logger.debug("Sending command to aabbcc: %s", sentinel)
+        dependency_logger.debug("Requesting pending messages")
+    finally:
+        dependency_logger.removeHandler(caplog.handler)
+
+    captured = "\n".join(record.getMessage() for record in caplog.records)
+    assert sentinel not in captured
+    assert "Requesting pending messages" in captured
+
+
 class TestTransportExclusivity:
     """Ensure only one transport can be configured at a time."""
 

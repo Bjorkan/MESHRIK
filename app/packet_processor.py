@@ -897,10 +897,10 @@ async def _process_direct_message(
                     )
 
             logger.debug(
-                "Decrypted DM %s contact %s: %s",
+                "Decrypted DM %s contact %s (%d UTF-8 bytes)",
                 "to" if effective_outgoing else "from",
                 contact.name or contact.public_key[:12],
-                result.message[:50] if result.message else "",
+                len(result.message.encode("utf-8")) if result.message else 0,
             )
 
             # Create message (or add path to existing if duplicate)
