@@ -527,6 +527,35 @@ async def _is_message_acked(*, message_id: int, message_repository) -> bool:
     return acked_count > 0
 
 
+# Background retransmissions are bounded by both attempt count and wall clock.
+DM_RETRY_TOTAL_BUDGET_SECONDS = 120.0
+_owned_dm_retry_tasks: dict[int, asyncio.Task] = {}
+
+
+def cancel_direct_message_retry(message_id: int) -> None:
+    task = _owned_dm_retry_tasks.pop(message_id, None)
+    if task is not None and not task.done():
+        task.cancel()
+
+
+def _own_dm_retry(message_id: int, task: object) -> None:
+    if not isinstance(task, asyncio.Task):
+        return  # Test injection may supply its own scheduler.
+    cancel_direct_message_retry(message_id)
+    _owned_dm_retry_tasks[message_id] = task
+
+    def finished(done: asyncio.Task) -> None:
+        if _owned_dm_retry_tasks.get(message_id) is done:
+            _owned_dm_retry_tasks.pop(message_id, None)
+        if not done.cancelled():
+            try:
+                done.exception()
+            except Exception:
+                logger.warning("Direct-message retry task failed")
+
+    task.add_done_callback(finished)
+
+
 async def _retry_direct_message_until_acked(
     *,
     contact,
@@ -542,20 +571,18 @@ async def _retry_direct_message_until_acked(
 ) -> None:
     next_wait_timeout_ms = wait_timeout_ms
     attempt = 1
-    while attempt < DM_SEND_MAX_ATTEMPTS:
-        await sleep_fn((next_wait_timeout_ms / 1000) * DM_RETRY_WAIT_MARGIN)
+    deadline = asyncio.get_running_loop().time() + DM_RETRY_TOTAL_BUDGET_SECONDS
+    while attempt < DM_SEND_MAX_ATTEMPTS and asyncio.get_running_loop().time() < deadline:
+        remaining = deadline - asyncio.get_running_loop().time()
+        await sleep_fn(min(remaining, (next_wait_timeout_ms / 1000) * DM_RETRY_WAIT_MARGIN))
         if await _is_message_acked(message_id=message_id, message_repository=message_repository):
             return
 
         async def retry_send(mc, attempt=attempt):
             contact_data = contact.to_radio_dict()
             add_result = await mc.commands.add_contact(contact_data)
-            if add_result.type == EventType.ERROR:
-                logger.warning(
-                    "Failed to reload contact %s on radio before DM retry: %s",
-                    contact.public_key[:12],
-                    add_result.payload,
-                )
+            if add_result is None or add_result.type == EventType.ERROR:
+                raise RuntimeError("Contact staging rejected; retry will not transmit")
             cached_contact = mc.get_contact_by_key_prefix(contact.public_key[:12])
             if not cached_contact:
                 cached_contact = contact_data
@@ -587,12 +614,8 @@ async def _retry_direct_message_until_acked(
         try:
             result = await _run_radio_command(radio_manager, "retry_direct_message", retry_send)
         except RadioOperationBusyError:
-            logger.debug(
-                "Radio busy during DM retry attempt %d/%d for %s, will retry without consuming attempt",
-                attempt + 1,
-                DM_SEND_MAX_ATTEMPTS,
-                contact.public_key[:12],
-            )
+            logger.debug("DM retry deferred: radio worker busy")
+            attempt += 1
             continue
         except Exception:
             logger.exception(
@@ -687,8 +710,8 @@ async def send_direct_message_to_contact(
         nonlocal sent_at, sender_timestamp, message, result, ack_count
         logger.debug("Ensuring contact %s is on radio before sending", contact.public_key[:12])
         add_result = await mc.commands.add_contact(contact_data)
-        if add_result.type == EventType.ERROR:
-            logger.warning("Failed to add contact to radio: %s", add_result.payload)
+        if add_result is None or add_result.type == EventType.ERROR:
+            raise HTTPException(status_code=422, detail="Radio refused destination contact staging")
 
         cached_contact = mc.get_contact_by_key_prefix(contact.public_key[:12])
         if not cached_contact:
@@ -796,7 +819,7 @@ async def send_direct_message_to_contact(
         return message
 
     if DM_SEND_MAX_ATTEMPTS > 1 and ack_code:
-        retry_task_scheduler(
+        retry_task = retry_task_scheduler(
             _retry_direct_message_until_acked(
                 contact=contact,
                 text=text,
@@ -810,6 +833,7 @@ async def send_direct_message_to_contact(
                 message_repository=message_repository,
             )
         )
+        _own_dm_retry(message.id, retry_task)
 
     return message
 
