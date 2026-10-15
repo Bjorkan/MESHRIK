@@ -39,6 +39,21 @@ def test_openapi_includes_docs_metadata():
     assert tags["radio"].startswith("Radio configuration")
 
 
+def test_method_not_allowed_advertises_every_documented_method():
+    """Starlette's first-partial-match Allow cannot see sibling same-path routes."""
+    with TestClient(app) as client:
+        options = client.request("OPTIONS", "/api/settings")
+        delete_contacts = client.request("DELETE", "/api/contacts")
+        post_health = client.request("POST", "/api/health")
+
+    assert options.status_code == 405
+    assert options.headers["allow"] == "GET, PATCH"
+    assert delete_contacts.status_code == 405
+    assert delete_contacts.headers["allow"] == "GET, POST"
+    assert post_health.status_code == 405
+    assert post_health.headers["allow"] == "GET"
+
+
 def test_openapi_documents_common_error_responses():
     with TestClient(app) as client:
         response = client.get("/openapi.json")

@@ -36,6 +36,7 @@ if sys.platform == "win32":
     del _loop, _is_proactor
 
 import asyncio
+import re
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -43,7 +44,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
-from starlette.routing import Match
+from starlette.types import Scope
 
 from app.api_docs import API_DESCRIPTION, API_TAGS_METADATA, register_api_docs_routes
 from app.config import settings as server_settings
@@ -237,6 +238,65 @@ async def radio_operation_busy_handler(request: Request, exc: RadioOperationBusy
     )
 
 
+# OpenAPI path item keys that name HTTP operations.
+_OPENAPI_OPERATION_KEYS = frozenset(
+    {"get", "put", "post", "delete", "options", "head", "patch", "trace"}
+)
+_DOCUMENTED_ALLOW_METHODS_ATTR = "_documented_allow_methods"
+
+
+def _compile_path_template(template: str) -> re.Pattern[str]:
+    """Compile an OpenAPI path template (``/a/{id}``) into a matching regex."""
+    segments = re.split(r"\{[^}]*\}", template)
+    pattern = ""
+    for index, segment in enumerate(segments):
+        if index:
+            pattern += "[^/]+"
+        pattern += re.escape(segment)
+    return re.compile(f"^{pattern}$")
+
+
+def _request_route_path(scope: Scope) -> str:
+    """Return the request path with any ASGI root_path mount prefix removed.
+
+    OpenAPI path templates are registered without the mount prefix, and
+    Starlette's own equivalent helper is not part of its public exports.
+    """
+    path = str(scope["path"])
+    root_path = str(scope.get("root_path") or "")
+    if not root_path or not path.startswith(root_path):
+        return path
+    if path == root_path:
+        return ""
+    if path[len(root_path)] == "/":
+        return path[len(root_path) :]
+    return path
+
+
+def _documented_allow_methods(app: FastAPI) -> list[tuple[re.Pattern[str], set[str]]]:
+    """Return compiled schema paths with the HTTP methods each one documents.
+
+    Starlette answers an unsupported method (including ``OPTIONS``) from the
+    first partial route match, so its ``Allow`` header only ever names that one
+    route's methods. FastAPI registers same-path methods as separate routes, and
+    since 0.143 wraps ``include_router()`` results instead of flattening them,
+    walking ``app.routes`` no longer sees the API routes at all. The OpenAPI
+    schema is the documented contract, so it is the source for the complete
+    ``Allow`` set.
+    """
+    cached = getattr(app.state, _DOCUMENTED_ALLOW_METHODS_ATTR, None)
+    if cached is None:
+        cached = [
+            (
+                _compile_path_template(template),
+                {method.upper() for method in operations if method in _OPENAPI_OPERATION_KEYS},
+            )
+            for template, operations in app.openapi().get("paths", {}).items()
+        ]
+        setattr(app.state, _DOCUMENTED_ALLOW_METHODS_ATTR, cached)
+    return cached
+
+
 @app.middleware("http")
 async def log_server_errors(request: Request, call_next):
     """Capture 5xx errors and unhandled exceptions into the log ring buffer.
@@ -254,13 +314,11 @@ async def log_server_errors(request: Request, call_next):
     if response.status_code >= 500:
         logger.error("HTTP %d on %s %s", response.status_code, request.method, request.url.path)
     elif response.status_code == 405:
-        # FastAPI registers same-path methods as separate routes and Starlette's
-        # first partial match may otherwise publish an incomplete Allow header.
+        request_path = _request_route_path(request.scope)
         allowed_methods: set[str] = set()
-        for route in request.app.routes:
-            match, _ = route.matches(request.scope)
-            if match in (Match.FULL, Match.PARTIAL):
-                allowed_methods.update(getattr(route, "methods", ()) or ())
+        for pattern, methods in _documented_allow_methods(request.app):
+            if pattern.match(request_path):
+                allowed_methods.update(methods)
         if allowed_methods:
             response.headers["Allow"] = ", ".join(sorted(allowed_methods))
     return response
