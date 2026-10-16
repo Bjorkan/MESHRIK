@@ -579,6 +579,9 @@ async def sync_and_offload_all(mc: MeshCore) -> dict:
 # Exactly one application-owned task submits pending pulls through radio worker.
 # The SDK's start_auto_message_fetching() must never be started by MESHRIK.
 _inbound_catchup_task: asyncio.Task | None = None
+# A waiting push received while the worker is draining must trigger one more
+# pass. Otherwise a late queue write can be left behind until the next audit.
+_inbound_catchup_retrigger_generation: int | None = None
 _owned_get_msg = 0
 MAX_PENDING_PULL_BATCH = 100
 
@@ -615,22 +618,41 @@ async def _run_inbound_catchup(expected_generation: int) -> None:
         logger.info("Pending inbound catch-up deferred until next authorized poll")
 
 
+def _inbound_catchup_finished(task: asyncio.Task) -> None:
+    """Re-arm one bounded pass if a waiting push raced the previous drain."""
+    global _inbound_catchup_task, _inbound_catchup_retrigger_generation
+    if _inbound_catchup_task is not task:
+        return
+    _inbound_catchup_task = None
+    requested = _inbound_catchup_retrigger_generation
+    _inbound_catchup_retrigger_generation = None
+    if (
+        requested is not None
+        and radio_manager.is_connected
+        and requested == radio_manager.radio_generation
+    ):
+        request_inbound_catchup()
+
+
 def request_inbound_catchup() -> None:
-    """Coalesce waiting notifications without opening a second radio command owner."""
-    global _inbound_catchup_task
+    """Coalesce wakeups; never open two concurrent pending-message workers."""
+    global _inbound_catchup_task, _inbound_catchup_retrigger_generation
     if not radio_manager.is_connected:
         return
-    if _inbound_catchup_task is not None and not _inbound_catchup_task.done():
-        return
     generation = radio_manager.radio_generation
+    if _inbound_catchup_task is not None and not _inbound_catchup_task.done():
+        _inbound_catchup_retrigger_generation = generation
+        return
     _inbound_catchup_task = asyncio.create_task(
         _run_inbound_catchup(generation), name="inbound-backlog-catchup"
     )
+    _inbound_catchup_task.add_done_callback(_inbound_catchup_finished)
 
 
 async def stop_inbound_catchup() -> None:
-    global _inbound_catchup_task
+    global _inbound_catchup_task, _inbound_catchup_retrigger_generation
     task, _inbound_catchup_task = _inbound_catchup_task, None
+    _inbound_catchup_retrigger_generation = None
     if task is not None and not task.done():
         task.cancel()
         try:
