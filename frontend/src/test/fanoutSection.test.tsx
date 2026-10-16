@@ -266,6 +266,43 @@ describe('SettingsFanoutSection', () => {
     expect(screen.getByText('HTTP 500')).toBeInTheDocument();
   });
 
+  it.each([
+    ['PUBLISH_UNKNOWN_IATA', 'Choose an IATA code supported by this broker.'],
+    ['PUBLISH_STALE_STATUS', 'Check the server clock and reconnect to refresh online status.'],
+  ])('shows the %s Community MQTT remedy without hiding its code', async (code, remedy) => {
+    const communityConfig: FanoutConfig = {
+      ...webhookConfig,
+      id: 'community-1',
+      type: 'mqtt_community',
+      name: 'Community uplink',
+      config: { profile: 'letsmesh', iata: 'ARN' },
+    };
+    mockedApi.getFanoutConfigs.mockResolvedValue([communityConfig]);
+    renderSection({
+      health: {
+        ...baseHealth,
+        fanout_statuses: {
+          'community-1': {
+            name: communityConfig.name,
+            type: communityConfig.type,
+            status: 'error',
+            last_error: `${code}: ${remedy}`,
+          },
+        },
+      },
+    });
+
+    await waitFor(() => expect(screen.getByText(communityConfig.name)).toBeInTheDocument());
+    fireEvent.click(
+      screen.getByRole('button', { name: `View error details for ${communityConfig.name}` })
+    );
+
+    expect(screen.getByRole('dialog', { name: `${communityConfig.name} Error` })).toHaveTextContent(
+      code
+    );
+    expect(screen.getByText(`${code}: ${remedy}`)).toBeInTheDocument();
+  });
+
   it('does not show an error info button when the integration has no retained error', async () => {
     mockedApi.getFanoutConfigs.mockResolvedValue([webhookConfig]);
     renderSection({
