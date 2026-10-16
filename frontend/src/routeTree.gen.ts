@@ -8,177 +8,177 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from './routes/__root'
-import { Route as AppRouteImport } from './routes/_app'
-import { Route as AppIndexRouteImport } from './routes/_app.index'
-import { Route as AppMapRouteImport } from './routes/_app.map'
-import { Route as AppRadioActivityRouteImport } from './routes/_app.radio-activity'
-import { Route as AppRawRouteImport } from './routes/_app.raw'
-import { Route as AppSearchRouteImport } from './routes/_app.search'
-import { Route as AppSettingsRouteImport } from './routes/_app.settings'
-import { Route as AppTraceRouteImport } from './routes/_app.trace'
-import { Route as AppVisualizerRouteImport } from './routes/_app.visualizer'
-import { Route as AppChannelChannelIdRouteImport } from './routes/_app.channel.$channelId'
-import { Route as AppContactPublicKeyRouteImport } from './routes/_app.contact.$publicKey'
-import { Route as AppSettingsAboutRouteImport } from './routes/_app.settings.about'
-import { Route as AppSettingsDatabaseRouteImport } from './routes/_app.settings.database'
-import { Route as AppSettingsFanoutRouteImport } from './routes/_app.settings.fanout'
-import { Route as AppSettingsLocalRouteImport } from './routes/_app.settings.local'
-import { Route as AppSettingsRadioRouteImport } from './routes/_app.settings.radio'
-import { Route as AppSettingsRadioAppRouteImport } from './routes/_app.settings.radio-app'
-import { Route as AppSettingsStatisticsRouteImport } from './routes/_app.settings.statistics'
+import { Route as rootRouteImport } from './routes/__root';
+import { Route as AppRouteImport } from './routes/_app';
+import { Route as AppIndexRouteImport } from './routes/_app.index';
+import { Route as AppMapRouteImport } from './routes/_app.map';
+import { Route as AppRadioActivityRouteImport } from './routes/_app.radio-activity';
+import { Route as AppRawRouteImport } from './routes/_app.raw';
+import { Route as AppSearchRouteImport } from './routes/_app.search';
+import { Route as AppSettingsRouteImport } from './routes/_app.settings';
+import { Route as AppTraceRouteImport } from './routes/_app.trace';
+import { Route as AppVisualizerRouteImport } from './routes/_app.visualizer';
+import { Route as AppChannelChannelIdRouteImport } from './routes/_app.channel.$channelId';
+import { Route as AppContactPublicKeyRouteImport } from './routes/_app.contact.$publicKey';
+import { Route as AppSettingsAboutRouteImport } from './routes/_app.settings.about';
+import { Route as AppSettingsDatabaseRouteImport } from './routes/_app.settings.database';
+import { Route as AppSettingsFanoutRouteImport } from './routes/_app.settings.fanout';
+import { Route as AppSettingsLocalRouteImport } from './routes/_app.settings.local';
+import { Route as AppSettingsRadioRouteImport } from './routes/_app.settings.radio';
+import { Route as AppSettingsRadioAppRouteImport } from './routes/_app.settings.radio-app';
+import { Route as AppSettingsStatisticsRouteImport } from './routes/_app.settings.statistics';
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AppRoute,
-} as any)
+} as any);
 const AppMapRoute = AppMapRouteImport.update({
   id: '/map',
   path: '/map',
   getParentRoute: () => AppRoute,
-} as any)
+} as any);
 const AppRadioActivityRoute = AppRadioActivityRouteImport.update({
   id: '/radio-activity',
   path: '/radio-activity',
   getParentRoute: () => AppRoute,
-} as any)
+} as any);
 const AppRawRoute = AppRawRouteImport.update({
   id: '/raw',
   path: '/raw',
   getParentRoute: () => AppRoute,
-} as any)
+} as any);
 const AppSearchRoute = AppSearchRouteImport.update({
   id: '/search',
   path: '/search',
   getParentRoute: () => AppRoute,
-} as any)
+} as any);
 const AppSettingsRoute = AppSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
   getParentRoute: () => AppRoute,
-} as any)
+} as any);
 const AppTraceRoute = AppTraceRouteImport.update({
   id: '/trace',
   path: '/trace',
   getParentRoute: () => AppRoute,
-} as any)
+} as any);
 const AppVisualizerRoute = AppVisualizerRouteImport.update({
   id: '/visualizer',
   path: '/visualizer',
   getParentRoute: () => AppRoute,
-} as any)
+} as any);
 const AppChannelChannelIdRoute = AppChannelChannelIdRouteImport.update({
   id: '/channel/$channelId',
   path: '/channel/$channelId',
   getParentRoute: () => AppRoute,
-} as any)
+} as any);
 const AppContactPublicKeyRoute = AppContactPublicKeyRouteImport.update({
   id: '/contact/$publicKey',
   path: '/contact/$publicKey',
   getParentRoute: () => AppRoute,
-} as any)
+} as any);
 const AppSettingsAboutRoute = AppSettingsAboutRouteImport.update({
   id: '/about',
   path: '/about',
   getParentRoute: () => AppSettingsRoute,
-} as any)
+} as any);
 const AppSettingsDatabaseRoute = AppSettingsDatabaseRouteImport.update({
   id: '/database',
   path: '/database',
   getParentRoute: () => AppSettingsRoute,
-} as any)
+} as any);
 const AppSettingsFanoutRoute = AppSettingsFanoutRouteImport.update({
   id: '/fanout',
   path: '/fanout',
   getParentRoute: () => AppSettingsRoute,
-} as any)
+} as any);
 const AppSettingsLocalRoute = AppSettingsLocalRouteImport.update({
   id: '/local',
   path: '/local',
   getParentRoute: () => AppSettingsRoute,
-} as any)
+} as any);
 const AppSettingsRadioRoute = AppSettingsRadioRouteImport.update({
   id: '/radio',
   path: '/radio',
   getParentRoute: () => AppSettingsRoute,
-} as any)
+} as any);
 const AppSettingsRadioAppRoute = AppSettingsRadioAppRouteImport.update({
   id: '/radio-app',
   path: '/radio-app',
   getParentRoute: () => AppSettingsRoute,
-} as any)
+} as any);
 const AppSettingsStatisticsRoute = AppSettingsStatisticsRouteImport.update({
   id: '/statistics',
   path: '/statistics',
   getParentRoute: () => AppSettingsRoute,
-} as any)
+} as any);
 
 export interface FileRoutesByFullPath {
-  '/': typeof AppIndexRoute
-  '/map': typeof AppMapRoute
-  '/radio-activity': typeof AppRadioActivityRoute
-  '/raw': typeof AppRawRoute
-  '/search': typeof AppSearchRoute
-  '/settings': typeof AppSettingsRouteWithChildren
-  '/trace': typeof AppTraceRoute
-  '/visualizer': typeof AppVisualizerRoute
-  '/channel/$channelId': typeof AppChannelChannelIdRoute
-  '/contact/$publicKey': typeof AppContactPublicKeyRoute
-  '/settings/about': typeof AppSettingsAboutRoute
-  '/settings/database': typeof AppSettingsDatabaseRoute
-  '/settings/fanout': typeof AppSettingsFanoutRoute
-  '/settings/local': typeof AppSettingsLocalRoute
-  '/settings/radio': typeof AppSettingsRadioRoute
-  '/settings/radio-app': typeof AppSettingsRadioAppRoute
-  '/settings/statistics': typeof AppSettingsStatisticsRoute
+  '/': typeof AppIndexRoute;
+  '/map': typeof AppMapRoute;
+  '/radio-activity': typeof AppRadioActivityRoute;
+  '/raw': typeof AppRawRoute;
+  '/search': typeof AppSearchRoute;
+  '/settings': typeof AppSettingsRouteWithChildren;
+  '/trace': typeof AppTraceRoute;
+  '/visualizer': typeof AppVisualizerRoute;
+  '/channel/$channelId': typeof AppChannelChannelIdRoute;
+  '/contact/$publicKey': typeof AppContactPublicKeyRoute;
+  '/settings/about': typeof AppSettingsAboutRoute;
+  '/settings/database': typeof AppSettingsDatabaseRoute;
+  '/settings/fanout': typeof AppSettingsFanoutRoute;
+  '/settings/local': typeof AppSettingsLocalRoute;
+  '/settings/radio': typeof AppSettingsRadioRoute;
+  '/settings/radio-app': typeof AppSettingsRadioAppRoute;
+  '/settings/statistics': typeof AppSettingsStatisticsRoute;
 }
 export interface FileRoutesByTo {
-  '/map': typeof AppMapRoute
-  '/radio-activity': typeof AppRadioActivityRoute
-  '/raw': typeof AppRawRoute
-  '/search': typeof AppSearchRoute
-  '/settings': typeof AppSettingsRouteWithChildren
-  '/trace': typeof AppTraceRoute
-  '/visualizer': typeof AppVisualizerRoute
-  '/': typeof AppIndexRoute
-  '/channel/$channelId': typeof AppChannelChannelIdRoute
-  '/contact/$publicKey': typeof AppContactPublicKeyRoute
-  '/settings/about': typeof AppSettingsAboutRoute
-  '/settings/database': typeof AppSettingsDatabaseRoute
-  '/settings/fanout': typeof AppSettingsFanoutRoute
-  '/settings/local': typeof AppSettingsLocalRoute
-  '/settings/radio': typeof AppSettingsRadioRoute
-  '/settings/radio-app': typeof AppSettingsRadioAppRoute
-  '/settings/statistics': typeof AppSettingsStatisticsRoute
+  '/map': typeof AppMapRoute;
+  '/radio-activity': typeof AppRadioActivityRoute;
+  '/raw': typeof AppRawRoute;
+  '/search': typeof AppSearchRoute;
+  '/settings': typeof AppSettingsRouteWithChildren;
+  '/trace': typeof AppTraceRoute;
+  '/visualizer': typeof AppVisualizerRoute;
+  '/': typeof AppIndexRoute;
+  '/channel/$channelId': typeof AppChannelChannelIdRoute;
+  '/contact/$publicKey': typeof AppContactPublicKeyRoute;
+  '/settings/about': typeof AppSettingsAboutRoute;
+  '/settings/database': typeof AppSettingsDatabaseRoute;
+  '/settings/fanout': typeof AppSettingsFanoutRoute;
+  '/settings/local': typeof AppSettingsLocalRoute;
+  '/settings/radio': typeof AppSettingsRadioRoute;
+  '/settings/radio-app': typeof AppSettingsRadioAppRoute;
+  '/settings/statistics': typeof AppSettingsStatisticsRoute;
 }
 export interface FileRoutesById {
-  __root__: typeof rootRouteImport
-  '/_app': typeof AppRouteWithChildren
-  '/_app/map': typeof AppMapRoute
-  '/_app/radio-activity': typeof AppRadioActivityRoute
-  '/_app/raw': typeof AppRawRoute
-  '/_app/search': typeof AppSearchRoute
-  '/_app/settings': typeof AppSettingsRouteWithChildren
-  '/_app/trace': typeof AppTraceRoute
-  '/_app/visualizer': typeof AppVisualizerRoute
-  '/_app/': typeof AppIndexRoute
-  '/_app/channel/$channelId': typeof AppChannelChannelIdRoute
-  '/_app/contact/$publicKey': typeof AppContactPublicKeyRoute
-  '/_app/settings/about': typeof AppSettingsAboutRoute
-  '/_app/settings/database': typeof AppSettingsDatabaseRoute
-  '/_app/settings/fanout': typeof AppSettingsFanoutRoute
-  '/_app/settings/local': typeof AppSettingsLocalRoute
-  '/_app/settings/radio': typeof AppSettingsRadioRoute
-  '/_app/settings/radio-app': typeof AppSettingsRadioAppRoute
-  '/_app/settings/statistics': typeof AppSettingsStatisticsRoute
+  __root__: typeof rootRouteImport;
+  '/_app': typeof AppRouteWithChildren;
+  '/_app/map': typeof AppMapRoute;
+  '/_app/radio-activity': typeof AppRadioActivityRoute;
+  '/_app/raw': typeof AppRawRoute;
+  '/_app/search': typeof AppSearchRoute;
+  '/_app/settings': typeof AppSettingsRouteWithChildren;
+  '/_app/trace': typeof AppTraceRoute;
+  '/_app/visualizer': typeof AppVisualizerRoute;
+  '/_app/': typeof AppIndexRoute;
+  '/_app/channel/$channelId': typeof AppChannelChannelIdRoute;
+  '/_app/contact/$publicKey': typeof AppContactPublicKeyRoute;
+  '/_app/settings/about': typeof AppSettingsAboutRoute;
+  '/_app/settings/database': typeof AppSettingsDatabaseRoute;
+  '/_app/settings/fanout': typeof AppSettingsFanoutRoute;
+  '/_app/settings/local': typeof AppSettingsLocalRoute;
+  '/_app/settings/radio': typeof AppSettingsRadioRoute;
+  '/_app/settings/radio-app': typeof AppSettingsRadioAppRoute;
+  '/_app/settings/statistics': typeof AppSettingsStatisticsRoute;
 }
 export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath
+  fileRoutesByFullPath: FileRoutesByFullPath;
   fullPaths:
     | '/'
     | '/map'
@@ -196,8 +196,8 @@ export interface FileRouteTypes {
     | '/settings/local'
     | '/settings/radio'
     | '/settings/radio-app'
-    | '/settings/statistics'
-  fileRoutesByTo: FileRoutesByTo
+    | '/settings/statistics';
+  fileRoutesByTo: FileRoutesByTo;
   to:
     | '/map'
     | '/radio-activity'
@@ -215,7 +215,7 @@ export interface FileRouteTypes {
     | '/settings/local'
     | '/settings/radio'
     | '/settings/radio-app'
-    | '/settings/statistics'
+    | '/settings/statistics';
   id:
     | '__root__'
     | '/_app'
@@ -235,152 +235,152 @@ export interface FileRouteTypes {
     | '/_app/settings/local'
     | '/_app/settings/radio'
     | '/_app/settings/radio-app'
-    | '/_app/settings/statistics'
-  fileRoutesById: FileRoutesById
+    | '/_app/settings/statistics';
+  fileRoutesById: FileRoutesById;
 }
 export interface RootRouteChildren {
-  AppRoute: typeof AppRouteWithChildren
+  AppRoute: typeof AppRouteWithChildren;
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
     '/_app': {
-      id: '/_app'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof AppRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/_app';
+      path: '';
+      fullPath: '/';
+      preLoaderRoute: typeof AppRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/_app/': {
-      id: '/_app/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof AppIndexRouteImport
-      parentRoute: typeof AppRoute
-    }
+      id: '/_app/';
+      path: '/';
+      fullPath: '/';
+      preLoaderRoute: typeof AppIndexRouteImport;
+      parentRoute: typeof AppRoute;
+    };
     '/_app/map': {
-      id: '/_app/map'
-      path: '/map'
-      fullPath: '/map'
-      preLoaderRoute: typeof AppMapRouteImport
-      parentRoute: typeof AppRoute
-    }
+      id: '/_app/map';
+      path: '/map';
+      fullPath: '/map';
+      preLoaderRoute: typeof AppMapRouteImport;
+      parentRoute: typeof AppRoute;
+    };
     '/_app/radio-activity': {
-      id: '/_app/radio-activity'
-      path: '/radio-activity'
-      fullPath: '/radio-activity'
-      preLoaderRoute: typeof AppRadioActivityRouteImport
-      parentRoute: typeof AppRoute
-    }
+      id: '/_app/radio-activity';
+      path: '/radio-activity';
+      fullPath: '/radio-activity';
+      preLoaderRoute: typeof AppRadioActivityRouteImport;
+      parentRoute: typeof AppRoute;
+    };
     '/_app/raw': {
-      id: '/_app/raw'
-      path: '/raw'
-      fullPath: '/raw'
-      preLoaderRoute: typeof AppRawRouteImport
-      parentRoute: typeof AppRoute
-    }
+      id: '/_app/raw';
+      path: '/raw';
+      fullPath: '/raw';
+      preLoaderRoute: typeof AppRawRouteImport;
+      parentRoute: typeof AppRoute;
+    };
     '/_app/search': {
-      id: '/_app/search'
-      path: '/search'
-      fullPath: '/search'
-      preLoaderRoute: typeof AppSearchRouteImport
-      parentRoute: typeof AppRoute
-    }
+      id: '/_app/search';
+      path: '/search';
+      fullPath: '/search';
+      preLoaderRoute: typeof AppSearchRouteImport;
+      parentRoute: typeof AppRoute;
+    };
     '/_app/settings': {
-      id: '/_app/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof AppSettingsRouteImport
-      parentRoute: typeof AppRoute
-    }
+      id: '/_app/settings';
+      path: '/settings';
+      fullPath: '/settings';
+      preLoaderRoute: typeof AppSettingsRouteImport;
+      parentRoute: typeof AppRoute;
+    };
     '/_app/trace': {
-      id: '/_app/trace'
-      path: '/trace'
-      fullPath: '/trace'
-      preLoaderRoute: typeof AppTraceRouteImport
-      parentRoute: typeof AppRoute
-    }
+      id: '/_app/trace';
+      path: '/trace';
+      fullPath: '/trace';
+      preLoaderRoute: typeof AppTraceRouteImport;
+      parentRoute: typeof AppRoute;
+    };
     '/_app/visualizer': {
-      id: '/_app/visualizer'
-      path: '/visualizer'
-      fullPath: '/visualizer'
-      preLoaderRoute: typeof AppVisualizerRouteImport
-      parentRoute: typeof AppRoute
-    }
+      id: '/_app/visualizer';
+      path: '/visualizer';
+      fullPath: '/visualizer';
+      preLoaderRoute: typeof AppVisualizerRouteImport;
+      parentRoute: typeof AppRoute;
+    };
     '/_app/channel/$channelId': {
-      id: '/_app/channel/$channelId'
-      path: '/channel/$channelId'
-      fullPath: '/channel/$channelId'
-      preLoaderRoute: typeof AppChannelChannelIdRouteImport
-      parentRoute: typeof AppRoute
-    }
+      id: '/_app/channel/$channelId';
+      path: '/channel/$channelId';
+      fullPath: '/channel/$channelId';
+      preLoaderRoute: typeof AppChannelChannelIdRouteImport;
+      parentRoute: typeof AppRoute;
+    };
     '/_app/contact/$publicKey': {
-      id: '/_app/contact/$publicKey'
-      path: '/contact/$publicKey'
-      fullPath: '/contact/$publicKey'
-      preLoaderRoute: typeof AppContactPublicKeyRouteImport
-      parentRoute: typeof AppRoute
-    }
+      id: '/_app/contact/$publicKey';
+      path: '/contact/$publicKey';
+      fullPath: '/contact/$publicKey';
+      preLoaderRoute: typeof AppContactPublicKeyRouteImport;
+      parentRoute: typeof AppRoute;
+    };
     '/_app/settings/about': {
-      id: '/_app/settings/about'
-      path: '/about'
-      fullPath: '/settings/about'
-      preLoaderRoute: typeof AppSettingsAboutRouteImport
-      parentRoute: typeof AppSettingsRoute
-    }
+      id: '/_app/settings/about';
+      path: '/about';
+      fullPath: '/settings/about';
+      preLoaderRoute: typeof AppSettingsAboutRouteImport;
+      parentRoute: typeof AppSettingsRoute;
+    };
     '/_app/settings/database': {
-      id: '/_app/settings/database'
-      path: '/database'
-      fullPath: '/settings/database'
-      preLoaderRoute: typeof AppSettingsDatabaseRouteImport
-      parentRoute: typeof AppSettingsRoute
-    }
+      id: '/_app/settings/database';
+      path: '/database';
+      fullPath: '/settings/database';
+      preLoaderRoute: typeof AppSettingsDatabaseRouteImport;
+      parentRoute: typeof AppSettingsRoute;
+    };
     '/_app/settings/fanout': {
-      id: '/_app/settings/fanout'
-      path: '/fanout'
-      fullPath: '/settings/fanout'
-      preLoaderRoute: typeof AppSettingsFanoutRouteImport
-      parentRoute: typeof AppSettingsRoute
-    }
+      id: '/_app/settings/fanout';
+      path: '/fanout';
+      fullPath: '/settings/fanout';
+      preLoaderRoute: typeof AppSettingsFanoutRouteImport;
+      parentRoute: typeof AppSettingsRoute;
+    };
     '/_app/settings/local': {
-      id: '/_app/settings/local'
-      path: '/local'
-      fullPath: '/settings/local'
-      preLoaderRoute: typeof AppSettingsLocalRouteImport
-      parentRoute: typeof AppSettingsRoute
-    }
+      id: '/_app/settings/local';
+      path: '/local';
+      fullPath: '/settings/local';
+      preLoaderRoute: typeof AppSettingsLocalRouteImport;
+      parentRoute: typeof AppSettingsRoute;
+    };
     '/_app/settings/radio': {
-      id: '/_app/settings/radio'
-      path: '/radio'
-      fullPath: '/settings/radio'
-      preLoaderRoute: typeof AppSettingsRadioRouteImport
-      parentRoute: typeof AppSettingsRoute
-    }
+      id: '/_app/settings/radio';
+      path: '/radio';
+      fullPath: '/settings/radio';
+      preLoaderRoute: typeof AppSettingsRadioRouteImport;
+      parentRoute: typeof AppSettingsRoute;
+    };
     '/_app/settings/radio-app': {
-      id: '/_app/settings/radio-app'
-      path: '/radio-app'
-      fullPath: '/settings/radio-app'
-      preLoaderRoute: typeof AppSettingsRadioAppRouteImport
-      parentRoute: typeof AppSettingsRoute
-    }
+      id: '/_app/settings/radio-app';
+      path: '/radio-app';
+      fullPath: '/settings/radio-app';
+      preLoaderRoute: typeof AppSettingsRadioAppRouteImport;
+      parentRoute: typeof AppSettingsRoute;
+    };
     '/_app/settings/statistics': {
-      id: '/_app/settings/statistics'
-      path: '/statistics'
-      fullPath: '/settings/statistics'
-      preLoaderRoute: typeof AppSettingsStatisticsRouteImport
-      parentRoute: typeof AppSettingsRoute
-    }
+      id: '/_app/settings/statistics';
+      path: '/statistics';
+      fullPath: '/settings/statistics';
+      preLoaderRoute: typeof AppSettingsStatisticsRouteImport;
+      parentRoute: typeof AppSettingsRoute;
+    };
   }
 }
 
 interface AppSettingsRouteChildren {
-  AppSettingsAboutRoute: typeof AppSettingsAboutRoute
-  AppSettingsDatabaseRoute: typeof AppSettingsDatabaseRoute
-  AppSettingsFanoutRoute: typeof AppSettingsFanoutRoute
-  AppSettingsLocalRoute: typeof AppSettingsLocalRoute
-  AppSettingsRadioRoute: typeof AppSettingsRadioRoute
-  AppSettingsRadioAppRoute: typeof AppSettingsRadioAppRoute
-  AppSettingsStatisticsRoute: typeof AppSettingsStatisticsRoute
+  AppSettingsAboutRoute: typeof AppSettingsAboutRoute;
+  AppSettingsDatabaseRoute: typeof AppSettingsDatabaseRoute;
+  AppSettingsFanoutRoute: typeof AppSettingsFanoutRoute;
+  AppSettingsLocalRoute: typeof AppSettingsLocalRoute;
+  AppSettingsRadioRoute: typeof AppSettingsRadioRoute;
+  AppSettingsRadioAppRoute: typeof AppSettingsRadioAppRoute;
+  AppSettingsStatisticsRoute: typeof AppSettingsStatisticsRoute;
 }
 
 const AppSettingsRouteChildren: AppSettingsRouteChildren = {
@@ -391,23 +391,21 @@ const AppSettingsRouteChildren: AppSettingsRouteChildren = {
   AppSettingsRadioRoute: AppSettingsRadioRoute,
   AppSettingsRadioAppRoute: AppSettingsRadioAppRoute,
   AppSettingsStatisticsRoute: AppSettingsStatisticsRoute,
-}
+};
 
-const AppSettingsRouteWithChildren = AppSettingsRoute._addFileChildren(
-  AppSettingsRouteChildren,
-)
+const AppSettingsRouteWithChildren = AppSettingsRoute._addFileChildren(AppSettingsRouteChildren);
 
 interface AppRouteChildren {
-  AppMapRoute: typeof AppMapRoute
-  AppRadioActivityRoute: typeof AppRadioActivityRoute
-  AppRawRoute: typeof AppRawRoute
-  AppSearchRoute: typeof AppSearchRoute
-  AppSettingsRoute: typeof AppSettingsRouteWithChildren
-  AppTraceRoute: typeof AppTraceRoute
-  AppVisualizerRoute: typeof AppVisualizerRoute
-  AppIndexRoute: typeof AppIndexRoute
-  AppChannelChannelIdRoute: typeof AppChannelChannelIdRoute
-  AppContactPublicKeyRoute: typeof AppContactPublicKeyRoute
+  AppMapRoute: typeof AppMapRoute;
+  AppRadioActivityRoute: typeof AppRadioActivityRoute;
+  AppRawRoute: typeof AppRawRoute;
+  AppSearchRoute: typeof AppSearchRoute;
+  AppSettingsRoute: typeof AppSettingsRouteWithChildren;
+  AppTraceRoute: typeof AppTraceRoute;
+  AppVisualizerRoute: typeof AppVisualizerRoute;
+  AppIndexRoute: typeof AppIndexRoute;
+  AppChannelChannelIdRoute: typeof AppChannelChannelIdRoute;
+  AppContactPublicKeyRoute: typeof AppContactPublicKeyRoute;
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -421,13 +419,13 @@ const AppRouteChildren: AppRouteChildren = {
   AppIndexRoute: AppIndexRoute,
   AppChannelChannelIdRoute: AppChannelChannelIdRoute,
   AppContactPublicKeyRoute: AppContactPublicKeyRoute,
-}
+};
 
-const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren);
 
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
-}
+};
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
-  ._addFileTypes<FileRouteTypes>()
+  ._addFileTypes<FileRouteTypes>();
