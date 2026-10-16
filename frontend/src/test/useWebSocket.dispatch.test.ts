@@ -96,6 +96,34 @@ describe('useWebSocket dispatch', () => {
     expect(onHealth).toHaveBeenCalledWith(healthData);
   });
 
+  it('replays periodic health without inventing radio activity events', () => {
+    const onHealth = vi.fn();
+    const onRadioActivity = vi.fn();
+    renderHook(() => useWebSocket({ onHealth, onRadioActivity }));
+
+    const unchangedHealth = { radio_connected: true, radio_state: 'ready' };
+    for (let index = 0; index < 120; index += 1) {
+      fireMessage({ type: 'health', data: unchangedHealth });
+    }
+    expect(onHealth).toHaveBeenCalledTimes(120);
+    expect(onRadioActivity).not.toHaveBeenCalled();
+
+    const transition = {
+      sequence: 42,
+      kind: 'connection_changed',
+      source: 'radio_lifecycle',
+      radio_generation: 9,
+      previous_connected: true,
+      connected: false,
+      previous_readiness: 'ready',
+      readiness: 'disconnected',
+      at: '2026-10-16T12:00:00Z',
+    };
+    fireMessage({ type: 'radio_activity', data: transition });
+    expect(onRadioActivity).toHaveBeenCalledOnce();
+    expect(onRadioActivity).toHaveBeenCalledWith(transition);
+  });
+
   it('routes message event to onMessage with correct Message shape', () => {
     const onMessage = vi.fn();
     renderHook(() => useWebSocket({ onMessage }));
