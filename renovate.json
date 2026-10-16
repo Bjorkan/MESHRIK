@@ -29,6 +29,15 @@
   ],
   "packageRules": [
     {
+      "description": "Avoid npm lockfile maintenance timeout while retaining release age checks for normal updates",
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["lockFileMaintenance"],
+      "minimumReleaseAge": null,
+      "prBodyNotes": [
+        "Lock file maintenance re-resolves transitive npm dependencies without the 14-day release-age cutoff. Review the lockfile diff before merging."
+      ]
+    },
+    {
       "description": "Update React and its type packages together",
       "matchManagers": ["npm"],
       "matchFileNames": ["frontend/package.json"],
