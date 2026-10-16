@@ -392,6 +392,8 @@ def _split_channel_sender_and_text(text: str) -> tuple[str | None, str]:
 async def _resolve_channel_for_pending_message(
     mc: MeshCore,
     channel_idx: int,
+    *,
+    expected_channel_key: str | None = None,
 ) -> tuple[str | None, str | None]:
     """Resolve a pending channel message's slot to a channel key and name."""
     try:
@@ -400,8 +402,16 @@ async def _resolve_channel_for_pending_message(
         logger.debug("Failed to fetch channel slot %s for pending message: %s", channel_idx, exc)
     else:
         if result.type == EventType.CHANNEL_INFO:
-            # Resolving an incoming message queried an actual radio slot;
-            # it must not downgrade the residency snapshot from startup sync.
+            # This lookup is the *current* slot, not evidence of historical
+            # queue ownership. In particular it must not upsert/remember B
+            # while trying to resolve a queued packet proven to belong to A.
+            secret = result.payload.get("channel_secret")
+            if expected_channel_key is not None:
+                if not isinstance(secret, bytes) or len(secret) != 16:
+                    return None, None
+                if secret.hex().upper() != expected_channel_key.upper():
+                    return None, None
+            # A verified match may refresh the connected radio's residency.
             key_hex = await upsert_channel_from_radio_slot(result.payload, on_radio=True)
             if key_hex is not None:
                 radio_manager.remember_pending_message_channel_slot(key_hex, channel_idx)
@@ -488,7 +498,7 @@ async def _store_pending_channel_message(
         except ValueError as exc:
             raise ValueError("Invalid verified channel identity") from exc
         channel_key, channel_name = await _resolve_channel_for_pending_message(
-            mc, normalized_channel_idx
+            mc, normalized_channel_idx, expected_channel_key=verified_key
         )
         if channel_key is None or channel_key.upper() != verified_key.upper():
             raise ValueError("Channel slot differs from verified RX provenance")
