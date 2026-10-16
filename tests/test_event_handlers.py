@@ -22,7 +22,7 @@ from app.repository import (
     ContactRepository,
     MessageRepository,
 )
-from app.services.dm_ack_tracker import _buffered_acks, _pending_acks
+from app.services.dm_ack_tracker import _buffered_acks, _pending_acks, discard_buffered_ack
 
 
 @pytest.fixture(autouse=True)
@@ -112,15 +112,17 @@ class TestAckTracking:
         assert len(_pending_acks) == 50
         assert all(k.startswith("valid_") for k in _pending_acks)
 
-    def test_track_pending_ack_consumes_buffered_ack(self):
-        """A buffered ACK should be matched immediately when the send registers later."""
+    def test_track_pending_ack_retains_buffered_ack_until_commit(self):
+        """A buffered ACK matches immediately but stays buffered until durable commit."""
         _buffered_acks["early"] = time.time()
 
         matched = track_pending_ack("early", message_id=42, timeout_ms=5000)
 
         assert matched is True
+        assert "early" in _buffered_acks
+        assert "early" in _pending_acks
+        discard_buffered_ack("early")
         assert "early" not in _buffered_acks
-        assert "early" not in _pending_acks
 
     def test_cleanup_removes_expired_buffered_acks(self):
         """Buffered ACKs should expire so unmatched early ACKs do not leak forever."""
@@ -315,8 +317,8 @@ class TestAckEventHandler:
 
             assert "earlyack" in _buffered_acks
             assert track_pending_ack("earlyack", message_id=msg_id, timeout_ms=10000) is True
-            assert "earlyack" not in _buffered_acks
-            assert "earlyack" not in _pending_acks
+            assert "earlyack" in _buffered_acks
+            assert "earlyack" in _pending_acks
             ack_count, _ = await MessageRepository.get_ack_and_paths(msg_id)
             assert ack_count == 0
             mock_broadcast.assert_not_called()

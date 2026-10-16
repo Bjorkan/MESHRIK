@@ -13,6 +13,7 @@ async def apply_dm_ack_code(ack_code: str, *, broadcast_fn: BroadcastFn) -> bool
         dm_ack_tracker.buffer_unmatched_ack(ack_code)
         return False
     message_id, ack_count = committed
+    dm_ack_tracker.discard_buffered_ack(ack_code)
     dm_ack_tracker.clear_pending_acks_for_message(message_id)
     broadcast_fn("message_acked", {"message_id": message_id, "ack_count": ack_count})
     from app.services.radio_response_tracker import radio_response_tracker

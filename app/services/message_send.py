@@ -513,6 +513,7 @@ async def _apply_direct_message_ack_tracking(
         committed = await dm_ack_persistence.confirm(ack_code, message_id)
         if committed is None:
             return 0
+        dm_ack_tracker.discard_buffered_ack(ack_code)
         dm_ack_tracker.clear_pending_acks_for_message(message_id)
         count = committed[1]
         broadcast_fn("message_acked", {"message_id": message_id, "ack_count": count})

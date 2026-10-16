@@ -17,16 +17,13 @@ def track_pending_ack(expected_ack: str, message_id: int, timeout_ms: int) -> bo
 
     Returns True when the ACK was already observed and buffered before registration.
     """
-    buffered_at = _buffered_acks.pop(expected_ack, None)
-    if buffered_at is not None:
-        logger.debug(
-            "Matched buffered ACK %s immediately for message %d",
-            expected_ack,
-            message_id,
-        )
-        return True
-
+    # Do not consume a buffered early ACK until SQLite has *committed* the
+    # acknowledgement. If confirm() fails, the correlation must be retryable.
+    buffered_at = _buffered_acks.get(expected_ack)
     _pending_acks[expected_ack] = (message_id, time.time(), timeout_ms)
+    if buffered_at is not None:
+        logger.debug("Matching buffered ACK %s for message %d", expected_ack, message_id)
+        return True
     logger.debug(
         "Tracking pending ACK %s for message %d (timeout %dms)",
         expected_ack,
@@ -40,6 +37,11 @@ def buffer_unmatched_ack(ack_code: str) -> None:
     """Remember an ACK that arrived before its message registration."""
     _buffered_acks[ack_code] = time.time()
     logger.debug("Buffered unmatched ACK %s for late registration", ack_code)
+
+
+def discard_buffered_ack(ack_code: str) -> None:
+    """Remove an early ACK only after its database confirmation committed."""
+    _buffered_acks.pop(ack_code, None)
 
 
 def cleanup_expired_acks() -> None:
