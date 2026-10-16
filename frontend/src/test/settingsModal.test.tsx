@@ -499,6 +499,28 @@ describe('SettingsModal', () => {
     }
   );
 
+  it.each([
+    { state: 'initializing' as const, connected: true, action: 'Disconnect' },
+    { state: 'connecting' as const, connected: false, action: 'Stop Trying' },
+    { state: 'disconnected' as const, connected: false, action: 'Stop Trying' },
+  ])('dispatches the $action action for $state', async ({ state, connected, action }) => {
+    const onReconnect = vi.fn(async () => {});
+    const onDisconnect = vi.fn(async () => {});
+    renderModal({
+      onReconnect,
+      onDisconnect,
+      health: { ...baseHealth, radio_connected: connected, radio_state: state },
+    });
+    openRadioSection();
+
+    expect(onReconnect).not.toHaveBeenCalled();
+    expect(onDisconnect).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: action }));
+
+    await waitFor(() => expect(onDisconnect).toHaveBeenCalledTimes(1));
+    expect(onReconnect).not.toHaveBeenCalled();
+  });
+
   it('blocks setup retry and shows restart guidance while the radio worker is quarantined', () => {
     const onReconnect = vi.fn(async () => {});
     const onDisconnect = vi.fn(async () => {});

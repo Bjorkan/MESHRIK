@@ -114,6 +114,38 @@ describe('useRealtimeAppState', () => {
     mocks.api.getChannels.mockResolvedValue([publicChannel]);
   });
 
+  it.each([
+    'ready',
+    'connected',
+    'degraded',
+    'failed',
+    'initializing',
+    'connecting',
+    'disconnected',
+    'paused',
+  ] as const)('preserves authoritative %s health received over WebSocket', (radioState) => {
+    const { args, fns } = createRealtimeArgs();
+    const { result } = renderHook(() => useRealtimeAppState(args));
+    const health: HealthStatus = {
+      status: radioState === 'ready' || radioState === 'connected' ? 'ok' : 'degraded',
+      radio_connected: ['ready', 'connected', 'degraded', 'failed', 'initializing'].includes(
+        radioState
+      ),
+      radio_initializing: radioState === 'initializing',
+      radio_state: radioState,
+      connection_info: 'Serial: /dev/ttyUSB0',
+      database_size_mb: 1,
+      oldest_undecrypted_timestamp: null,
+      fanout_statuses: {},
+      bots_disabled: false,
+    };
+
+    act(() => result.current.onHealth?.(health));
+
+    expect(fns.setHealth).toHaveBeenCalledWith(health);
+    expect(args.prevHealthRef.current).toEqual(health);
+  });
+
   it('reconnect clears raw packets and refreshes channels/contacts/unreads', async () => {
     const { args } = createRealtimeArgs();
 

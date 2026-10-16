@@ -44,6 +44,24 @@ function createWrapper() {
 describe('useRadioControl setup recovery', () => {
   afterEach(() => vi.restoreAllMocks());
 
+  it.each([
+    'ready',
+    'connected',
+    'degraded',
+    'failed',
+    'initializing',
+    'connecting',
+    'disconnected',
+    'paused',
+  ] as const)('preserves authoritative %s health from HTTP polling', async (radioState) => {
+    vi.spyOn(api, 'getHealth').mockResolvedValue({ ...healthBase, radio_state: radioState });
+    vi.spyOn(api, 'getRadioConfig').mockResolvedValue(config);
+
+    const { result } = renderHook(() => useRadioControl(), { wrapper: createWrapper() });
+
+    await waitFor(() => expect(result.current.health?.radio_state).toBe(radioState));
+  });
+
   it('rejects a transport-connected retry until authoritative health is ready', async () => {
     vi.spyOn(api, 'getHealth').mockResolvedValue({
       ...healthBase,
