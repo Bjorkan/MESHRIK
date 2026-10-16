@@ -621,24 +621,32 @@ async def _retry_direct_message_until_acked(
             attempt += 1
             continue
         except Exception:
+            # The send may already have crossed the RF boundary before the
+            # timeout/transport error. An automatic retry could transmit twice.
             logger.exception(
-                "Background DM retry attempt %d/%d failed for %s",
+                "DM retry outcome uncertain after attempt %d/%d for %s; stopping",
                 attempt + 1,
                 DM_SEND_MAX_ATTEMPTS,
                 contact.public_key[:12],
             )
-            attempt += 1
-            continue
+            try:
+                await message_repository.update_send_status(message_id, "unknown")
+            except Exception:
+                logger.warning("Unable to persist unknown DM retry outcome")
+            return
 
         if result is None:
             logger.warning(
-                "No response from radio after background DM retry attempt %d/%d to %s",
+                "No response from radio after background DM retry attempt %d/%d to %s; stopping",
                 attempt + 1,
                 DM_SEND_MAX_ATTEMPTS,
                 contact.public_key[:12],
             )
-            attempt += 1
-            continue
+            try:
+                await message_repository.update_send_status(message_id, "unknown")
+            except Exception:
+                logger.warning("Unable to persist unknown DM retry outcome")
+            return
 
         if result.type == EventType.ERROR:
             logger.warning(
