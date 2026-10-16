@@ -63,3 +63,52 @@ async def test_repeated_health_stats_do_not_create_connection_activity(monkeypat
         paused = list(radio_job_scheduler._activities)[-1]
         assert paused.previous_readiness == "initializing"
         assert paused.readiness == "paused"
+
+
+@pytest.mark.asyncio
+async def test_periodic_health_ws_replay_does_not_evict_bounded_activity(monkeypatch):
+    """Health remains live over WS without consuming event history every minute."""
+    from app.services import radio_job_worker
+    from app.services import radio_runtime as runtime_module
+    from app.services.radio_job_scheduler import RadioJobScheduler
+    from app.services.radio_jobs import RadioActivityKind
+
+    scheduler = RadioJobScheduler(event_limit=3)
+    observed = []
+    unsubscribe = scheduler.subscribe_activity(observed.append)
+    monkeypatch.setattr(radio_job_worker, "radio_job_scheduler", scheduler)
+    monkeypatch.setattr(websocket, "_last_radio_activity_status", None)
+    manager = runtime_module.radio_runtime.manager
+    monkeypatch.setattr(manager, "_connection_desired", True)
+    monkeypatch.setattr(manager, "readiness_state", "ready")
+    monkeypatch.setattr(manager, "radio_generation", 99)
+
+    with (
+        patch("app.routers.health.build_health_data", new_callable=AsyncMock) as build,
+        patch.object(websocket.ws_manager, "broadcast", new_callable=AsyncMock) as ws_send,
+    ):
+        build.return_value = {"radio_connected": True, "radio_state": "ready"}
+        # One initial observation followed by many periodic stats/other health
+        # pushes. All must reach WebSocket clients, but none are transitions.
+        for _ in range(120):
+            websocket.broadcast_health(True)
+        await asyncio.sleep(0)
+        await asyncio.sleep(0)
+        assert ws_send.await_count == 120
+        assert all(call.args[0] == "health" for call in ws_send.await_args_list)
+        assert len(observed) == 1
+        assert observed[0].kind == RadioActivityKind.CONNECTION_CHANGED
+        assert [record.sequence for record in scheduler._activities] == [observed[0].sequence]
+        assert scheduler._activity_dropped_through == 0
+
+        # A genuine disconnect is still immediately visible to subscribers.
+        websocket.broadcast_health(False)
+        await asyncio.sleep(0)
+        assert ws_send.await_count == 121
+        assert len(observed) == 2
+        assert observed[-1].previous_readiness == "ready"
+        assert observed[-1].readiness == "disconnected"
+        assert len(scheduler._activities) == 2
+        assert scheduler._activity_dropped_through == 0
+
+    unsubscribe()
