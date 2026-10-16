@@ -138,13 +138,17 @@ For day-to-day development, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Windows note: I've seen an intermittent startup issue like `"Received empty packet: index out of range"` with failed contact sync. I can't figure out why this happens. The issue typically resolves on restart. If you can figure out why this happens, I will buy you a virtual or iRL six pack if you're in the PNW. As a former always-windows-girlie before embracing WSL2, I despise second-classing M$FT users, but I'm just stuck with this one.
 
-## Radio job scheduler foundation (issues #38 and #39)
+## Radio job scheduler operations
 
-The backend contains a typed, bounded **in-memory** radio job scheduler and a
-single async command executor. This is infrastructure for a later staged
-migration: the existing message, settings and synchronization endpoints have
-**not** switched to it yet. There is no new scheduling REST API in these two
-issues. Radio behavior and existing SQLite message persistence remain unchanged.
+The backend uses a typed, bounded **in-memory** radio job scheduler and one
+async command executor for application-managed radio operations. The existing
+synchronous endpoints remain compatible, while Radio Activity and the
+read-only job API make queued and running work observable.
+
+See the [radio scheduler operator runbook](docs/RADIO_SCHEDULER_OPERATIONS.md)
+for exact deploy, verification, cancellation and rollback procedures. The
+runbook also explains `unknown` send outcomes and the deliberately bounded
+message-operation and login waits.
 
 The scheduler's default pending queue limit is **64 jobs**. New submissions when
 full are rejected with a service-unavailable/retry-after contract; the later
@@ -175,9 +179,9 @@ shutdown; if a transport remains stuck, restart/terminate the process to release
 it. Reconnects increment a radio generation and invalidate stale queued or
 pending work. Queued jobs are intentionally **not persisted** and are not
 replayed on restart. The existing SQLite message rows remain authoritative.
-Rollback for these foundational changes is to stop the process and restore the
-previous backend version; no database migrations or wire protocol changes are
-involved. The scheduler is not yet the source of truth for any existing send.
+Scheduler jobs are process-local and are not replayed after a restart. Outgoing
+message rows remain durable in SQLite and must be inspected before retrying an
+operation whose outcome is `unknown`.
 
 ## MeshCore 1.18 / Companion protocol 14
 
