@@ -909,12 +909,22 @@ async def _process_direct_message(
                         existing_outgoing.id,
                     )
 
-            logger.debug(
-                "Decrypted DM %s contact %s (%d UTF-8 bytes)",
-                "to" if effective_outgoing else "from",
-                contact.name or contact.public_key[:12],
-                len(result.message.encode("utf-8")) if result.message else 0,
-            )
+            from app.config import settings
+
+            if settings.log_sensitive_payloads:
+                logger.debug(
+                    "Decrypted DM %s contact %s: %s",
+                    "to" if effective_outgoing else "from",
+                    contact.name or contact.public_key[:12],
+                    result.message,
+                )
+            else:
+                logger.debug(
+                    "Decrypted DM %s contact %s (%d UTF-8 bytes)",
+                    "to" if effective_outgoing else "from",
+                    contact.name or contact.public_key[:12],
+                    len(result.message.encode("utf-8")) if result.message else 0,
+                )
 
             # Create message (or add path to existing if duplicate)
             msg_id = await create_dm_message_from_decrypted(

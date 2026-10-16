@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     ble_address: str = ""
     ble_pin: str = ""
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
+    log_sensitive_payloads: bool = False
     database_path: str = "data/meshcore.db"
     disable_bots: bool = False
     enable_message_poll_fallback: bool = False
@@ -298,7 +299,17 @@ def setup_logging() -> None:
     meshcore_logger = logging.getLogger("meshcore")
     if not any(isinstance(item, _RepeatSquelch) for item in meshcore_logger.filters):
         meshcore_logger.addFilter(_RepeatSquelch())
-    if not any(
-        isinstance(item, _SensitiveMeshcorePayloadFilter) for item in meshcore_logger.filters
-    ):
+    payload_filters = [
+        item
+        for item in meshcore_logger.filters
+        if isinstance(item, _SensitiveMeshcorePayloadFilter)
+    ]
+    if settings.log_sensitive_payloads:
+        for item in payload_filters:
+            meshcore_logger.removeFilter(item)
+        logging.getLogger(__name__).warning(
+            "Sensitive payload logging is enabled; logs and debug snapshots may contain "
+            "private message, channel message, or CLI content"
+        )
+    elif not payload_filters:
         meshcore_logger.addFilter(_SensitiveMeshcorePayloadFilter())

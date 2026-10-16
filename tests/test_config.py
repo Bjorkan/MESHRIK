@@ -9,7 +9,7 @@ import logging
 import pytest
 from pydantic import ValidationError
 
-from app.config import Settings, StartupPolicy, setup_logging
+from app.config import Settings, StartupPolicy, settings, setup_logging
 
 
 def test_sql_debug_parameters_are_suppressed():
@@ -38,6 +38,25 @@ def test_meshcore_debug_message_payloads_are_suppressed(caplog):
     captured = "\n".join(record.getMessage() for record in caplog.records)
     assert sentinel not in captured
     assert "Requesting pending messages" in captured
+
+
+def test_sensitive_payload_logging_requires_explicit_opt_in(caplog, monkeypatch):
+    sentinel = "PRIVATE-SENTINEL-explicit-debug-opt-in-62a9"
+    dependency_logger = logging.getLogger("meshcore")
+
+    with monkeypatch.context() as scoped:
+        scoped.setattr(settings, "log_level", "DEBUG")
+        scoped.setattr(settings, "log_sensitive_payloads", True)
+        setup_logging()
+        caplog.set_level(logging.DEBUG, logger="meshcore")
+        dependency_logger.addHandler(caplog.handler)
+        try:
+            dependency_logger.debug("Sending message to aabbcc: %s", sentinel)
+        finally:
+            dependency_logger.removeHandler(caplog.handler)
+
+    setup_logging()
+    assert sentinel in "\n".join(record.getMessage() for record in caplog.records)
 
 
 class TestStartupPolicy:

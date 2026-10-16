@@ -2116,8 +2116,12 @@ class TestProcessDirectMessageDispatch:
         assert messages[0].outgoing is False
 
     @pytest.mark.asyncio
-    async def test_decrypted_dm_debug_log_excludes_plaintext(self, test_db, caplog):
-        """Incoming decrypted DM text must not enter app or diagnostic logs."""
+    @pytest.mark.parametrize("payload_logging", [False, True])
+    async def test_decrypted_dm_debug_log_requires_explicit_opt_in(
+        self, test_db, caplog, monkeypatch, payload_logging
+    ):
+        """Incoming decrypted DM text is logged only under the warned opt-in."""
+        from app.config import settings
         from app.decoder import DecryptedDirectMessage
         from app.packet_processor import _process_direct_message
 
@@ -2130,6 +2134,7 @@ class TestProcessDirectMessageDispatch:
             timestamp=1000, flags=0, message=sentinel, dest_hash="fa", src_hash="a1"
         )
         caplog.set_level(logging.DEBUG, logger="app.packet_processor")
+        monkeypatch.setattr(settings, "log_sensitive_payloads", payload_logging)
 
         with self._keystore_patches(has_key=True):
             with patch("app.packet_processor.try_decrypt_dm", return_value=mock_decrypted):
@@ -2143,8 +2148,8 @@ class TestProcessDirectMessageDispatch:
 
         assert result is not None
         captured = "\n".join(record.getMessage() for record in caplog.records)
-        assert sentinel not in captured
-        assert "UTF-8 bytes" in captured
+        assert (sentinel in captured) is payload_logging
+        assert ("UTF-8 bytes" in captured) is not payload_logging
 
 
 class TestProcessRawPacketIntegration:

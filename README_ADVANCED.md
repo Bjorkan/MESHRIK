@@ -123,9 +123,12 @@ MESHCORE_LOG_LEVEL=DEBUG uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
 
 MESHRIK's own diagnostic messages intentionally omit message bodies, decrypted packet text,
 credentials, and private keys; SQL parameter logging is also suppressed. Third-party radio-library
-DEBUG output can include raw protocol details, however, so enabling DEBUG is a deliberate opt-in:
-treat the resulting logs and diagnostic exports as sensitive and review them before sharing. New
-application diagnostics should use stable operation/message identifiers and timing, not payloads.
+DEBUG payload messages are filtered by default. For narrowly scoped local diagnosis only,
+`MESHCORE_LOG_SENSITIVE_PAYLOADS=true` removes that filter and permits decrypted message and CLI
+content in DEBUG logs. This is a dangerous, separate opt-in: logs and `/api/debug` snapshots may
+then contain private conversations. Never enable it for normal operation or share its output
+without review. New application diagnostics should use stable operation/message identifiers and
+timing, not payloads.
 
 You can also navigate to `/api/debug` (or go to Settings -> About -> "Open debug support snapshot" at the bottom). This debug block contains information about the operating environment, expectations around keys and channels, and radio status. It also includes the most recent logs. **Non-log information reveals no keys, channel names, or other privilege information beyond the names of your bots. The logs, however, may contain channel names or keys (but never your private key).** If you do not wish to include this information, copy up to the `STOP COPYING HERE` marker in the debug body.
 
