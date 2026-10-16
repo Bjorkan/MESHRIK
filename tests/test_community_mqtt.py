@@ -1094,6 +1094,65 @@ class TestLwtAndStatusPublish:
         mock_publish.assert_not_called()
 
     @pytest.mark.asyncio
+    async def test_initial_connect_and_reconnect_recompute_status_and_neighbor_topics(self):
+        pub = CommunityMqttPublisher()
+        _, public_key = _make_test_keys()
+        pubkey_hex = public_key.hex().upper()
+        pub.connected = True
+        initial = _make_community_settings(
+            community_mqtt_profile="letsmesh",
+            community_mqtt_iata="LAX",
+            community_mqtt_token="",
+            community_mqtt_topic_template="meshcore/{IATA}/{PUBLIC_KEY}/packets",
+            community_mqtt_publish_status=True,
+            community_mqtt_publish_neighbors=True,
+        )
+        reconnected = _make_community_settings(
+            community_mqtt_profile="letsmesh",
+            community_mqtt_iata="PDX",
+            community_mqtt_token="",
+            community_mqtt_topic_template="meshcore/{IATA}/{PUBLIC_KEY}/packets",
+            community_mqtt_publish_status=True,
+            community_mqtt_publish_neighbors=True,
+        )
+        radio = SimpleNamespace(
+            meshcore=SimpleNamespace(self_info={"name": "TestNode"}),
+            device_info_loaded=True,
+            device_model="Fake Companion",
+            firmware_version="1.18",
+            firmware_build="",
+            repeat_enabled_supported=False,
+            repeat_enabled=None,
+        )
+
+        with (
+            patch("app.keystore.get_public_key", return_value=public_key),
+            patch("app.services.radio_runtime.radio_runtime", radio),
+            patch.object(pub, "_fetch_stats", new_callable=AsyncMock, return_value=None),
+            patch.object(pub, "publish", new_callable=AsyncMock) as mock_publish,
+            patch(
+                "app.repository.observed_neighbors.get_recent_observations",
+                new_callable=AsyncMock,
+                return_value=[],
+            ),
+            patch(
+                "app.repository.observed_neighbors.build_observed_neighbors_payload",
+                return_value={"origin_id": pubkey_hex, "neighbors": []},
+            ),
+        ):
+            await pub._on_connected_async(initial)
+            await pub._on_connected_async(reconnected)
+
+        topics = [call.args[0] for call in mock_publish.await_args_list]
+        assert topics == [
+            f"meshcore/LAX/{pubkey_hex}/status",
+            f"meshcore/LAX/{pubkey_hex}/neighbors",
+            f"meshcore/PDX/{pubkey_hex}/status",
+            f"meshcore/PDX/{pubkey_hex}/neighbors",
+        ]
+        assert all(call.kwargs["retain"] is False for call in mock_publish.await_args_list)
+
+    @pytest.mark.asyncio
     async def test_on_connected_async_uses_fallback_device_name(self):
         """Should use 'MeshCore Device' when radio name is unavailable."""
         pub = CommunityMqttPublisher()
