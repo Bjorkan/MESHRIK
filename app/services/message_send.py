@@ -967,7 +967,12 @@ async def send_channel_message_to_channel(
         if outgoing_message is not None and exc.status_code == 408:
             assert sender_timestamp is not None
             assert sent_at is not None
-            await message_repository.update_send_status(outgoing_message.id, "unknown")
+            try:
+                await message_repository.update_send_status(outgoing_message.id, "unknown")
+            except Exception:
+                # The pre-RF row still exists. A transient SQLite status-write
+                # failure must not hide the ambiguous radio-send HTTP 408.
+                logger.warning("Channel TX status write failed; durable row remains pending")
             unknown_message = await build_stored_outgoing_channel_message(
                 message_id=outgoing_message.id,
                 conversation_key=channel_key_upper,
@@ -984,7 +989,10 @@ async def send_channel_message_to_channel(
         elif outgoing_message is not None:
             # Even a reported 422 can follow a partially written command.
             # Preserve the audit row instead of inviting a duplicate TX.
-            await message_repository.update_send_status(outgoing_message.id, "unknown")
+            try:
+                await message_repository.update_send_status(outgoing_message.id, "unknown")
+            except Exception:
+                logger.warning("Channel TX rejection status write failed; row retained")
         logger.warning(
             "Channel message send %s to %s ended with HTTP %d after %.3fs",
             message_id if message_id is not None else "unstored",
