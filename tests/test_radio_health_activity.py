@@ -68,7 +68,8 @@ async def test_repeated_health_stats_do_not_create_connection_activity(monkeypat
 @pytest.mark.asyncio
 async def test_periodic_health_ws_replay_does_not_evict_bounded_activity(monkeypatch):
     """Health remains live over WS without consuming event history every minute."""
-    from app.services import radio_job_worker, radio_runtime as runtime_module
+    from app.services import radio_job_worker
+    from app.services import radio_runtime as runtime_module
     from app.services.radio_job_scheduler import RadioJobScheduler
     from app.services.radio_jobs import RadioActivityKind
 
