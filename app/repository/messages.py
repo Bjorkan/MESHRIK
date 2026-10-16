@@ -168,10 +168,28 @@ class MessageRepository:
                     paths = []
             except (TypeError, ValueError):
                 paths = []
-            if any(
-                isinstance(p, dict) and p.get("path") == path and p.get("path_len") == path_len
-                for p in paths
-            ):
+            for observation in paths:
+                if not isinstance(observation, dict):
+                    continue
+                if observation.get("path") != path or observation.get("path_len") != path_len:
+                    continue
+                # Echo/replay on an already known route is not a new ACK or
+                # path. Keep its first-seen timestamp; refresh only changed
+                # metrics once per observation tick to bound SQLite writes.
+                changed = False
+                previous = observation.get("last_seen_at") or observation.get("received_at") or 0
+                if received_at is not None and received_at > previous:
+                    observation["last_seen_at"] = received_at
+                    changed = True
+                for key, value in (("rssi", rssi), ("snr", snr)):
+                    if value is not None and value != observation.get(key):
+                        observation[key] = value
+                        changed = True
+                if changed:
+                    await conn.execute(
+                        "UPDATE messages SET paths=? WHERE id=?",
+                        (json.dumps(paths[:16]), message_id),
+                    )
                 return [MessagePath(**p) for p in paths[:16]], False
             # Keep earliest evidence and the latest 15 distinct observations.
             paths = ([paths[0]] + paths[-14:] if len(paths) >= 16 else paths) + [entry]
