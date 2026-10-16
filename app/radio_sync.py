@@ -419,11 +419,33 @@ async def _resolve_channel_for_pending_message(
 
 
 async def _store_pending_direct_message(event, *, journal_id: int | None = None) -> bool:
-    """Stage before processing; failures remain recoverable after radio dequeue."""
+    """Stage before processing; never report malformed queued DMs as saved."""
     from app.services import pending_radio_ingress as journal
 
-    entry_id = journal_id if journal_id is not None else await journal.stage("PRIV", event.payload)
+    # CLI commands/replies must not be journaled as decrypted chat text.
+    if event.payload.get("txt_type", 0) in (1, 3):
+        return False
     try:
+        entry_id = (
+            journal_id if journal_id is not None else await journal.stage("PRIV", event.payload)
+        )
+    except Exception:
+        broadcast_error(
+            "Radio inbound storage unavailable",
+            "A dequeued private message could not be journaled; inspect storage health before draining further.",
+        )
+        raise
+    try:
+        prefix = event.payload.get("public_key") or event.payload.get("pubkey_prefix")
+        text = event.payload.get("text")
+        if not isinstance(prefix, str) or len(prefix) < 12:
+            raise ValueError("Invalid queued sender identity")
+        try:
+            bytes.fromhex(prefix)
+        except ValueError as exc:
+            raise ValueError("Invalid queued sender hex") from exc
+        if not isinstance(text, str):
+            raise ValueError("Invalid queued text payload")
         await on_contact_message(event)
     except Exception as exc:
         await journal.settle(entry_id, stored=False, reason=type(exc).__name__)
@@ -439,7 +461,14 @@ async def _store_pending_channel_message(
     """Stage original event, then resolve its slot and persist chat idempotently."""
     from app.services import pending_radio_ingress as journal
 
-    entry_id = journal_id if journal_id is not None else await journal.stage("CHAN", payload)
+    try:
+        entry_id = journal_id if journal_id is not None else await journal.stage("CHAN", payload)
+    except Exception:
+        broadcast_error(
+            "Radio inbound storage unavailable",
+            "A dequeued channel message could not be journaled; inspect storage health before draining further.",
+        )
+        raise
     try:
         channel_idx = payload.get("channel_idx")
         if isinstance(channel_idx, bool) or channel_idx is None:
