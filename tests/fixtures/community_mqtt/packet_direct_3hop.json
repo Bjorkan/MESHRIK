@@ -1,0 +1,22 @@
+{
+  "origin": "observer-fixture",
+  "origin_id": "A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1",
+  "timestamp": "2025-01-02T03:04:05Z",
+  "type": "PACKET",
+  "direction": "rx",
+  "time": "03:04:05",
+  "date": "02/01/2025",
+  "len": "7",
+  "packet_type": "0",
+  "route": "D",
+  "payload_len": "2",
+  "raw": "0203AABBCCDDEE",
+  "hash": "E7EAA80B15DD4F8D",
+  "RSSI": "-101",
+  "SNR": "7.5",
+  "path": [
+    "aa",
+    "bb",
+    "cc"
+  ]
+}

@@ -7,6 +7,7 @@ name makes clear that the host subset is not a firmware neighbor-table export.
 
 from __future__ import annotations
 
+import asyncio
 import json
 from datetime import UTC, datetime
 from pathlib import Path
@@ -14,6 +15,8 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from meshcore.events import EventType
+from meshcore.reader import MessageReader
 
 from app.fanout.community_mqtt import (
     CommunityMqttPublisher,
@@ -45,6 +48,70 @@ def test_packet_golden_wire_shape_and_timestamp():
     assert received == expected
     assert "path" not in received and "RSSI" not in received and "SNR" not in received
     assert datetime.fromisoformat(received["timestamp"].replace("Z", "+00:00")).tzinfo == UTC
+
+
+@pytest.mark.parametrize(
+    "fixture_name,raw_hex,expected_path",
+    [
+        ("packet_direct_3hop", "0203AABBCCDDEE", ["aa", "bb", "cc"]),
+        ("packet_flood", "0100AA", None),
+    ],
+)
+def test_observer_packet_golden_direct_and_flood_shapes(
+    fixture_name: str, raw_hex: str, expected_path: list[str] | None
+):
+    expected = fixture(fixture_name)
+    received = _format_raw_packet(
+        {
+            "data": raw_hex,
+            "timestamp": "2025-01-02T03:04:05Z",
+            "snr": 7.5,
+            "rssi": -101,
+        },
+        "observer-fixture",
+        KEY,
+    )
+
+    assert received == expected
+    for field in ("len", "packet_type", "payload_len", "RSSI", "SNR"):
+        assert isinstance(received[field], str)
+    if expected_path is None:
+        assert "path" not in received
+    else:
+        assert received["path"] == expected_path
+    assert "score" not in received
+
+
+@pytest.mark.asyncio
+async def test_companion_signal_bytes_and_host_rx_time_survive_queue_delay():
+    dispatcher = SimpleNamespace(dispatch=AsyncMock())
+    reader = MessageReader(dispatcher)
+
+    # Companion LOG_DATA: code, signed SNR×4, signed RSSI, then untouched RF bytes.
+    await reader.handle_rx(bytearray.fromhex("881E9B0100AA"))
+    event = dispatcher.dispatch.await_args.args[0]
+    assert event.type == EventType.RX_LOG_DATA
+    assert event.payload["snr"] == 7.5  # 0x1e / 4
+    assert event.payload["rssi"] == -101  # signed int8 0x9b
+
+    host_rx_time = "2025-01-02T03:04:05Z"
+    await asyncio.sleep(0)  # model fanout queue scheduling after host ingest
+    packet = _format_raw_packet(
+        {
+            "data": event.payload["payload"],
+            "timestamp": host_rx_time,
+            "snr": event.payload["snr"],
+            "rssi": event.payload["rssi"],
+        },
+        "observer-fixture",
+        KEY,
+    )
+
+    assert packet == fixture("packet_flood")
+    assert packet["timestamp"] == host_rx_time
+    assert packet["time"] == "03:04:05"
+    assert packet["date"] == "02/01/2025"
+    assert "score" not in packet
 
 
 def test_status_golden_shape_and_stats():
