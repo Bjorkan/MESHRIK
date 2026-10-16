@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -5,6 +6,7 @@ import { RadioActivityPage } from './RadioActivityPage';
 import { useRadioJobFeed } from '../hooks/useRadioJobFeed';
 import { reconcileRadioJobs, partitionRadioJobs } from '../hooks/useRadioActivity';
 import type { components } from '../generated/api-schema';
+import type { HealthStatus } from '../types';
 
 const mocks = vi.hoisted(() => ({
   getRadioJobs: vi.fn(),
@@ -69,9 +71,47 @@ const activity: Activity = {
 };
 function Harness({ socket = 'live' }: { socket?: 'live' | 'offline' | 'connecting' }) {
   const feed = useRadioJobFeed();
+  const [health, setHealth] = useState<HealthStatus | null>(null);
   return (
     <>
-      <RadioActivityPage feed={feed} connection={socket} health={null} />
+      <RadioActivityPage feed={feed} connection={socket} health={health} />
+      <button
+        onClick={() =>
+          setHealth({
+            radio_connected: true,
+            radio_state: 'ready',
+          } as HealthStatus)
+        }
+      >
+        Simulate unchanged health
+      </button>
+      <button
+        onClick={() =>
+          setHealth({
+            radio_connected: false,
+            radio_state: 'disconnected',
+          } as HealthStatus)
+        }
+      >
+        Simulate disconnected health
+      </button>
+      <button
+        onClick={() =>
+          feed.onRadioActivity({
+            sequence: 200,
+            kind: 'connection_changed',
+            source: 'radio_lifecycle',
+            at: '2026-10-16T12:00:00Z',
+            radio_generation: 4,
+            previous_connected: true,
+            connected: false,
+            previous_readiness: 'ready',
+            readiness: 'disconnected',
+          })
+        }
+      >
+        Simulate transition event
+      </button>
       <button onClick={() => feed.onRadioActivity({ ...activity, sequence: 11 })}>
         Simulate inbound
       </button>
@@ -170,6 +210,44 @@ describe('Radio Activity', () => {
 
     expect(await screen.findByText('Radio connection changed')).toBeInTheDocument();
     expect(screen.getByText('disconnected → initializing · generation 4')).toBeInTheDocument();
+  });
+
+  it('keeps the bounded activity buffer stable across repeated health UI updates', async () => {
+    const recent = Array.from({ length: 100 }, (_, index): Activity => ({
+      ...activity,
+      sequence: index + 1,
+    }));
+    mocks.getRadioActivity.mockResolvedValue({
+      items: recent,
+      gap: false,
+      has_more: false,
+      snapshot_sequence: 100,
+      next_cursor: 100,
+      radio,
+    });
+    createView();
+    const events = await screen.findByRole('region', {
+      name: 'Received events',
+    });
+    await waitFor(() => expect(within(events).getByText('100')).toBeInTheDocument());
+
+    for (let index = 0; index < 120; index += 1) {
+      fireEvent.click(screen.getByRole('button', { name: 'Simulate unchanged health' }));
+    }
+    expect(within(events).getByText('100')).toBeInTheDocument();
+    expect(within(events).queryByText('Radio connection changed')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Simulate disconnected health' }));
+    expect(within(events).getByText('100')).toBeInTheDocument();
+    // Health status is not itself a received activity event; only the
+    // authoritative radio_activity frame should add a transition.
+    fireEvent.click(screen.getByRole('button', { name: 'Simulate transition event' }));
+    await waitFor(() =>
+      expect(within(events).getByText('Radio connection changed')).toBeInTheDocument()
+    );
+    expect(within(events).getByText('100')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Simulate transition event' }));
+    expect(within(events).getAllByText('Radio connection changed')).toHaveLength(1);
   });
 
   it('guarantees queued cancellation is distinct from stopping an RF wait', async () => {
