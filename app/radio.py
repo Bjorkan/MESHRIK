@@ -315,23 +315,16 @@ class RadioManager:
 
             poll_context = pause_polling_context()
 
-        auto_fetch_paused = False
-
         try:
             async with poll_context:
                 if suspend_auto_fetch:
+                    # The application worker is the *sole* owner of get_msg.
+                    # The legacy toggle must never restart meshcore_py auto-fetch
+                    # behind its back (the SDK installs its own response waiter).
                     await mc.stop_auto_message_fetching()
-                    auto_fetch_paused = True
                 yield mc
         finally:
-            try:
-                if auto_fetch_paused:
-                    try:
-                        await mc.start_auto_message_fetching()
-                    except Exception as e:
-                        logger.warning("Failed to restart auto message fetching (%s): %s", name, e)
-            finally:
-                self._release_operation_lock(name)
+            self._release_operation_lock(name)
 
     async def post_connect_setup(self, *, force: bool = False) -> None:
         """Run shared post-connection orchestration after transport setup succeeds."""

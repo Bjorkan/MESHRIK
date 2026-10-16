@@ -408,7 +408,7 @@ class TestFetchContactCliResponse:
 
 class TestRepeaterCommandRoute:
     @pytest.mark.asyncio
-    async def test_send_cmd_error_raises_and_restores_auto_fetch(self, test_db):
+    async def test_send_cmd_error_never_restarts_auto_fetch(self, test_db):
         mc = _mock_mc()
         await _insert_contact(KEY_A, name="Repeater", contact_type=2)
         mc.commands.send_cmd = AsyncMock(
@@ -423,7 +423,7 @@ class TestRepeaterCommandRoute:
                 await send_repeater_command(KEY_A, CommandRequest(command="ver"))
 
         assert exc.value.status_code == 422
-        mc.start_auto_message_fetching.assert_awaited_once()
+        mc.start_auto_message_fetching.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_timeout_returns_no_response_message(self, test_db):
@@ -443,7 +443,7 @@ class TestRepeaterCommandRoute:
 
         assert response.command == "ver"
         assert "no response" in response.response.lower()
-        mc.start_auto_message_fetching.assert_awaited_once()
+        mc.start_auto_message_fetching.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_success_returns_command_response_text_and_sender_timestamp(self, test_db):
