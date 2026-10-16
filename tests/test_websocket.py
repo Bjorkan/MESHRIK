@@ -276,3 +276,34 @@ class TestTypedEventSerialization:
             "type": "message_acked",
             "data": {"ack_count": 2},
         }
+
+
+@pytest.mark.asyncio
+async def test_raw_flood_reserves_space_for_durable_message_and_ack_events():
+    from app.websocket import MAX_RAW_WS_CLIENT_BACKLOG
+
+    manager = WebSocketManager()
+    release_send = asyncio.Event()
+    entered_send = asyncio.Event()
+    socket = AsyncMock()
+
+    async def blocked_send(_payload):
+        entered_send.set()
+        await release_send.wait()
+
+    socket.send_text = AsyncMock(side_effect=blocked_send)
+    await manager.connect(socket)
+    try:
+        manager.enqueue("raw_packet", {"raw": "01"})
+        await asyncio.wait_for(entered_send.wait(), 1)
+        for _ in range(1000):
+            manager.enqueue("raw_packet", {"raw": "01"})
+        assert manager._outboxes[socket].qsize() == MAX_RAW_WS_CLIENT_BACKLOG
+        assert manager.overflows > 0
+        manager.enqueue("message", {"id": 42})
+        manager.enqueue("message_acked", {"message_id": 42, "ack_count": 1})
+        assert manager._outboxes[socket].qsize() == MAX_RAW_WS_CLIENT_BACKLOG + 2
+        assert socket in manager.active_connections
+    finally:
+        release_send.set()
+        await manager.disconnect(socket)

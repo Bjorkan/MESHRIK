@@ -17,6 +17,9 @@ SEND_TIMEOUT_SECONDS = 5.0
 
 
 MAX_WS_CLIENT_BACKLOG = 512
+# Raw observations are best-effort; reserve space for persisted chats, ACKs,
+# health and resync hints so an RF burst cannot evict their delivery.
+MAX_RAW_WS_CLIENT_BACKLOG = MAX_WS_CLIENT_BACKLOG - 64
 
 
 class WebSocketManager:
@@ -75,6 +78,11 @@ class WebSocketManager:
         """Synchronous enqueue preserves event call order before any await."""
         message = dump_ws_event(event_type, data)
         for conn, queue in list(self._outboxes.items()):
+            if event_type == "raw_packet" and queue.qsize() >= MAX_RAW_WS_CLIENT_BACKLOG:
+                # Dropping raw-only UI observations is preferable to closing
+                # a chat stream and losing committed message/ACK notifications.
+                self.overflows += 1
+                continue
             try:
                 queue.put_nowait(message)
                 self.enqueued += 1
