@@ -623,6 +623,21 @@ class MessageRepository:
         return row["acked"] if row else 1
 
     @staticmethod
+    async def recover_interrupted_outgoing_sends() -> int:
+        """Fail closed on process restart: pending TX may already have reached RF.
+
+        A pending row means the intent was committed before the radio command.
+        After a crash we cannot distinguish never-dispatched from sent-without-
+        response, so do not automatically retry it or display it as delivered.
+        """
+        async with db.tx() as conn:
+            async with conn.execute(
+                "UPDATE messages SET send_status='unknown' "
+                "WHERE outgoing=1 AND send_status='pending'"
+            ) as cursor:
+                return cursor.rowcount
+
+    @staticmethod
     async def update_send_status(message_id: int, send_status: str) -> None:
         """Update an outgoing message's persisted radio-send outcome."""
         if send_status not in {"pending", "confirmed", "unknown"}:

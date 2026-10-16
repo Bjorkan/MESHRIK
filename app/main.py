@@ -117,6 +117,13 @@ async def lifespan(app: FastAPI):
         await db.connect()
         database_open = True
         logger.info("Database connected")
+        # A crash can occur after the Companion accepted a send but before the
+        # status write. Never retry or present such an intent as unsent/confirmed.
+        from app.repository.messages import MessageRepository
+
+        interrupted = await MessageRepository.recover_interrupted_outgoing_sends()
+        if interrupted:
+            logger.warning("Marked %d interrupted outgoing sends as unknown", interrupted)
         radio_job_worker.start()
         from app.websocket import broadcast_event
 
