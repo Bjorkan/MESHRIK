@@ -306,8 +306,8 @@ async def sync_channels_from_radio(
 ) -> dict:
     """Copy channel slots into the DB, optionally clearing physical slots.
 
-    The default is deliberately non-destructive and is used by the ``sync``
-    startup policy. Slot clearing is a separately authorized full-policy stage.
+    The default is deliberately non-destructive and is used by the full
+    startup baseline. Slot clearing is a separately authorized stage.
     """
     synced = 0
     cleared = 0
@@ -1245,8 +1245,6 @@ async def _periodic_sync_loop():
             await asyncio.sleep(SYNC_INTERVAL)
             cleanup_expired_acks()
             if not radio_manager.is_connected:
-                continue
-            if settings.effective_startup_policy.value != "full":
                 continue
 
             async def run_periodic_sync(mc) -> None:

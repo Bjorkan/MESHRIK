@@ -790,7 +790,10 @@ class TestPostConnectSetupOrdering:
         monkeypatch.setattr(settings, "startup_apply_flood_scope", True)
         monkeypatch.setattr(settings, "startup_send_advertisement", True)
         monkeypatch.setattr(settings, "startup_drain_messages", True)
-        monkeypatch.setattr(settings, "startup_sync_clock", True)
+        monkeypatch.setattr(settings, "startup_reconcile_contacts", False)
+        monkeypatch.setattr(settings, "startup_clear_channel_slots", False)
+        monkeypatch.setattr(settings, "startup_allow_periodic_offload", False)
+        monkeypatch.setattr(settings, "startup_enable_telemetry_collection", False)
 
     @pytest.mark.asyncio
     async def test_drain_runs_during_setup(self):
@@ -926,7 +929,16 @@ class TestPostConnectSetupOrdering:
         from app.config import StartupPolicy, settings
 
         with (
-            patch.object(settings, "startup_policy", StartupPolicy.PASSIVE),
+            patch.object(settings, "startup_policy", StartupPolicy.FULL),
+            patch.object(settings, "startup_export_private_key", False),
+            patch.object(settings, "startup_sync_clock", False),
+            patch.object(settings, "startup_apply_flood_scope", False),
+            patch.object(settings, "startup_send_advertisement", False),
+            patch.object(settings, "startup_drain_messages", False),
+            patch.object(settings, "startup_reconcile_contacts", False),
+            patch.object(settings, "startup_clear_channel_slots", False),
+            patch.object(settings, "startup_allow_periodic_offload", False),
+            patch.object(settings, "startup_enable_telemetry_collection", False),
             patch("app.event_handlers.register_event_handlers"),
             patch("app.keystore.export_and_store_private_key", new_callable=AsyncMock),
             patch("app.radio_sync.sync_radio_time", new_callable=AsyncMock, return_value=True),

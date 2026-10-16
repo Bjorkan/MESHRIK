@@ -6,7 +6,7 @@ keep their synchronous responses; opt-in typed enqueue routes return 202.
 
 from hashlib import sha256
 from time import time
-from typing import Literal, cast
+from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Header, HTTPException, Query
@@ -234,10 +234,6 @@ def radio_status_snapshot() -> RadioStatusSnapshot:
             if operation_lock is not None and operation_lock.locked()
             else RadioCommandStatus.IDLE
         )
-    startup_policy = getattr(radio_runtime, "startup_policy", "sync")
-    if startup_policy not in {"passive", "sync", "full"}:
-        startup_policy = "sync"
-    startup_policy_value = cast(Literal["passive", "sync", "full"], startup_policy)
     startup_stage = getattr(radio_runtime, "startup_stage", None)
     if not isinstance(startup_stage, str):
         startup_stage = None
@@ -247,7 +243,7 @@ def radio_status_snapshot() -> RadioStatusSnapshot:
         command_status=command_status,
         radio_generation=radio_job_scheduler.generation,
         sequence=radio_job_scheduler.sequence,
-        startup_policy=startup_policy_value,
+        startup_policy="full",
         startup_stage=startup_stage_value,
     )
 

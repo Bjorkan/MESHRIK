@@ -2072,8 +2072,6 @@ class TestPeriodicSyncLoopRaces:
         from app.config import StartupPolicy, settings
 
         monkeypatch.setattr(settings, "startup_policy", StartupPolicy.FULL)
-        monkeypatch.setattr(settings, "passive_startup", False)
-        monkeypatch.setattr(settings, "skip_post_connect_sync", False)
         monkeypatch.setattr(settings, "startup_allow_periodic_offload", True)
         monkeypatch.setattr(settings, "startup_sync_clock", True)
 

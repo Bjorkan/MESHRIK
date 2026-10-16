@@ -71,7 +71,7 @@ class HealthResponse(BaseModel):
         "disconnected",
         "paused",
     ] = "disconnected"
-    startup_policy: Literal["passive", "sync", "full"] = "sync"
+    startup_policy: Literal["full"] = "full"
     startup_stage: str | None = None
     startup_error_stage: str | None = None
     startup_skipped_stages: list[str] = Field(default_factory=list)
@@ -190,9 +190,7 @@ async def build_health_data(radio_connected: bool, connection_info: str | None) 
             "direct_rx": packets.get("direct_rx"),
         }
 
-    startup_policy = getattr(radio_manager, "startup_policy", "sync")
-    if startup_policy not in {"passive", "sync", "full"}:
-        startup_policy = "sync"
+    startup_policy = "full"
     startup_stage = getattr(radio_manager, "startup_stage", None)
     startup_error_stage = getattr(radio_manager, "startup_error_stage", None)
     startup_skipped_stages = getattr(radio_manager, "startup_skipped_stages", [])

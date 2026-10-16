@@ -9,7 +9,7 @@ import logging
 import pytest
 from pydantic import ValidationError
 
-from app.config import Settings, setup_logging
+from app.config import Settings, StartupPolicy, setup_logging
 
 
 def test_sql_debug_parameters_are_suppressed():
@@ -38,6 +38,24 @@ def test_meshcore_debug_message_payloads_are_suppressed(caplog):
     captured = "\n".join(record.getMessage() for record in caplog.records)
     assert sentinel not in captured
     assert "Requesting pending messages" in captured
+
+
+class TestStartupPolicy:
+    def test_clean_install_uses_full(self):
+        assert Settings().startup_policy is StartupPolicy.FULL
+
+    @pytest.mark.parametrize("obsolete", ["passive", "sync"])
+    def test_obsolete_policy_fails_with_migration_guidance(self, obsolete):
+        with pytest.raises(ValidationError, match="only supports 'full'"):
+            Settings(startup_policy=obsolete)
+
+    @pytest.mark.parametrize(
+        "variable", ["MESHCORE_PASSIVE_STARTUP", "MESHCORE_SKIP_POST_CONNECT_SYNC"]
+    )
+    def test_enabled_legacy_flag_fails_with_migration_guidance(self, monkeypatch, variable):
+        monkeypatch.setenv(variable, "true")
+        with pytest.raises(ValidationError, match="Remove obsolete startup flag"):
+            Settings()
 
 
 class TestTransportExclusivity:

@@ -46,13 +46,12 @@ Hardware-only verification is still required for real repeater/room responses, C
 ## Worker-owned startup and hardware preflight
 
 See `RADIO_STARTUP_LIFECYCLE.md` for the lifecycle stages, readiness barrier,
-reconnect fencing, policy matrix, all explicit maintenance permissions and
-rollback. `MESHCORE_STARTUP_POLICY=sync` (default) reads radio/device data
-without device writes or startup RF. `passive` reads device status only; `full`
-merely permits **individually opted-in** maintenance actions. Both deprecated
-flags `MESHCORE_PASSIVE_STARTUP=true` and
-`MESHCORE_SKIP_POST_CONNECT_SYNC=true` map to passive (they cannot enable
-clock/flood writes). Startup stages are visible single-worker lifecycle jobs;
+reconnect fencing, all explicit maintenance permissions and rollback. `full`
+is the only supported startup policy. Its baseline reads radio/device/contact/
+channel data without device writes or startup RF and merely permits
+**individually opted-in** maintenance actions. Obsolete `passive`/`sync` values
+and enabled legacy startup flags fail at configuration load. Startup stages are
+visible single-worker lifecycle jobs;
 ordinary user commands are gated until initialization settles. The underlying
 lock is still the final transport guard, not a bypass.
 
@@ -62,8 +61,7 @@ Login reply deadlines are independent from worker command/queue deadlines;
 `MESHCORE_LOGIN_RESPONSE_TIMEOUT_SECONDS` defaults to 5 seconds (range 1–60).
 The worker fails closed on uncertain outcomes: do not automatically retransmit.
 Periodic producers have bounded admission/coalescing; destructive periodic
-contact/channel offload also requires `full` policy and
-`MESHCORE_STARTUP_ALLOW_PERIODIC_OFFLOAD=true`.
+contact/channel offload requires `MESHCORE_STARTUP_ALLOW_PERIODIC_OFFLOAD=true`.
 
 ## Producer migration hardening (review required before release)
 

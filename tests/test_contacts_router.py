@@ -756,8 +756,8 @@ class TestCreateContactWithHistorical:
 
         assert response.status_code == 200
         result = response.json()["historical_decrypt"]
-        assert result["status"] == "unavailable_policy"
-        assert "startup policy 'sync'" in result["message"].lower()
+        assert result["status"] == "unavailable_export"
+        assert "startup_export_private_key" in result["message"].lower()
         assert "firmware may need" not in result["message"].lower()
 
 

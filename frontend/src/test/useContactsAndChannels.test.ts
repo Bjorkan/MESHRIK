@@ -310,8 +310,8 @@ describe('useContactsAndChannels', () => {
       vi.mocked(api.createContact).mockResolvedValueOnce({
         ...contact,
         historical_decrypt: {
-          status: 'unavailable_policy',
-          message: "Startup policy 'sync' intentionally does not export the radio's private key.",
+          status: 'unavailable_export',
+          message: 'Set MESHCORE_STARTUP_EXPORT_PRIVATE_KEY=true to enable key export.',
         },
       });
 
@@ -322,7 +322,7 @@ describe('useContactsAndChannels', () => {
 
       expect(toast.info).toHaveBeenCalledOnce();
       expect(toast.info).toHaveBeenCalledWith('Historical DM decryption unavailable', {
-        description: "Startup policy 'sync' intentionally does not export the radio's private key.",
+        description: 'Set MESHCORE_STARTUP_EXPORT_PRIVATE_KEY=true to enable key export.',
       });
       expect(toast.error).not.toHaveBeenCalled();
     });

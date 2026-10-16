@@ -286,7 +286,7 @@ class RadioStatusSnapshot(BaseModel):
     command_status: RadioCommandStatus
     radio_generation: int = Field(ge=0)
     sequence: int = Field(ge=0)
-    startup_policy: Literal["passive", "sync", "full"] = "sync"
+    startup_policy: Literal["full"] = "full"
     startup_stage: RadioStartupStage | None = None
     # Physical TX/listening state is NOT supported by the present driver.
     physical_rf_state: Literal["unavailable"] = "unavailable"

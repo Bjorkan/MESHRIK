@@ -29,7 +29,13 @@ from app.decoder import (
     try_decrypt_path,
     verify_advert_signature,
 )
-from app.keystore import get_private_key, get_public_key, has_private_key
+from app.keystore import (
+    PrivateKeyExportStatus,
+    get_private_key,
+    get_private_key_export_status,
+    get_public_key,
+    has_private_key,
+)
 from app.models import (
     Contact,
     ContactUpsert,
@@ -306,24 +312,31 @@ async def start_historical_dm_decryption(
     global _last_historical_dm_skip_status
 
     if not has_private_key():
-        from app.config import StartupPolicy, settings
+        from app.config import settings
 
-        policy = settings.effective_startup_policy
-        if policy is not StartupPolicy.FULL:
-            result = HistoricalDmDecryptStart(
-                status="unavailable_policy",
-                message=(
-                    f"Startup policy '{policy.value}' intentionally does not export the radio's "
-                    "private key. Historical DM decryption is unavailable, but live radio "
-                    "messages are unaffected."
-                ),
-            )
-        elif not settings.startup_export_private_key:
+        if not settings.startup_export_private_key:
             result = HistoricalDmDecryptStart(
                 status="unavailable_export",
                 message=(
-                    "Private-key export is not enabled for full startup. Historical DM "
-                    "decryption is unavailable, but live radio messages are unaffected."
+                    "Set MESHCORE_STARTUP_EXPORT_PRIVATE_KEY=true to enable private-key "
+                    "export. Historical DM decryption is unavailable, but live radio "
+                    "messages are unaffected."
+                ),
+            )
+        elif get_private_key_export_status() is PrivateKeyExportStatus.FIRMWARE_UNSUPPORTED:
+            result = HistoricalDmDecryptStart(
+                status="unavailable_firmware",
+                message=(
+                    "The connected firmware does not permit private-key export. Historical DM "
+                    "decryption is unavailable, but on-device signing may still be supported."
+                ),
+            )
+        elif get_private_key_export_status() is PrivateKeyExportStatus.FAILED:
+            result = HistoricalDmDecryptStart(
+                status="unavailable_export_failed",
+                message=(
+                    "The authorized private-key export attempt failed. Inspect the startup key "
+                    "export stage and reconnect before retrying historical DM decryption."
                 ),
             )
         else:

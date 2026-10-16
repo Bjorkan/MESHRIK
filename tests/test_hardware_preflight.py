@@ -8,10 +8,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from meshcore import EventType
 
-import app.config as config
 import app.routers.server_control as server_control
 import app.services.radio_job_worker as worker_module
 import app.services.radio_response_tracker as tracker_module
+from app.config import settings
 from app.models import Contact
 from app.services.radio_job_scheduler import RadioJobScheduler
 from app.services.radio_job_worker import RadioCommandOutcome, RadioJobWorker
@@ -21,10 +21,20 @@ from app.services.radio_response_tracker import RadioResponseTracker
 
 
 @pytest.mark.asyncio
-async def test_passive_startup_only_queries_device_and_receives(monkeypatch):
-    """The startup flag must NOT merely skip background offload/advertisement."""
-    monkeypatch.setattr(config.settings, "passive_startup", True)
-    monkeypatch.setattr(config.settings, "skip_post_connect_sync", False)
+async def test_full_startup_without_opt_ins_only_reads_baseline(monkeypatch):
+    """FULL reads baseline state but does not authorize maintenance or RF."""
+    for name in (
+        "startup_export_private_key",
+        "startup_sync_clock",
+        "startup_apply_flood_scope",
+        "startup_send_advertisement",
+        "startup_drain_messages",
+        "startup_reconcile_contacts",
+        "startup_clear_channel_slots",
+        "startup_allow_periodic_offload",
+        "startup_enable_telemetry_collection",
+    ):
+        monkeypatch.setattr(settings, name, False)
     mc = MagicMock()
     mc.commands.send_device_query = AsyncMock(return_value=SimpleNamespace(payload={"fw ver": 10}))
     mc.commands.get_time = AsyncMock(return_value=SimpleNamespace(payload={"time": 1000}))
@@ -66,8 +76,7 @@ async def test_passive_startup_only_queries_device_and_receives(monkeypatch):
         await run_post_connect_setup(manager)
     register.assert_called_once_with(mc)
     mc.commands.send_device_query.assert_awaited_once()
-    # Receiving includes draining the Companion backlog; that is non-destructive.
-    drain.assert_awaited_once()
+    drain.assert_not_awaited()
     for call in (export, time_sync, settings_get, scope, offload, advert):
         call.assert_not_awaited()
     for call in (sync_loop, advert_loop, poll_loop, telemetry_loop):

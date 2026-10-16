@@ -18,7 +18,7 @@ type Radio = components['schemas']['RadioStatusSnapshot'];
 type Activity = components['schemas']['RadioActivityRecord'];
 const radio: Radio = {
   radio_status: 'connected',
-  startup_policy: 'sync',
+  startup_policy: 'full',
   command_status: 'executing',
   radio_generation: 3,
   sequence: 12,

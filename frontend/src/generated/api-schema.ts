@@ -3193,10 +3193,10 @@ export interface components {
       startup_error_stage?: string | null;
       /**
        * Startup Policy
-       * @default sync
-       * @enum {string}
+       * @default full
+       * @constant
        */
-      startup_policy: 'passive' | 'sync' | 'full';
+      startup_policy: 'full';
       /** Startup Skipped Stages */
       startup_skipped_stages?: string[];
       /** Startup Stage */
@@ -3217,8 +3217,9 @@ export interface components {
        */
       status:
         | 'started'
-        | 'unavailable_policy'
         | 'unavailable_export'
+        | 'unavailable_firmware'
+        | 'unavailable_export_failed'
         | 'unavailable_key'
         | 'invalid_contact_key';
     };
@@ -4336,10 +4337,10 @@ export interface components {
       sequence: number;
       /**
        * Startup Policy
-       * @default sync
-       * @enum {string}
+       * @default full
+       * @constant
        */
-      startup_policy: 'passive' | 'sync' | 'full';
+      startup_policy: 'full';
       startup_stage?: components['schemas']['RadioStartupStage'] | null;
     };
     /**

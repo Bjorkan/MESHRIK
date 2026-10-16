@@ -10,6 +10,7 @@ server-side decryption of direct messages.
 
 import hashlib
 import logging
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
 import nacl.bindings
@@ -37,6 +38,16 @@ _private_key: bytes | None = None
 _public_key: bytes | None = None
 
 
+class PrivateKeyExportStatus(StrEnum):
+    NOT_ATTEMPTED = "not_attempted"
+    AVAILABLE = "available"
+    FIRMWARE_UNSUPPORTED = "firmware_unsupported"
+    FAILED = "failed"
+
+
+_private_key_export_status = PrivateKeyExportStatus.NOT_ATTEMPTED
+
+
 def ed25519_sign_expanded(message: bytes, scalar: bytes, prefix: bytes, public_key: bytes) -> bytes:
     """Sign a message using MeshCore's expanded Ed25519 key format.
 
@@ -55,10 +66,11 @@ def ed25519_sign_expanded(message: bytes, scalar: bytes, prefix: bytes, public_k
 
 def clear_keys() -> None:
     """Clear any stored private/public key material from memory."""
-    global _private_key, _public_key
+    global _private_key, _private_key_export_status, _public_key
     had_key = _private_key is not None or _public_key is not None
     _private_key = None
     _public_key = None
+    _private_key_export_status = PrivateKeyExportStatus.NOT_ATTEMPTED
     if had_key:
         logger.info("Cleared in-memory keystore")
 
@@ -69,11 +81,12 @@ def set_private_key(key: bytes) -> None:
     Args:
         key: 64-byte Ed25519 private key in MeshCore format
     """
-    global _private_key, _public_key
+    global _private_key, _private_key_export_status, _public_key
     if len(key) != 64:
         raise ValueError(f"Private key must be 64 bytes, got {len(key)}")
     _private_key = key
     _public_key = derive_public_key(key)
+    _private_key_export_status = PrivateKeyExportStatus.AVAILABLE
     logger.info("Private key stored in keystore (public key: %s...)", _public_key.hex()[:12])
 
 
@@ -122,6 +135,11 @@ def has_private_key() -> bool:
     return _private_key is not None
 
 
+def get_private_key_export_status() -> PrivateKeyExportStatus:
+    """Return capability-safe export state without exposing key material."""
+    return _private_key_export_status
+
+
 async def export_and_store_private_key(mc: "MeshCore") -> bool:
     """Export private key from the radio and store it in the keystore.
 
@@ -133,6 +151,8 @@ async def export_and_store_private_key(mc: "MeshCore") -> bool:
     Returns:
         True if the private key was successfully exported and stored
     """
+    global _private_key_export_status
+
     logger.info("Exporting private key from radio...")
     try:
         result = await mc.commands.export_private_key()
@@ -142,6 +162,7 @@ async def export_and_store_private_key(mc: "MeshCore") -> bool:
             set_private_key(private_key_bytes)
             return True
         elif result.type == EventType.DISABLED:
+            _private_key_export_status = PrivateKeyExportStatus.FIRMWARE_UNSUPPORTED
             logger.warning(
                 "Private key export disabled on radio firmware. "
                 "Server-side DM decryption will not be available. "
@@ -151,12 +172,15 @@ async def export_and_store_private_key(mc: "MeshCore") -> bool:
         else:
             reason = result.payload.get("reason") if isinstance(result.payload, dict) else None
             if result.type == EventType.ERROR and reason == "no_event_received":
+                _private_key_export_status = PrivateKeyExportStatus.FAILED
                 logger.error("%s Raw response: %s", NO_EVENT_RECEIVED_GUIDANCE, result.payload)
                 raise RuntimeError(NO_EVENT_RECEIVED_GUIDANCE)
             logger.error("Failed to export private key: %s", result.payload)
+            _private_key_export_status = PrivateKeyExportStatus.FAILED
             return False
     except RuntimeError:
         raise
     except Exception as e:
+        _private_key_export_status = PrivateKeyExportStatus.FAILED
         logger.error("Error exporting private key: %s", e)
         return False

@@ -2858,12 +2858,8 @@
             "title": "Startup Error Stage"
           },
           "startup_policy": {
-            "default": "sync",
-            "enum": [
-              "passive",
-              "sync",
-              "full"
-            ],
+            "const": "full",
+            "default": "full",
             "title": "Startup Policy",
             "type": "string"
           },
@@ -2910,8 +2906,9 @@
           "status": {
             "enum": [
               "started",
-              "unavailable_policy",
               "unavailable_export",
+              "unavailable_firmware",
+              "unavailable_export_failed",
               "unavailable_key",
               "invalid_contact_key"
             ],
@@ -5174,12 +5171,8 @@
             "type": "integer"
           },
           "startup_policy": {
-            "default": "sync",
-            "enum": [
-              "passive",
-              "sync",
-              "full"
-            ],
+            "const": "full",
+            "default": "full",
             "title": "Startup Policy",
             "type": "string"
           },

@@ -171,7 +171,7 @@ class RadioManager:
         self._setup_task: asyncio.Task | None = None
         self._setup_task_generation: int | None = None
         self.readiness_state: str = "disconnected"
-        self.startup_policy: str = settings.effective_startup_policy.value
+        self.startup_policy: str = "full"
         self.startup_stage: str | None = None
         self.startup_error_stage: str | None = None
         self.startup_skipped_stages: list[str] = []

@@ -534,7 +534,7 @@ export function RadioActivityPage({ feed, connection, health }: Props) {
               </div>
             </div>
             <span className="text-xs text-muted-foreground">
-              RF TX/RX unmeasured · {health?.startup_policy ?? radio?.startup_policy ?? 'sync'}{' '}
+              RF TX/RX unmeasured · {health?.startup_policy ?? radio?.startup_policy ?? 'full'}{' '}
               startup
             </span>
           </div>

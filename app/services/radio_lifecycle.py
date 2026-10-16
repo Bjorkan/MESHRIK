@@ -13,7 +13,7 @@ from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from typing import Any
 
-from app.config import StartupPolicy, settings
+from app.config import settings
 from app.services.radio_jobs import (
     TERMINAL_STATES,
     RadioJobKind,
@@ -273,7 +273,7 @@ async def _run_stage(
         raise
 
 
-def _set_skipped_stages(radio_manager: Any, policy: StartupPolicy) -> None:
+def _set_skipped_stages(radio_manager: Any) -> None:
     optional = {
         "key_export": settings.startup_export_private_key,
         "clock_sync": settings.startup_sync_clock,
@@ -285,12 +285,9 @@ def _set_skipped_stages(radio_manager: Any, policy: StartupPolicy) -> None:
         "telemetry_collection": settings.startup_enable_telemetry_collection,
         "periodic_offload": settings.startup_allow_periodic_offload,
     }
-    if policy != StartupPolicy.FULL:
-        radio_manager.startup_skipped_stages = list(optional)
-    else:
-        radio_manager.startup_skipped_stages = [
-            name for name, enabled in optional.items() if not enabled
-        ]
+    radio_manager.startup_skipped_stages = [
+        name for name, enabled in optional.items() if not enabled
+    ]
 
 
 async def _run_lifecycle_workflow(radio_manager: Any, generation: int) -> None:
@@ -310,23 +307,17 @@ async def _run_lifecycle_workflow(radio_manager: Any, generation: int) -> None:
         sync_radio_time,
     )
 
-    policy = settings.effective_startup_policy
     radio_manager._setup_in_progress = True
     radio_manager._setup_complete = False
     radio_manager.readiness_state = "initializing"
-    radio_manager.startup_policy = policy.value
+    radio_manager.startup_policy = "full"
     radio_manager.startup_error_stage = None
     radio_manager.startup_stage = RadioStartupStage.TRANSPORT.value
-    _set_skipped_stages(radio_manager, policy)
+    _set_skipped_stages(radio_manager)
     degraded = False
     contact_snapshot: dict[str, Any] = {}
 
-    if settings.passive_startup or settings.skip_post_connect_sync:
-        logger.warning(
-            "Deprecated startup safety flag mapped to startup policy 'passive'; "
-            "use MESHCORE_STARTUP_POLICY=passive instead"
-        )
-    logger.info("Radio lifecycle generation %d using %s policy", generation, policy.value)
+    logger.info("Radio lifecycle generation %d using full policy", generation)
 
     try:
         _assert_generation(radio_manager, generation)
@@ -362,140 +353,136 @@ async def _run_lifecycle_workflow(radio_manager: Any, generation: int) -> None:
             )
         )
 
-        # Capture the existing Companion queue before potentially slow contact
-        # enumeration (up to 60s) and sequential channel reads. Pending frames
-        # are journaled first; unverifiable historic slots remain quarantined.
-        async def early_backlog(current: Any) -> None:
-            await drain_pending_messages(current)
+        if settings.startup_drain_messages:
 
-        stages.append(
-            (
-                RadioStartupStage.MESSAGE_DRAIN,
-                RadioJobKind.LIFECYCLE_MESSAGE_DRAIN,
-                early_backlog,
-                MAINTENANCE_STAGE_TIMEOUT_SECONDS,
-                False,
-            )
-        )
-
-        if policy in {StartupPolicy.SYNC, StartupPolicy.FULL}:
-
-            async def contact_sync(current: Any) -> None:
-                nonlocal contact_snapshot
-                contact_snapshot = await sync_contacts_from_radio(current)
-                if "error" in contact_snapshot:
-                    raise RuntimeError("Contact snapshot failed")
+            async def early_backlog(current: Any) -> None:
+                await drain_pending_messages(current)
 
             stages.append(
                 (
-                    RadioStartupStage.CONTACT_SYNC,
-                    RadioJobKind.LIFECYCLE_CONTACT_SYNC,
-                    contact_sync,
+                    RadioStartupStage.MESSAGE_DRAIN,
+                    RadioJobKind.LIFECYCLE_MESSAGE_DRAIN,
+                    early_backlog,
                     MAINTENANCE_STAGE_TIMEOUT_SECONDS,
                     False,
                 )
             )
 
-            async def channel_sync(current: Any) -> None:
-                result = await sync_channels_from_radio(current)
+        async def contact_sync(current: Any) -> None:
+            nonlocal contact_snapshot
+            contact_snapshot = await sync_contacts_from_radio(current)
+            if "error" in contact_snapshot:
+                raise RuntimeError("Contact snapshot failed")
+
+        stages.append(
+            (
+                RadioStartupStage.CONTACT_SYNC,
+                RadioJobKind.LIFECYCLE_CONTACT_SYNC,
+                contact_sync,
+                MAINTENANCE_STAGE_TIMEOUT_SECONDS,
+                False,
+            )
+        )
+
+        async def channel_sync(current: Any) -> None:
+            result = await sync_channels_from_radio(current)
+            if "error" in result:
+                raise RuntimeError("Channel snapshot failed")
+
+        if settings.startup_clear_channel_slots:
+
+            async def channel_clear(current: Any) -> None:
+                result = await sync_and_offload_channels(current)
                 if "error" in result:
-                    raise RuntimeError("Channel snapshot failed")
+                    raise RuntimeError("Channel offload failed")
 
-            if policy == StartupPolicy.FULL and settings.startup_clear_channel_slots:
-
-                async def channel_clear(current: Any) -> None:
-                    result = await sync_and_offload_channels(current)
-                    if "error" in result:
-                        raise RuntimeError("Channel offload failed")
-
-                stages.append(
-                    (
-                        RadioStartupStage.CHANNEL_CLEAR,
-                        RadioJobKind.LIFECYCLE_CHANNEL_CLEAR,
-                        channel_clear,
-                        MAINTENANCE_STAGE_TIMEOUT_SECONDS,
-                        False,
-                    )
+            stages.append(
+                (
+                    RadioStartupStage.CHANNEL_CLEAR,
+                    RadioJobKind.LIFECYCLE_CHANNEL_CLEAR,
+                    channel_clear,
+                    MAINTENANCE_STAGE_TIMEOUT_SECONDS,
+                    False,
                 )
-            else:
-                stages.append(
-                    (
-                        RadioStartupStage.CHANNEL_SYNC,
-                        RadioJobKind.LIFECYCLE_CHANNEL_SYNC,
-                        channel_sync,
-                        MAINTENANCE_STAGE_TIMEOUT_SECONDS,
-                        False,
-                    )
+            )
+        else:
+            stages.append(
+                (
+                    RadioStartupStage.CHANNEL_SYNC,
+                    RadioJobKind.LIFECYCLE_CHANNEL_SYNC,
+                    channel_sync,
+                    MAINTENANCE_STAGE_TIMEOUT_SECONDS,
+                    False,
+                )
+            )
+
+        if settings.startup_export_private_key:
+
+            async def export_key(current: Any) -> None:
+                await export_and_store_private_key(current)
+
+            stages.append(
+                (
+                    RadioStartupStage.KEY_EXPORT,
+                    RadioJobKind.LIFECYCLE_KEY_EXPORT,
+                    export_key,
+                    READ_ONLY_STAGE_TIMEOUT_SECONDS,
+                    False,
+                )
+            )
+        if settings.startup_sync_clock:
+
+            async def clock_sync(current: Any) -> None:
+                if not await sync_radio_time(current):
+                    raise RuntimeError("Clock sync rejected")
+
+            stages.append(
+                (
+                    RadioStartupStage.CLOCK_SYNC,
+                    RadioJobKind.LIFECYCLE_CLOCK_SYNC,
+                    clock_sync,
+                    READ_ONLY_STAGE_TIMEOUT_SECONDS,
+                    False,
+                )
+            )
+        if settings.startup_apply_flood_scope:
+            from app.region_scope import normalize_region_scope
+            from app.repository import AppSettingsRepository
+            from app.services.flood_scope import set_radio_flood_scope
+
+            app_settings = await AppSettingsRepository.get()
+            scope = normalize_region_scope(app_settings.flood_scope)
+
+            async def apply_scope(current: Any) -> None:
+                await set_radio_flood_scope(
+                    current,
+                    scope,
+                    fw_ver=radio_manager.firmware_ver_code,
                 )
 
-        if policy == StartupPolicy.FULL:
-            if settings.startup_export_private_key:
-
-                async def export_key(current: Any) -> None:
-                    await export_and_store_private_key(current)
-
-                stages.append(
-                    (
-                        RadioStartupStage.KEY_EXPORT,
-                        RadioJobKind.LIFECYCLE_KEY_EXPORT,
-                        export_key,
-                        READ_ONLY_STAGE_TIMEOUT_SECONDS,
-                        False,
-                    )
+            stages.append(
+                (
+                    RadioStartupStage.FLOOD_SCOPE,
+                    RadioJobKind.LIFECYCLE_FLOOD_SCOPE,
+                    apply_scope,
+                    READ_ONLY_STAGE_TIMEOUT_SECONDS,
+                    False,
                 )
-            if settings.startup_sync_clock:
+            )
+        if settings.startup_send_advertisement:
 
-                async def clock_sync(current: Any) -> None:
-                    if not await sync_radio_time(current):
-                        raise RuntimeError("Clock sync rejected")
+            async def advertise(current: Any) -> None:
+                await send_advertisement(current)
 
-                stages.append(
-                    (
-                        RadioStartupStage.CLOCK_SYNC,
-                        RadioJobKind.LIFECYCLE_CLOCK_SYNC,
-                        clock_sync,
-                        READ_ONLY_STAGE_TIMEOUT_SECONDS,
-                        False,
-                    )
+            stages.append(
+                (
+                    RadioStartupStage.ADVERTISEMENT,
+                    RadioJobKind.LIFECYCLE_ADVERTISEMENT,
+                    advertise,
+                    READ_ONLY_STAGE_TIMEOUT_SECONDS,
+                    False,
                 )
-            if settings.startup_apply_flood_scope:
-                from app.region_scope import normalize_region_scope
-                from app.repository import AppSettingsRepository
-                from app.services.flood_scope import set_radio_flood_scope
-
-                app_settings = await AppSettingsRepository.get()
-                scope = normalize_region_scope(app_settings.flood_scope)
-
-                async def apply_scope(current: Any) -> None:
-                    await set_radio_flood_scope(
-                        current,
-                        scope,
-                        fw_ver=radio_manager.firmware_ver_code,
-                    )
-
-                stages.append(
-                    (
-                        RadioStartupStage.FLOOD_SCOPE,
-                        RadioJobKind.LIFECYCLE_FLOOD_SCOPE,
-                        apply_scope,
-                        READ_ONLY_STAGE_TIMEOUT_SECONDS,
-                        False,
-                    )
-                )
-            if settings.startup_send_advertisement:
-
-                async def advertise(current: Any) -> None:
-                    await send_advertisement(current)
-
-                stages.append(
-                    (
-                        RadioStartupStage.ADVERTISEMENT,
-                        RadioJobKind.LIFECYCLE_ADVERTISEMENT,
-                        advertise,
-                        READ_ONLY_STAGE_TIMEOUT_SECONDS,
-                        False,
-                    )
-                )
+            )
 
         async def start_auto_fetch(current: Any) -> None:
             # SDK 2.3.14 auto-fetch runs get_msg in unscheduled tasks and only
@@ -545,11 +532,10 @@ async def _run_lifecycle_workflow(radio_manager: Any, generation: int) -> None:
             else RadioStartupStage.COMPLETE.value
         )
 
-        # Initial queued backlog must be drained through the same worker even
-        # when no new MESSAGES_WAITING event arrives after reconnect.
-        from app.radio_sync import request_inbound_catchup
+        if settings.startup_drain_messages or settings.enable_message_poll_fallback:
+            from app.radio_sync import request_inbound_catchup
 
-        request_inbound_catchup()
+            request_inbound_catchup()
 
         # Receive-only recovery is independent of destructive FULL maintenance.
         # get_msg() removes a message from Companion's queue, so this remains
@@ -557,21 +543,20 @@ async def _run_lifecycle_workflow(radio_manager: Any, generation: int) -> None:
         if settings.enable_message_poll_fallback:
             start_message_polling()
 
-        if policy == StartupPolicy.FULL:
-            if settings.startup_reconcile_contacts and contact_snapshot:
-                start_background_contact_reconciliation(
-                    initial_radio_contacts=contact_snapshot.get("radio_contacts", {}),
-                    expected_mc=radio_manager.meshcore,
-                    autoevict=False,
-                )
-            if settings.startup_sync_clock or settings.startup_allow_periodic_offload:
-                start_periodic_sync()
-            if settings.startup_send_advertisement:
-                start_periodic_advert()
-            if settings.startup_drain_messages and not settings.enable_message_poll_fallback:
-                start_message_polling()
-            if settings.startup_enable_telemetry_collection:
-                start_telemetry_collect()
+        if settings.startup_reconcile_contacts and contact_snapshot:
+            start_background_contact_reconciliation(
+                initial_radio_contacts=contact_snapshot.get("radio_contacts", {}),
+                expected_mc=radio_manager.meshcore,
+                autoevict=False,
+            )
+        if settings.startup_sync_clock or settings.startup_allow_periodic_offload:
+            start_periodic_sync()
+        if settings.startup_send_advertisement:
+            start_periodic_advert()
+        if settings.startup_drain_messages and not settings.enable_message_poll_fallback:
+            start_message_polling()
+        if settings.startup_enable_telemetry_collection:
+            start_telemetry_collect()
 
         logger.info(
             "Radio lifecycle generation %d settled as %s",

@@ -137,7 +137,7 @@ export interface HealthStatus {
     | 'connecting'
     | 'disconnected'
     | 'paused';
-  startup_policy?: 'passive' | 'sync' | 'full';
+  startup_policy?: 'full';
   startup_stage?: string | null;
   startup_error_stage?: string | null;
   startup_skipped_stages?: string[];
