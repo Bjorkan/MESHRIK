@@ -1015,7 +1015,11 @@ export function SettingsRadioSection({
             ? 'A normal setup retry cannot safely recover an ambiguous or timed-out radio command.'
             : setupNeedsRetry
               ? 'Retries setup on the current transport without disconnecting or enabling destructive maintenance.'
-              : 'Disconnect pauses automatic reconnect attempts so another device can use the radio.'}
+              : radioState === 'paused'
+                ? 'Reconnects the configured radio transport and resumes automatic reconnect attempts.'
+                : !transportConnected
+                  ? 'Stops automatic reconnect attempts and leaves the radio connection paused.'
+                  : 'Disconnect pauses automatic reconnect attempts so another device can use the radio.'}
         </p>
       </div>
 

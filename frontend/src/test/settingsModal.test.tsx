@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { SettingsModal } from '../components/SettingsModal';
@@ -498,6 +499,61 @@ describe('SettingsModal', () => {
       expect(onDisconnect).not.toHaveBeenCalled();
     }
   );
+
+  it('keeps keyboard setup recovery safe and fully labelled on a narrow viewport', async () => {
+    const user = userEvent.setup();
+    const onReconnect = vi.fn(async () => {});
+    const onDisconnect = vi.fn(async () => {});
+    renderModal({
+      mobile: true,
+      onReconnect,
+      onDisconnect,
+      health: {
+        ...baseHealth,
+        radio_state: 'failed',
+        startup_stage: 'recovery_required',
+        startup_error_stage: 'device_info',
+      },
+    });
+    openRadioSection();
+
+    expect(
+      screen.getByRole('status', { name: 'Transport connected — setup failed at device_info' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Retries setup on the current transport without disconnecting or enabling destructive maintenance.'
+      )
+    ).toBeInTheDocument();
+    const retry = screen.getByRole('button', { name: 'Retry setup' });
+    retry.focus();
+    await user.keyboard('{Enter}');
+
+    await waitFor(() => expect(onReconnect).toHaveBeenCalledTimes(1));
+    expect(onDisconnect).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    {
+      state: 'paused' as const,
+      action: 'Reconnect',
+      help: 'Reconnects the configured radio transport and resumes automatic reconnect attempts.',
+    },
+    {
+      state: 'disconnected' as const,
+      action: 'Stop Trying',
+      help: 'Stops automatic reconnect attempts and leaves the radio connection paused.',
+    },
+  ])('keeps the $state action understandable on a narrow viewport', ({ state, action, help }) => {
+    renderModal({
+      mobile: true,
+      health: { ...baseHealth, radio_connected: false, radio_state: state },
+    });
+    openRadioSection();
+
+    expect(screen.getByRole('button', { name: action })).toHaveClass('w-full');
+    expect(screen.getByText(help)).toBeInTheDocument();
+  });
 
   it.each([
     { state: 'initializing' as const, connected: true, action: 'Disconnect' },
