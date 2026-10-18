@@ -1,4 +1,5 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 import { ContactInfoPane } from '../components/ContactInfoPane';
@@ -307,6 +308,48 @@ describe('ContactInfoPane', () => {
 
     expect(onClose).toHaveBeenCalledOnce();
     expect(windowOpen).not.toHaveBeenCalled();
+  });
+
+  it('supports keyboard map navigation and Back in a narrow viewport', async () => {
+    const previousWidth = window.innerWidth;
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 375 });
+    window.dispatchEvent(new Event('resize'));
+    try {
+      const user = userEvent.setup();
+      const contact = createContact({
+        public_key: '12'.repeat(32),
+        name: 'Synthetic Node',
+        lat: 12.34567,
+        lon: -45.6789,
+      });
+      const onClose = vi.fn();
+      getContactAnalytics.mockResolvedValue(createAnalytics(contact));
+
+      const { router } = await renderWithRouter(
+        <ContactInfoPane
+          {...baseProps}
+          contactKey={contact.public_key}
+          contacts={[contact]}
+          onClose={onClose}
+        />
+      );
+      const mapLink = await screen.findByRole('link', { name: 'View Synthetic Node on map' });
+
+      mapLink.focus();
+      await user.keyboard('{Enter}');
+
+      await waitFor(() => {
+        expect(router.state.location.pathname).toBe('/map');
+        expect(router.state.location.search).toEqual({ focus: contact.public_key });
+      });
+      expect(onClose).toHaveBeenCalledOnce();
+
+      act(() => router.history.back());
+      await waitFor(() => expect(router.state.location.pathname).toBe('/'));
+    } finally {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: previousWidth });
+      window.dispatchEvent(new Event('resize'));
+    }
   });
 
   it('uses collapsed attribution in the contact telemetry map', async () => {
