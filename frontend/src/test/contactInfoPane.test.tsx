@@ -5,6 +5,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { ContactInfoPane } from '../components/ContactInfoPane';
 import type { Contact, ContactAnalytics } from '../types';
 import { renderWithRouter } from './renderWithRouter';
+import { THEME_CHANGE_EVENT } from '../utils/theme';
 
 const { getContactAnalytics, contactTelemetryHistory } = vi.hoisted(() => ({
   getContactAnalytics: vi.fn(),
@@ -35,10 +36,20 @@ vi.mock('react-map-gl/maplibre', () => ({
   default: ({
     children,
     attributionControl,
+    mapStyle,
   }: {
     children: React.ReactNode;
     attributionControl?: boolean;
-  }) => <div data-default-attribution={String(attributionControl)}>{children}</div>,
+    mapStyle?: string;
+  }) => (
+    <div
+      data-testid="contact-embedded-map"
+      data-default-attribution={String(attributionControl)}
+      data-map-style={mapStyle}
+    >
+      {children}
+    </div>
+  ),
   AttributionControl: ({ compact }: { compact?: boolean }) => (
     <div data-testid="embedded-attribution" data-compact={String(compact)} />
   ),
@@ -131,6 +142,7 @@ const baseProps = {
 
 describe('ContactInfoPane', () => {
   beforeEach(() => {
+    localStorage.clear();
     getContactAnalytics.mockReset();
     contactTelemetryHistory.mockReset();
     contactTelemetryHistory.mockResolvedValue([]);
@@ -405,5 +417,41 @@ describe('ContactInfoPane', () => {
     expect(screen.getByTestId('contact-map-popup')).toHaveAttribute('data-close-on-click', 'true');
     fireEvent.click(screen.getByRole('button', { name: 'Simulate contact map background click' }));
     expect(screen.queryByTestId('contact-map-popup')).not.toBeInTheDocument();
+  });
+
+  it('keeps the contact popup open while changing the theme style in place', async () => {
+    const contact = createContact();
+    getContactAnalytics.mockResolvedValue(createAnalytics(contact));
+    contactTelemetryHistory.mockResolvedValue([
+      {
+        timestamp: 1_700_000_000,
+        data: {
+          lpp_sensors: [
+            {
+              channel: 1,
+              type_name: 'gps',
+              value: { latitude: 59.3293, longitude: 18.0686 },
+            },
+          ],
+        },
+      },
+    ]);
+
+    render(<ContactInfoPane {...baseProps} contactKey={contact.public_key} />);
+    fireEvent.click(await screen.findByRole('button', { name: /GPS:/ }));
+    const map = screen.getByTestId('contact-embedded-map');
+    fireEvent.click(screen.getByRole('button', { name: 'Show Alice on map' }));
+
+    localStorage.setItem('meshrik-theme', 'light');
+    window.dispatchEvent(new CustomEvent(THEME_CHANGE_EVENT, { detail: 'light' }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('contact-embedded-map')).toHaveAttribute(
+        'data-map-style',
+        'https://tiles.openfreemap.org/styles/liberty'
+      )
+    );
+    expect(screen.getByTestId('contact-embedded-map')).toBe(map);
+    expect(screen.getByTestId('contact-map-popup')).toHaveTextContent('Alice');
   });
 });

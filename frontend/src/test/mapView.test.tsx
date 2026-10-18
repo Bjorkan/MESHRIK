@@ -95,6 +95,26 @@ describe('MapView', () => {
     expect(container.querySelectorAll('[data-testid="maplibre-map"]')).toHaveLength(1);
   });
 
+  it('keeps a saved manual basemap when the app theme changes', async () => {
+    render(<MapView contacts={[]} />);
+    fireEvent.change(screen.getByLabelText('Map style'), { target: { value: 'bright' } });
+    expect(screen.getByTestId('maplibre-map')).toHaveAttribute(
+      'data-map-style',
+      'https://tiles.openfreemap.org/styles/bright'
+    );
+    expect(localStorage.getItem('meshrik-map-layer')).toBe('bright');
+
+    localStorage.setItem('meshrik-theme', 'light');
+    window.dispatchEvent(new CustomEvent(THEME_CHANGE_EVENT, { detail: 'light' }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('maplibre-map')).toHaveAttribute(
+        'data-map-style',
+        'https://tiles.openfreemap.org/styles/bright'
+      )
+    );
+  });
+
   it('renders a never-heard fallback for a focused contact without last_seen', () => {
     const contact: Contact = {
       public_key: 'aa'.repeat(32),
