@@ -176,6 +176,36 @@ describe('StatusBar', () => {
     expect(mockedToast.success).not.toHaveBeenCalledWith('Public key copied!');
   });
 
+  it('keeps header controls touchable and bounds long synthetic identity text', () => {
+    const longName = `Synthetic ${'device-'.repeat(30)}`;
+    const longConfig = { ...syntheticConfig, name: longName };
+    render(
+      <StatusBar
+        health={baseHealth}
+        config={longConfig}
+        onSettingsClick={vi.fn()}
+        onMenuClick={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole('button', { name: 'Open menu' })).toHaveClass('min-h-6', 'min-w-6');
+    expect(screen.getByRole('button', { name: /switch to .* theme/i })).toHaveClass(
+      'min-h-6',
+      'min-w-6'
+    );
+    expect(screen.getByText(longName)).toHaveClass('truncate', 'max-w-40');
+    expect(screen.getByText(longName)).toHaveAttribute('title', longName);
+    expect(screen.getByRole('button', { name: 'Copy public key' })).toHaveClass(
+      'truncate',
+      'max-w-48',
+      'text-sm'
+    );
+    expect(screen.getByRole('button', { name: 'Copy public key' })).toHaveAttribute(
+      'title',
+      syntheticConfig.public_key.toLowerCase()
+    );
+  });
+
   it('toggles between classic and light themes from the shortcut button', () => {
     localStorage.setItem('meshrik-theme', 'cyberpunk');
 

@@ -186,12 +186,12 @@ export function StatusBar({
   };
 
   return (
-    <header className="flex items-center gap-3 px-4 py-2.5 bg-card border-b border-border text-xs">
+    <header className="flex min-w-0 items-center gap-3 px-4 py-2.5 bg-card border-b border-border text-sm">
       {/* Mobile menu button - only visible on small screens */}
       {onMenuClick && (
         <button
           onClick={onMenuClick}
-          className="md:hidden p-0.5 bg-transparent border-none text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+          className="md:hidden inline-flex min-h-6 min-w-6 items-center justify-center rounded-sm bg-transparent border-none text-muted-foreground hover:text-foreground cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           aria-label="Open menu"
         >
           <Menu className="h-4 w-4" />
@@ -200,7 +200,7 @@ export function StatusBar({
 
       <h1 className="text-base font-semibold tracking-tight mr-auto text-foreground flex items-center gap-1.5">
         <svg
-          className="h-4 w-4 shrink-0 text-white"
+          className="h-4 w-4 shrink-0 text-foreground"
           viewBox="0 0 512 512"
           fill="currentColor"
           aria-hidden="true"
@@ -238,18 +238,23 @@ export function StatusBar({
           aria-label={`Battery ${batteryInfo.pct} percent`}
         >
           <batteryInfo.Icon className="h-4 w-4" aria-hidden="true" />
-          <span className="hidden sm:inline text-[0.6875rem]">{batteryInfo.label}</span>
+          <span className="hidden sm:inline text-sm">{batteryInfo.label}</span>
         </div>
       )}
 
       {config && (
-        <div className="hidden lg:flex items-center gap-2 text-muted-foreground">
-          <span className="text-foreground font-medium">{config.name || 'Unnamed'}</span>
+        <div className="hidden min-w-0 max-w-[min(40vw,32rem)] items-center gap-2 text-muted-foreground lg:flex">
+          <span
+            className="max-w-40 truncate text-foreground font-medium"
+            title={config.name || 'Unnamed'}
+          >
+            {config.name || 'Unnamed'}
+          </span>
           <button
             type="button"
-            className="font-mono text-[0.6875rem] text-muted-foreground cursor-pointer hover:text-primary transition-colors"
+            className="min-w-0 max-w-48 truncate rounded-sm font-mono text-sm text-muted-foreground cursor-pointer hover:text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             onClick={() => void copyTextWithFeedback(config.public_key, 'Public key copied!')}
-            title="Click to copy public key"
+            title={config.public_key.toLowerCase()}
             aria-label="Copy public key"
           >
             {config.public_key.toLowerCase()}
@@ -261,7 +266,7 @@ export function StatusBar({
         <button
           onClick={handleReconnect}
           disabled={reconnecting}
-          className="px-3 py-1 bg-warning/10 border border-warning/20 text-warning rounded-md text-xs cursor-pointer hover:bg-warning/15 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="min-h-6 px-3 py-1 bg-warning/10 border border-warning/20 text-warning rounded-md text-sm cursor-pointer hover:bg-warning/15 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           {reconnecting ? 'Reconnecting...' : radioState === 'paused' ? 'Connect' : 'Reconnect'}
         </button>
@@ -269,7 +274,7 @@ export function StatusBar({
       <button
         onClick={onSettingsClick}
         className={cn(
-          'px-3 py-1.5 rounded-md text-xs cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+          'min-h-6 px-3 py-1.5 rounded-md text-sm cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
           settingsMode
             ? 'bg-status-connected/15 border border-status-connected/30 text-status-connected hover:bg-status-connected/25'
             : 'bg-secondary border border-border text-muted-foreground hover:bg-accent hover:text-foreground'
@@ -279,7 +284,7 @@ export function StatusBar({
       </button>
       <button
         onClick={handleThemeToggle}
-        className="p-0.5 text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+        className="inline-flex min-h-6 min-w-6 items-center justify-center rounded-sm text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         title={currentTheme === 'light' ? 'Switch to classic theme' : 'Switch to light theme'}
         aria-label={currentTheme === 'light' ? 'Switch to classic theme' : 'Switch to light theme'}
       >
