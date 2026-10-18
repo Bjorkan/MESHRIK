@@ -1542,6 +1542,13 @@ function MqttCommunityConfigEditor({
       configuredPreset &&
       String(config.websocket_path ?? '').trim() === configuredPreset.websocket_path
     );
+  const legacyRootPathPreset = Object.values(communityPresets).find(
+    (preset) =>
+      preset.transport === 'websockets' &&
+      preset.websocket_path === DEFAULT_COMMUNITY_WEBSOCKET_PATH &&
+      preset.host === String(config.broker_host ?? '').trim() &&
+      String(config.websocket_path ?? '').trim() === '/mqtt'
+  );
 
   return (
     <div className="space-y-3">
@@ -1714,6 +1721,32 @@ function MqttCommunityConfigEditor({
               <p id="fanout-comm-ws-path-error" role="alert" className="text-xs text-destructive">
                 {websocketPathError}
               </p>
+            )}
+            {legacyRootPathPreset && (
+              <div
+                role="status"
+                className="rounded-md border border-warning/40 bg-warning/10 p-2 text-xs"
+              >
+                <p>
+                  {legacyRootPathPreset.label} uses <code>/</code>. This saved <code>/mqtt</code>{' '}
+                  value is preserved in case it was intentional.
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-2"
+                  onClick={() =>
+                    onChange({
+                      ...config,
+                      websocket_path: DEFAULT_COMMUNITY_WEBSOCKET_PATH,
+                      _websocket_path_source: 'default',
+                    })
+                  }
+                >
+                  Use recommended /
+                </Button>
+              </div>
             )}
             <p className="text-[0.8125rem] text-muted-foreground">
               Blank values normalize to <code>/</code>. Use <code>/mqtt</code> only for brokers that

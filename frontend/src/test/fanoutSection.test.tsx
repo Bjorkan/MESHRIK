@@ -1488,6 +1488,47 @@ describe('SettingsFanoutSection', () => {
     expect(path).toHaveValue('/mqtt');
   });
 
+  it('preserves a legacy LetsMesh /mqtt path until the operator accepts the safe correction', async () => {
+    const legacyConfig: FanoutConfig = {
+      id: 'comm-legacy-path',
+      type: 'mqtt_community',
+      name: 'Legacy Community Feed',
+      enabled: false,
+      config: {
+        broker_host: 'mqtt-us-v1.letsmesh.net',
+        broker_port: 443,
+        transport: 'websockets',
+        websocket_path: '/mqtt',
+        use_tls: true,
+        tls_verify: true,
+        auth_mode: 'token',
+        iata: 'TST',
+        email: '',
+        token_audience: '',
+        topic_template: 'meshcore/{IATA}/{PUBLIC_KEY}/packets',
+      },
+      scope: { messages: 'none', raw_packets: 'all' },
+      sort_order: 0,
+      created_at: 1000,
+    };
+    mockedApi.getFanoutConfigs.mockResolvedValue([legacyConfig]);
+    renderSection();
+    await waitFor(() => expect(screen.getByText('Legacy Community Feed')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    const path = await screen.findByLabelText('WebSocket Path');
+
+    expect(path).toHaveValue('/mqtt');
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'This saved /mqtt value is preserved in case it was intentional.'
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Use recommended /' }));
+
+    expect(path).toHaveValue('/');
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
   it('shows WebSocket path validation and blocks an invalid save', async () => {
     renderSection();
     await openCreateIntegrationDialog();
