@@ -13,7 +13,6 @@
   "semanticCommits": "enabled",
   "semanticCommitType": "chore",
   "semanticCommitScope": "deps",
-  "minimumReleaseAge": "14 days",
   "internalChecksFilter": "strict",
   "dependencyDashboardApproval": false,
   "prCreation": "immediate",
@@ -28,6 +27,11 @@
     "frontend/lib/meshcore-decoder/**"
   ],
   "packageRules": [
+    {
+      "description": "Enforce a 14-day release cooldown for dependency updates, but not lock file maintenance",
+      "matchUpdateTypes": ["major", "minor", "patch", "digest", "pinDigest"],
+      "minimumReleaseAge": "14 days"
+    },
     {
       "description": "Avoid npm lockfile maintenance timeout while retaining release age checks for normal updates",
       "matchManagers": ["npm"],
