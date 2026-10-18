@@ -41,8 +41,21 @@ vi.mock('react-map-gl/maplibre', () => ({
   AttributionControl: ({ compact }: { compact?: boolean }) => (
     <div data-testid="embedded-attribution" data-compact={String(compact)} />
   ),
-  Marker: () => null,
-  Popup: () => null,
+  Marker: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  Popup: ({
+    children,
+    closeOnClick,
+    onClose,
+  }: {
+    children: React.ReactNode;
+    closeOnClick?: boolean;
+    onClose?: () => void;
+  }) => (
+    <div data-testid="contact-map-popup" data-close-on-click={String(closeOnClick)}>
+      {children}
+      <button type="button" onClick={onClose} aria-label="Simulate contact map background click" />
+    </div>
+  ),
 }));
 
 vi.mock('../components/ui/sonner', () => ({
@@ -322,5 +335,32 @@ describe('ContactInfoPane', () => {
       'data-default-attribution',
       'false'
     );
+  });
+
+  it('closes the contact telemetry popup on map background click', async () => {
+    const contact = createContact();
+    getContactAnalytics.mockResolvedValue(createAnalytics(contact));
+    contactTelemetryHistory.mockResolvedValue([
+      {
+        timestamp: 1_700_000_000,
+        data: {
+          lpp_sensors: [
+            {
+              channel: 1,
+              type_name: 'gps',
+              value: { latitude: 59.3293, longitude: 18.0686 },
+            },
+          ],
+        },
+      },
+    ]);
+
+    render(<ContactInfoPane {...baseProps} contactKey={contact.public_key} />);
+    fireEvent.click(await screen.findByRole('button', { name: /GPS:/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Show Alice on map' }));
+
+    expect(screen.getByTestId('contact-map-popup')).toHaveAttribute('data-close-on-click', 'true');
+    fireEvent.click(screen.getByRole('button', { name: 'Simulate contact map background click' }));
+    expect(screen.queryByTestId('contact-map-popup')).not.toBeInTheDocument();
   });
 });
