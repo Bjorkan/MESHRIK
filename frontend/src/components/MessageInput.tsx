@@ -141,7 +141,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(fu
   } => {
     if (!limits) return { limitState: 'normal', warningMessage: null };
 
-    if (textByteLen >= limits.hardLimit) {
+    if (textByteLen > limits.hardLimit) {
       return { limitState: 'error', warningMessage: 'likely truncated by radio' };
     }
     if (textByteLen >= limits.dangerAt) {
