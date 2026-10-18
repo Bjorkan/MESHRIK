@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 import { ContactInfoPane } from '../components/ContactInfoPane';
+import { toast } from '../components/ui/sonner';
 import type { Contact, ContactAnalytics } from '../types';
 import { renderWithRouter } from './renderWithRouter';
 import { THEME_CHANGE_EVENT } from '../utils/theme';
@@ -76,6 +77,8 @@ vi.mock('../components/ui/sonner', () => ({
     success: vi.fn(),
   },
 }));
+
+const mockedToast = vi.mocked(toast);
 
 function createContact(overrides: Partial<Contact> = {}): Contact {
   return {
@@ -161,6 +164,23 @@ describe('ContactInfoPane', () => {
       expect(screen.getByText('Hop Width')).toBeInTheDocument();
       expect(screen.getByText('2-byte IDs')).toBeInTheDocument();
     });
+  });
+
+  it('reports a rejected contact-key copy without false success', async () => {
+    const contact = createContact({ public_key: '56'.repeat(32) });
+    getContactAnalytics.mockResolvedValue(createAnalytics(contact));
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: vi.fn().mockRejectedValue(new Error('denied')) },
+    });
+    render(<ContactInfoPane {...baseProps} contactKey={contact.public_key} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: contact.public_key }));
+
+    await waitFor(() =>
+      expect(mockedToast.error).toHaveBeenCalledWith('Copy failed', expect.anything())
+    );
+    expect(mockedToast.success).not.toHaveBeenCalledWith('Public key copied!');
   });
 
   it('does not show hop width for flood-routed contacts', async () => {

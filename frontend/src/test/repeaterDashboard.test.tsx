@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { RepeaterDashboard } from '../components/RepeaterDashboard';
+import { toast } from '../components/ui/sonner';
 import type { UseRepeaterDashboardResult } from '../hooks/useRepeaterDashboard';
 import type { Contact, Conversation } from '../types';
 
@@ -86,6 +87,8 @@ vi.mock('../components/ui/sonner', () => ({
     warning: vi.fn(),
   },
 }));
+
+const mockedToast = vi.mocked(toast);
 
 // Mock MapLibre imports (not needed in test)
 vi.mock('react-map-gl/maplibre', () => ({
@@ -197,6 +200,20 @@ describe('RepeaterDashboard', () => {
     expect(screen.getByText('Login as Guest / ACLs')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('Repeater password...')).toBeInTheDocument();
     expect(screen.getByText('Log in to access repeater dashboard')).toBeInTheDocument();
+  });
+
+  it('reports missing clipboard access from the repeater-key control', async () => {
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: undefined });
+    render(<RepeaterDashboard {...defaultProps} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Copy repeater public key' }));
+
+    await waitFor(() =>
+      expect(mockedToast.error).toHaveBeenCalledWith('Copy failed', {
+        description: 'Clipboard access is unavailable or was denied',
+      })
+    );
+    expect(mockedToast.success).not.toHaveBeenCalledWith('Contact key copied!');
   });
 
   it('shows compact fetch controls instead of a wall of unfetched cards', () => {

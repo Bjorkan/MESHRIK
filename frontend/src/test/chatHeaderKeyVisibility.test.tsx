@@ -1,10 +1,17 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ChatHeader } from '../components/ChatHeader';
+import { toast } from '../components/ui/sonner';
 import type { Channel, Contact, Conversation, PathDiscoveryResponse } from '../types';
 import { CONTACT_TYPE_ROOM } from '../types';
 import { PUBLIC_CHANNEL_KEY } from '../utils/publicChannel';
+
+vi.mock('../components/ui/sonner', () => ({
+  toast: { success: vi.fn(), error: vi.fn() },
+}));
+
+const mockedToast = vi.mocked(toast);
 
 function makeChannel(key: string, name: string, isHashtag: boolean): Channel {
   return {
@@ -39,6 +46,8 @@ const baseProps = {
 };
 
 describe('ChatHeader key visibility', () => {
+  beforeEach(() => vi.clearAllMocks());
+
   it('shows key directly for hashtag channels', () => {
     const key = 'AA'.repeat(16);
     const channel = makeChannel(key, '#general', true);
@@ -144,6 +153,30 @@ describe('ChatHeader key visibility', () => {
     fireEvent.click(screen.getByText(key.toLowerCase()));
 
     expect(writeText).toHaveBeenCalledWith(key);
+  });
+
+  it('reports a rejected channel-key copy without false success', async () => {
+    const key = '34'.repeat(16);
+    const channel = makeChannel(key, 'Synthetic Private', false);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: vi.fn().mockRejectedValue(new Error('denied')) },
+    });
+    render(
+      <ChatHeader
+        {...baseProps}
+        conversation={{ type: 'channel', id: key, name: 'Synthetic Private' }}
+        channels={[channel]}
+      />
+    );
+
+    fireEvent.click(screen.getByText('Show Key'));
+    fireEvent.click(screen.getByText(key.toLowerCase()));
+
+    await waitFor(() =>
+      expect(mockedToast.error).toHaveBeenCalledWith('Copy failed', expect.anything())
+    );
+    expect(mockedToast.success).not.toHaveBeenCalledWith('Channel key copied!');
   });
 
   it('shows active regional override badge for channels', () => {
