@@ -1363,6 +1363,7 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "httpx" },
+    { name = "hypothesis" },
     { name = "pip-licenses" },
     { name = "pyright" },
     { name = "pytest" },
@@ -1391,6 +1392,7 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "httpx", specifier = ">=0.28.1" },
+    { name = "hypothesis", specifier = ">=6.170.0" },
     { name = "pip-licenses", specifier = ">=5.0.0" },
     { name = "pyright", specifier = ">=1.1.390" },
     { name = "pytest", specifier = ">=9.0.3" },

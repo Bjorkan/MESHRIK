@@ -62,6 +62,7 @@ reportMissingTypeStubs = false
 
 [dependency-groups]
 dev = [
+    "hypothesis>=6.170.0",
     "httpx>=0.28.1",
     "pip-licenses>=5.0.0",
     "pytest>=9.0.3",

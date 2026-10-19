@@ -71,6 +71,18 @@ npm run test:run
 npm run build
 ```
 
+Property-based backend tests use Hypothesis with bounded generators and run as part of the normal
+pytest suite. A failure prints a minimal falsifying example; copy that example into a named
+example-based regression test before fixing the bug. To replay an exact CI run while investigating,
+use the reported seed:
+
+```bash
+PYTHONPATH=. uv run pytest tests/test_property_invariants.py --hypothesis-seed=<seed> -n 0
+```
+
+Do not suppress deadlines or health checks globally. Keep generated traffic inside pure functions,
+temporary databases, or fakes; property tests must never send data to a physical radio.
+
 Production builds deliberately set `build.sourcemap: false`: `frontend/dist` and release
 `frontend/prebuilt` directories are public assets served by the backend. The quality and packaging
 scripts reject any `*.map` file in those directories. For readable stack traces while developing,
