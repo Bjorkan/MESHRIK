@@ -9,6 +9,10 @@ export default {
   resolve: {
     alias: {
       "@": path.join(frontend, "src"),
+      "@tanstack/react-query": path.join(
+        frontend,
+        "node_modules/@tanstack/react-query",
+      ),
       react: path.join(frontend, "node_modules/react"),
       "react-dom": path.join(frontend, "node_modules/react-dom"),
     },

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { createRoot } from "react-dom/client";
 import { PathModal } from "../../../frontend/src/components/PathModal";
+import { RadioActivityFixture } from "./radio-activity";
 import "../../../frontend/src/index.css";
 import "../../../frontend/src/themes.css";
 import "../../../frontend/src/styles.css";
@@ -39,4 +40,6 @@ function Fixture() {
   );
 }
 
-createRoot(document.getElementById("root")!).render(<Fixture />);
+createRoot(document.getElementById("root")!).render(
+  params.has("activity") ? <RadioActivityFixture /> : <Fixture />,
+);
