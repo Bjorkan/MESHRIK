@@ -119,7 +119,7 @@ The following are **deliberate design choices**, not bugs. They are documented i
 
 Raw packet handling uses two identities by design:
 
-- **`id` (DB packet row ID)**: storage identity from payload-hash deduplication (path bytes are excluded), so repeated payloads share one stored raw-packet row.
+- **`id` (DB packet row ID)**: storage identity from a canonical hash of payload type plus payload bytes. Ordinary route/path bytes are excluded so RF repeats share one row; TRACE retains its encoded path byte because that byte is part of its protocol identity.
 - **`observation_id` (WebSocket only)**: realtime observation identity, unique per RF arrival, so path-diverse repeats are still visible in-session.
 
 Frontend packet-feed consumers should treat `observation_id` as the dedup/render key, while `id` remains the storage reference.

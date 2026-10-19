@@ -15,14 +15,15 @@ class RawPacketRepository:
     @staticmethod
     async def create(data: bytes, timestamp: int | None = None) -> tuple[int, bool]:
         """
-        Create a raw packet with payload-based deduplication.
+        Create a raw packet with canonical MeshCore identity deduplication.
 
         Returns (packet_id, is_new) tuple:
         - is_new=True: New packet stored, packet_id is the new row ID
         - is_new=False: Duplicate payload detected, packet_id is the existing row ID
 
-        Deduplication is based on the SHA-256 hash of the packet payload
-        (excluding routing/path information).
+        The identity includes the payload type and payload bytes. Ordinary
+        routing/path metadata is excluded so RF repeats share a row, while
+        TRACE's encoded path byte remains part of its protocol identity.
         """
         ts = timestamp if timestamp is not None else int(time.time())
 
