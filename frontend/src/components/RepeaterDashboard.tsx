@@ -155,10 +155,10 @@ export function RepeaterDashboard({
   const isFav = contact?.favorite ?? false;
 
   const handleRepeaterLogin = async (nextPassword: string, shouldRemember = rememberPassword) => {
-    recordLoginAttempt(nextPassword, shouldRemember);
-    if (await login(nextPassword)) {
-      persistConfirmedPassword(nextPassword, shouldRemember);
-    }
+    await login(nextPassword, {
+      onStarted: () => recordLoginAttempt(nextPassword, shouldRemember),
+      onConfirmed: () => persistConfirmedPassword(nextPassword, shouldRemember),
+    });
   };
   const handleRepeaterGuestLogin = async () => {
     await loginAsGuest();

@@ -16,11 +16,12 @@ import type {
   RepeaterRegionsResponse,
   CommandResponse,
 } from '../types';
+import type { ServerLoginAttemptState } from '../utils/serverLoginState';
 import {
-  buildServerLoginAttemptFromError,
-  buildServerLoginAttemptFromResponse,
-  type ServerLoginAttemptState,
-} from '../utils/serverLoginState';
+  resetServerLoginStoreForTests,
+  startServerLogin,
+  useServerLogin,
+} from '../stores/serverLoginStore';
 
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 2000;
@@ -147,6 +148,7 @@ function cacheState(publicKey: string, entry: RepeaterDashboardCacheEntry) {
 
 export function resetRepeaterDashboardCacheForTests() {
   repeaterDashboardCache.clear();
+  resetServerLoginStoreForTests('repeater');
 }
 
 // Maps pane name to the API call
@@ -182,7 +184,7 @@ export interface UseRepeaterDashboardResult {
   paneStates: Record<PaneName, PaneState>;
   consoleHistory: ConsoleEntry[];
   consoleLoading: boolean;
-  login: (password: string) => Promise<boolean>;
+  login: (password: string, lifecycle?: LoginLifecycle) => Promise<boolean>;
   loginAsGuest: () => Promise<boolean>;
   refreshPane: (pane: PaneName) => Promise<void>;
   loadAll: () => Promise<void>;
@@ -191,6 +193,11 @@ export interface UseRepeaterDashboardResult {
   sendFloodAdvert: () => Promise<void>;
   rebootRepeater: () => Promise<void>;
   syncClock: () => Promise<void>;
+}
+
+interface LoginLifecycle {
+  onStarted?: () => void;
+  onConfirmed?: () => void;
 }
 
 interface UseRepeaterDashboardOptions {
@@ -204,13 +211,14 @@ export function useRepeaterDashboard(
   const conversationId =
     activeConversation && activeConversation.type === 'contact' ? activeConversation.id : null;
   const cachedState = getCachedState(conversationId);
+  const loginRecord = useServerLogin('repeater', conversationId);
 
-  const [loggedIn, setLoggedIn] = useState(cachedState?.loggedIn ?? false);
-  const [loginLoading, setLoginLoading] = useState(false);
-  const [loginError, setLoginError] = useState<string | null>(cachedState?.loginError ?? null);
-  const [lastLoginAttempt, setLastLoginAttempt] = useState<ServerLoginAttemptState | null>(
-    cachedState?.lastLoginAttempt ?? null
-  );
+  const loggedIn = loginRecord?.accessGranted ?? cachedState?.loggedIn ?? false;
+  const loginLoading = loginRecord?.phase === 'pending';
+  const loginError = loginRecord ? loginRecord.error : (cachedState?.loginError ?? null);
+  const lastLoginAttempt = loginRecord
+    ? loginRecord.attempt
+    : (cachedState?.lastLoginAttempt ?? null);
 
   const [paneData, setPaneData] = useState<PaneData>(
     cachedState?.paneData ?? createInitialPaneData
@@ -280,39 +288,18 @@ export function useRepeaterDashboard(
   }, [activeConversation]);
 
   const login = useCallback(
-    async (password: string) => {
+    (password: string, lifecycle: LoginLifecycle = {}) => {
       const publicKey = getPublicKey();
-      if (!publicKey) return false;
-      const conversationId = publicKey;
+      if (!publicKey) return Promise.resolve(false);
       const method = password.length > 0 ? 'password' : 'blank';
-
-      setLoginLoading(true);
-      setLoginError(null);
-      try {
-        const result = await api.repeaterLogin(publicKey, password);
-        if (activeIdRef.current !== conversationId) return false;
-        setLastLoginAttempt(buildServerLoginAttemptFromResponse(method, result, 'repeater'));
-        setLoggedIn(true);
-        if (!result.authenticated) {
-          const msg = result.message ?? 'Repeater login was not confirmed';
-          setLoginError(msg);
-          // The inline login banner remains visible with a recovery action;
-          // don't duplicate the same failure as an unrelated toast.
-        }
-        return result.authenticated;
-      } catch (err) {
-        if (activeIdRef.current !== conversationId) return false;
-        const msg = err instanceof Error ? err.message : 'Login failed';
-        setLastLoginAttempt(buildServerLoginAttemptFromError(method, msg, 'repeater'));
-        setLoggedIn(true);
-        setLoginError(msg);
-        // The retry banner is the single source of visible login failure feedback.
-        return false;
-      } finally {
-        if (activeIdRef.current === conversationId) {
-          setLoginLoading(false);
-        }
-      }
+      return startServerLogin({
+        kind: 'repeater',
+        targetKey: publicKey,
+        password,
+        method,
+        onStarted: lifecycle.onStarted,
+        onConfirmed: lifecycle.onConfirmed,
+      }).promise;
     },
     [getPublicKey]
   );

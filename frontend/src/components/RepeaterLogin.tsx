@@ -114,6 +114,16 @@ export function RepeaterLogin({
             </p>
           )}
 
+          {loading && (
+            <p
+              className="text-center text-sm text-muted-foreground"
+              role="status"
+              aria-live="polite"
+            >
+              Login request pending. You can leave this view without starting another attempt.
+            </p>
+          )}
+
           <div className="flex flex-col gap-2">
             <Button type="submit" disabled={loading} className="w-full">
               {loading ? 'Logging in...' : loginLabel}

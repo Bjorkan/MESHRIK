@@ -317,7 +317,16 @@ describe('RepeaterDashboard', () => {
   it('only replaces a remembered repeater password after confirmed authentication', async () => {
     const storageKey = `meshrik-server-password:repeater:${REPEATER_KEY}`;
     localStorage.setItem(storageKey, JSON.stringify({ password: 'confirmed-password' }));
-    vi.mocked(mockHook.login).mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+    vi.mocked(mockHook.login)
+      .mockImplementationOnce(async (_password, lifecycle) => {
+        lifecycle?.onStarted?.();
+        return false;
+      })
+      .mockImplementationOnce(async (_password, lifecycle) => {
+        lifecycle?.onStarted?.();
+        lifecycle?.onConfirmed?.();
+        return true;
+      });
 
     const firstRender = render(<RepeaterDashboard {...defaultProps} />);
     fireEvent.change(screen.getByLabelText('Repeater password'), {
@@ -325,7 +334,9 @@ describe('RepeaterDashboard', () => {
     });
     fireEvent.click(screen.getByText('Login with Password'));
 
-    await waitFor(() => expect(mockHook.login).toHaveBeenCalledWith('failed-password'));
+    await waitFor(() =>
+      expect(mockHook.login).toHaveBeenCalledWith('failed-password', expect.any(Object))
+    );
     expect(localStorage.getItem(storageKey)).toBe(
       JSON.stringify({ password: 'confirmed-password' })
     );

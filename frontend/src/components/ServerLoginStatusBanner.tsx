@@ -24,11 +24,11 @@ export function ServerLoginStatusBanner({
   blankRetryLabel = 'Retry Existing-Access Login',
   showRetryActions = true,
 }: ServerLoginStatusBannerProps) {
-  if (attempt?.outcome === 'confirmed') {
+  if ((!attempt && !loading) || attempt?.outcome === 'confirmed') {
     return null;
   }
 
-  const tone = getServerLoginAttemptTone(attempt);
+  const tone = loading ? 'muted' : getServerLoginAttemptTone(attempt);
   const shouldShowActions = showRetryActions;
   const toneClassName =
     tone === 'success'
@@ -40,13 +40,26 @@ export function ServerLoginStatusBanner({
           : 'border-border bg-muted/40 text-foreground';
 
   return (
-    <div className={cn('rounded-md border px-4 py-3', toneClassName)}>
+    <div
+      className={cn('rounded-md border px-4 py-3', toneClassName)}
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+    >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 space-y-1">
           <p className="text-sm font-medium">
-            {attempt?.summary ?? 'No server login attempt has been recorded in this view yet.'}
+            {loading
+              ? 'Login request is still pending.'
+              : (attempt?.summary ?? 'No server login attempt has been recorded in this view yet.')}
           </p>
-          {attempt?.details && <p className="text-xs opacity-90">{attempt.details}</p>}
+          {loading ? (
+            <p className="text-xs opacity-90">
+              Waiting for the server response. Navigation will not cancel or resend this attempt.
+            </p>
+          ) : (
+            attempt?.details && <p className="text-xs opacity-90">{attempt.details}</p>
+          )}
         </div>
         {shouldShowActions ? (
           <div className="flex flex-wrap gap-2">

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 
 import { RoomServerPanel, resetRoomCacheForTests } from '../components/RoomServerPanel';
@@ -197,6 +197,44 @@ describe('RoomServerPanel', () => {
       roomContact.public_key,
       '  exact room password  '
     );
+  });
+
+  it('keeps a login pending across navigation and persists only its confirmed password', async () => {
+    const storageKey = `meshrik-server-password:room:${roomContact.public_key}`;
+    let resolveLogin!: (value: { status: 'ok'; authenticated: true; message: null }) => void;
+    mockApi.roomLogin.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveLogin = resolve;
+      })
+    );
+
+    const first = render(<RoomServerPanel contact={roomContact} />);
+    fireEvent.change(screen.getByLabelText('Repeater password'), {
+      target: { value: 'confirmed-after-navigation' },
+    });
+    fireEvent.click(screen.getByLabelText('Remember password'));
+    fireEvent.click(screen.getByText('Login with Password'));
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Login request pending');
+    expect(localStorage.getItem(storageKey)).toBeNull();
+    first.unmount();
+
+    const second = render(<RoomServerPanel contact={roomContact} />);
+    expect(screen.getByRole('status')).toHaveTextContent('Login request pending');
+    expect(screen.getByText('Logging in...')).toBeDisabled();
+    expect(screen.getByText('Login with Existing Access / Guest')).toBeDisabled();
+    expect(mockApi.roomLogin).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveLogin({ status: 'ok', authenticated: true, message: null });
+    });
+
+    await waitFor(() => expect(screen.getByText('Show Tools')).toBeInTheDocument());
+    expect(localStorage.getItem(storageKey)).toBe(
+      JSON.stringify({ password: 'confirmed-after-navigation' })
+    );
+    expect(mockApi.roomLogin).toHaveBeenCalledTimes(1);
+    second.unmount();
   });
 
   it('shows only a success toast after a confirmed login', async () => {
