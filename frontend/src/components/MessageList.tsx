@@ -10,6 +10,7 @@ import {
 import type { Channel, Contact, Message, MessagePath, RadioConfig, RawPacket } from '../types';
 import { CONTACT_TYPE_ROOM } from '../types';
 import { api } from '../api';
+import { LoadingIndicator } from './ui/loading-indicator';
 import {
   findLinkedChannelReferences,
   formatTime,
@@ -1026,8 +1027,8 @@ export function MessageList({
 
   if (loading) {
     return (
-      <div className="flex-1 overflow-y-auto p-5 text-center text-muted-foreground" role="status">
-        Loading messages...
+      <div className="flex-1 overflow-y-auto p-5 text-center text-muted-foreground">
+        <LoadingIndicator label="Loading messages..." />
       </div>
     );
   }
@@ -1067,8 +1068,8 @@ export function MessageList({
         onKeyDown={cancelBottomScroll}
       >
         {loadingOlder && (
-          <div className="text-center py-2 text-muted-foreground text-sm" role="status">
-            Loading older messages...
+          <div className="text-center py-2 text-muted-foreground text-sm">
+            <LoadingIndicator label="Loading older messages..." />
           </div>
         )}
         {!loadingOlder && hasOlderMessages && (
@@ -1415,8 +1416,8 @@ export function MessageList({
           })}
         </div>
         {loadingNewer && (
-          <div className="text-center py-2 text-muted-foreground text-sm" role="status">
-            Loading newer messages...
+          <div className="text-center py-2 text-muted-foreground text-sm">
+            <LoadingIndicator label="Loading newer messages..." />
           </div>
         )}
         {!loadingNewer && hasNewerMessages && (
