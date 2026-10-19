@@ -37,7 +37,6 @@ import {
 } from '../utils/conversationState';
 import { isPublicChannelKey } from '../utils/publicChannel';
 import { getContactDisplayName } from '../utils/pubkey';
-import { handleKeyboardActivate } from '../utils/a11y';
 import {
   measureElementWithFallback,
   observeElementRectWithFallback,
@@ -639,24 +638,32 @@ export function Sidebar({
         row.unreadCount > 0);
 
     return (
-      <div
+      <a
         key={row.key}
+        href={`/${row.type}/${encodeURIComponent(row.id)}`}
         className={cn(
           'px-3 py-2 cursor-pointer flex items-center gap-2 border-l-2 border-transparent hover:bg-accent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
           isActive(row.type, row.id) && 'bg-accent border-l-primary',
           row.unreadCount > 0 && '[&_.name]:font-semibold [&_.name]:text-foreground'
         )}
-        role="button"
-        tabIndex={0}
         aria-current={isActive(row.type, row.id) ? 'page' : undefined}
-        onKeyDown={handleKeyboardActivate}
-        onClick={() =>
+        onClick={(event) => {
+          if (
+            event.button !== 0 ||
+            event.metaKey ||
+            event.ctrlKey ||
+            event.shiftKey ||
+            event.altKey
+          ) {
+            return;
+          }
+          event.preventDefault();
           handleSelectConversation({
             type: row.type,
             id: row.id,
             name: row.name,
-          })
-        }
+          });
+        }}
       >
         {row.type === 'contact' && row.contact && (
           <ContactAvatar
@@ -695,7 +702,7 @@ export function Sidebar({
             </>
           )}
         </span>
-      </div>
+      </a>
     );
   };
 
@@ -712,24 +719,22 @@ export function Sidebar({
     label: React.ReactNode;
     onClick: () => void;
   }) => (
-    <div
+    <button
+      type="button"
       key={key}
       data-active={active ? 'true' : undefined}
       className={cn(
-        'sidebar-action-row px-3 py-2 cursor-pointer flex items-center gap-2 border-l-2 border-transparent hover:bg-accent transition-colors text-[0.8125rem] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        'sidebar-action-row w-full px-3 py-2 cursor-pointer flex items-center gap-2 border-l-2 border-transparent bg-transparent text-left hover:bg-accent transition-colors text-[0.8125rem] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         active && 'bg-accent border-l-primary'
       )}
-      role="button"
-      tabIndex={0}
       aria-current={active ? 'page' : undefined}
-      onKeyDown={handleKeyboardActivate}
       onClick={onClick}
     >
       <span className="sidebar-tool-icon" aria-hidden="true">
         {icon}
       </span>
       <span className="sidebar-tool-label flex-1 truncate">{label}</span>
-    </div>
+    </button>
   );
 
   const getSectionUnreadCount = (rows: ConversationRow[]): number =>
@@ -952,16 +957,14 @@ export function Sidebar({
       key: 'mark-all-read',
       estimate: 38,
       node: (
-        <div
-          className="px-3 py-2 cursor-pointer flex items-center gap-2 border-l-2 border-transparent hover:bg-accent transition-colors text-[0.8125rem] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          role="button"
-          tabIndex={0}
-          onKeyDown={handleKeyboardActivate}
+        <button
+          type="button"
+          className="w-full px-3 py-2 cursor-pointer flex items-center gap-2 border-l-2 border-transparent bg-transparent text-left hover:bg-accent transition-colors text-[0.8125rem] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           onClick={onMarkAllRead}
         >
           <CheckCheck className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
           <span className="flex-1 truncate text-muted-foreground">Mark all as read</span>
-        </div>
+        </button>
       ),
     });
   }

@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Sidebar } from '../components/Sidebar';
@@ -351,15 +352,30 @@ describe('Sidebar section summaries', () => {
     expect(bell.compareDocumentPosition(unread) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it('opens Radio Activity from the Tools sidebar with a keyboard-accessible row', () => {
+  it('opens Radio Activity from the Tools sidebar with a keyboard-accessible row', async () => {
     const { onSelectConversation } = renderSidebar();
-    const row = screen.getByText('Radio Activity').closest('[role="button"]');
-    expect(row).not.toBeNull();
-    fireEvent.keyDown(row!, { key: 'Enter' });
+    const row = screen.getByRole('button', { name: 'Radio Activity' });
+    row.focus();
+    await userEvent.setup().keyboard('{Enter}');
     expect(onSelectConversation).toHaveBeenCalledWith({
       type: 'radio-activity',
       id: 'radio-activity',
       name: 'Radio Activity',
+    });
+  });
+
+  it('uses native conversation links and preserves modifier navigation', () => {
+    const { flightChannel, onSelectConversation } = renderSidebar();
+    const link = screen.getByRole('link', { name: /#flight/i });
+
+    expect(link).toHaveAttribute('href', `/channel/${flightChannel.key}`);
+    fireEvent.click(link, { ctrlKey: true });
+    expect(onSelectConversation).not.toHaveBeenCalled();
+    fireEvent.click(link);
+    expect(onSelectConversation).toHaveBeenCalledWith({
+      type: 'channel',
+      id: flightChannel.key,
+      name: flightChannel.name,
     });
   });
 

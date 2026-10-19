@@ -74,6 +74,7 @@ export function ChatHeader({
   const [pathHashModeOverrideOpen, setPathHashModeOverrideOpen] = useState(false);
   const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
   const notifDropdownRef = useRef<HTMLDivElement>(null);
+  const notifTriggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     setShowKey(false);
@@ -93,6 +94,18 @@ export function ChatHeader({
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
+  }, [notifDropdownOpen]);
+
+  useEffect(() => {
+    if (!notifDropdownOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      setNotifDropdownOpen(false);
+      notifTriggerRef.current?.focus();
+    };
+    document.addEventListener('keydown', closeOnEscape);
+    return () => document.removeEventListener('keydown', closeOnEscape);
   }, [notifDropdownOpen]);
 
   const activeChannel =
@@ -323,11 +336,15 @@ export function ChatHeader({
           !activeContactIsRoomServer && (
             <div className="relative" ref={notifDropdownRef}>
               <button
+                ref={notifTriggerRef}
+                type="button"
                 className="p-1 rounded hover:bg-accent text-lg leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 onClick={() => setNotifDropdownOpen((v) => !v)}
                 title="Notification settings"
                 aria-label="Notification settings"
                 aria-expanded={notifDropdownOpen}
+                aria-haspopup="dialog"
+                aria-controls="notification-settings-panel"
               >
                 {activeChannel?.muted ? (
                   <BellOff className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
@@ -347,7 +364,12 @@ export function ChatHeader({
                 )}
               </button>
               {notifDropdownOpen && (
-                <div className="absolute right-[-4.5rem] sm:right-0 top-full z-50 mt-1 w-[calc(100vw-2rem)] sm:w-72 max-w-72 rounded-md border border-border bg-popover p-3 shadow-lg space-y-3">
+                <div
+                  id="notification-settings-panel"
+                  role="dialog"
+                  aria-label="Notification settings"
+                  className="absolute right-[-4.5rem] sm:right-0 top-full z-50 mt-1 w-[calc(100vw-2rem)] sm:w-72 max-w-72 rounded-md border border-border bg-popover p-3 shadow-lg space-y-3"
+                >
                   {notificationsSupported && (
                     <label className="flex items-start gap-2.5 cursor-pointer group">
                       <input

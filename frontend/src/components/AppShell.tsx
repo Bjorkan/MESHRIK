@@ -195,6 +195,7 @@ export function AppShell({
   );
 
   const searchMounted = useRef(false);
+  const navigationTitleRef = useRef<HTMLHeadingElement>(null);
   if (conversationPaneProps.activeConversation?.type === 'search') {
     searchMounted.current = true;
   }
@@ -318,12 +319,14 @@ export function AppShell({
             side="left"
             className="w-[280px] p-0 flex flex-col"
             hideCloseButton
-            onOpenAutoFocus={(event) => {
-              event.preventDefault();
-            }}
+            initialFocusRef={navigationTitleRef}
           >
             <SheetHeader className="sr-only">
-              <SheetTitle>Navigation</SheetTitle>
+              <SheetTitle asChild>
+                <h2 ref={navigationTitleRef} tabIndex={-1}>
+                  Navigation
+                </h2>
+              </SheetTitle>
               <SheetDescription>Sidebar navigation</SheetDescription>
             </SheetHeader>
             <div className="flex-1 overflow-hidden" {...closeSwipeHandlers}>

@@ -219,6 +219,21 @@ describe('ChatHeader key visibility', () => {
     expect(onToggleNotifications).toHaveBeenCalledTimes(1);
   });
 
+  it('exposes notification settings as a named dialog and restores focus on Escape', () => {
+    const conversation: Conversation = { type: 'contact', id: '12'.repeat(32), name: 'Alice' };
+    render(<ChatHeader {...baseProps} conversation={conversation} channels={[]} />);
+    const bell = screen.getByRole('button', { name: 'Notification settings' });
+
+    fireEvent.click(bell);
+    expect(screen.getByRole('dialog', { name: 'Notification settings' })).toBeInTheDocument();
+    expect(bell).toHaveAttribute('aria-expanded', 'true');
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('dialog', { name: 'Notification settings' })).not.toBeInTheDocument();
+    expect(bell).toHaveFocus();
+    expect(bell).toHaveAttribute('aria-expanded', 'false');
+  });
+
   it('keeps desktop notifications available when web push is also supported', () => {
     const conversation: Conversation = { type: 'contact', id: '13'.repeat(32), name: 'Alice' };
 

@@ -330,20 +330,25 @@ export function SearchView({
                   className="absolute left-0 top-0 w-full"
                   style={{ transform: `translateY(${virtualRow.start}px)` }}
                 >
-                  <div
-                    className="px-4 py-3 border-b border-border/50 cursor-pointer hover:bg-accent/50 transition-colors"
-                    role="button"
-                    tabIndex={0}
+                  <a
+                    href={`${result.type === 'CHAN' ? '/channel' : '/contact'}/${encodeURIComponent(result.conversation_key)}?message=${result.id}`}
+                    className="block px-4 py-3 border-b border-border/50 cursor-pointer hover:bg-accent/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                     data-message-id={result.id}
                     onFocus={() => {
                       focusedResultIdRef.current = result.id;
                     }}
-                    onClick={() => handleResultClick(result)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        handleResultClick(result);
+                    onClick={(event) => {
+                      if (
+                        event.button !== 0 ||
+                        event.metaKey ||
+                        event.ctrlKey ||
+                        event.shiftKey ||
+                        event.altKey
+                      ) {
+                        return;
                       }
+                      event.preventDefault();
+                      handleResultClick(result);
                     }}
                   >
                     <div className="flex items-center gap-2 mb-1">
@@ -376,7 +381,7 @@ export function SearchView({
                         highlightQuery
                       )}
                     </div>
-                  </div>
+                  </a>
                 </div>
               );
             })}
