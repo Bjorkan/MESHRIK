@@ -31,6 +31,7 @@ import type { SearchViewProps } from './SearchView';
 import type { SettingsModalProps } from './SettingsModal';
 import { cn } from '@/lib/utils';
 import { useAppHotkeys } from '../hooks/useAppHotkeys';
+import { usePagePinchZoomGuard } from '../hooks/usePagePinchZoomGuard';
 
 const SettingsModal = lazy(() =>
   import('./SettingsModal').then((m) => ({ default: m.SettingsModal }))
@@ -120,6 +121,8 @@ export function AppShell({
   channelInfoPaneProps,
   onRepeaterAutoLogin,
 }: AppShellProps) {
+  usePagePinchZoomGuard();
+
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [shortcutHelpOpen, setShortcutHelpOpen] = useState(false);
   const [searchFocusRequestVersion, setSearchFocusRequestVersion] = useState(0);

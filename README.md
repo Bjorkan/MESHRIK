@@ -23,6 +23,14 @@ For advanced setup and troubleshooting see [README_ADVANCED.md](README_ADVANCED.
 > [!WARNING]
 > MESHRIK does _full_ management of the radio, meaning that once a radio is connected to MESHRIK, all contacts/channels will be imported and offloaded to MESHRIK and the contacts actually synced to the device will be governed by MESHRIK. This means that MESHRIK can be a poor fit for users who are looking to swap radios in and out, maintaining radio state (favorites, channels, etc.) irrespective of app usage.
 
+> [!IMPORTANT]
+> On touch devices, MESHRIK deliberately blocks browser-level pinch zoom to keep its app-like
+> mobile layout anchored; pinch gestures inside node and route maps still control the map camera.
+> This reduces a standard low-vision enlargement option and is not a complete accessibility
+> substitute. The Local settings include a relative font-size control from 25% to 400%, and the UI
+> remains designed for keyboard and screen-reader use. Operating-system magnification remains the
+> recommended fallback when application font scaling is insufficient.
+
 ## Requirements
 
 - Python 3.11+
