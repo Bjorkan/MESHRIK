@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { api } from '../api';
 import { copyTextWithFeedback } from '../utils/clipboard';
@@ -99,27 +99,41 @@ export function RepeaterDashboard({
 
   // Telemetry history: preload from stored data, refresh from live status
   const [telemetryHistory, setTelemetryHistory] = useState<TelemetryHistoryEntry[]>([]);
+  const [telemetryHistoryLoading, setTelemetryHistoryLoading] = useState(false);
+  const [telemetryHistoryError, setTelemetryHistoryError] = useState<string | null>(null);
   const telemetryHistorySourceRef = useRef<'none' | 'preload' | 'live'>('none');
   const telemetryHistoryRequestRef = useRef(0);
+
+  const loadTelemetryHistory = useCallback(() => {
+    const requestId = ++telemetryHistoryRequestRef.current;
+    setTelemetryHistoryLoading(true);
+    setTelemetryHistoryError(null);
+    void api
+      .repeaterTelemetryHistory(conversation.id)
+      .then((history) => {
+        if (telemetryHistoryRequestRef.current !== requestId) return;
+        setTelemetryHistoryLoading(false);
+        if (telemetryHistorySourceRef.current === 'live') return;
+        telemetryHistorySourceRef.current = 'preload';
+        setTelemetryHistory(history);
+      })
+      .catch(() => {
+        if (telemetryHistoryRequestRef.current !== requestId) return;
+        setTelemetryHistoryLoading(false);
+        setTelemetryHistoryError('Could not load saved telemetry');
+      });
+  }, [conversation.id]);
 
   useEffect(() => {
     telemetryHistoryRequestRef.current += 1;
     telemetryHistorySourceRef.current = 'none';
     setTelemetryHistory([]);
+    setTelemetryHistoryLoading(false);
+    setTelemetryHistoryError(null);
 
     if (!loggedIn) return;
-
-    const requestId = telemetryHistoryRequestRef.current;
-    api
-      .repeaterTelemetryHistory(conversation.id)
-      .then((history) => {
-        if (telemetryHistoryRequestRef.current !== requestId) return;
-        if (telemetryHistorySourceRef.current === 'live') return;
-        telemetryHistorySourceRef.current = 'preload';
-        setTelemetryHistory(history);
-      })
-      .catch(() => {});
-  }, [loggedIn, conversation.id]);
+    loadTelemetryHistory();
+  }, [loggedIn, conversation.id, loadTelemetryHistory]);
 
   // When a live status fetch returns embedded telemetry_history, replace local state
   useEffect(() => {
@@ -326,135 +340,63 @@ export function RepeaterDashboard({
                 <h3 className="font-semibold text-sm">Repeater details</h3>
                 <span className="text-xs text-muted-foreground">Fetch only what you need</span>
               </div>
-              <div className="flex flex-wrap gap-2" aria-label="Fetch repeater sections">
-                {(
-                  [
-                    ['nodeInfo', 'Node info'],
-                    ['status', 'Telemetry'],
-                    ['radioSettings', 'Radio settings'],
-                    ['lppTelemetry', 'LPP'],
-                    ['neighbors', 'Neighbors'],
-                    ['acl', 'ACL'],
-                    ['regions', 'Regions'],
-                    ['ownerInfo', 'Owner info'],
-                  ] as const
-                )
-                  .filter(
-                    ([key]) =>
-                      !paneData[key] &&
-                      !paneStates[key].loading &&
-                      !paneStates[key].error &&
-                      !paneStates[key].fetched_at
-                  )
-                  .map(([key, label]) => (
-                    <Button
-                      key={key}
-                      variant="outline"
-                      size="sm"
-                      disabled={anyLoading}
-                      onClick={() => void refreshPane(key)}
-                    >
-                      Fetch {label}
-                    </Button>
-                  ))}
-              </div>
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:items-start">
-                {(paneData.nodeInfo ||
-                  paneStates.nodeInfo.loading ||
-                  paneStates.nodeInfo.error ||
-                  paneStates.nodeInfo.fetched_at) && (
-                  <NodeInfoPane
-                    data={paneData.nodeInfo}
-                    state={paneStates.nodeInfo}
-                    onRefresh={() => refreshPane('nodeInfo')}
-                    disabled={anyLoading}
-                  />
-                )}
-                {(paneData.status ||
-                  paneStates.status.loading ||
-                  paneStates.status.error ||
-                  paneStates.status.fetched_at) && (
-                  <TelemetryPane
-                    data={paneData.status}
-                    state={paneStates.status}
-                    onRefresh={() => refreshPane('status')}
-                    disabled={anyLoading}
-                  />
-                )}
-                {(paneData.radioSettings ||
-                  paneStates.radioSettings.loading ||
-                  paneStates.radioSettings.error ||
-                  paneStates.radioSettings.fetched_at) && (
-                  <RadioSettingsPane
-                    data={paneData.radioSettings}
-                    state={paneStates.radioSettings}
-                    onRefresh={() => refreshPane('radioSettings')}
-                    disabled={anyLoading}
-                    advertData={paneData.advertIntervals}
-                    advertState={paneStates.advertIntervals}
-                    onRefreshAdvert={() => refreshPane('advertIntervals')}
-                  />
-                )}
-                {(paneData.lppTelemetry ||
-                  paneStates.lppTelemetry.loading ||
-                  paneStates.lppTelemetry.error ||
-                  paneStates.lppTelemetry.fetched_at) && (
-                  <LppTelemetryPane
-                    data={paneData.lppTelemetry}
-                    state={paneStates.lppTelemetry}
-                    onRefresh={() => refreshPane('lppTelemetry')}
-                    disabled={anyLoading}
-                  />
-                )}
-                {(paneData.neighbors ||
-                  paneStates.neighbors.loading ||
-                  paneStates.neighbors.error ||
-                  paneStates.neighbors.fetched_at) && (
-                  <NeighborsPane
-                    data={paneData.neighbors}
-                    state={paneStates.neighbors}
-                    onRefresh={() => refreshPane('neighbors')}
-                    disabled={anyLoading}
-                    repeaterContact={contact}
-                    contacts={contacts}
-                    nodeInfo={paneData.nodeInfo}
-                    nodeInfoState={paneStates.nodeInfo}
-                    repeaterName={conversation.name}
-                  />
-                )}
-                {(paneData.acl ||
-                  paneStates.acl.loading ||
-                  paneStates.acl.error ||
-                  paneStates.acl.fetched_at) && (
-                  <AclPane
-                    data={paneData.acl}
-                    state={paneStates.acl}
-                    onRefresh={() => refreshPane('acl')}
-                    disabled={anyLoading}
-                  />
-                )}
-                {(paneData.regions ||
-                  paneStates.regions.loading ||
-                  paneStates.regions.error ||
-                  paneStates.regions.fetched_at) && (
-                  <RegionsPane
-                    data={paneData.regions}
-                    state={paneStates.regions}
-                    onRefresh={() => refreshPane('regions')}
-                    disabled={anyLoading}
-                  />
-                )}
-                {(paneData.ownerInfo ||
-                  paneStates.ownerInfo.loading ||
-                  paneStates.ownerInfo.error ||
-                  paneStates.ownerInfo.fetched_at) && (
-                  <OwnerInfoPane
-                    data={paneData.ownerInfo}
-                    state={paneStates.ownerInfo}
-                    onRefresh={() => refreshPane('ownerInfo')}
-                    disabled={anyLoading}
-                  />
-                )}
+                <NodeInfoPane
+                  data={paneData.nodeInfo}
+                  state={paneStates.nodeInfo}
+                  onRefresh={() => refreshPane('nodeInfo')}
+                  disabled={anyLoading}
+                />
+                <TelemetryPane
+                  data={paneData.status}
+                  state={paneStates.status}
+                  onRefresh={() => refreshPane('status')}
+                  disabled={anyLoading}
+                />
+                <RadioSettingsPane
+                  data={paneData.radioSettings}
+                  state={paneStates.radioSettings}
+                  onRefresh={() => refreshPane('radioSettings')}
+                  disabled={anyLoading}
+                  advertData={paneData.advertIntervals}
+                  advertState={paneStates.advertIntervals}
+                  onRefreshAdvert={() => refreshPane('advertIntervals')}
+                />
+                <LppTelemetryPane
+                  data={paneData.lppTelemetry}
+                  state={paneStates.lppTelemetry}
+                  onRefresh={() => refreshPane('lppTelemetry')}
+                  disabled={anyLoading}
+                />
+                <NeighborsPane
+                  data={paneData.neighbors}
+                  state={paneStates.neighbors}
+                  onRefresh={() => refreshPane('neighbors')}
+                  disabled={anyLoading}
+                  repeaterContact={contact}
+                  contacts={contacts}
+                  nodeInfo={paneData.nodeInfo}
+                  nodeInfoState={paneStates.nodeInfo}
+                  repeaterName={conversation.name}
+                />
+                <AclPane
+                  data={paneData.acl}
+                  state={paneStates.acl}
+                  onRefresh={() => refreshPane('acl')}
+                  disabled={anyLoading}
+                />
+                <RegionsPane
+                  data={paneData.regions}
+                  state={paneStates.regions}
+                  onRefresh={() => refreshPane('regions')}
+                  disabled={anyLoading}
+                />
+                <OwnerInfoPane
+                  data={paneData.ownerInfo}
+                  state={paneStates.ownerInfo}
+                  onRefresh={() => refreshPane('ownerInfo')}
+                  disabled={anyLoading}
+                />
               </div>
               <details className="border-t border-border pt-2">
                 <summary className="cursor-pointer text-sm font-medium">
@@ -482,15 +424,16 @@ export function RepeaterDashboard({
                 />
               </div>
             </details>
-            {(telemetryHistory.length > 0 || paneStates.status.fetched_at) && (
-              <TelemetryHistoryPane
-                entries={telemetryHistory}
-                publicKey={conversation.id}
-                contacts={contacts}
-                trackedTelemetryRepeaters={trackedTelemetryRepeaters}
-                onToggleTrackedTelemetry={onToggleTrackedTelemetry}
-              />
-            )}
+            <TelemetryHistoryPane
+              entries={telemetryHistory}
+              loading={telemetryHistoryLoading}
+              loadError={telemetryHistoryError}
+              onRetry={loadTelemetryHistory}
+              publicKey={conversation.id}
+              contacts={contacts}
+              trackedTelemetryRepeaters={trackedTelemetryRepeaters}
+              onToggleTrackedTelemetry={onToggleTrackedTelemetry}
+            />
           </div>
         )}
       </div>

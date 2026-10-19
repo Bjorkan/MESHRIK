@@ -216,22 +216,27 @@ describe('RepeaterDashboard', () => {
     expect(mockedToast.success).not.toHaveBeenCalledWith('Contact key copied!');
   });
 
-  it('shows compact fetch controls instead of a wall of unfetched cards', () => {
+  it('shows every unfetched information pane without starting radio work', () => {
     mockHook.loggedIn = true;
     render(<RepeaterDashboard {...defaultProps} />);
     for (const label of [
-      'Node info',
+      'Node Info',
       'Telemetry',
-      'Radio settings',
-      'LPP',
+      'Radio Settings',
+      'LPP Sensors',
       'Neighbors',
       'ACL',
       'Regions',
-      'Owner info',
+      'Owner Info',
     ]) {
-      expect(screen.getByRole('button', { name: `Fetch ${label}` })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: label, level: 3 })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: `Refresh ${label}` })).toBeInTheDocument();
     }
-    expect(screen.queryByText('<not fetched>')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Refresh Advert Intervals' })).toBeInTheDocument();
+    expect(screen.getAllByText('Not requested')).toHaveLength(9);
+    expect(screen.queryByLabelText('Fetch repeater sections')).not.toBeInTheDocument();
+    expect(mockHook.refreshPane).not.toHaveBeenCalled();
+    expect(mockHook.loadAll).not.toHaveBeenCalled();
     expect(screen.getByText('Advanced radio controls')).toBeInTheDocument();
     expect(screen.queryByText('No neighbors reported')).not.toBeInTheDocument();
   });
@@ -239,7 +244,7 @@ describe('RepeaterDashboard', () => {
   it('fetches only the requested section', () => {
     mockHook.loggedIn = true;
     render(<RepeaterDashboard {...defaultProps} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Fetch Node info' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh Node Info' }));
     expect(mockHook.refreshPane).toHaveBeenCalledWith('nodeInfo');
     expect(mockHook.refreshPane).toHaveBeenCalledTimes(1);
   });
@@ -812,10 +817,29 @@ describe('RepeaterDashboard', () => {
       });
     });
 
-    it('does not display an empty telemetry-history card before any data was loaded', () => {
+    it('distinguishes an empty saved-history response from loading', async () => {
       mockHook.loggedIn = true;
       render(<RepeaterDashboard {...defaultProps} />);
-      expect(screen.queryByText('Telemetry History')).not.toBeInTheDocument();
+      expect(screen.getByText('Telemetry History')).toBeInTheDocument();
+      expect(screen.getByRole('status')).toHaveTextContent('Loading saved telemetry');
+      expect(await screen.findByText(/No telemetry collected yet/)).toBeInTheDocument();
+    });
+
+    it('shows saved-history failures and retries without issuing radio work', async () => {
+      const { api } = await import('../api');
+      const historySpy = vi.mocked(api.repeaterTelemetryHistory);
+      historySpy.mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce([]);
+      mockHook.loggedIn = true;
+
+      render(<RepeaterDashboard {...defaultProps} />);
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('Could not load saved telemetry');
+      expect(mockHook.refreshPane).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByRole('button', { name: 'Retry saved telemetry' }));
+      await waitFor(() => expect(historySpy).toHaveBeenCalledTimes(2));
+      expect(await screen.findByText(/No telemetry collected yet/)).toBeInTheDocument();
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+      expect(mockHook.refreshPane).not.toHaveBeenCalled();
     });
 
     it('updates history from live status fetch', async () => {
