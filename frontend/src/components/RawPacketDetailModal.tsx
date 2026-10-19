@@ -10,6 +10,7 @@ import {
 } from '../utils/rawPacketInspector';
 import { copyTextWithFeedback } from '../utils/clipboard';
 import { Button } from './ui/button';
+import { LoadingIndicator } from './ui/loading-indicator';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 
 interface RawPacketDetailModalProps {
@@ -832,7 +833,7 @@ export function RawPacketInspectorDialog({
   } else if (source.kind === 'loading') {
     body = (
       <div className="flex flex-1 items-center justify-center p-6 text-sm text-muted-foreground">
-        {source.message}
+        <LoadingIndicator label={source.message} />
       </div>
     );
   } else {

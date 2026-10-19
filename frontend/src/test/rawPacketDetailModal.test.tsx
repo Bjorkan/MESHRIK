@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { RawPacketDetailModal } from '../components/RawPacketDetailModal';
+import { RawPacketDetailModal, RawPacketInspectorDialog } from '../components/RawPacketDetailModal';
 import type { Channel, RawPacket } from '../types';
 
 vi.mock('../components/ui/sonner', () => ({
@@ -54,6 +54,31 @@ const SCOPED_PACKET: RawPacket = {
 };
 
 describe('RawPacketDetailModal', () => {
+  it('announces packet loading but does not animate an unavailable result', () => {
+    const props = {
+      open: true,
+      onOpenChange: vi.fn(),
+      channels: [],
+      title: 'Packet',
+      description: 'Packet details',
+    };
+    const { rerender } = render(
+      <RawPacketInspectorDialog
+        {...props}
+        source={{ kind: 'loading', message: 'Loading packet...' }}
+      />
+    );
+    expect(screen.getByRole('status')).toHaveTextContent('Loading packet...');
+    rerender(
+      <RawPacketInspectorDialog
+        {...props}
+        source={{ kind: 'unavailable', message: 'Packet unavailable' }}
+      />
+    );
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    expect(screen.getByText('Packet unavailable')).toBeInTheDocument();
+  });
+
   beforeEach(() => vi.clearAllMocks());
 
   it('copies the full packet hex to the clipboard', async () => {
