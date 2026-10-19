@@ -581,9 +581,11 @@ class TestRepeaterCommandRoute:
         assert response.response == "ok"
 
     @pytest.mark.asyncio
-    async def test_no_more_msgs_then_response_succeeds(self, test_db):
+    async def test_no_more_msgs_then_response_succeeds_with_safe_stage_diagnostics(self, caplog):
+        from app.routers import server_control
+
         mc = _mock_mc()
-        await _insert_contact(KEY_A, name="Repeater", contact_type=2)
+        contact = _make_contact()
         mc.commands.send_cmd = AsyncMock(return_value=_radio_result(EventType.OK))
 
         no_msgs = _radio_result(EventType.NO_MORE_MSGS)
@@ -593,16 +595,33 @@ class TestRepeaterCommandRoute:
         )
         mc.commands.get_msg = AsyncMock(side_effect=[no_msgs, expected])
 
-        with (
-            patch("app.routers.repeaters.radio_manager.require_connected", return_value=mc),
-            patch.object(radio_manager, "_meshcore", mc),
-            patch(_MONOTONIC, side_effect=_advancing_clock()),
-            patch("app.routers.server_control.asyncio.sleep", new_callable=AsyncMock),
-        ):
-            response = await send_repeater_command(KEY_A, CommandRequest(command="ver"))
+        async def run_radio_command(_name, callback, **_kwargs):
+            return await callback(mc)
+
+        with caplog.at_level("INFO", logger="app.routers.server_control"):
+            with (
+                patch.object(
+                    server_control.radio_manager,
+                    "run_radio_command",
+                    side_effect=run_radio_command,
+                ),
+                patch(_MONOTONIC, side_effect=_advancing_clock()),
+                patch("app.routers.server_control.asyncio.sleep", new_callable=AsyncMock),
+            ):
+                response = await server_control.send_contact_cli_command(
+                    contact,
+                    "ver",
+                    operation_name="send_repeater_command",
+                )
 
         assert response.command == "ver"
         assert response.response == "done"
+        assert "stage=add_contact outcome=success" in caplog.text
+        assert "stage=cli_send outcome=success" in caplog.text
+        assert "stage=response_wait outcome=success" in caplog.text
+        assert "elapsed_ms=" in caplog.text
+        assert "done" not in caplog.text
+        assert KEY_A not in caplog.text
 
 
 class TestTraceRoute:

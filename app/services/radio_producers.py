@@ -8,6 +8,7 @@ initialized application fails closed if its worker is unavailable.
 """
 
 import asyncio
+import logging
 import os
 from collections.abc import Awaitable, Callable
 from contextlib import contextmanager
@@ -19,6 +20,7 @@ from uuid import UUID
 from fastapi import HTTPException
 
 from app.radio import RadioOperationBusyError
+from app.request_context import get_request_id
 from app.services.radio_job_scheduler import RadioAdmissionError
 from app.services.radio_job_worker import (
     RadioCommandOutcome,
@@ -161,6 +163,34 @@ _worker_transport: ContextVar[_WorkerTransportScope | None] = ContextVar(
 
 _ResultT = TypeVar("_ResultT")
 _MISSING = object()
+logger = logging.getLogger(__name__)
+
+
+def _elapsed_ms(start, end) -> int:
+    return max(0, round((end - start).total_seconds() * 1000))
+
+
+def _log_job_stage(
+    *,
+    request_id: str,
+    operation: str,
+    job: RadioJobSnapshot,
+    stage: str,
+    outcome: str,
+    elapsed_ms: int,
+) -> None:
+    """Emit payload-free scheduler timing that can be joined to an HTTP request."""
+    logger.info(
+        "Radio operation request_id=%s job_id=%s generation=%d operation=%s "
+        "stage=%s outcome=%s elapsed_ms=%d",
+        request_id,
+        job.id,
+        job.radio_generation,
+        operation,
+        stage,
+        outcome,
+        elapsed_ms,
+    )
 
 
 def _fence_lifecycle_mutation(runtime: Any, name: str) -> None:
@@ -225,6 +255,7 @@ async def run_scheduled_radio_command(
     and no HTTP/background task can keep using the transport after the worker
     has declared the job terminal.
     """
+    request_id = get_request_id()
     existing = _worker_transport.get()
     if existing is not None and existing.owner is asyncio.current_task():
         if defer_when_busy:
@@ -300,6 +331,13 @@ async def run_scheduled_radio_command(
             coalesce_key=coalesce_key,
         )
     except RadioAdmissionError as exc:
+        logger.warning(
+            "Radio operation request_id=%s operation=%s stage=queue outcome=not_admitted "
+            "error_category=%s",
+            request_id,
+            name,
+            type(exc).__name__,
+        )
         if not blocking:
             raise RadioOperationBusyError("Radio command queue busy") from exc
         raise HTTPException(
@@ -326,15 +364,60 @@ async def run_scheduled_radio_command(
         or current.state in {RadioJobState.AWAITING_ACK, RadioJobState.AWAITING_RESPONSE}
     ):
         settled.set_result(current)
+    logger.info(
+        "Radio operation request_id=%s job_id=%s generation=%d operation=%s "
+        "stage=queue outcome=started elapsed_ms=0",
+        request_id,
+        job.id,
+        job.radio_generation,
+        name,
+    )
     try:
         final = await settled
     except asyncio.CancelledError:
         current = radio_job_scheduler.get(job.id)
         if current is not None and current.state in {RadioJobState.QUEUED, RadioJobState.RETRYING}:
             radio_job_worker.cancel(job.id)
+        current = radio_job_scheduler.get(job.id) or job
+        logger.warning(
+            "Radio operation request_id=%s job_id=%s generation=%d operation=%s "
+            "stage=request outcome=cancelled elapsed_ms=%d error_category=cancellation",
+            request_id,
+            job.id,
+            job.radio_generation,
+            name,
+            _elapsed_ms(job.created_at, current.updated_at),
+        )
         raise
     finally:
         unsubscribe()
+
+    if final.started_at is not None:
+        _log_job_stage(
+            request_id=request_id,
+            operation=name,
+            job=final,
+            stage="queue",
+            outcome="acquired",
+            elapsed_ms=_elapsed_ms(final.queue_entered_at, final.started_at),
+        )
+        _log_job_stage(
+            request_id=request_id,
+            operation=name,
+            job=final,
+            stage="command",
+            outcome=(final.result or final.state).value,
+            elapsed_ms=_elapsed_ms(final.started_at, final.updated_at),
+        )
+    else:
+        _log_job_stage(
+            request_id=request_id,
+            operation=name,
+            job=final,
+            stage="queue",
+            outcome=(final.result or final.state).value,
+            elapsed_ms=_elapsed_ms(final.queue_entered_at, final.updated_at),
+        )
 
     if result is not _MISSING and final.state in {
         RadioJobState.COMPLETED,

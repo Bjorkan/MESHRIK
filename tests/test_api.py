@@ -103,6 +103,14 @@ class TestHealthEndpoint:
             assert data["radio_connected"] is True
             assert data["connection_info"] == "Serial: /dev/ttyUSB0"
 
+    @pytest.mark.asyncio
+    async def test_response_includes_opaque_request_id(self, client):
+        response = await client.get("/api/health")
+
+        request_id = response.headers["x-request-id"]
+        assert len(request_id) == 32
+        assert all(character in "0123456789abcdef" for character in request_id)
+
     def test_health_disconnected_state(self):
         """Health endpoint reflects disconnected radio."""
         from fastapi.testclient import TestClient
