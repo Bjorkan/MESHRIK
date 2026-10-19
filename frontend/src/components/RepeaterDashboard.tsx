@@ -84,6 +84,7 @@ export function RepeaterDashboard({
     paneStates,
     consoleHistory,
     consoleLoading,
+    pendingAction,
     login,
     loginAsGuest,
     refreshPane,
@@ -409,6 +410,7 @@ export function RepeaterDashboard({
                     onSyncClock={syncClock}
                     onReboot={rebootRepeater}
                     consoleLoading={consoleLoading}
+                    pendingAction={pendingAction}
                   />
                 </div>
               </details>

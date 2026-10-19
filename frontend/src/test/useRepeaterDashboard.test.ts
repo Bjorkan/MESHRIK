@@ -54,6 +54,35 @@ const secondRepeaterConversation: Conversation = {
 };
 
 describe('useRepeaterDashboard', () => {
+  it('retains pending action identity across remounts and prevents duplicate commands', async () => {
+    let finish!: (value: unknown) => void;
+    mockApi.sendRepeaterCommand.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        })
+    );
+    const first = renderHook(() => useRepeaterDashboard(repeaterConversation));
+    let request!: Promise<void>;
+    act(() => {
+      request = first.result.current.sendFloodAdvert();
+    });
+    expect(first.result.current.pendingAction).toBe('flood-advert');
+    first.unmount();
+    const second = renderHook(() => useRepeaterDashboard(repeaterConversation));
+    expect(second.result.current.pendingAction).toBe('flood-advert');
+    await act(async () => {
+      await second.result.current.syncClock();
+    });
+    expect(mockApi.sendRepeaterCommand).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      finish({ response: 'OK' });
+      await request;
+    });
+    expect(second.result.current.pendingAction).toBeNull();
+    expect(second.result.current.consoleLoading).toBe(false);
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     resetRepeaterDashboardCacheForTests();
