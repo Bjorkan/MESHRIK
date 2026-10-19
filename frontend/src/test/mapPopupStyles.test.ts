@@ -20,9 +20,12 @@ function popupRule(selector: string): CSSStyleRule {
 // CSSOM serializes colors (including those written as hex) into a canonical form.
 // Compare parsed declarations so equivalent color notation does not fail CI.
 function cssValue(property: 'color' | 'outline', value: string): string {
-  const style = document.createElement('div').style;
-  style.setProperty(property, value);
-  return style.getPropertyValue(property);
+  const element = document.createElement('div');
+  element.style.setProperty(property, value);
+  document.body.append(element);
+  const normalized = getComputedStyle(element).getPropertyValue(property);
+  element.remove();
+  return normalized;
 }
 
 describe('MapLibre popup close-button styles', () => {
@@ -52,10 +55,10 @@ describe('MapLibre popup close-button styles', () => {
     const hover = popupRule('.maplibregl-popup .maplibregl-popup-close-button:hover');
     const focus = popupRule('.maplibregl-popup .maplibregl-popup-close-button:focus-visible');
 
-    expect(hover.style.color).toBe(cssValue('color', '#020617'));
+    expect(cssValue('color', hover.style.color)).toBe(cssValue('color', '#020617'));
     expect(hover.style.background).not.toBe('transparent');
-    expect(focus.style.color).toBe(cssValue('color', '#020617'));
-    expect(focus.style.outline).toBe(cssValue('outline', '2px solid #2563eb'));
+    expect(cssValue('color', focus.style.color)).toBe(cssValue('color', '#020617'));
+    expect(cssValue('outline', focus.style.outline)).toBe(cssValue('outline', '2px solid #2563eb'));
     expect(focus.style.getPropertyValue('outline-offset')).toBe('-2px');
   });
 });
