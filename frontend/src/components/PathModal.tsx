@@ -220,19 +220,19 @@ export function PathModal({
 
         <div className="flex flex-col gap-2 pt-2">
           {hasResendActions && (
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2">
               {isResendable && (
                 <Button
                   variant="outline"
-                  className="flex-1 min-w-0 h-auto py-2"
+                  className="w-full min-w-0 h-auto py-2 whitespace-normal break-words text-center"
                   onClick={() => {
                     onResend(messageId);
                     onClose();
                   }}
                 >
-                  <span className="flex flex-col items-center leading-tight">
+                  <span className="flex min-w-0 w-full flex-col items-center gap-1 leading-tight">
                     <span>↻ Resend</span>
-                    <span className="text-[0.625rem] font-normal opacity-80">
+                    <span className="w-full text-xs font-normal opacity-80">
                       Only repeated by new repeaters
                     </span>
                   </span>
@@ -240,15 +240,15 @@ export function PathModal({
               )}
               <Button
                 variant="destructive"
-                className="flex-1 min-w-0 h-auto py-2"
+                className="w-full min-w-0 h-auto py-2 whitespace-normal break-words text-center"
                 onClick={() => {
                   onResend(messageId, true);
                   onClose();
                 }}
               >
-                <span className="flex flex-col items-center leading-tight">
+                <span className="flex min-w-0 w-full flex-col items-center gap-1 leading-tight">
                   <span>↻ Resend as new</span>
-                  <span className="text-[0.625rem] font-normal opacity-80">
+                  <span className="w-full text-xs font-normal opacity-80">
                     Will appear as duplicate to receivers
                   </span>
                 </span>
