@@ -1,3 +1,4 @@
+import { useHotkey } from '@tanstack/react-hotkeys';
 import { useEffect, useRef, useState } from 'react';
 import { Bell, BellOff, ChevronsLeftRight, Globe2, Info, Route, Star, Trash2 } from 'lucide-react';
 import { DirectTraceIcon } from './DirectTraceIcon';
@@ -96,17 +97,18 @@ export function ChatHeader({
     return () => document.removeEventListener('mousedown', handler);
   }, [notifDropdownOpen]);
 
-  useEffect(() => {
-    if (!notifDropdownOpen) return;
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
-      event.preventDefault();
+  useHotkey(
+    'Escape',
+    () => {
       setNotifDropdownOpen(false);
       notifTriggerRef.current?.focus();
-    };
-    document.addEventListener('keydown', closeOnEscape);
-    return () => document.removeEventListener('keydown', closeOnEscape);
-  }, [notifDropdownOpen]);
+    },
+    {
+      enabled: notifDropdownOpen,
+      ignoreInputs: false,
+      requireReset: true,
+    }
+  );
 
   const activeChannel =
     conversation.type === 'channel'
