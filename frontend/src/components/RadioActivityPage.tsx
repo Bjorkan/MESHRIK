@@ -291,9 +291,10 @@ function VirtualJobHistory({
   return (
     <div
       ref={scrollRef}
-      className="max-h-[26rem] overflow-y-auto min-w-0 [contain:layout_paint]"
+      className="max-h-[26rem] min-w-0 overflow-y-auto overscroll-y-auto rounded-sm [contain:layout_paint] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       role="group"
       aria-label="Job history list"
+      tabIndex={jobs.length > 0 ? 0 : undefined}
     >
       {jobs.length === 0 ? (
         <p className="text-[0.8125rem] text-muted-foreground">{emptyText}</p>
@@ -336,9 +337,10 @@ function VirtualActivityList({ events }: { events: ActivityRecord[] }) {
   return (
     <div
       ref={scrollRef}
-      className="min-w-0 max-h-[26rem] overflow-y-auto [contain:layout_paint]"
+      className="min-w-0 max-h-[26rem] overflow-y-auto overscroll-y-auto rounded-sm [contain:layout_paint] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       role="list"
       aria-label="Recent received events"
+      tabIndex={events.length > 0 ? 0 : undefined}
     >
       <div className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>
         {virtualizer.getVirtualItems().map((virtualRow) => {

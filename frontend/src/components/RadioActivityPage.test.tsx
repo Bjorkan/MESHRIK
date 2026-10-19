@@ -131,41 +131,43 @@ function createView(socket: 'live' | 'offline' | 'connecting' = 'live') {
   };
 }
 
-describe('Radio Activity', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mocks.getRadioJobs.mockImplementation(
-      async (params: { status?: Job['state']; cursor?: number }) => ({
-        items: jobs.filter(
-          (item) =>
-            (!params.status || item.state === params.status) &&
-            (params.cursor === undefined || item.sequence < params.cursor)
-        ),
-        radio,
-        snapshot_sequence: 20,
-        next_cursor: null,
-        has_more: false,
-      })
-    );
-    mocks.getRadioActivity.mockResolvedValue({
-      items: [activity],
-      gap: false,
-      has_more: false,
-      snapshot_sequence: 20,
-      next_cursor: 10,
+function setDefaultMocks() {
+  vi.clearAllMocks();
+  mocks.getRadioJobs.mockImplementation(
+    async (params: { status?: Job['state']; cursor?: number }) => ({
+      items: jobs.filter(
+        (item) =>
+          (!params.status || item.state === params.status) &&
+          (params.cursor === undefined || item.sequence < params.cursor)
+      ),
       radio,
-    });
-    mocks.cancelRadioJob.mockImplementation(async (id: string) => ({
-      action: 'cancelled_before_dispatch',
-      job: {
-        ...jobs.find((j) => j.id === id)!,
-        state: 'cancelled',
-        stage: 'cancelled',
-        version: 2,
-        sequence: 21,
-      },
-    }));
+      snapshot_sequence: 20,
+      next_cursor: null,
+      has_more: false,
+    })
+  );
+  mocks.getRadioActivity.mockResolvedValue({
+    items: [activity],
+    gap: false,
+    has_more: false,
+    snapshot_sequence: 20,
+    next_cursor: 10,
+    radio,
   });
+  mocks.cancelRadioJob.mockImplementation(async (id: string) => ({
+    action: 'cancelled_before_dispatch',
+    job: {
+      ...jobs.find((j) => j.id === id)!,
+      state: 'cancelled',
+      stage: 'cancelled',
+      version: 2,
+      sequence: 21,
+    },
+  }));
+}
+
+describe('Radio Activity', () => {
+  beforeEach(setDefaultMocks);
 
   it('renders an executing command alongside two independent RF waits and a queued operation', async () => {
     createView();
@@ -353,6 +355,8 @@ describe('Radio stats job classification', () => {
 });
 
 describe('Radio Activity presentation regressions', () => {
+  beforeEach(setDefaultMocks);
+
   it('freezes terminal duration at completed_at and reports queue wait for unstarted cancellations', async () => {
     const { jobDuration } = await import('./RadioActivityPage');
     const finished = job('completed', 39, {
@@ -368,14 +372,73 @@ describe('Radio Activity presentation regressions', () => {
     expect(jobDuration(finished, Date.parse('2028-01-01T00:00:00Z'))).toBe('9s');
     expect(jobDuration(cancelled, Date.parse('2028-01-01T00:00:00Z'))).toBe('3s');
   });
-  it('renders a bounded history and opt-in background records', async () => {
+  it('renders keyboard-scrollable balanced history columns at mobile and desktop breakpoints', async () => {
     createView();
     const history = await screen.findByRole('region', { name: 'History' });
-    expect(within(history).getByRole('group', { name: 'Job history list' })).toHaveClass(
-      'max-h-[26rem]'
+    const events = screen.getByRole('region', { name: 'Received events' });
+    const eventList = await within(events).findByRole('list', { name: 'Recent received events' });
+    const includeBackground = within(history).getByRole('checkbox', {
+      name: 'Include routine background jobs',
+    });
+    expect(includeBackground).not.toBeChecked();
+    fireEvent.click(includeBackground);
+    await waitFor(() =>
+      expect(within(history).getByRole('group', { name: 'Job history list' })).toHaveAttribute(
+        'tabindex',
+        '0'
+      )
     );
-    expect(
-      within(history).getByRole('checkbox', { name: 'Include routine background jobs' })
-    ).not.toBeChecked();
+    const jobList = within(history).getByRole('group', { name: 'Job history list' });
+    expect(jobList).toHaveClass('max-h-[26rem]', 'overflow-y-auto', 'min-w-0');
+    expect(eventList).toHaveClass('max-h-[26rem]', 'overflow-y-auto', 'min-w-0');
+    expect(eventList).toHaveAttribute('tabindex', '0');
+    expect(history.parentElement).toHaveClass('grid', 'lg:grid-cols-2', 'items-start');
+  });
+
+  it('renders compact empty states without adding inert scroll stops', async () => {
+    mocks.getRadioJobs.mockResolvedValue({
+      items: [],
+      radio,
+      snapshot_sequence: 20,
+      next_cursor: null,
+      has_more: false,
+    });
+    mocks.getRadioActivity.mockResolvedValue({
+      items: [],
+      gap: false,
+      has_more: false,
+      snapshot_sequence: 20,
+      next_cursor: null,
+      radio,
+    });
+
+    createView();
+
+    const history = await screen.findByRole('region', { name: 'History' });
+    expect(within(history).getByText(/No matching history/)).toBeInTheDocument();
+    expect(within(history).getByRole('group', { name: 'Job history list' })).not.toHaveAttribute(
+      'tabindex'
+    );
+    expect(screen.getByText('No retained incoming events.')).toBeInTheDocument();
+    expect(screen.queryByRole('list', { name: 'Recent received events' })).not.toBeInTheDocument();
+  });
+
+  it('keeps job and history API failures visible inside their sections', async () => {
+    mocks.getRadioJobs.mockRejectedValue(new Error('offline'));
+
+    createView();
+
+    expect(await screen.findByText('Could not load radio jobs. Try Refresh.')).toBeInTheDocument();
+    expect(screen.getByText('Failed to load job history.')).toBeInTheDocument();
+  });
+
+  it('keeps both loading states visible while the initial requests are pending', () => {
+    mocks.getRadioJobs.mockImplementation(() => new Promise(() => undefined));
+    mocks.getRadioActivity.mockImplementation(() => new Promise(() => undefined));
+
+    createView();
+
+    expect(screen.getByText('Loading radio jobs…')).toBeInTheDocument();
+    expect(screen.getByText('Loading history…')).toBeInTheDocument();
   });
 });
