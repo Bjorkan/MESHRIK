@@ -94,7 +94,7 @@ const PACKET_TYPES: Record<NonNullable<ActivityRecord['packet_type']>, string> =
   ack: 'Acknowledgment',
   path: 'Path / route',
   control: 'Control packet',
-  other: 'Unidentified packet',
+  other: 'Unknown or encrypted packet',
 };
 const BACKGROUND_JOBS = new Set<Job['kind']>([
   'periodic_sync',

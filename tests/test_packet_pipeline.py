@@ -288,6 +288,35 @@ class TestChannelMessagePipeline:
         message_broadcasts = [b for b in broadcasts if b["type"] == "message"]
         assert len(message_broadcasts) == 0
 
+    @pytest.mark.asyncio
+    async def test_unknown_payload_emits_one_sanitized_activity_category(
+        self, test_db, captured_broadcasts
+    ):
+        from app.packet_processor import process_raw_packet
+        from app.services.radio_jobs import RadioActivityKind
+
+        # Payload type 12 is not assigned by MeshCore. It must stay in the raw
+        # feed while activity gets classification only, never packet contents.
+        packet_bytes = bytes([0x30, 0x00, 0xA5])
+        _, mock_broadcast = captured_broadcasts
+
+        with (
+            patch("app.packet_processor.broadcast_event", mock_broadcast),
+            patch(
+                "app.services.radio_job_worker.radio_job_scheduler.record_activity"
+            ) as record_activity,
+        ):
+            await process_raw_packet(packet_bytes, timestamp=1_700_000_000, rssi=-97, snr=2.5)
+            await process_raw_packet(packet_bytes, timestamp=1_700_000_001, rssi=-97, snr=2.5)
+
+        record_activity.assert_called_once_with(
+            RadioActivityKind.PACKET_RECEIVED,
+            packet_type="other",
+            rssi=-97,
+            snr=2.5,
+            hops=None,
+        )
+
 
 class TestAdvertisementPipeline:
     """Test advertisement flow: packet → parse → upsert contact → broadcast."""

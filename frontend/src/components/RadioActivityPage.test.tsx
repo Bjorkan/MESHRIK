@@ -214,6 +214,22 @@ describe('Radio Activity', () => {
     expect(screen.getByText('disconnected → initializing · generation 4')).toBeInTheDocument();
   });
 
+  it('labels unclassified RF observations as unknown or encrypted', async () => {
+    mocks.getRadioActivity.mockResolvedValue({
+      items: [{ ...activity, packet_type: 'other', rssi: -97, snr: 2.5 }],
+      gap: false,
+      has_more: false,
+      snapshot_sequence: 20,
+      next_cursor: 10,
+      radio,
+    });
+
+    createView();
+
+    expect(await screen.findByText('Unknown or encrypted packet')).toBeInTheDocument();
+    expect(screen.getByText('-97 dBm · SNR 2.5 dB')).toBeInTheDocument();
+  });
+
   it('keeps the bounded activity buffer stable across repeated health UI updates', async () => {
     const recent = Array.from({ length: 100 }, (_, index): Activity => ({
       ...activity,

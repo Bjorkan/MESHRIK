@@ -576,9 +576,10 @@ async def process_raw_packet(
     category: RadioPacketType = (
         categories.get(payload_type, "other") if payload_type is not None else "other"
     )
-    # Suppress unactionable unknown/control spam; the existing raw packet feed
-    # still receives every observation, including unknown packets and repeats.
-    if category != "other" and is_new_packet:
+    # Payload-hash deduplication keeps repeated low-information observations
+    # from flooding activity history, while the first unknown/encrypted packet
+    # still gets an explicit privacy-safe category in the operator view.
+    if is_new_packet:
         radio_job_scheduler.record_activity(
             RadioActivityKind.PACKET_RECEIVED,
             packet_type=category,
