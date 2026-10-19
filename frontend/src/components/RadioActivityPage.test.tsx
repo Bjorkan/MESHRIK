@@ -425,11 +425,16 @@ describe('Radio Activity presentation regressions', () => {
 
   it('keeps job and history API failures visible inside their sections', async () => {
     mocks.getRadioJobs.mockRejectedValue(new Error('offline'));
+    mocks.getRadioActivity.mockRejectedValue(new Error('offline'));
 
     createView();
 
     expect(await screen.findByText('Could not load radio jobs. Try Refresh.')).toBeInTheDocument();
     expect(screen.getByText('Failed to load job history.')).toBeInTheDocument();
+    expect(screen.getByText('Failed to load received activity.')).toBeInTheDocument();
+    expect(screen.queryByText(/No matching history/)).not.toBeInTheDocument();
+    expect(screen.queryByText('No retained incoming events.')).not.toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Retry' })).toHaveLength(2);
   });
 
   it('keeps both loading states visible while the initial requests are pending', () => {
@@ -440,5 +445,90 @@ describe('Radio Activity presentation regressions', () => {
 
     expect(screen.getByText('Loading radio jobs…')).toBeInTheDocument();
     expect(screen.getByText('Loading history…')).toBeInTheDocument();
+  });
+
+  it('runs one shared refresh at a time and reports its busy state', async () => {
+    createView();
+    await screen.findByText('Packet received');
+
+    let finishJobs!: () => void;
+    let finishHistory!: () => void;
+    let finishActivity!: () => void;
+    const jobsPending = new Promise<void>((resolve) => {
+      finishJobs = resolve;
+    });
+    const historyPending = new Promise<void>((resolve) => {
+      finishHistory = resolve;
+    });
+    const activityPending = new Promise<void>((resolve) => {
+      finishActivity = resolve;
+    });
+    mocks.getRadioJobs
+      .mockImplementationOnce(async () => {
+        await jobsPending;
+        return {
+          items: jobs,
+          radio,
+          snapshot_sequence: 20,
+          next_cursor: null,
+          has_more: false,
+        };
+      })
+      .mockImplementationOnce(async () => {
+        await historyPending;
+        return {
+          items: jobs,
+          radio,
+          snapshot_sequence: 20,
+          next_cursor: null,
+          has_more: false,
+        };
+      });
+    mocks.getRadioActivity.mockImplementationOnce(async () => {
+      await activityPending;
+      return {
+        items: [activity],
+        gap: false,
+        has_more: false,
+        snapshot_sequence: 20,
+        next_cursor: 10,
+        radio,
+      };
+    });
+
+    const refresh = screen.getByRole('button', { name: 'Refresh radio activity' });
+    const jobsCalls = mocks.getRadioJobs.mock.calls.length;
+    const activityCalls = mocks.getRadioActivity.mock.calls.length;
+    fireEvent.click(refresh);
+
+    expect(refresh).toBeDisabled();
+    expect(refresh).toHaveTextContent('Refreshing…');
+    expect(screen.getByLabelText('Radio Activity dashboard')).toHaveAttribute('aria-busy', 'true');
+    fireEvent.click(refresh);
+    expect(mocks.getRadioJobs).toHaveBeenCalledTimes(jobsCalls + 2);
+    expect(mocks.getRadioActivity).toHaveBeenCalledTimes(activityCalls + 1);
+
+    finishJobs();
+    finishHistory();
+    finishActivity();
+    await waitFor(() => expect(refresh).toBeEnabled());
+    expect(refresh).toHaveTextContent('Refresh');
+    expect(screen.getByLabelText('Radio Activity dashboard')).toHaveAttribute('aria-busy', 'false');
+  });
+
+  it('keeps retained activity visible and labels it stale after a partial refresh failure', async () => {
+    createView();
+    await screen.findByText('Packet received');
+    mocks.getRadioActivity.mockRejectedValueOnce(new Error('timeout'));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh radio activity' }));
+
+    expect(await screen.findByText('Failed to load received activity.')).toBeInTheDocument();
+    expect(screen.getByText('Showing retained stale events.')).toBeInTheDocument();
+    expect(screen.getByText('Packet received')).toBeInTheDocument();
+    expect(screen.queryByText('No retained incoming events.')).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Refresh radio activity' })).toBeEnabled()
+    );
   });
 });

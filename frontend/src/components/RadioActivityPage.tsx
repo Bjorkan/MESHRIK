@@ -392,6 +392,7 @@ export function RadioActivityPage({ feed, connection, health }: Props) {
   const [now, setNow] = useState(() => Date.now());
   const [stopJob, setStopJob] = useState<Job | null>(null);
   const [cancelError, setCancelError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const { active, queued, history, historyQuery, cancel } = useRadioActivity(feed, filter, now);
   const visibleHistory = showBackground
     ? history
@@ -456,6 +457,20 @@ export function RadioActivityPage({ feed, connection, health }: Props) {
     }
   }
 
+  async function refreshAll() {
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      await Promise.allSettled([
+        feed.jobs.refetch(),
+        feed.activity.refetch(),
+        historyQuery.refetch(),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
   const renderJobs = (jobs: Job[], emptyText: string) =>
     jobs.length === 0 ? (
       <p className="text-[0.8125rem] text-muted-foreground">{emptyText}</p>
@@ -477,6 +492,7 @@ export function RadioActivityPage({ feed, connection, health }: Props) {
     <div
       className="flex-1 min-h-0 overflow-y-auto overscroll-contain"
       aria-label="Radio Activity dashboard"
+      aria-busy={refreshing}
     >
       <div className="mx-auto w-full max-w-6xl space-y-4 p-3 sm:p-5 pb-10">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -489,15 +505,15 @@ export function RadioActivityPage({ feed, connection, health }: Props) {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => {
-              void feed.jobs.refetch();
-              void feed.activity.refetch();
-              void historyQuery.refetch();
-            }}
+            onClick={() => void refreshAll()}
+            disabled={refreshing}
             aria-label="Refresh radio activity"
           >
-            <RefreshCw className="h-4 w-4 mr-2" aria-hidden="true" />
-            Refresh
+            <RefreshCw
+              className={cn('h-4 w-4 mr-2', refreshing && 'animate-spin')}
+              aria-hidden="true"
+            />
+            {refreshing ? 'Refreshing…' : 'Refresh'}
           </Button>
         </div>
         {connection !== 'live' && (
@@ -566,15 +582,28 @@ export function RadioActivityPage({ feed, connection, health }: Props) {
               </p>
             )}
             {feed.activity.isError && (
-              <p role="alert" className="text-sm text-destructive">
-                Failed to load received activity.
-              </p>
+              <div role="alert" className="mb-3 flex flex-wrap items-center gap-2 text-sm">
+                <span className="text-destructive">Failed to load received activity.</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void feed.activity.refetch()}
+                  disabled={feed.activity.isFetching}
+                >
+                  {feed.activity.isFetching ? 'Retrying…' : 'Retry'}
+                </Button>
+                {(feed.activity.data?.items.length ?? 0) > 0 && (
+                  <span className="w-full text-xs text-warning">
+                    Showing retained stale events.
+                  </span>
+                )}
+              </div>
             )}
-            {(feed.activity.data?.items.length ?? 0) === 0 ? (
+            {!feed.activity.isError && (feed.activity.data?.items.length ?? 0) === 0 ? (
               <p className="text-[0.8125rem] text-muted-foreground">No retained incoming events.</p>
-            ) : (
+            ) : (feed.activity.data?.items.length ?? 0) > 0 ? (
               <VirtualActivityList events={[...(feed.activity.data?.items ?? [])].reverse()} />
-            )}
+            ) : null}
           </Section>
           <Section title="History">
             <label className="flex items-center justify-between gap-2 text-sm text-muted-foreground mb-3">
@@ -598,9 +627,20 @@ export function RadioActivityPage({ feed, connection, health }: Props) {
               </p>
             )}
             {historyQuery.isError && (
-              <p role="alert" className="text-xs text-destructive">
-                Failed to load job history.
-              </p>
+              <div role="alert" className="mb-3 flex flex-wrap items-center gap-2 text-sm">
+                <span className="text-destructive">Failed to load job history.</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void historyQuery.refetch()}
+                  disabled={historyQuery.isFetching}
+                >
+                  {historyQuery.isFetching ? 'Retrying…' : 'Retry'}
+                </Button>
+                {visibleHistory.length > 0 && (
+                  <span className="w-full text-xs text-warning">Showing retained stale jobs.</span>
+                )}
+              </div>
             )}
             <label className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
               <input
@@ -610,14 +650,16 @@ export function RadioActivityPage({ feed, connection, health }: Props) {
               />
               Include routine background jobs
             </label>
-            <VirtualJobHistory
-              key={`${filter}:${showBackground}`}
-              jobs={visibleHistory}
-              emptyText="No matching history. Enable background jobs to see routine samples."
-              now={now}
-              onCancel={handleCancel}
-              pendingJobId={cancel.isPending ? (cancel.variables ?? null) : null}
-            />
+            {(!historyQuery.isError || visibleHistory.length > 0) && (
+              <VirtualJobHistory
+                key={`${filter}:${showBackground}`}
+                jobs={visibleHistory}
+                emptyText="No matching history. Enable background jobs to see routine samples."
+                now={now}
+                onCancel={handleCancel}
+                pendingJobId={cancel.isPending ? (cancel.variables ?? null) : null}
+              />
+            )}
             {historyQuery.hasNextPage && (
               <Button
                 variant="outline"
