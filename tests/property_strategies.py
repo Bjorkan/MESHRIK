@@ -31,7 +31,7 @@ class PacketExample:
 def path_shapes(draw):
     """Return a valid `(hop_count, hash_size, path)` wire representation."""
     hash_size = draw(st.integers(min_value=1, max_value=3))
-    hop_count = draw(st.integers(min_value=0, max_value=MAX_PATH_SIZE // hash_size))
+    hop_count = draw(st.integers(min_value=0, max_value=min(0x3F, MAX_PATH_SIZE // hash_size)))
     path = draw(st.binary(min_size=hop_count * hash_size, max_size=hop_count * hash_size))
     return hop_count, hash_size, path
 
