@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useState, type Ref } from 'react';
 import { Link } from '@tanstack/react-router';
+import { LoadingIndicator } from './ui/loading-indicator';
 
 import { ChatHeader } from './ChatHeader';
 import { MessageInput, type MessageInputHandle } from './MessageInput';
@@ -111,7 +112,9 @@ interface ConversationPaneProps {
 
 function LoadingPane({ label }: { label: string }) {
   return (
-    <div className="flex-1 flex items-center justify-center text-muted-foreground">{label}</div>
+    <div className="flex-1 flex items-center justify-center text-muted-foreground">
+      <LoadingIndicator label={label} />
+    </div>
   );
 }
 
