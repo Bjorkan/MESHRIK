@@ -5,6 +5,7 @@ import { ChevronDown, Download, MapPinned, Upload } from 'lucide-react';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Button } from '../ui/button';
+import { LoadingIndicator } from '../ui/loading-indicator';
 import { Separator } from '../ui/separator';
 import { toast } from '../ui/sonner';
 import { Checkbox } from '../ui/checkbox';
@@ -1503,8 +1504,13 @@ export function SettingsRadioSection({
               size="sm"
               onClick={handleDiscoverRegions}
               disabled={regionDiscoveryLoading || !health?.radio_connected}
+              className="h-auto min-h-9 max-w-full whitespace-normal"
             >
-              {regionDiscoveryLoading ? 'Asking repeaters...' : 'Discover Regions'}
+              {regionDiscoveryLoading ? (
+                <LoadingIndicator label="Asking repeaters..." />
+              ) : (
+                'Discover Regions'
+              )}
             </Button>
           </div>
           <p className="text-[0.8125rem] text-muted-foreground">
@@ -1518,6 +1524,9 @@ export function SettingsRadioSection({
           )}
           {regionDiscovery && (
             <div className="space-y-2">
+              {regionDiscoveryLoading && (
+                <p className="text-sm text-muted-foreground">Previous region discovery results</p>
+              )}
               <p className="text-sm font-medium">
                 {regionDiscovery.repeaters_answered}/{regionDiscovery.repeaters_queried} repeater
                 {regionDiscovery.repeaters_queried === 1 ? '' : 's'} answered
@@ -1690,9 +1699,13 @@ export function SettingsRadioSection({
                 variant="outline"
                 onClick={() => handleDiscover(target as RadioDiscoveryTarget)}
                 disabled={meshDiscoveryLoadingTarget !== null || !health?.radio_connected}
-                className="w-full"
+                className="h-auto min-h-9 w-full min-w-0 whitespace-normal"
               >
-                {meshDiscoveryLoadingTarget === target ? 'Listening...' : label}
+                {meshDiscoveryLoadingTarget === target ? (
+                  <LoadingIndicator label="Waiting for discovery replies..." />
+                ) : (
+                  label
+                )}
               </Button>
             ))}
           </div>
@@ -1706,6 +1719,9 @@ export function SettingsRadioSection({
           )}
           {meshDiscovery && (
             <div className="space-y-2 rounded-md border border-input bg-muted/20 p-3">
+              {meshDiscoveryLoadingTarget !== null && (
+                <p className="text-sm text-muted-foreground">Previous mesh discovery results</p>
+              )}
               <div className="flex items-center justify-between gap-4">
                 <p className="text-sm font-medium">
                   Last sweep: {meshDiscovery.results.length} node

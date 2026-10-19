@@ -617,6 +617,24 @@ describe('SettingsModal', () => {
     });
   });
 
+  it.each<RadioDiscoveryTarget>(['repeaters', 'sensors', 'all'])(
+    'shows waiting feedback and labels previous mesh results during %s discovery',
+    (target) => {
+      renderModal({
+        meshDiscoveryLoadingTarget: target,
+        meshDiscovery: { target: 'all', duration_seconds: 8, results: [] },
+      });
+      openRadioSection();
+      expect(
+        screen.getByText('Waiting for discovery replies...').closest('[role="status"]')
+      ).toHaveAttribute('aria-busy', 'true');
+      expect(
+        screen.getByRole('button', { name: 'Waiting for discovery replies...' })
+      ).toBeDisabled();
+      expect(screen.getByText('Previous mesh discovery results')).toBeInTheDocument();
+    }
+  );
+
   it('renders mesh discovery results in the radio tab', () => {
     renderModal({
       meshDiscovery: {
