@@ -593,25 +593,26 @@ class TestContactMessageCLIFiltering:
             assert payload["sender_key"] == author_prefix
 
     @pytest.mark.asyncio
-    async def test_missing_txt_type_defaults_to_normal(self, test_db):
-        """Messages without txt_type field are treated as normal (not filtered)."""
+    @pytest.mark.parametrize("invalid_txt_type", [None, "1", 1.0, True, -1, 4])
+    async def test_invalid_txt_type_fails_closed(self, test_db, invalid_txt_type):
+        """Untrusted fallback metadata cannot turn CLI content into normal chat."""
         from app.event_handlers import on_contact_message
 
-        with patch("app.event_handlers.broadcast_event"):
+        with patch("app.event_handlers.broadcast_event") as mock_broadcast:
 
             class MockEvent:
                 payload = {
                     "pubkey_prefix": "abc123def456",
-                    "text": "Message without txt_type field",
+                    "text": "privileged CLI output",
                     "sender_timestamp": 1700000000,
-                    # No txt_type field
                 }
 
+            if invalid_txt_type is not None:
+                MockEvent.payload["txt_type"] = invalid_txt_type
             await on_contact_message(MockEvent())
 
-            # SHOULD still be processed (defaults to txt_type=0)
-            messages = await MessageRepository.get_all()
-            assert len(messages) == 1
+            assert await MessageRepository.get_all() == []
+            mock_broadcast.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_unknown_full_key_dm_creates_placeholder_contact(self, test_db):
@@ -857,6 +858,47 @@ class TestContactMessageCLIFiltering:
             assert len(messages) == 1
             assert messages[0].text == "Hello from a repeater"
             assert mock_broadcast.call_args_list[-1].args[0] == "message"
+
+    @pytest.mark.asyncio
+    async def test_repeater_role_correction_preserves_ordinary_messages(self, test_db):
+        """Changing a contact's role must not orphan its existing conversation."""
+        from app.event_handlers import on_contact_message
+
+        public_key = "df" * 32
+        await ContactRepository.upsert(
+            {
+                "public_key": public_key,
+                "name": "Misclassified node",
+                "type": 2,
+                "flags": 0,
+            }
+        )
+
+        class MockEvent:
+            payload = {
+                "public_key": public_key,
+                "text": "ordinary direct message",
+                "txt_type": 0,
+                "sender_timestamp": 1700000000,
+            }
+
+        with patch("app.event_handlers.broadcast_event"):
+            await on_contact_message(MockEvent())
+        before = await MessageRepository.get_all(conversation_key=public_key)
+        assert len(before) == 1
+
+        await ContactRepository.upsert(
+            {
+                "public_key": public_key,
+                "name": "Corrected chat node",
+                "type": 1,
+                "flags": 0,
+            }
+        )
+
+        after = await MessageRepository.get_all(conversation_key=public_key)
+        assert [message.id for message in after] == [before[0].id]
+        assert after[0].text == "ordinary direct message"
 
     @pytest.mark.asyncio
     async def test_repeater_cli_response_skipped_not_stored(self, test_db):
