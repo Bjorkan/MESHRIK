@@ -203,6 +203,8 @@ describe('SearchView', () => {
     vi.useRealTimers();
     expect(mockGetMessages).toHaveBeenCalledTimes(2);
     expect(screen.getByRole('status')).toHaveTextContent('Searching...');
+    expect(screen.getByRole('status')).toHaveAttribute('aria-busy', 'true');
+    expect(screen.getByRole('status').querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
 
     await act(async () => {
       first.reject(new DOMException('Aborted', 'AbortError'));

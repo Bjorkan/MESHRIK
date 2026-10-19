@@ -3,6 +3,7 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import { useDebouncer } from '@tanstack/react-pacer';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { api } from '../api';
+import { LoadingIndicator } from './ui/loading-indicator';
 import { queryKeys } from '../queryClient';
 import type { Contact, Channel } from '../types';
 import { formatTime } from '../utils/messageParser';
@@ -266,6 +267,14 @@ export function SearchView({
           className="h-9 text-sm"
           aria-label="Search messages"
         />
+        <div className="min-h-6 pt-1 text-sm text-muted-foreground">
+          {loading && !searchResultsQuery.isFetchingNextPage && (
+            <LoadingIndicator label="Searching..." />
+          )}
+          {loading && results.length > 0 && !searchResultsQuery.isFetchingNextPage && (
+            <span className="ml-2">Showing previous results while refreshing.</span>
+          )}
+        </div>
       </div>
 
       {/* Results */}
@@ -388,9 +397,9 @@ export function SearchView({
           </div>
         )}
 
-        {loading && !paginationError && (
-          <div className="p-4 text-center text-muted-foreground text-sm" role="status">
-            {searchResultsQuery.isFetchingNextPage ? 'Loading more...' : 'Searching...'}
+        {searchResultsQuery.isFetchingNextPage && !paginationError && (
+          <div className="p-4 text-center text-muted-foreground text-sm">
+            <LoadingIndicator label="Loading more..." />
           </div>
         )}
 
