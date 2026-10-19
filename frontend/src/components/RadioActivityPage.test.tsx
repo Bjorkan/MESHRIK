@@ -169,6 +169,30 @@ function setDefaultMocks() {
 describe('Radio Activity', () => {
   beforeEach(setDefaultMocks);
 
+  it('distinguishes Companion operations in both active jobs and history', async () => {
+    const kinds = [
+      ['companion_local_cli', 'Local Companion CLI (on device)'],
+      ['remote_companion_cli', 'Remote Companion CLI (RF request)'],
+      ['channel_datagram', 'Channel datagram (RF request)'],
+      ['radio_diagnostics', 'Radio diagnostics (read-only)'],
+    ] as const;
+    const items = kinds.flatMap(([kind], i) => [
+      job('executing', i + 10, { kind }),
+      job('completed', i + 20, { kind }),
+    ]);
+    mocks.getRadioJobs.mockResolvedValue({
+      items,
+      radio,
+      snapshot_sequence: 30,
+      next_cursor: null,
+      has_more: false,
+    });
+    createView();
+    for (const [, label] of kinds) {
+      await waitFor(() => expect(screen.getAllByText(label)).toHaveLength(2));
+    }
+  });
+
   it('renders an executing command alongside two independent RF waits and a queued operation', async () => {
     createView();
     const ongoing = await screen.findByRole('region', { name: 'Ongoing operations' });

@@ -93,6 +93,14 @@ _COMMAND_TIMEOUT_SECONDS = {
 
 
 def classify_operation(name: str) -> tuple[RadioJobKind, RadioJobPriority]:
+    companion_kinds = {
+        "companion_local_cli": RadioJobKind.COMPANION_LOCAL_CLI,
+        "remote_companion_cli": RadioJobKind.REMOTE_COMPANION_CLI,
+        "send_channel_datagram": RadioJobKind.CHANNEL_DATAGRAM,
+        "radio_advanced_diagnostics": RadioJobKind.RADIO_DIAGNOSTICS,
+    }
+    if name in companion_kinds:
+        return companion_kinds[name], RadioJobPriority.NORMAL
     if name in _HIGH:
         kind = (
             RadioJobKind.DIRECT_MESSAGE

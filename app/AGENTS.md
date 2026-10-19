@@ -578,6 +578,12 @@ When changing backend behavior:
 
 ### Radio job scheduler (#38–#41)
 
+Radio Activity uses distinct payload-free job kinds for local Companion CLI (on-device),
+remote Companion CLI (RF request), channel datagrams (RF request), and read-only advanced
+diagnostics. `classify_operation` preserves their existing priority/deadline behavior;
+command completion does not prove remote execution or RF delivery. The producer regression
+suite audits literal operation names against an explicit generic-query allowlist.
+
 `services/radio_jobs.py` defines the public payload-free lifecycle and event types;
 `radio_job_scheduler.py` bounds and orders command admissions and activity history;
 `radio_job_worker.py` owns the one transport command permit. `radio_response_tracker.py`
