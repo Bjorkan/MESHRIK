@@ -98,6 +98,22 @@ export interface FanoutStatusEntry {
   type: string;
   status: string;
   last_error?: string | null;
+  bind_host?: string | null;
+  port?: number | null;
+  clients?: number | null;
+  client_sessions?: Array<{
+    session_id: string;
+    status: string;
+    connected_at: number;
+    last_seen_at: number;
+    protocol_version: number | null;
+    identity_verified: boolean;
+  }> | null;
+  identity_status?: 'verified' | 'unavailable' | null;
+  identity_public_key?: string | null;
+  virtual_channel_capacity?: number | null;
+  configured_channel_slots?: number | null;
+  network_warning?: string | null;
 }
 
 export interface AppInfo {

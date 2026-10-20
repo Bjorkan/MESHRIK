@@ -26,6 +26,15 @@ class AppInfoResponse(BaseModel):
     commit_hash: str | None = None
 
 
+class VirtualCompanionSessionStatusResponse(BaseModel):
+    session_id: str
+    status: str
+    connected_at: int
+    last_seen_at: int
+    protocol_version: int | None = None
+    identity_verified: bool = False
+
+
 class FanoutStatusResponse(BaseModel):
     name: str
     type: str
@@ -34,6 +43,11 @@ class FanoutStatusResponse(BaseModel):
     bind_host: str | None = None
     port: int | None = None
     clients: int | None = None
+    client_sessions: list[VirtualCompanionSessionStatusResponse] | None = None
+    identity_status: Literal["verified", "unavailable"] | None = None
+    identity_public_key: str | None = None
+    virtual_channel_capacity: int | None = None
+    configured_channel_slots: int | None = None
     network_warning: str | None = None
 
 

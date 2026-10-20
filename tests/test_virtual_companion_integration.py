@@ -155,12 +155,74 @@ async def test_listener_reports_clients_and_stops_only_virtual_sessions():
         assert module.status == "listening"
         assert module.status_details["clients"] == 1
         assert module.status_details["network_warning"] == NETWORK_WARNING
+        sessions = module.status_details["client_sessions"]
+        assert len(sessions) == 1
+        assert sessions[0]["session_id"] == "session-1"
+        assert sessions[0]["status"] == "connected"
+        assert sessions[0]["identity_verified"] is False
+        assert "remote" not in sessions[0]
+        assert "address" not in sessions[0]
+        assert "ip" not in sessions[0]
     finally:
         await module.stop()
         writer.close()
         await writer.wait_closed()
     assert module.status == "disabled"
     assert module.status_details["clients"] == 0
+
+
+@pytest.mark.asyncio
+async def test_client_status_tracks_multiple_connections_and_reconnects():
+    module = VirtualCompanionTcpModule("test", virtual_config(port=0), name="Virtual Companion")
+    with patch("app.fanout.base._broadcast_fanout_health"):
+        await module.start()
+    port = module._server.sockets[0].getsockname()[1]
+    _reader_one, writer_one = await asyncio.open_connection("127.0.0.1", port)
+    _reader_two, writer_two = await asyncio.open_connection("127.0.0.1", port)
+    writer_three = None
+    try:
+        for _ in range(20):
+            if module._server.client_count == 2:
+                break
+            await asyncio.sleep(0.01)
+        assert [row["session_id"] for row in module.status_details["client_sessions"]] == [
+            "session-1",
+            "session-2",
+        ]
+
+        writer_one.close()
+        await writer_one.wait_closed()
+        for _ in range(20):
+            if module._server.client_count == 1:
+                break
+            await asyncio.sleep(0.01)
+        _reader_three, writer_three = await asyncio.open_connection("127.0.0.1", port)
+        for _ in range(20):
+            if module._server.client_count == 2:
+                break
+            await asyncio.sleep(0.01)
+        assert [row["session_id"] for row in module.status_details["client_sessions"]] == [
+            "session-2",
+            "session-3",
+        ]
+    finally:
+        await module.stop()
+        writer_two.close()
+        if writer_three is not None:
+            writer_three.close()
+        await writer_two.wait_closed()
+        if writer_three is not None:
+            await writer_three.wait_closed()
+
+
+def test_status_exposes_only_a_verified_public_identity():
+    module = VirtualCompanionTcpModule("test", virtual_config(port=0), name="Virtual Companion")
+    with patch(
+        "app.fanout.virtual_companion_tcp.get_identity_snapshot",
+        return_value=type("Identity", (), {"public_key": bytes.fromhex("ab" * 32)})(),
+    ):
+        assert module.status_details["identity_status"] == "verified"
+        assert module.status_details["identity_public_key"] == "ab" * 32
 
 
 @pytest.mark.asyncio
