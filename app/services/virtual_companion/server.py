@@ -4,6 +4,8 @@ import asyncio
 import contextlib
 from collections.abc import Callable
 
+from app.repository.messages import MessageRepository
+
 from .dispatch import CommandDispatcher
 from .session import VirtualCompanionSession
 
@@ -94,4 +96,23 @@ class VirtualCompanionServer:
                 session.notify_message_waiting(message_id)
             except Exception:
                 # Queue overflow or a closing writer affects only this client.
+                asyncio.create_task(session.close())
+
+    async def notify_send_confirmed(self, ack_code: str, trip_time_ms: int) -> None:
+        """Push only after the matching outgoing row is durably acknowledged."""
+        sessions = tuple(
+            session for session in self._sessions if ack_code in session.state.pending_virtual_acks
+        )
+        message_ids = {session.state.pending_virtual_acks[ack_code] for session in sessions}
+        confirmed_ids = set()
+        for message_id in message_ids:
+            ack_count, _paths = await MessageRepository.get_ack_and_paths(message_id)
+            if ack_count > 0:
+                confirmed_ids.add(message_id)
+        for session in sessions:
+            if session.state.pending_virtual_acks.get(ack_code) not in confirmed_ids:
+                continue
+            try:
+                session.notify_send_confirmed(ack_code, trip_time_ms)
+            except Exception:
                 asyncio.create_task(session.close())

@@ -1,6 +1,6 @@
 # Virtual TCP Companion: protocol contract and implementation decisions
 
-> **Status: implemented through S07 on an unmerged stack.** The listener remains disabled by default and the complete S01–S13 stack must pass its release gate before merge. See epic [#224](https://github.com/Bjorkan/MESHRIK/issues/224).
+> **Status: implemented through S08 on an unmerged stack.** The listener remains disabled by default and the complete S01–S13 stack must pass its release gate before merge. See epic [#224](https://github.com/Bjorkan/MESHRIK/issues/224).
 
 ## Goal and non-negotiable trust boundary
 
@@ -209,6 +209,33 @@ each current virtual session independently of fanout content scopes. Hints coale
 requests its next message. Per-client output remains bounded; queue overflow or write timeout closes
 only the slow socket, while database storage and healthy clients continue. Radio-generation changes
 retain the existing session fence and disconnect every stale cursor.
+
+### Implemented S08 direct-message send policy
+
+`SEND_TXT_MSG` accepts only the exact bounded firmware frame, strict UTF-8 without embedded NUL,
+`TXT_TYPE_PLAIN`, attempt zero, a bound radio-generation identity and an unambiguous six-byte prefix
+for a current full-key contact. CLI types, client retries, malformed frames and missing, prefix-only or
+ambiguous contacts fail before entering a send service. The app-provided uint32 timestamp is retained
+as the requested sender timestamp.
+
+Accepted requests call the existing scheduler-backed `send_direct_message_to_contact` workflow. That
+workflow still stages the effective contact route, commits one pending outgoing database row before
+RF, uses the single radio worker and applies the canonical ACK tracker. Its web/API return remains
+unchanged; an opt-in sanitized result exposes only the genuine firmware route flag, four-byte ACK tag
+and uint32 suggested timeout needed for the exact ten-byte `SENT` response. Missing, malformed,
+rejected, timed-out and uncertain radio results return an error and never synthesize `SENT`.
+
+Virtual sends disable the domain service's background retry for this entry point. A shared,
+generation-scoped single-flight key of full contact, original timestamp and text makes concurrent
+clients join one operation. Up to 512 completed results are retained for lost-reply reconnects; after
+eviction, the durable outgoing row rejects the duplicate rather than transmitting again. TCP
+disconnect cannot cancel an operation already handed to the worker.
+
+Each session records only ACK tags actually returned to that session. A host `SEND_CONFIRMED` event
+is pushed as exact `0x82 + tag[4] + trip_time_ms[4]` only after the existing ACK pipeline has committed
+the matching row. Other sessions do not receive the tag. An early genuine host ACK retains its real
+trip time through canonical buffering and is returned immediately after `SENT`; raw ACK evidence
+without host timing can update shared delivery state but cannot fabricate a Companion timing frame.
 
 ### Hardware-free S01 quality gate
 

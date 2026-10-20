@@ -4,12 +4,13 @@ import asyncio
 import logging
 import time as _time
 from collections.abc import Callable
+from dataclasses import dataclass
 from typing import Any
 
 from fastapi import HTTPException
 from meshcore import EventType
 
-from app.models import ResendChannelMessageResponse
+from app.models import Message, ResendChannelMessageResponse
 from app.radio import RadioOperationBusyError
 from app.region_scope import is_unscoped, normalize_region_scope
 from app.repository import (
@@ -79,6 +80,24 @@ _outgoing_timestamp_reservations_lock = asyncio.Lock()
 DM_SEND_MAX_ATTEMPTS = 3
 DEFAULT_DM_ACK_TIMEOUT_MS = 10000
 DM_RETRY_WAIT_MARGIN = 1.2
+
+
+@dataclass(frozen=True, slots=True)
+class DirectMessageProtocolResult:
+    """Sanitized fields copied from a genuine firmware MSG_SENT result."""
+
+    route_type: int
+    expected_ack: bytes
+    suggested_timeout_ms: int
+
+
+@dataclass(frozen=True, slots=True)
+class DirectMessageSendOutcome:
+    """Optional typed result for protocol adapters; web callers still receive Message."""
+
+    message: Message
+    protocol: DirectMessageProtocolResult | None
+    immediate_ack_trip_time_ms: int | None = None
 
 
 def _channel_message_body(*, text: str, sender_name: str | None, radio_name: str) -> str:
@@ -463,6 +482,30 @@ def _extract_expected_ack_code(result: Any) -> str | None:
     return expected_ack.hex() if isinstance(expected_ack, bytes) else expected_ack
 
 
+def _extract_direct_message_protocol_result(result: Any) -> DirectMessageProtocolResult | None:
+    """Fail closed unless every RESP_CODE_SENT field came from the radio."""
+    if result is None or result.type == EventType.ERROR or not isinstance(result.payload, dict):
+        return None
+    route_type = result.payload.get("type")
+    expected_ack = result.payload.get("expected_ack")
+    suggested_timeout = result.payload.get("suggested_timeout")
+    if isinstance(expected_ack, str):
+        try:
+            expected_ack = bytes.fromhex(expected_ack)
+        except ValueError:
+            return None
+    if (
+        type(route_type) is not int
+        or route_type not in (0, 1)
+        or not isinstance(expected_ack, bytes)
+        or len(expected_ack) != 4
+        or type(suggested_timeout) is not int
+        or not 0 <= suggested_timeout <= 0xFFFFFFFF
+    ):
+        return None
+    return DirectMessageProtocolResult(route_type, expected_ack, suggested_timeout)
+
+
 def _get_ack_tracking_timeout_ms(result: Any) -> int:
     if result is None or result.type == EventType.ERROR:
         return DEFAULT_DM_ACK_TIMEOUT_MS
@@ -702,6 +745,9 @@ async def send_direct_message_to_contact(
     now_fn: NowFn,
     retry_task_scheduler: RetryTaskScheduler | None = None,
     retry_sleep_fn=None,
+    requested_sender_timestamp: int | None = None,
+    schedule_retries: bool = True,
+    return_protocol_outcome: bool = False,
     message_repository=MessageRepository,
     contact_repository=ContactRepository,
 ) -> Any:
@@ -716,10 +762,13 @@ async def send_direct_message_to_contact(
     sender_timestamp: int | None = None
     message = None
     result = None
+    protocol_result = None
+    immediate_ack_trip_time_ms = None
     ack_count = 0
 
     async def send_direct(mc) -> None:
         nonlocal sent_at, sender_timestamp, message, result, ack_count
+        nonlocal protocol_result, immediate_ack_trip_time_ms
         logger.debug("Ensuring contact %s is on radio before sending", contact.public_key[:12])
         add_result = await mc.commands.add_contact(contact_data)
         if add_result is None or add_result.type == EventType.ERROR:
@@ -736,7 +785,9 @@ async def send_direct_message_to_contact(
             msg_type="PRIV",
             conversation_key=contact.public_key.lower(),
             text=text,
-            requested_timestamp=sent_at,
+            requested_timestamp=(
+                requested_sender_timestamp if requested_sender_timestamp is not None else sent_at
+            ),
         )
         # Commit the stable outgoing audit ID before crossing the RF boundary.
         # On crash/timeout this pending row remains as an uncertain TX intent;
@@ -759,6 +810,7 @@ async def send_direct_message_to_contact(
         )
 
         if result is not None and result.type != EventType.ERROR:
+            protocol_result = _extract_direct_message_protocol_result(result)
             await message_repository.update_send_status(message.id, "confirmed")
             message.send_status = "confirmed"
             ack_code = _extract_expected_ack_code(result)
@@ -770,12 +822,17 @@ async def send_direct_message_to_contact(
                     reserve_direct_message_ack(ack_code, message.id)
                 except ResponseReservationConflict:
                     logger.warning("Radio job ACK reservation unavailable")
+            early_ack_trip_time = (
+                dm_ack_tracker.get_buffered_ack_trip_time(ack_code) if ack_code else None
+            )
             ack_count = await _apply_direct_message_ack_tracking(
                 result=result,
                 message_id=message.id,
                 track_pending_ack_fn=track_pending_ack_fn,
                 broadcast_fn=broadcast_fn,
             )
+            if ack_count > 0:
+                immediate_ack_trip_time_ms = early_ack_trip_time
 
     try:
         await _run_radio_command(radio_manager, "send_direct_message", send_direct)
@@ -822,9 +879,15 @@ async def send_direct_message_to_contact(
     retry_timeout_ms = _get_direct_message_retry_timeout_ms(result)
     if ack_count > 0:
         message.acked = ack_count
+        if return_protocol_outcome:
+            return DirectMessageSendOutcome(
+                message,
+                protocol_result,
+                immediate_ack_trip_time_ms,
+            )
         return message
 
-    if DM_SEND_MAX_ATTEMPTS > 1 and ack_code:
+    if schedule_retries and DM_SEND_MAX_ATTEMPTS > 1 and ack_code:
         retry_task = retry_task_scheduler(
             _retry_direct_message_until_acked(
                 contact=contact,
@@ -841,6 +904,8 @@ async def send_direct_message_to_contact(
         )
         _own_dm_retry(message.id, retry_task)
 
+    if return_protocol_outcome:
+        return DirectMessageSendOutcome(message, protocol_result)
     return message
 
 
