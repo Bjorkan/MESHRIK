@@ -1,6 +1,6 @@
-# Virtual TCP Companion: S01 protocol contract and implementation decisions
+# Virtual TCP Companion: protocol contract and implementation decisions
 
-> **Status: research contract, NOT an implemented TCP Companion server.** See epic [#224](https://github.com/Bjorkan/MESHRIK/issues/224) and S01 [#225](https://github.com/Bjorkan/MESHRIK/issues/225). S02–S13 stack on top of this PR. **Do not enable a listener or merge an incomplete feature.**
+> **Status: implemented through S05 on an unmerged stack.** The listener remains disabled by default and the complete S01–S13 stack must pass its release gate before merge. See epic [#224](https://github.com/Bjorkan/MESHRIK/issues/224).
 
 ## Goal and non-negotiable trust boundary
 
@@ -155,6 +155,21 @@ virtual sessions. The physical BLE PIN is emitted as zero and private-key/signin
 unsupported. Time, battery and statistics requests remain default-denied in S04 because no released
 native-app trace has established that they are required; a later layer may expose only existing
 cache values, never trigger a radio poll during handshake.
+
+### Implemented S05 contact snapshot policy
+
+`GET_CONTACTS` and `GET_CONTACT_BY_KEY` read one transactionally consistent MESHRIK database
+snapshot and never enumerate the physical radio. Stable ordering is by normalized full public key;
+prefix-only, malformed, and case-ambiguous identities are withheld rather than padded or guessed.
+The START count is the complete eligible catalog size even when `since` filters the emitted rows.
+
+A durable SQLite clock assigns a monotonic 32-bit-compatible revision to every contact insert,
+update, or delete. END reports the snapshot high-water revision. Incremental requests return current
+rows changed after `since` plus firmware-compatible `CONTACT_DELETED` tombstone pushes; tombstones
+are retained so reconnecting clients cannot silently miss a web/API deletion. A `since=0` first sync
+returns the current catalog without historical tombstones. Each request owns its immutable snapshot,
+and multi-frame replies enter the existing bounded per-session writer queue with backpressure, so
+one client's enumeration cannot consume or interrupt another client's stream.
 
 ### Hardware-free S01 quality gate
 

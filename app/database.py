@@ -35,6 +35,17 @@ CREATE TABLE IF NOT EXISTS contacts (
     favorite INTEGER DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS virtual_companion_contact_clock (
+    singleton INTEGER PRIMARY KEY CHECK (singleton = 1),
+    revision INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS virtual_companion_contact_changes (
+    public_key TEXT PRIMARY KEY,
+    revision INTEGER NOT NULL,
+    deleted INTEGER NOT NULL CHECK (deleted IN (0, 1))
+);
+
 CREATE TABLE IF NOT EXISTS channels (
     key TEXT PRIMARY KEY,
     name TEXT NOT NULL,
@@ -230,6 +241,8 @@ CREATE INDEX IF NOT EXISTS idx_raw_packets_message_id ON raw_packets(message_id)
 CREATE INDEX IF NOT EXISTS idx_raw_packets_timestamp ON raw_packets(timestamp);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_raw_packets_payload_hash ON raw_packets(payload_hash);
 CREATE INDEX IF NOT EXISTS idx_contacts_type_last_seen ON contacts(type, last_seen);
+CREATE INDEX IF NOT EXISTS idx_virtual_companion_contact_changes_revision
+    ON virtual_companion_contact_changes(revision);
 CREATE INDEX IF NOT EXISTS idx_messages_type_received_conversation
     ON messages(type, received_at, conversation_key);
 CREATE INDEX IF NOT EXISTS idx_contact_advert_paths_recent
@@ -238,6 +251,39 @@ CREATE INDEX IF NOT EXISTS idx_contact_name_history_key
     ON contact_name_history(public_key, last_seen DESC);
 CREATE INDEX IF NOT EXISTS idx_repeater_telemetry_pk_ts
     ON repeater_telemetry_history(public_key, timestamp);
+
+CREATE TRIGGER IF NOT EXISTS trg_virtual_companion_contact_insert
+AFTER INSERT ON contacts BEGIN
+    UPDATE virtual_companion_contact_clock
+    SET revision = MAX(revision + 1, CAST(strftime('%s', 'now') AS INTEGER))
+    WHERE singleton = 1;
+    INSERT INTO virtual_companion_contact_changes(public_key, revision, deleted)
+    SELECT lower(NEW.public_key), revision, 0
+    FROM virtual_companion_contact_clock WHERE singleton = 1
+    ON CONFLICT(public_key) DO UPDATE SET revision = excluded.revision, deleted = 0;
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_virtual_companion_contact_update
+AFTER UPDATE ON contacts BEGIN
+    UPDATE virtual_companion_contact_clock
+    SET revision = MAX(revision + 1, CAST(strftime('%s', 'now') AS INTEGER))
+    WHERE singleton = 1;
+    INSERT INTO virtual_companion_contact_changes(public_key, revision, deleted)
+    SELECT lower(NEW.public_key), revision, 0
+    FROM virtual_companion_contact_clock WHERE singleton = 1
+    ON CONFLICT(public_key) DO UPDATE SET revision = excluded.revision, deleted = 0;
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_virtual_companion_contact_delete
+AFTER DELETE ON contacts BEGIN
+    UPDATE virtual_companion_contact_clock
+    SET revision = MAX(revision + 1, CAST(strftime('%s', 'now') AS INTEGER))
+    WHERE singleton = 1;
+    INSERT INTO virtual_companion_contact_changes(public_key, revision, deleted)
+    SELECT lower(OLD.public_key), revision, 1
+    FROM virtual_companion_contact_clock WHERE singleton = 1
+    ON CONFLICT(public_key) DO UPDATE SET revision = excluded.revision, deleted = 1;
+END;
 """
 
 

@@ -16,7 +16,8 @@ class DispatchContext(Protocol):
     identity_generation: int | None
 
 
-CommandHandler = Callable[[bytes, DispatchContext], Awaitable[bytes]]
+CommandResponse = bytes | tuple[bytes, ...]
+CommandHandler = Callable[[bytes, DispatchContext], Awaitable[CommandResponse]]
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,7 +51,7 @@ class CommandDispatcher:
             raise ValueError(f"command 0x{command:02x} already registered")
         self._commands[command] = CommandSpec(handler, min_length, max_length)
 
-    async def dispatch(self, payload: bytes, context: DispatchContext) -> bytes:
+    async def dispatch(self, payload: bytes, context: DispatchContext) -> CommandResponse:
         if not payload:
             return bytes((RESP_CODE_ERR, ERR_CODE_ILLEGAL_ARG))
         spec = self._commands.get(payload[0])
@@ -61,6 +62,7 @@ class CommandDispatcher:
         response = await spec.handler(payload, context)
         if not response:
             raise ValueError("command handler returned an empty response")
-        if len(response) > 176:
-            raise ValueError("command handler response exceeds frame limit")
+        frames = (response,) if isinstance(response, bytes) else response
+        if any(not frame or len(frame) > 176 for frame in frames):
+            raise ValueError("command handler response exceeds frame limits")
         return response

@@ -71,6 +71,11 @@ class VirtualCompanionSession:
         except asyncio.QueueFull as exc:
             raise ClientBackpressure("client response queue is full") from exc
 
+    async def _enqueue_response_wait(self, payload: bytes) -> None:
+        # Command replies are lossless. Waiting here applies bounded backpressure
+        # while the writer's timeout still evicts a client that has stopped reading.
+        await self._outbox.put((0, next(self._sequence), payload))
+
     async def _next_outbound(self) -> bytes:
         # Priority 0 responses cannot be starved by priority 1 notifications;
         # the monotonic sequence preserves FIFO order within each class.
@@ -96,7 +101,9 @@ class VirtualCompanionSession:
                     lambda task: None if task.cancelled() else task.exception()
                 )
                 raise
-            self._enqueue_response(response)
+            frames = (response,) if isinstance(response, bytes) else response
+            for frame in frames:
+                await self._enqueue_response_wait(frame)
 
     async def run(self) -> None:
         self._writer_task = asyncio.create_task(
