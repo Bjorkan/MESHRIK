@@ -76,3 +76,13 @@ class VirtualCompanionServer:
                 await asyncio.gather(*tasks, return_exceptions=True)
         if server is not None:
             await server.wait_closed()
+
+    async def disconnect_clients(self) -> None:
+        """Fence every current session without stopping the listener."""
+        sessions = tuple(self._sessions)
+        await asyncio.gather(*(session.close() for session in sessions))
+        tasks = tuple(task for task in self._session_tasks if task is not asyncio.current_task())
+        for task in tasks:
+            task.cancel()
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)

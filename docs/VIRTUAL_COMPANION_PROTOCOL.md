@@ -144,6 +144,18 @@ Numbers `44–49` are reserved for Wi-Fi operations; `53` is absent. Unknown fut
 - **S08–S10** typed and validated DM/channel sends via existing `app/services/message_send.py` and single `radio_job_worker`, no RF retry on ambiguous/unknown outcome; explicit audited DB mutations, privileged commands blocked.
 - **S11–S13** settings UI, false-success/timeout/race tests, official app transcripts, threat model and operator docs. Parent issues [#224–#237](https://github.com/Bjorkan/MESHRIK/issues/224).
 
+### Implemented S04 version and identity policy
+
+The virtual `DEVICE_INFO` protocol byte is `min(physical cached protocol, 14)` and requires a
+verified physical protocol of at least 13. The client's `DEVICE_QUERY` target is retained only in
+that client's session and cannot raise the advertised virtual version or change another session.
+`SELF_INFO` is encoded solely from the current connected generation's already-loaded `self_info`;
+missing identity/device metadata returns `ERR_CODE_BAD_STATE`. Generation changes disconnect all
+virtual sessions. The physical BLE PIN is emitted as zero and private-key/signing commands remain
+unsupported. Time, battery and statistics requests remain default-denied in S04 because no released
+native-app trace has established that they are required; a later layer may expose only existing
+cache values, never trigger a radio poll during handshake.
+
 ### Hardware-free S01 quality gate
 
 ```sh
