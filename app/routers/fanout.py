@@ -2,8 +2,10 @@
 
 import ast
 import inspect
+import ipaddress
 import logging
 import re
+import sqlite3
 import string
 
 from fastapi import APIRouter, HTTPException
@@ -25,7 +27,18 @@ _VALID_TYPES = {
     "apprise",
     "sqs",
     "map_upload",
+    "virtual_companion_tcp",
 }
+
+_VIRTUAL_COMPANION_DEFAULT_HOST = "127.0.0.1"
+_VIRTUAL_COMPANION_DEFAULT_PORT = 4001
+_VIRTUAL_COMPANION_CONFIG_FIELDS = {
+    "bind_host",
+    "port",
+    "unsafe_network_acknowledged",
+    "secure_access",
+}
+_VIRTUAL_COMPANION_SECURE_ACCESS = {"vpn", "mtls_proxy"}
 
 _IATA_RE = re.compile(r"^[A-Z]{3}$")
 _DEFAULT_COMMUNITY_MQTT_TOPIC_TEMPLATE = "meshcore/{IATA}/{PUBLIC_KEY}/packets"
@@ -122,6 +135,8 @@ def _validate_and_normalize_config(config_type: str, config: dict) -> dict:
         _validate_map_upload_config(normalized)
     elif config_type == "mqtt_ha":
         _validate_mqtt_ha_config(normalized)
+    elif config_type == "virtual_companion_tcp":
+        _validate_virtual_companion_config(normalized)
 
     return normalized
 
@@ -133,6 +148,66 @@ def _validate_mqtt_private_config(config: dict) -> None:
     port = config.get("broker_port", 1883)
     if not isinstance(port, int) or port < 1 or port > 65535:
         raise HTTPException(status_code=400, detail="broker_port must be between 1 and 65535")
+
+
+def _validate_virtual_companion_config(config: dict) -> None:
+    """Normalize the plaintext listener's deliberately narrow network policy."""
+    unknown = set(config) - _VIRTUAL_COMPANION_CONFIG_FIELDS
+    if unknown:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported virtual Companion config field(s): {', '.join(sorted(unknown))}",
+        )
+
+    host = str(config.get("bind_host", _VIRTUAL_COMPANION_DEFAULT_HOST)).strip().lower()
+    if host == "localhost":
+        host = _VIRTUAL_COMPANION_DEFAULT_HOST
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        raise HTTPException(
+            status_code=400,
+            detail="bind_host must be a literal IPv4/IPv6 address or localhost",
+        ) from None
+
+    port = config.get("port", _VIRTUAL_COMPANION_DEFAULT_PORT)
+    if type(port) is not int or not 1 <= port <= 65535:
+        raise HTTPException(status_code=400, detail="port must be an integer between 1 and 65535")
+    from app.config import settings as server_settings
+
+    if server_settings.tcp_host and port == server_settings.tcp_port:
+        raise HTTPException(
+            status_code=400,
+            detail="port must differ from the configured physical Companion TCP port",
+        )
+
+    acknowledged = config.get("unsafe_network_acknowledged", False)
+    if type(acknowledged) is not bool:
+        raise HTTPException(status_code=400, detail="unsafe_network_acknowledged must be boolean")
+    secure_access = str(config.get("secure_access", "")).strip().lower()
+    if address.is_loopback:
+        # Remote-access assertions have no effect on a loopback-only socket.
+        acknowledged = False
+        secure_access = ""
+    elif not acknowledged or secure_access not in _VIRTUAL_COMPANION_SECURE_ACCESS:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Non-loopback Companion TCP requires unsafe_network_acknowledged=true and "
+                "secure_access set to 'vpn' or 'mtls_proxy'. HTTP Basic auth does not protect "
+                "this plaintext TCP listener."
+            ),
+        )
+
+    config.clear()
+    config.update(
+        {
+            "bind_host": address.compressed,
+            "port": port,
+            "unsafe_network_acknowledged": acknowledged,
+            "secure_access": secure_access,
+        }
+    )
 
 
 def _validate_mqtt_community_config(config: dict) -> None:
@@ -451,6 +526,8 @@ def _enforce_scope(config_type: str, scope: dict) -> dict:
         return {"messages": "none", "raw_packets": "all"}
     if config_type == "bot":
         return {"messages": "all", "raw_packets": "none"}
+    if config_type == "virtual_companion_tcp":
+        return {"messages": "none", "raw_packets": "none"}
     if config_type in ("webhook", "apprise", "mqtt_ha"):
         messages = scope.get("messages", "all")
         if messages not in ("all", "none") and not isinstance(messages, dict):
@@ -519,17 +596,32 @@ async def create_fanout_config(body: FanoutConfigCreate) -> FanoutConfigResponse
     normalized_config = _validate_and_normalize_config(body.type, body.config)
     scope = _enforce_scope(body.type, body.scope)
 
-    cfg = await FanoutConfigRepository.create(
-        config_type=body.type,
-        name=body.name,
-        config=normalized_config,
-        scope=scope,
-        enabled=body.enabled,
-    )
+    enabled = body.enabled
+    if body.type == "virtual_companion_tcp" and "enabled" not in body.model_fields_set:
+        enabled = False
+    try:
+        cfg = await FanoutConfigRepository.create(
+            config_type=body.type,
+            name=body.name,
+            config=normalized_config,
+            scope=scope,
+            enabled=enabled,
+        )
+    except sqlite3.IntegrityError as exc:
+        if body.type != "virtual_companion_tcp":
+            raise
+        raise HTTPException(
+            status_code=409,
+            detail="Only one virtual Companion TCP integration may be configured",
+        ) from exc
 
     # Start the module if enabled
     if cfg["enabled"]:
-        await fanout_manager.reload_config(cfg["id"])
+        start_error = await fanout_manager.reload_config(cfg["id"])
+        if start_error and body.type == "virtual_companion_tcp":
+            await fanout_manager.remove_config(cfg["id"])
+            await FanoutConfigRepository.delete(cfg["id"])
+            raise HTTPException(status_code=409, detail=start_error)
 
     logger.info("Created fanout config %s (type=%s, name=%s)", cfg["id"], body.type, body.name)
     return _redact_fanout_config(cfg)  # type: ignore[return-value]
@@ -569,7 +661,18 @@ async def update_fanout_config(config_id: str, body: FanoutConfigUpdate) -> Fano
         raise HTTPException(status_code=404, detail="Fanout config not found")
 
     # Reload the module to pick up changes
-    await fanout_manager.reload_config(config_id)
+    start_error = await fanout_manager.reload_config(config_id)
+    if start_error and existing["type"] == "virtual_companion_tcp":
+        await FanoutConfigRepository.update(
+            config_id,
+            name=existing["name"],
+            enabled=existing["enabled"],
+            config=existing["config"],
+            scope=existing["scope"],
+            sort_order=existing["sort_order"],
+        )
+        await fanout_manager.reload_config(config_id)
+        raise HTTPException(status_code=409, detail=start_error)
 
     logger.info("Updated fanout config %s", config_id)
     return _redact_fanout_config(updated)  # type: ignore[return-value]

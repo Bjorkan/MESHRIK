@@ -187,6 +187,8 @@ CREATE TABLE IF NOT EXISTS fanout_configs (
     sort_order INTEGER DEFAULT 0,
     created_at INTEGER NOT NULL
 );
+CREATE UNIQUE INDEX IF NOT EXISTS idx_fanout_virtual_companion_singleton
+    ON fanout_configs(type) WHERE type = 'virtual_companion_tcp';
 
 CREATE TABLE IF NOT EXISTS repeater_telemetry_history (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

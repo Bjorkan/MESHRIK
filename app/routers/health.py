@@ -31,6 +31,10 @@ class FanoutStatusResponse(BaseModel):
     type: str
     status: str
     last_error: str | None = None
+    bind_host: str | None = None
+    port: int | None = None
+    clients: int | None = None
+    network_warning: str | None = None
 
 
 class RadioStatsSnapshot(BaseModel):

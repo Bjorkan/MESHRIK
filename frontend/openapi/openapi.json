@@ -2626,6 +2626,28 @@
       },
       "FanoutStatusResponse": {
         "properties": {
+          "bind_host": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bind Host"
+          },
+          "clients": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clients"
+          },
           "last_error": {
             "anyOf": [
               {
@@ -2640,6 +2662,28 @@
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "network_warning": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Network Warning"
+          },
+          "port": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Port"
           },
           "status": {
             "title": "Status",
