@@ -355,6 +355,10 @@ class FanoutManager:
                         "bind_host": config.get("bind_host"),
                         "port": config.get("port"),
                         "clients": 0,
+                        "virtual_channel_capacity": config.get("virtual_channel_capacity", 40),
+                        "configured_channel_slots": sum(
+                            key is not None for key in config.get("channel_slots", [])
+                        ),
                         "network_warning": NETWORK_WARNING,
                     }
                 continue

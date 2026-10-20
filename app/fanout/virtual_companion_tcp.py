@@ -7,13 +7,20 @@ available here.
 
 import asyncio
 import contextlib
+from dataclasses import replace
 from typing import Any
 
 from app.fanout.base import FanoutModule
 from app.services.virtual_companion import VirtualCompanionServer
+from app.services.virtual_companion.channels import (
+    DEFAULT_VIRTUAL_CHANNEL_CAPACITY,
+    VirtualCompanionChannels,
+    register_channel_commands,
+)
 from app.services.virtual_companion.contacts import register_contact_commands
 from app.services.virtual_companion.identity import (
     build_identity_dispatcher,
+    get_identity_snapshot,
     get_runtime_generation,
 )
 
@@ -27,8 +34,17 @@ GENERATION_POLL_SECONDS = 0.25
 class VirtualCompanionTcpModule(FanoutModule):
     def __init__(self, config_id: str, config: dict, *, name: str = "") -> None:
         super().__init__(config_id, config, name=name)
-        dispatcher = build_identity_dispatcher()
+        capacity = int(config.get("virtual_channel_capacity", DEFAULT_VIRTUAL_CHANNEL_CAPACITY))
+        channel_slots = config.get("channel_slots", [])
+        self._channels = VirtualCompanionChannels(channel_slots, capacity=capacity)
+        self._configured_channel_slots = sum(key is not None for key in channel_slots)
+
+        def virtual_identity():
+            return replace(get_identity_snapshot(), max_channels=self._channels.capacity)
+
+        dispatcher = build_identity_dispatcher(virtual_identity)
         register_contact_commands(dispatcher)
+        register_channel_commands(dispatcher, self._channels)
         self._server = VirtualCompanionServer(dispatcher)
         self._bind_host = str(config["bind_host"])
         self._port = int(config["port"])
@@ -74,6 +90,8 @@ class VirtualCompanionTcpModule(FanoutModule):
             "bind_host": self._bind_host,
             "port": self._port,
             "clients": self._server.client_count,
+            "virtual_channel_capacity": self._channels.capacity,
+            "configured_channel_slots": self._configured_channel_slots,
             "network_warning": NETWORK_WARNING,
         }
 

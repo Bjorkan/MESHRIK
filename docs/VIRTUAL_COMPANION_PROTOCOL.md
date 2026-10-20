@@ -171,6 +171,22 @@ returns the current catalog without historical tombstones. Each request owns its
 and multi-frame replies enter the existing bounded per-session writer queue with backpressure, so
 one client's enumeration cannot consume or interrupt another client's stream.
 
+### Implemented S06 virtual channel policy
+
+`GET_CHANNEL` resolves an operator-selected, persisted virtual slot list against the current
+MESHRIK channel database. The default advertised capacity is 40 slots and can be configured from 1
+to 255; `DEVICE_INFO.max_channels` reports that virtual capacity rather than the physical radio's
+temporary slots. Slot entries may be deliberately empty, are never compacted, and are shared by all
+clients. A missing/deleted channel therefore returns `ERR_CODE_NOT_FOUND` without allowing a newly
+created channel to inherit the stale slot. A configuration remap uses the integration lifecycle to
+disconnect old sessions before the replacement mapping accepts clients.
+
+Each successful reply is exactly `CHANNEL_INFO + slot + name[32] + secret[16]`. The read path selects
+only `channels.key` and `channels.name`; it neither consults radio-residency caches nor invokes a
+physical GET/SET_CHANNEL or worker job. Operational status reports only capacity and configured-slot
+count, never channel secrets. Later outbound channel sends must resolve through the typed virtual
+slot object again and reject stale mappings before entering the canonical send service.
+
 ### Hardware-free S01 quality gate
 
 ```sh
