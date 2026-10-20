@@ -18,6 +18,10 @@ from app.services.virtual_companion.channels import (
     VirtualCompanionChannels,
     register_channel_commands,
 )
+from app.services.virtual_companion.command_policy import (
+    VirtualCompanionCommandPolicy,
+    register_command_policy,
+)
 from app.services.virtual_companion.contacts import register_contact_commands
 from app.services.virtual_companion.direct_send import register_direct_send_commands
 from app.services.virtual_companion.identity import (
@@ -52,6 +56,10 @@ class VirtualCompanionTcpModule(FanoutModule):
         register_direct_send_commands(dispatcher)
         register_channel_send_commands(dispatcher, self._channels)
         self._server = VirtualCompanionServer(dispatcher)
+        register_command_policy(
+            dispatcher,
+            adapter=VirtualCompanionCommandPolicy(contact_push=self._server.notify_contact_changed),
+        )
         self._bind_host = str(config["bind_host"])
         self._port = int(config["port"])
         self._generation_task: asyncio.Task[None] | None = None

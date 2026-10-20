@@ -1,6 +1,6 @@
 # Virtual TCP Companion: protocol contract and implementation decisions
 
-> **Status: implemented through S09 on an unmerged stack.** The listener remains disabled by default and the complete S01–S13 stack must pass its release gate before merge. See epic [#224](https://github.com/Bjorkan/MESHRIK/issues/224).
+> **Status: implemented through S10 on an unmerged stack.** The listener remains disabled by default and the complete S01–S13 stack must pass its release gate before merge. See epic [#224](https://github.com/Bjorkan/MESHRIK/issues/224).
 
 ## Goal and non-negotiable trust boundary
 
@@ -260,6 +260,57 @@ Thus a lost reply cannot be replayed onto a newly mapped channel, while equal te
 different virtual indices remain distinct. Completed/uncertain operations are not retransmitted;
 safe pre-dispatch queue/disconnect failures release their reservation and may be retried. Exact
 timestamp mode also rejects a concurrent collision instead of silently changing the app's identity.
+
+### Implemented S10 exhaustive command policy
+
+The dispatcher has an explicit disposition for every `CMD_*` defined by the reviewed MeshCore
+`companion_radio/MyMesh.cpp`. Undefined codes, including the parked `0x2c..0x31` range, receive the
+same `ERR/UNSUPPORTED_CMD` response and never become implicitly enabled. The implemented subset is:
+
+| Code | Command | Disposition |
+| --- | --- | --- |
+| `01` | `APP_START` | Verified cached identity (S04) |
+| `02` | `SEND_TXT_MSG` | Canonical direct-message service (S08) |
+| `03` | `SEND_CHANNEL_TXT_MSG` | Canonical channel service (S09) |
+| `04` | `GET_CONTACTS` | Durable DB snapshot (S05) |
+| `05` | `GET_DEVICE_TIME` | Read-only host UTC seconds |
+| `09` | `ADD_UPDATE_CONTACT` | Existing DB contact only; exact 148-byte frame and atomic revision fence |
+| `0a` | `SYNC_NEXT_MESSAGE` | Durable independent cursor (S07) |
+| `0f` | `REMOVE_CONTACT` | Atomic DB-only delete |
+| `16` | `DEVICE_QUERY` | Verified cached metadata (S04) |
+| `1e` | `GET_CONTACT_BY_KEY` | Durable DB contact (S05) |
+| `1f` | `GET_CHANNEL` | Stable operator-owned virtual slot (S06) |
+
+Contact edits require a session bound to the current radio generation and accept a full existing
+32-byte identity, strict UTF-8 name/padding, valid contact type, route width/path bytes, coordinates
+and the exact revision last served by MESHRIK. SQLite advances the
+revision atomically, so only one of two stale concurrent edits can succeed. Updates preserve unrelated
+DB metadata and never add/remove a physical contact. Unknown identities are not created from the
+unsigned edit frame; packet import remains denied until an exact advert/signature verifier exists.
+Successful mutations emit normal web events and protocol contact update/tombstone pushes to every
+connected virtual client. Channel selection remains operator-owned: `SET_CHANNEL` is deliberately
+unsupported and cannot mutate either the stable map or physical slots.
+
+Every remaining source-defined command is explicitly denied:
+
+| Codes | Commands | Reason |
+| --- | --- | --- |
+| `06,08,0e,25,26,29,3a` | `SET_DEVICE_TIME`, `SET_ADVERT_NAME`, `SET_ADVERT_LATLON`, `SET_DEVICE_PIN`, `SET_OTHER_PARAMS`, `SET_CUSTOM_VAR`, `SET_AUTOADD_CONFIG` | Host, identity, credential, or radio-policy mutation |
+| `0b,0c,15,3d` | `SET_RADIO_PARAMS`, `SET_RADIO_TX_POWER`, `SET_TUNING_PARAMS`, `SET_PATH_HASH_MODE` | Radio retuning/configuration |
+| `07,10,19,1a,1b,24,27,32,34,37,39,3e,41` | `SEND_SELF_ADVERT`, `SHARE_CONTACT`, `SEND_RAW_DATA`, `SEND_LOGIN`, `SEND_STATUS_REQ`, `SEND_TRACE_PATH`, `SEND_TELEMETRY_REQ`, `SEND_BINARY_REQ`, `SEND_PATH_DISCOVERY_REQ`, `SEND_CONTROL_DATA`, `SEND_ANON_REQ`, `SEND_CHANNEL_DATA`, `SEND_RAW_PACKET` | RF-capable request without a deliberately mapped typed workflow |
+| `0d,1c,1d,2a` | `RESET_PATH`, `HAS_CONNECTION`, `LOGOUT`, `GET_ADVERT_PATH` | Physical firmware connection/path table is not virtualized |
+| `11,12` | `EXPORT_CONTACT`, `IMPORT_CONTACT` | No exact signed advert export/import contract |
+| `13,33` | `REBOOT`, `FACTORY_RESET` | Privileged or destructive radio control |
+| `14,28,2b,38,3b,3c` | `GET_BATT_AND_STORAGE`, `GET_CUSTOM_VARS`, `GET_TUNING_PARAMS`, `GET_STATS`, `GET_AUTOADD_CONFIG`, `GET_ALLOWED_REPEAT_FREQ` | No exact generation-scoped cached snapshot; values are never fabricated |
+| `17,18` | `EXPORT_PRIVATE_KEY`, `IMPORT_PRIVATE_KEY` | Private identity material |
+| `20` | `SET_CHANNEL` | Operator-owned stable mapping; no physical slot mutation |
+| `21,22,23` | `SIGN_START`, `SIGN_DATA`, `SIGN_FINISH` | General signing oracle |
+| `36,3f,40` | `SET_FLOOD_SCOPE_KEY`, `SET_DEFAULT_FLOOD_SCOPE`, `GET_DEFAULT_FLOOD_SCOPE` | Radio secret/state exposure or mutation |
+| `42` | `RUN_CLI_COMMAND` | Arbitrary local CLI |
+
+Reads, `APP_START`, reconnect and cursor operations never cause RF transmission. Unsupported commands
+always return `RESP_CODE_ERR/ERR_CODE_UNSUPPORTED_CMD`; malformed implemented commands return
+`ERR_CODE_ILLEGAL_ARG`, and stale/unavailable mutation outcomes never return fake `OK`.
 
 ### Hardware-free S01 quality gate
 

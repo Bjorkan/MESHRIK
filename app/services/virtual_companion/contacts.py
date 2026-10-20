@@ -67,7 +67,9 @@ def register_contact_commands(
     return adapter
 
 
-def encode_contact(contact: Contact, revision: int) -> bytes:
+def encode_contact(
+    contact: Contact, revision: int, *, response_code: int = RESP_CODE_CONTACT
+) -> bytes:
     """Encode the fixed 148-byte firmware ContactInfo response layout."""
     public_key = bytes.fromhex(contact.public_key)
     if len(public_key) != 32:
@@ -80,7 +82,9 @@ def encode_contact(contact: Contact, revision: int) -> bytes:
     else:
         flags &= ~0x01
 
-    result = bytearray((RESP_CODE_CONTACT,))
+    if not 0 <= response_code <= 0xFF:
+        raise ValueError("response code must fit in one byte")
+    result = bytearray((response_code,))
     result.extend(public_key)
     result.extend((contact.type if 0 <= contact.type <= 4 else 0, flags, path_len))
     result.extend(path.ljust(MAX_PATH_SIZE, b"\0"))
