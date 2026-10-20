@@ -11,6 +11,7 @@ from .framing import FrameError, encode_frame, read_frame
 DEFAULT_OUTBOX_SIZE = 64
 DEFAULT_READ_TIMEOUT = 30.0
 DEFAULT_WRITE_TIMEOUT = 5.0
+PUSH_CODE_MSG_WAITING = 0x83
 
 
 class ClientBackpressure(RuntimeError):
@@ -53,6 +54,7 @@ class VirtualCompanionSession:
         self._sequence = itertools.count()
         self._writer_task: asyncio.Task[None] | None = None
         self._closed = False
+        self._message_waiting_pending = False
 
     @property
     def closed(self) -> bool:
@@ -64,6 +66,15 @@ class VirtualCompanionSession:
             self._outbox.put_nowait((1, next(self._sequence), payload))
         except asyncio.QueueFull as exc:
             raise ClientBackpressure("client push queue is full") from exc
+
+    def notify_message_waiting(self, message_id: int) -> None:
+        """Coalesce durable inbox hints until this client asks for a message."""
+        if self._closed or message_id <= self.state.message_cursor:
+            return
+        if self._message_waiting_pending:
+            return
+        self.enqueue_push(bytes((PUSH_CODE_MSG_WAITING,)))
+        self._message_waiting_pending = True
 
     def _enqueue_response(self, payload: bytes) -> None:
         try:
@@ -91,6 +102,8 @@ class VirtualCompanionSession:
     async def _read_loop(self) -> None:
         while True:
             payload = await read_frame(self.reader, timeout=self.read_timeout)
+            if payload == b"\x0a":
+                self._message_waiting_pending = False
             operation = asyncio.create_task(self.dispatcher.dispatch(payload, self.state))
             try:
                 # Closing a virtual socket must not cancel an operation that a
