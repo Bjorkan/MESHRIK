@@ -177,6 +177,7 @@ class VirtualCompanionDirectSender:
                 track_pending_ack_fn=self._track_ack,
                 now_fn=self._now,
                 requested_sender_timestamp=sender_timestamp,
+                strict_sender_timestamp=True,
                 schedule_retries=False,
                 return_protocol_outcome=True,
                 message_repository=self._messages,

@@ -162,8 +162,11 @@ def _bind_snapshot(
 ) -> CompanionIdentitySnapshot:
     if context.identity_generation is None:
         context.identity_generation = snapshot.generation
+        context.identity_public_key = snapshot.public_key.hex()
     elif context.identity_generation != snapshot.generation:
         raise IdentityUnavailable("radio generation changed")
+    elif context.identity_public_key != snapshot.public_key.hex():
+        raise IdentityUnavailable("radio identity changed")
     return snapshot
 
 

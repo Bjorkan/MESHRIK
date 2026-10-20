@@ -14,6 +14,7 @@ class DispatchContext(Protocol):
 
     protocol_version: int | None
     identity_generation: int | None
+    identity_public_key: str | None
     message_cursor: int
     metadata: dict[str, object]
     pending_virtual_acks: dict[str, int]

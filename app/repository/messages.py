@@ -837,6 +837,113 @@ class MessageRepository:
         return MessageRepository._row_to_message(row)
 
     @staticmethod
+    async def get_companion_outgoing_channel(
+        channel_key: str, text: str, sender_timestamp: int
+    ) -> "Message | None":
+        """Find one virtual-app channel send by its stable on-air identity."""
+        async with db.readonly() as conn:
+            async with conn.execute(
+                f"SELECT {MessageRepository._message_select('messages')} FROM messages "
+                "WHERE type='CHAN' AND outgoing=1 AND conversation_key=? "
+                "AND sender_timestamp=? ORDER BY id ASC",
+                (channel_key.upper(), sender_timestamp),
+            ) as cursor:
+                rows = await cursor.fetchall()
+        for row in rows:
+            message = MessageRepository._row_to_message(row)
+            stored_body = message.text
+            if message.sender_name:
+                prefix = f"{message.sender_name}: "
+                if stored_body.startswith(prefix):
+                    stored_body = stored_body[len(prefix) :]
+            if stored_body == text:
+                return message
+        return None
+
+    @staticmethod
+    async def reserve_companion_channel_send(
+        *,
+        identity_key: str,
+        virtual_index: int,
+        sender_timestamp: int,
+        text_hash: str,
+        created_at: int,
+        retention_seconds: int,
+    ) -> bool:
+        """Atomically reserve one app message identity without storing its text."""
+        async with db.tx() as conn:
+            await conn.execute(
+                "DELETE FROM virtual_companion_channel_sends WHERE created_at < ?",
+                (created_at - retention_seconds,),
+            )
+            async with conn.execute(
+                """
+                INSERT OR IGNORE INTO virtual_companion_channel_sends
+                    (identity_key, virtual_index, sender_timestamp, text_hash, status, created_at)
+                VALUES (?, ?, ?, ?, 'pending', ?)
+                """,
+                (
+                    identity_key.lower(),
+                    virtual_index,
+                    sender_timestamp,
+                    text_hash,
+                    created_at,
+                ),
+            ) as cursor:
+                return cursor.rowcount == 1
+
+    @staticmethod
+    async def finish_companion_channel_send(
+        *,
+        identity_key: str,
+        virtual_index: int,
+        sender_timestamp: int,
+        text_hash: str,
+        status: str,
+    ) -> None:
+        if status not in {"ok", "uncertain"}:
+            raise ValueError("invalid virtual channel send status")
+        async with db.tx() as conn:
+            await conn.execute(
+                """
+                UPDATE virtual_companion_channel_sends SET status=?
+                WHERE identity_key=? AND virtual_index=?
+                  AND sender_timestamp=? AND text_hash=?
+                """,
+                (
+                    status,
+                    identity_key.lower(),
+                    virtual_index,
+                    sender_timestamp,
+                    text_hash,
+                ),
+            )
+
+    @staticmethod
+    async def release_companion_channel_send(
+        *,
+        identity_key: str,
+        virtual_index: int,
+        sender_timestamp: int,
+        text_hash: str,
+    ) -> None:
+        """Release only a pre-dispatch reservation whose outcome is still pending."""
+        async with db.tx() as conn:
+            await conn.execute(
+                """
+                DELETE FROM virtual_companion_channel_sends
+                WHERE identity_key=? AND virtual_index=?
+                  AND sender_timestamp=? AND text_hash=? AND status='pending'
+                """,
+                (
+                    identity_key.lower(),
+                    virtual_index,
+                    sender_timestamp,
+                    text_hash,
+                ),
+            )
+
+    @staticmethod
     async def get_unread_counts(
         name: str | None = None,
         blocked_keys: list[str] | None = None,

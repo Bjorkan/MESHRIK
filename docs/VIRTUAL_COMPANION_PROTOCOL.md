@@ -1,6 +1,6 @@
 # Virtual TCP Companion: protocol contract and implementation decisions
 
-> **Status: implemented through S08 on an unmerged stack.** The listener remains disabled by default and the complete S01–S13 stack must pass its release gate before merge. See epic [#224](https://github.com/Bjorkan/MESHRIK/issues/224).
+> **Status: implemented through S09 on an unmerged stack.** The listener remains disabled by default and the complete S01–S13 stack must pass its release gate before merge. See epic [#224](https://github.com/Bjorkan/MESHRIK/issues/224).
 
 ## Goal and non-negotiable trust boundary
 
@@ -236,6 +236,30 @@ is pushed as exact `0x82 + tag[4] + trip_time_ms[4]` only after the existing ACK
 the matching row. Other sessions do not receive the tag. An early genuine host ACK retains its real
 trip time through canonical buffering and is returned immediately after `SENT`; raw ACK evidence
 without host timing can update shared delivery state but cannot fabricate a Companion timing frame.
+
+### Implemented S09 channel-text send policy
+
+`SEND_CHANNEL_TXT_MSG` accepts only the exact bounded firmware frame, strict non-empty UTF-8 without
+embedded NUL, `TXT_TYPE_PLAIN`, a bound radio identity and a current stable S06 virtual slot. The
+slot is resolved first to its configured key and then to the current full channel row, including its
+persisted flood-scope and path-hash overrides. Missing, deleted, stale and out-of-range slots never
+enter a radio service. Channel datagrams remain a distinct default-denied command.
+
+The adapter passes the DB channel/key to `send_channel_message_to_channel` with the app's exact
+uint32 sender timestamp and a physical-slot *preference of zero*, never the virtual index. The
+canonical service alone plans/loads/restores temporary physical slots and regional/hash-mode state
+inside the single worker. It commits and broadcasts one outgoing row before/after the RF boundary as
+already defined by the web send workflow. `OK` is returned only after that workflow receives a
+non-error firmware response; reject, timeout and uncertain outcomes return an error and never claim
+delivery or create an ACK.
+
+Concurrent identical commands share a generation-scoped in-memory operation. A 24-hour SQLite
+reservation keyed by public radio identity, virtual index, sender timestamp and SHA-256 text digest
+survives process restart and virtual-slot remap without storing message text or channel secrets.
+Thus a lost reply cannot be replayed onto a newly mapped channel, while equal text/timestamps on two
+different virtual indices remain distinct. Completed/uncertain operations are not retransmitted;
+safe pre-dispatch queue/disconnect failures release their reservation and may be retried. Exact
+timestamp mode also rejects a concurrent collision instead of silently changing the app's identity.
 
 ### Hardware-free S01 quality gate
 

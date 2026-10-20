@@ -24,6 +24,7 @@ class SessionState:
 
     protocol_version: int | None = None
     identity_generation: int | None = None
+    identity_public_key: str | None = None
     contact_cursor: int = 0
     message_cursor: int = 0
     metadata: dict[str, object] = field(default_factory=dict)
