@@ -430,7 +430,16 @@ async def on_ack(event: "Event") -> None:
 
     radio_job_scheduler.record_activity(RadioActivityKind.ACK_OBSERVED)
     logger.debug("Received ACK with code %s", ack_code)
-    matched = await apply_dm_ack_code(ack_code, broadcast_fn=broadcast_event)
+    trip_time_ms = payload.get("trip_time")
+    matched = await apply_dm_ack_code(
+        ack_code,
+        broadcast_fn=broadcast_event,
+        trip_time_ms=trip_time_ms,
+    )
+    if type(trip_time_ms) is int and 0 <= trip_time_ms <= 0xFFFFFFFF:
+        from app.fanout.manager import fanout_manager
+
+        await fanout_manager.notify_virtual_companion_ack(ack_code, trip_time_ms)
     if matched:
         logger.info("ACK received for code %s", ack_code)
     else:

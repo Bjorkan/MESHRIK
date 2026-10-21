@@ -16,6 +16,7 @@ class DispatchContext(Protocol):
     identity_generation: int | None
     message_cursor: int
     metadata: dict[str, object]
+    pending_virtual_acks: dict[str, int]
 
 
 CommandResponse = bytes | tuple[bytes, ...]

@@ -10,6 +10,7 @@ BUFFERED_ACK_TTL_SECONDS = 30.0
 
 _pending_acks: dict[str, PendingAck] = {}
 _buffered_acks: dict[str, float] = {}
+_buffered_ack_trip_times: dict[str, int] = {}
 
 
 def track_pending_ack(expected_ack: str, message_id: int, timeout_ms: int) -> bool:
@@ -33,15 +34,27 @@ def track_pending_ack(expected_ack: str, message_id: int, timeout_ms: int) -> bo
     return False
 
 
-def buffer_unmatched_ack(ack_code: str) -> None:
+def buffer_unmatched_ack(ack_code: str, trip_time_ms: int | None = None) -> None:
     """Remember an ACK that arrived before its message registration."""
     _buffered_acks[ack_code] = time.time()
+    if type(trip_time_ms) is int and 0 <= trip_time_ms <= 0xFFFFFFFF:
+        _buffered_ack_trip_times[ack_code] = trip_time_ms
+    else:
+        _buffered_ack_trip_times.pop(ack_code, None)
     logger.debug("Buffered unmatched ACK %s for late registration", ack_code)
+
+
+def get_buffered_ack_trip_time(ack_code: str) -> int | None:
+    """Return genuine host-reported timing for an early ACK, when available."""
+    if ack_code not in _buffered_acks:
+        return None
+    return _buffered_ack_trip_times.get(ack_code)
 
 
 def discard_buffered_ack(ack_code: str) -> None:
     """Remove an early ACK only after its database confirmation committed."""
     _buffered_acks.pop(ack_code, None)
+    _buffered_ack_trip_times.pop(ack_code, None)
 
 
 def cleanup_expired_acks() -> None:
@@ -63,6 +76,7 @@ def cleanup_expired_acks() -> None:
     ]
     for code in expired_buffered_codes:
         del _buffered_acks[code]
+        _buffered_ack_trip_times.pop(code, None)
         logger.debug("Expired buffered ACK %s", code)
 
 

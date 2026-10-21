@@ -27,6 +27,7 @@ class SessionState:
     contact_cursor: int = 0
     message_cursor: int = 0
     metadata: dict[str, object] = field(default_factory=dict)
+    pending_virtual_acks: dict[str, int] = field(default_factory=dict)
 
 
 class VirtualCompanionSession:
@@ -75,6 +76,19 @@ class VirtualCompanionSession:
             return
         self.enqueue_push(bytes((PUSH_CODE_MSG_WAITING,)))
         self._message_waiting_pending = True
+
+    def notify_send_confirmed(self, ack_code: str, trip_time_ms: int) -> None:
+        """Queue a genuine ACK only for a tag issued to this client."""
+        if self._closed or ack_code not in self.state.pending_virtual_acks:
+            return
+        try:
+            code = bytes.fromhex(ack_code)
+        except ValueError:
+            return
+        if len(code) != 4 or not 0 <= trip_time_ms <= 0xFFFFFFFF:
+            return
+        self.state.pending_virtual_acks.pop(ack_code, None)
+        self.enqueue_push(b"\x82" + code + trip_time_ms.to_bytes(4, "little"))
 
     def _enqueue_response(self, payload: bytes) -> None:
         try:

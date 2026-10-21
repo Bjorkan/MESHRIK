@@ -294,6 +294,25 @@ class FanoutManager:
             if notifier is not None:
                 notifier(data)
 
+    async def notify_virtual_companion_ack(self, ack_code: str, trip_time_ms: int) -> None:
+        """Route a committed ACK to virtual sessions that own its real tag."""
+        tasks = []
+        config_ids = []
+        for config_id, (module, _scope) in list(self._modules.items()):
+            notifier = getattr(module, "notify_send_confirmed", None)
+            if notifier is not None:
+                tasks.append(notifier(ack_code, trip_time_ms))
+                config_ids.append(config_id)
+        if tasks:
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            for config_id, result in zip(config_ids, results, strict=True):
+                if isinstance(result, BaseException):
+                    logger.error(
+                        "Virtual Companion ACK notification failed for %s: %s",
+                        config_id,
+                        type(result).__name__,
+                    )
+
     async def broadcast_raw(self, data: dict) -> None:
         """Dispatch a raw packet to modules whose scope matches."""
         await self._dispatch_matching(

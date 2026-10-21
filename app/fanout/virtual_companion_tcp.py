@@ -18,6 +18,7 @@ from app.services.virtual_companion.channels import (
     register_channel_commands,
 )
 from app.services.virtual_companion.contacts import register_contact_commands
+from app.services.virtual_companion.direct_send import register_direct_send_commands
 from app.services.virtual_companion.identity import (
     build_identity_dispatcher,
     get_identity_snapshot,
@@ -47,6 +48,7 @@ class VirtualCompanionTcpModule(FanoutModule):
         register_contact_commands(dispatcher)
         register_channel_commands(dispatcher, self._channels)
         register_message_commands(dispatcher, self._channels)
+        register_direct_send_commands(dispatcher)
         self._server = VirtualCompanionServer(dispatcher)
         self._bind_host = str(config["bind_host"])
         self._port = int(config["port"])
@@ -85,6 +87,9 @@ class VirtualCompanionTcpModule(FanoutModule):
         message_id = data.get("id")
         if data.get("outgoing") is False and type(message_id) is int and message_id > 0:
             self._server.notify_message_waiting(message_id)
+
+    async def notify_send_confirmed(self, ack_code: str, trip_time_ms: int) -> None:
+        await self._server.notify_send_confirmed(ack_code, trip_time_ms)
 
     @property
     def status(self) -> str:
