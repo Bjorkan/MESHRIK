@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 
 def _broadcast_fanout_health() -> None:
     """Push updated fanout status to connected frontend clients."""
@@ -49,8 +51,13 @@ class FanoutModule:
 
     @property
     def status(self) -> str:
-        """Return 'connected', 'disconnected', or 'error'."""
+        """Return a concise module-specific runtime state."""
         raise NotImplementedError
+
+    @property
+    def status_details(self) -> dict[str, Any]:
+        """Return sanitized module-specific health fields."""
+        return {}
 
     @property
     def last_error(self) -> str | None:

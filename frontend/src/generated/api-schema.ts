@@ -3093,10 +3093,18 @@ export interface components {
     };
     /** FanoutStatusResponse */
     FanoutStatusResponse: {
+      /** Bind Host */
+      bind_host?: string | null;
+      /** Clients */
+      clients?: number | null;
       /** Last Error */
       last_error?: string | null;
       /** Name */
       name: string;
+      /** Network Warning */
+      network_warning?: string | null;
+      /** Port */
+      port?: number | null;
       /** Status */
       status: string;
       /** Type */
