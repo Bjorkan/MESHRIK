@@ -213,6 +213,39 @@ async def test_loopback_server_keeps_two_clients_isolated_and_ordered():
 
 
 @pytest.mark.asyncio
+async def test_listener_rejects_excess_clients_and_reclaims_capacity():
+    server = VirtualCompanionServer(CommandDispatcher(), max_clients=1)
+    await server.start("127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    writers = []
+    try:
+        first, writer = await asyncio.open_connection("127.0.0.1", port)
+        writers.append(writer)
+        writer.write(b"<\x01\x00\xff")
+        await writer.drain()
+        assert await read_wire_frame(first) == b"\x01\x01"
+        rejected, extra = await asyncio.open_connection("127.0.0.1", port)
+        writers.append(extra)
+        assert await asyncio.wait_for(rejected.read(), 1) == b""
+        assert server.client_count == 1
+        writer.close()
+        await writer.wait_closed()
+        async with asyncio.timeout(1):
+            while server.client_count:
+                await asyncio.sleep(0)
+        replacement, next_writer = await asyncio.open_connection("127.0.0.1", port)
+        writers.append(next_writer)
+        next_writer.write(b"<\x01\x00\xff")
+        await next_writer.drain()
+        assert await read_wire_frame(replacement) == b"\x01\x01"
+    finally:
+        for writer in writers:
+            writer.close()
+        await asyncio.gather(*(writer.wait_closed() for writer in writers))
+        await server.stop()
+
+
+@pytest.mark.asyncio
 async def test_server_shutdown_does_not_cancel_dispatched_domain_operation():
     started = asyncio.Event()
     release = asyncio.Event()

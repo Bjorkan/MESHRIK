@@ -388,7 +388,18 @@ class ContactRepository:
                 str(row["public_key"]) for row in change_rows if int(row["revision"]) > since
             ]
             selected = ((eligible[key], revisions[key]) for key in changed_keys if key in eligible)
-            deleted = tuple(key for key in changed_keys if key not in eligible)
+            # Prefix-only and malformed database identities have never been
+            # exposed as Companion contacts and cannot form 32-byte tombstones.
+            tombstones = []
+            for key in changed_keys:
+                if key in eligible or len(key) != 64:
+                    continue
+                try:
+                    if len(bytes.fromhex(key)) == 32:
+                        tombstones.append(key)
+                except ValueError:
+                    continue
+            deleted = tuple(tombstones)
 
         contacts = tuple(sorted(selected, key=lambda item: item[0].public_key.lower()))
         return CompanionContactSnapshot(

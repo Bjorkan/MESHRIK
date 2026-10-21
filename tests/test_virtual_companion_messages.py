@@ -66,10 +66,10 @@ def test_v3_and_negotiated_legacy_golden_frames_are_exact():
         paths=[MessagePath(path="aabbccdd", path_len=2, received_at=123, snr=-2.25)],
     )
     assert encode_message(channel, channel_index=7, protocol_version=14) == (
-        b"\x11\xf7\x00\x00\x07\x42\x00\x40\x30\x20\x10hej"
+        b"\x11\xf7\x00\x00\x07\x42\x00\x40\x30\x20\x10Alice: hej"
     )
     assert encode_message(channel, channel_index=7, protocol_version=2) == (
-        b"\x08\x07\x42\x00\x40\x30\x20\x10hej"
+        b"\x08\x07\x42\x00\x40\x30\x20\x10Alice: hej"
     )
 
 

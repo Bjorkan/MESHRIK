@@ -137,7 +137,8 @@ def encode_message(
             frame.extend((snr_q4 & 0xFF, 0, 0))
         frame.extend((channel_index, path_status, message.txt_type))
         frame.extend(timestamp.to_bytes(4, "little"))
-        text = _channel_body(message)
+        # Companion clients receive the sender prefix as part of the wire text.
+        text = message.text
     else:
         return None
 
@@ -175,14 +176,6 @@ def _full_key(value: str | None) -> str | None:
         return value.lower() if len(bytes.fromhex(value)) == 32 else None
     except ValueError:
         return None
-
-
-def _channel_body(message: Message) -> str:
-    if message.sender_name:
-        prefix = f"{message.sender_name}: "
-        if message.text.startswith(prefix):
-            return message.text[len(prefix) :]
-    return message.text
 
 
 def _utf8_prefix(value: str, width: int) -> bytes:

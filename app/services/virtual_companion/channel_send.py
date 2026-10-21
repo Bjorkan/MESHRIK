@@ -151,6 +151,7 @@ class VirtualCompanionChannelSender:
                         virtual_index=virtual_index,
                         sender_timestamp=sender_timestamp,
                         text=text,
+                        generation=context.identity_generation,
                     ),
                     name="virtual-companion-channel-send",
                 )
@@ -192,6 +193,7 @@ class VirtualCompanionChannelSender:
         virtual_index: int,
         sender_timestamp: int,
         text: str,
+        generation: int,
     ) -> VirtualChannelSendResult:
         channel_key = channel.key.upper()
         try:
@@ -222,6 +224,7 @@ class VirtualCompanionChannelSender:
         try:
             self._runtime.require_connected()
             await self._send_service(
+                expected_radio_generation=generation,
                 channel=channel,
                 channel_key_upper=channel_key,
                 key_bytes=key_bytes,

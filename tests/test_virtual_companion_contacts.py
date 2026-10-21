@@ -149,6 +149,21 @@ async def test_snapshots_are_isolated_and_incremental_deletes_are_durable(test_d
 
 
 @pytest.mark.asyncio
+async def test_incremental_snapshot_withholds_invalid_tombstones(test_db):
+    await ContactRepository.upsert(_contact())
+    before = await ContactRepository.get_companion_snapshot()
+    async with test_db.tx() as conn:
+        await conn.executemany(
+            "INSERT INTO contacts(public_key, name, type) VALUES (?, ?, 1)",
+            [("abcd", "Prefix"), ("zz" * 32, "Malformed")],
+        )
+    snapshot = await ContactRepository.get_companion_snapshot(before.high_water)
+    assert snapshot.deleted_public_keys == ()
+    assert snapshot.contacts == ()
+    assert snapshot.high_water > before.high_water
+
+
+@pytest.mark.asyncio
 async def test_web_delete_becomes_tombstone_without_a_radio_call(test_db, client):
     contact = _contact(0x44)
     await ContactRepository.upsert(contact)

@@ -17,14 +17,18 @@ SessionFactory = Callable[
 
 
 class VirtualCompanionServer:
-    """Own one listener and any number of independent client sessions."""
+    """Own one listener and a bounded number of independent client sessions."""
 
     def __init__(
         self,
         dispatcher: CommandDispatcher,
         *,
         session_factory: SessionFactory = VirtualCompanionSession,
+        max_clients: int = 32,
     ) -> None:
+        if max_clients < 1:
+            raise ValueError("max_clients must be positive")
+        self.max_clients = max_clients
         self.dispatcher = dispatcher
         self.session_factory = session_factory
         self._server: asyncio.AbstractServer | None = None
@@ -75,6 +79,9 @@ class VirtualCompanionServer:
     async def _accept_client(
         self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
     ) -> None:
+        if self._server is None or len(self._sessions) >= self.max_clients:
+            writer.close()
+            return
         session = self.session_factory(reader, writer, self.dispatcher)
         self._sessions.add(session)
         self._session_ids[session] = next(self._session_sequence)

@@ -32,6 +32,11 @@ from app.services.messages import (
 logger = logging.getLogger(__name__)
 
 
+def _check_send_generation(runtime, expected_generation: int | None) -> None:
+    if expected_generation is not None and runtime.radio_generation != expected_generation:
+        raise HTTPException(status_code=409, detail="Radio identity changed; reconnect client")
+
+
 async def _run_radio_command(runtime, name: str, command, **options):
     """Accept the runtime seam or wrap an injected raw manager without bypassing the worker."""
     runner = getattr(runtime, "run_radio_command", None)
@@ -749,6 +754,7 @@ async def send_direct_message_to_contact(
     strict_sender_timestamp: bool = False,
     schedule_retries: bool = True,
     return_protocol_outcome: bool = False,
+    expected_radio_generation: int | None = None,
     message_repository=MessageRepository,
     contact_repository=ContactRepository,
 ) -> Any:
@@ -770,6 +776,7 @@ async def send_direct_message_to_contact(
     async def send_direct(mc) -> None:
         nonlocal sent_at, sender_timestamp, message, result, ack_count
         nonlocal protocol_result, immediate_ack_trip_time_ms
+        _check_send_generation(radio_manager, expected_radio_generation)
         logger.debug("Ensuring contact %s is on radio before sending", contact.public_key[:12])
         add_result = await mc.commands.add_contact(contact_data)
         if add_result is None or add_result.type == EventType.ERROR:
@@ -813,6 +820,7 @@ async def send_direct_message_to_contact(
         )
         if message is None:
             raise HTTPException(status_code=422, detail="Outgoing DM could not be staged")
+        _check_send_generation(radio_manager, expected_radio_generation)
         result = await mc.commands.send_msg(
             dst=cached_contact,
             msg=text,
@@ -955,6 +963,7 @@ async def send_channel_message_to_channel(
     flood_scope_override: str | _ScopeUnset = SCOPE_UNSET,
     requested_sender_timestamp: int | None = None,
     strict_sender_timestamp: bool = False,
+    expected_radio_generation: int | None = None,
     message_repository=MessageRepository,
 ) -> Any:
     """Send a channel message and persist/broadcast the outgoing row.
@@ -974,6 +983,7 @@ async def send_channel_message_to_channel(
     async def send_channel(mc) -> None:
         nonlocal sent_at, sender_timestamp, radio_name
         nonlocal our_public_key, text_with_sender, outgoing_message
+        _check_send_generation(radio_manager, expected_radio_generation)
         radio_name = mc.self_info.get("name", "") if mc.self_info else ""
         our_public_key = (mc.self_info.get("public_key") or None) if mc.self_info else None
         text_with_sender = f"{radio_name}: {text}" if radio_name else text
@@ -1023,6 +1033,7 @@ async def send_channel_message_to_channel(
             len(text.encode("utf-8")),
         )
 
+        _check_send_generation(radio_manager, expected_radio_generation)
         result = await send_channel_message_with_effective_scope(
             mc=mc,
             channel=channel,
