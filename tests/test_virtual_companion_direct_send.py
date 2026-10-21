@@ -350,7 +350,8 @@ async def test_host_ack_notifies_virtual_path_only_after_canonical_commit(test_d
 
 
 @pytest.mark.asyncio
-async def test_real_service_path_persists_once_and_sends_one_rf_message(test_db):
+@pytest.mark.parametrize("reconnected", [False, True])
+async def test_real_service_path_persists_once_and_sends_one_rf_message(test_db, reconnected):
     contact = Contact(public_key=CONTACT_KEY, name="Alice", type=1)
     await ContactRepository.upsert(contact)
     sent = SimpleNamespace(
@@ -366,10 +367,14 @@ async def test_real_service_path_persists_once_and_sends_one_rf_message(test_db)
     )
 
     class Runtime:
+        radio_generation = 1
+
         def require_connected(self):
             return mc
 
         async def run_radio_command(self, _name, command, **_options):
+            if reconnected:
+                self.radio_generation += 1
             return await command(mc)
 
     broadcasts = []
@@ -381,6 +386,11 @@ async def test_real_service_path_persists_once_and_sends_one_rf_message(test_db)
     )
     try:
         response = await adapter.send_direct(_command(), SessionState(identity_generation=1))
+        if reconnected:
+            assert response == b"\x01\x04"
+            mc.commands.add_contact.assert_not_awaited()
+            mc.commands.send_msg.assert_not_awaited()
+            return
         assert response == b"\x06\x00\x01\x02\x03\x04\x40\x1f\x00\x00"
         assert mc.commands.send_msg.await_count == 1
         stored = await MessageRepository.get_by_content(

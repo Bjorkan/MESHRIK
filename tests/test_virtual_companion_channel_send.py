@@ -324,7 +324,10 @@ async def test_repository_idempotency_is_hashed_bounded_and_survives_new_adapter
 
 
 @pytest.mark.asyncio
-async def test_real_service_uses_worker_and_physical_slot_zero_not_virtual_slot(test_db):
+@pytest.mark.parametrize("reconnected", [False, True])
+async def test_real_service_uses_worker_and_physical_slot_zero_not_virtual_slot(
+    test_db, reconnected
+):
     await ChannelRepository.upsert(KEY_A, "Alpha")
     channels = VirtualCompanionChannels((None,) * 7 + (KEY_A,), capacity=8)
     mc = SimpleNamespace(
@@ -336,6 +339,7 @@ async def test_real_service_uses_worker_and_physical_slot_zero_not_virtual_slot(
     )
 
     class Runtime:
+        radio_generation = 1
         path_hash_mode = 0
         path_hash_mode_supported = False
         firmware_ver_code = 14
@@ -349,6 +353,8 @@ async def test_real_service_uses_worker_and_physical_slot_zero_not_virtual_slot(
 
         async def run_radio_command(self, _name, command, **_options):
             self.worker_calls += 1
+            if reconnected:
+                self.radio_generation += 1
             return await command(mc)
 
         def plan_channel_send_slot(self, _key, *, preferred_slot):
@@ -376,7 +382,13 @@ async def test_real_service_uses_worker_and_physical_slot_zero_not_virtual_slot(
         error_broadcast_fn=Mock(),
         now_fn=lambda: 100,
     )
-    assert await adapter.send_channel(_command(index=7), _context()) == b"\x00"
+    response = await adapter.send_channel(_command(index=7), _context())
+    if reconnected:
+        assert response == b"\x01\x04"
+        mc.commands.set_channel.assert_not_awaited()
+        mc.commands.send_chan_msg.assert_not_awaited()
+        return
+    assert response == b"\x00"
     assert runtime.worker_calls == 1
     assert runtime.preferred_slots == [0]
     assert mc.commands.set_channel.await_args.kwargs["channel_idx"] == 0

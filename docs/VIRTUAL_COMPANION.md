@@ -87,6 +87,8 @@ Relevant upstream references are the
 
 ## Shared identity, clients, messages, and channels
 
+- The listener accepts at most 32 simultaneous clients. Additional connections are closed;
+  capacity becomes available again when an existing session disconnects.
 - All clients see the same already-verified managed node public identity. There is no virtual key
   generation, private-key upload/export, signing oracle, or per-app identity.
 - Each TCP session has its own bounded output queue, contact snapshot cursor, message cursor,

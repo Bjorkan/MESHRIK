@@ -122,7 +122,7 @@ class VirtualCompanionDirectSender:
             task = self._inflight.get(signature)
             if task is None:
                 task = asyncio.create_task(
-                    self._send_once(contact, sender_timestamp, text),
+                    self._send_once(contact, sender_timestamp, text, context.identity_generation),
                     name="virtual-companion-direct-send",
                 )
                 self._inflight[signature] = task
@@ -156,7 +156,7 @@ class VirtualCompanionDirectSender:
                 self._completed.popitem(last=False)
 
     async def _send_once(
-        self, contact, sender_timestamp: int, text: str
+        self, contact, sender_timestamp: int, text: str, generation: int
     ) -> VirtualDirectSendResult:
         existing = await self._messages.get_by_content(
             "PRIV",
@@ -180,6 +180,7 @@ class VirtualCompanionDirectSender:
                 strict_sender_timestamp=True,
                 schedule_retries=False,
                 return_protocol_outcome=True,
+                expected_radio_generation=generation,
                 message_repository=self._messages,
                 contact_repository=self._contacts,
             )
