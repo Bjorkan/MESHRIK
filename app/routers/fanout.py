@@ -30,8 +30,8 @@ _VALID_TYPES = {
     "virtual_companion_tcp",
 }
 
-_VIRTUAL_COMPANION_DEFAULT_HOST = "127.0.0.1"
-_VIRTUAL_COMPANION_DEFAULT_PORT = 4001
+_VIRTUAL_COMPANION_DEFAULT_HOST = "0.0.0.0"
+_VIRTUAL_COMPANION_DEFAULT_PORT = 5000
 _VIRTUAL_COMPANION_CONFIG_FIELDS = {
     "bind_host",
     "channel_slots",
@@ -163,7 +163,7 @@ def _validate_virtual_companion_config(config: dict) -> None:
 
     host = str(config.get("bind_host", _VIRTUAL_COMPANION_DEFAULT_HOST)).strip().lower()
     if host == "localhost":
-        host = _VIRTUAL_COMPANION_DEFAULT_HOST
+        host = "127.0.0.1"
     try:
         address = ipaddress.ip_address(host)
     except ValueError:
@@ -177,10 +177,16 @@ def _validate_virtual_companion_config(config: dict) -> None:
         raise HTTPException(status_code=400, detail="port must be an integer between 1 and 65535")
     from app.config import settings as server_settings
 
-    if server_settings.tcp_host and port == server_settings.tcp_port:
+    physical_host = (server_settings.tcp_host or "").strip().lower()
+    try:
+        physical_address = ipaddress.ip_address(physical_host)
+        physical_is_local = physical_address.is_loopback or physical_address.is_unspecified
+    except ValueError:
+        physical_is_local = physical_host == "localhost"
+    if physical_is_local and port == server_settings.tcp_port:
         raise HTTPException(
             status_code=400,
-            detail="port must differ from the configured physical Companion TCP port",
+            detail="port must differ from a physical Companion TCP endpoint on localhost",
         )
 
     acknowledged = config.get("unsafe_network_acknowledged", False)
@@ -191,11 +197,15 @@ def _validate_virtual_companion_config(config: dict) -> None:
         # Remote-access assertions have no effect on a loopback-only socket.
         acknowledged = False
         secure_access = ""
+    elif address.compressed == "0.0.0.0" and not secure_access:
+        # Default trusted-LAN mode. This is not a claim of VPN/TLS protection;
+        # operators must restrict exposure with their network/firewall.
+        acknowledged = False
     elif not acknowledged or secure_access not in _VIRTUAL_COMPANION_SECURE_ACCESS:
         raise HTTPException(
             status_code=400,
             detail=(
-                "Non-loopback Companion TCP requires unsafe_network_acknowledged=true and "
+                "Custom protected Companion TCP binding requires unsafe_network_acknowledged=true and "
                 "secure_access set to 'vpn' or 'mtls_proxy'. HTTP Basic auth does not protect "
                 "this plaintext TCP listener."
             ),

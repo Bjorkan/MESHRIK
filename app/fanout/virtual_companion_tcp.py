@@ -34,7 +34,8 @@ from app.services.virtual_companion.messages import register_message_commands
 
 NETWORK_WARNING = (
     "Raw Companion TCP is not protected by MESHRIK HTTP Basic auth. "
-    "Keep loopback binding or use a VPN/mTLS gateway with allowlisted clients."
+    "The default 0.0.0.0 bind listens on all IPv4 interfaces. Restrict access to trusted LAN "
+    "devices with a firewall, or use loopback/a VPN/mTLS gateway. Never expose it publicly."
 )
 GENERATION_POLL_SECONDS = 0.25
 

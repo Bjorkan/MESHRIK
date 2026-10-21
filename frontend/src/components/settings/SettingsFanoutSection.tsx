@@ -181,8 +181,8 @@ const CREATE_INTEGRATION_DEFINITIONS: readonly CreateIntegrationDefinition[] = [
     defaultEnabled: false,
     defaults: {
       config: {
-        bind_host: '127.0.0.1',
-        port: 4001,
+        bind_host: '0.0.0.0',
+        port: 5000,
         unsafe_network_acknowledged: false,
         secure_access: '',
         virtual_channel_capacity: 40,
@@ -499,8 +499,9 @@ function normalizeIntegrationConfigForSave(
     if (!bindHost && secureAccess) {
       throw new Error('A protected literal bind address is required for remote access');
     }
-    normalized.bind_host = bindHost === 'localhost' || !bindHost ? '127.0.0.1' : bindHost;
-    if (!isVirtualLoopbackHost(String(normalized.bind_host))) {
+    normalized.bind_host = bindHost === 'localhost' ? '127.0.0.1' : bindHost || '0.0.0.0';
+    const trustedLan = normalized.bind_host === '0.0.0.0' && !secureAccess;
+    if (!trustedLan && !isVirtualLoopbackHost(String(normalized.bind_host))) {
       if (!isLiteralIpAddress(String(normalized.bind_host))) {
         throw new Error('Remote bind address must be a literal IPv4 or IPv6 address');
       }
@@ -897,10 +898,12 @@ function VirtualCompanionConfigEditor({
     queryKey: queryKeys.channels(),
     queryFn: ({ signal }) => api.getChannels(signal),
   });
-  const bindHost = String(config.bind_host ?? '127.0.0.1');
+  const bindHost = String(config.bind_host ?? '0.0.0.0');
   const secureAccess = String(config.secure_access ?? '');
   const remote =
-    secureAccess === 'vpn' || secureAccess === 'mtls_proxy' || !isVirtualLoopbackHost(bindHost);
+    secureAccess === 'vpn' ||
+    secureAccess === 'mtls_proxy' ||
+    (!isVirtualLoopbackHost(bindHost) && bindHost !== '0.0.0.0');
   const capacity = Number(config.virtual_channel_capacity ?? 40);
   const slots = Array.isArray(config.channel_slots)
     ? (config.channel_slots as Array<string | null>)
@@ -913,10 +916,10 @@ function VirtualCompanionConfigEditor({
     status?.status === 'listening' ? 'Listening' : status?.status === 'error' ? 'Error' : 'Off';
 
   const updateAccessMode = (mode: string) => {
-    if (mode === 'loopback') {
+    if (mode === 'loopback' || mode === 'lan') {
       onChange({
         ...config,
-        bind_host: '127.0.0.1',
+        bind_host: mode === 'lan' ? '0.0.0.0' : '127.0.0.1',
         secure_access: '',
         unsafe_network_acknowledged: false,
       });
@@ -924,7 +927,7 @@ function VirtualCompanionConfigEditor({
     }
     onChange({
       ...config,
-      bind_host: isVirtualLoopbackHost(bindHost) ? '' : bindHost,
+      bind_host: isVirtualLoopbackHost(bindHost) || bindHost === '0.0.0.0' ? '' : bindHost,
       secure_access: mode,
       unsafe_network_acknowledged: false,
     });
@@ -968,7 +971,7 @@ function VirtualCompanionConfigEditor({
           </div>
           <div>
             <span className="text-muted-foreground">Endpoint:</span> {status?.bind_host ?? bindHost}
-            :{status?.port ?? String(config.port ?? 4001)}
+            :{status?.port ?? String(config.port ?? 5000)}
           </div>
           <div>
             <span className="text-muted-foreground">Clients:</span> {status?.clients ?? 0}
@@ -1038,9 +1041,10 @@ function VirtualCompanionConfigEditor({
           <select
             id="virtual-companion-access"
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            value={remote ? secureAccess || 'vpn' : 'loopback'}
+            value={remote ? secureAccess || 'vpn' : bindHost === '0.0.0.0' ? 'lan' : 'loopback'}
             onChange={(event) => updateAccessMode(event.target.value)}
           >
+            <option value="lan">Local area network (0.0.0.0)</option>
             <option value="loopback">This MESHRIK device only (localhost)</option>
             <option value="vpn">Remote through a protected VPN</option>
             <option value="mtls_proxy">Remote through an mTLS proxy</option>
@@ -1088,6 +1092,12 @@ function VirtualCompanionConfigEditor({
               Open the MESHRIK security guide
             </a>
           </div>
+        ) : bindHost === '0.0.0.0' ? (
+          <p className="text-[0.8125rem] text-warning">
+            Listens on all IPv4 interfaces, not only the LAN. Connect using this MESHRIK host&apos;s
+            LAN address, not 0.0.0.0. Raw TCP has no authentication or encryption; restrict this
+            port to trusted devices with a firewall and never expose it publicly.
+          </p>
         ) : (
           <p className="text-[0.8125rem] text-muted-foreground">
             Localhost cannot be reached by a phone or another device. Choose a protected remote
@@ -1102,7 +1112,7 @@ function VirtualCompanionConfigEditor({
               type="number"
               min="1"
               max="65535"
-              value={getNumberInputValue(config.port, 4001)}
+              value={getNumberInputValue(config.port, 5000)}
               onChange={(event) =>
                 onChange({ ...config, port: parseIntegerInputValue(event.target.value) })
               }
@@ -4391,8 +4401,8 @@ export function SettingsFanoutSection({
                           <div>
                             Virtual endpoint:{' '}
                             <code>
-                              {String(cfg.config.bind_host ?? '127.0.0.1')}:
-                              {String(cfg.config.port ?? 4001)}
+                              {String(cfg.config.bind_host ?? '0.0.0.0')}:
+                              {String(cfg.config.port ?? 5000)}
                             </code>
                           </div>
                           <div>

@@ -28,7 +28,7 @@ from app.routers.fanout import (
 def virtual_config(**overrides):
     return {
         "bind_host": "127.0.0.1",
-        "port": 4001,
+        "port": 5000,
         "unsafe_network_acknowledged": False,
         "secure_access": "",
         "virtual_channel_capacity": 40,
@@ -37,8 +37,13 @@ def virtual_config(**overrides):
     }
 
 
-def test_virtual_listener_config_defaults_to_loopback_and_has_no_fanout_scope():
-    assert _validate_and_normalize_config("virtual_companion_tcp", {}) == virtual_config()
+def test_virtual_listener_config_defaults_to_lan_and_preserves_explicit_loopback():
+    assert _validate_and_normalize_config("virtual_companion_tcp", {}) == virtual_config(
+        bind_host="0.0.0.0"
+    )
+    assert _validate_and_normalize_config(
+        "virtual_companion_tcp", {"bind_host": "0.0.0.0"}
+    ) == virtual_config(bind_host="0.0.0.0")
     assert _validate_and_normalize_config(
         "virtual_companion_tcp", {"bind_host": "localhost", "port": 4010}
     ) == virtual_config(port=4010)
@@ -52,7 +57,7 @@ def test_virtual_listener_config_defaults_to_loopback_and_has_no_fanout_scope():
     "config,detail",
     [
         ({"bind_host": "companion.example"}, "literal"),
-        ({"bind_host": "0.0.0.0"}, "unsafe_network_acknowledged"),
+        ({"bind_host": "0.0.0.0", "secure_access": "vpn"}, "unsafe_network_acknowledged"),
         (
             {"bind_host": "192.0.2.10", "unsafe_network_acknowledged": True},
             "secure_access",
@@ -69,12 +74,33 @@ def test_virtual_listener_rejects_unsafe_or_illusory_config(config, detail):
     assert detail in exc_info.value.detail
 
 
+@pytest.mark.parametrize("physical_host", ["192.168.1.50", "radio.example"])
+def test_default_port_can_match_radio_on_another_host(physical_host):
+    with (
+        patch("app.config.settings.tcp_host", physical_host),
+        patch("app.config.settings.tcp_port", 5000),
+    ):
+        config = _validate_and_normalize_config("virtual_companion_tcp", {})
+    assert config["bind_host"] == "0.0.0.0"
+    assert config["port"] == 5000
+
+
+@pytest.mark.parametrize("physical_host", ["localhost", "127.0.0.1", "::1", "0.0.0.0"])
+def test_default_port_rejects_local_physical_endpoint_collision(physical_host):
+    with (
+        patch("app.config.settings.tcp_host", physical_host),
+        patch("app.config.settings.tcp_port", 5000),
+        pytest.raises(HTTPException, match="localhost"),
+    ):
+        _validate_and_normalize_config("virtual_companion_tcp", {})
+
+
 def test_non_loopback_requires_explicit_real_access_layer():
     config = _validate_and_normalize_config(
         "virtual_companion_tcp",
         {
             "bind_host": "192.0.2.10",
-            "port": 4001,
+            "port": 5000,
             "unsafe_network_acknowledged": True,
             "secure_access": "vpn",
         },
@@ -98,6 +124,7 @@ async def test_concurrent_creates_are_transactionally_singleton_and_default_off(
     errors = [result for result in results if isinstance(result, HTTPException)]
     assert len(created) == 1
     assert created[0]["enabled"] is False
+    assert created[0]["config"]["bind_host"] == "0.0.0.0"
     assert len(errors) == 1
     assert errors[0].status_code == 409
     rows = [

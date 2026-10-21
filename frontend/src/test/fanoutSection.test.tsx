@@ -56,7 +56,7 @@ const virtualCompanionConfig: FanoutConfig = {
   enabled: false,
   config: {
     bind_host: '127.0.0.1',
-    port: 4001,
+    port: 5000,
     unsafe_network_acknowledged: false,
     secure_access: '',
     virtual_channel_capacity: 40,
@@ -223,40 +223,48 @@ describe('SettingsFanoutSection', () => {
     expect(genericCommunityIndex).toBeLessThan(meshRankIndex);
   });
 
-  it('only opens a virtual Companion draft and creates it OFF by default', async () => {
-    mockedApi.createFanoutConfig.mockResolvedValue(virtualCompanionConfig);
-    renderSection();
-    const dialog = await openCreateIntegrationDialog();
-    expect(mockedApi.createFanoutConfig).not.toHaveBeenCalled();
+  it.each(['lan', 'loopback'])(
+    'creates an OFF virtual Companion with %s access',
+    async (access) => {
+      mockedApi.createFanoutConfig.mockResolvedValue(virtualCompanionConfig);
+      renderSection();
+      const dialog = await openCreateIntegrationDialog();
+      expect(mockedApi.createFanoutConfig).not.toHaveBeenCalled();
 
-    fireEvent.click(
-      within(dialog).getByRole('button', {
-        name: startsWithAccessibleName('MeshCore App (Virtual TCP Companion)'),
-      })
-    );
-    confirmCreateIntegration();
+      fireEvent.click(
+        within(dialog).getByRole('button', {
+          name: startsWithAccessibleName('MeshCore App (Virtual TCP Companion)'),
+        })
+      );
+      confirmCreateIntegration();
 
-    expect(await screen.findByText(/MESHRIK's hostname/)).toBeInTheDocument();
-    expect(screen.getByText(/localhost cannot be reached by a phone/i)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Save as Disabled' }));
+      expect(await screen.findByText(/MESHRIK's hostname/)).toBeInTheDocument();
+      expect(screen.getByLabelText('Access')).toHaveValue('lan');
+      expect(screen.getByText(/Listens on all IPv4 interfaces/i)).toBeInTheDocument();
+      if (access === 'loopback') {
+        fireEvent.change(screen.getByLabelText('Access'), { target: { value: 'loopback' } });
+        expect(screen.getByText(/localhost cannot be reached by a phone/i)).toBeInTheDocument();
+      }
+      fireEvent.click(screen.getByRole('button', { name: 'Save as Disabled' }));
 
-    await waitFor(() =>
-      expect(mockedApi.createFanoutConfig).toHaveBeenCalledWith({
-        type: 'virtual_companion_tcp',
-        name: 'MeshCore App',
-        enabled: false,
-        config: {
-          bind_host: '127.0.0.1',
-          port: 4001,
-          unsafe_network_acknowledged: false,
-          secure_access: '',
-          virtual_channel_capacity: 40,
-          channel_slots: [],
-        },
-        scope: { messages: 'none', raw_packets: 'none' },
-      })
-    );
-  });
+      await waitFor(() =>
+        expect(mockedApi.createFanoutConfig).toHaveBeenCalledWith({
+          type: 'virtual_companion_tcp',
+          name: 'MeshCore App',
+          enabled: false,
+          config: {
+            bind_host: access === 'lan' ? '0.0.0.0' : '127.0.0.1',
+            port: 5000,
+            unsafe_network_acknowledged: false,
+            secure_access: '',
+            virtual_channel_capacity: 40,
+            channel_slots: [],
+          },
+          scope: { messages: 'none', raw_packets: 'none' },
+        })
+      );
+    }
+  );
 
   it('removes the singleton type from the create picker once configured', async () => {
     mockedApi.getFanoutConfigs.mockResolvedValue([virtualCompanionConfig]);
@@ -281,7 +289,7 @@ describe('SettingsFanoutSection', () => {
             type: enabled.type,
             status: 'listening',
             bind_host: '127.0.0.1',
-            port: 4001,
+            port: 5000,
             clients: 2,
             identity_status: 'verified',
             identity_public_key: 'ab'.repeat(32),

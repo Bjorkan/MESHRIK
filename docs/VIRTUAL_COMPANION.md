@@ -16,7 +16,7 @@ proxy and it never asks an app to connect to the physical Companion radio.
 | Endpoint | Owner | Example | Purpose |
 | --- | --- | --- | --- |
 | Physical radio transport | MESHRIK only | radio USB/BLE or `radio-host:5000` | MESHRIK's single managed connection to the actual Companion |
-| Virtual Companion TCP | Official apps | `meshrik-vpn-host:4001` | Separate listener backed by MESHRIK state and its existing radio worker |
+| Virtual Companion TCP | Official apps | `meshrik-vpn-host:5000` | Separate listener backed by MESHRIK state and its existing radio worker |
 
 Never enter the physical radio's address or port in an app while following this guide. Never expose
 either plaintext Companion TCP port to the public internet. MESHRIK HTTP Basic auth, HTTPS, and its
@@ -33,13 +33,16 @@ transports separately when single ownership matters.
 2. In MESHRIK, open **Settings → Integrations → Add Integration**.
 3. Choose **MeshCore App (Virtual TCP Companion)** and select **Create**. Only one instance is
    allowed. Merely viewing settings or creating the draft does not bind a socket.
-4. Leave **Access** at **This MESHRIK device only (localhost)** for a client on the same host. The
-   initial endpoint is `127.0.0.1:4001` and the integration is OFF.
-5. For a phone or another host, first establish a trusted VPN or an mTLS TCP gateway. Select the
-   matching protected access mode, enter a literal address assigned to the MESHRIK host, and confirm
-   the security warning. Do not use a public interface or router port-forward.
-6. Choose a dedicated port that is unused by the web UI and by the physical radio. In particular,
-   do not reuse `MESHCORE_TCP_PORT` when MESHRIK itself reaches the radio over TCP.
+4. The default **Access** is **Local area network (0.0.0.0)**, with endpoint `0.0.0.0:5000`;
+   the integration is still OFF. This listens on all IPv4 interfaces, not only the LAN. Restrict
+   access to trusted devices using a firewall. Existing saved bind addresses are not changed.
+5. For a phone on the trusted LAN, connect to the MESHRIK host's LAN IP, never `0.0.0.0`.
+   Select **This MESHRIK device only (localhost)** to restrict the listener to the same host.
+   For protected remote access, establish a VPN or mTLS gateway, select the matching access mode,
+   enter its bind address and confirm the warning. Never expose raw TCP publicly or port-forward it.
+6. The default virtual port is `5000`; it must be unused on the MESHRIK host. A physical radio on
+   another host may also use port `5000`: these are different endpoints. A physical Companion
+   endpoint on localhost must use a different port.
 7. Optionally select DB channels under **DB-backed channel selection**. Review the stable virtual
    slot numbers before saving.
 8. Select **Save as Enabled**. Wait for **Listening**; an optimistic enabled state is never success.
@@ -180,7 +183,7 @@ The UI is preferred. The REST endpoints are useful for audited automation:
 - `GET /api/health` — live listener/client status.
 - `GET /api/debug` — redacted support snapshot; only erroring fanouts are included.
 
-Safe loopback creation example:
+Trusted-LAN creation example (saved disabled):
 
 ```bash
 curl -X POST http://127.0.0.1:8000/api/fanout \
@@ -190,8 +193,8 @@ curl -X POST http://127.0.0.1:8000/api/fanout \
     "name": "MeshCore App",
     "enabled": false,
     "config": {
-      "bind_host": "127.0.0.1",
-      "port": 4001,
+      "bind_host": "0.0.0.0",
+      "port": 5000,
       "unsafe_network_acknowledged": false,
       "secure_access": "",
       "virtual_channel_capacity": 40,
@@ -201,10 +204,14 @@ curl -X POST http://127.0.0.1:8000/api/fanout \
   }'
 ```
 
-`bind_host` must be `localhost` or a literal IPv4/IPv6 address. Non-loopback binds require both
-`unsafe_network_acknowledged=true` and `secure_access` equal to `vpn` or `mtls_proxy`. This is an
-operator assertion about an already-deployed protection layer, not TLS/auth implemented by MESHRIK.
-Port is 1–65535 and cannot equal the configured physical Companion TCP port. Capacity is 1–255;
+`bind_host` must be `localhost` or a literal IPv4/IPv6 address; omission defaults to `0.0.0.0`.
+The default trusted-LAN mode uses `secure_access=""` and does not assert VPN/TLS protection.
+`localhost` still resolves to `127.0.0.1`. Custom non-loopback bindings and explicit protected modes
+require both `unsafe_network_acknowledged=true` and `secure_access` equal to `vpn` or `mtls_proxy`.
+This is an operator assertion about an already-deployed protection layer, not TLS/auth implemented
+by MESHRIK. Use a firewall to prevent the all-interface default from becoming publicly accessible.
+Port defaults to `5000`, accepts 1–65535, and must differ from a physical Companion endpoint on
+localhost. A radio on another host can use the same port number. Capacity is 1–255;
 `channel_slots` is a bounded list of unique 16-byte channel keys or `null` holes. Scope is always
 forced to `none/none` because Companion commands do not enter fanout callbacks.
 
@@ -212,7 +219,8 @@ forced to `none/none` because Companion commands do not enter fanout callbacks.
 
 ### Native/systemd
 
-For a same-host client, keep `127.0.0.1`. For a remote client, bind the literal MESHRIK host address
+For trusted LAN clients, use the default `0.0.0.0` and restrict the port with a firewall.
+For a same-host client, select `127.0.0.1`. For protected remote access, bind the literal MESHRIK host address
 on a private VPN interface and firewall the chosen port to approved VPN peers. The systemd service
 needs no extra environment variable: configuration is persisted in SQLite. Verify the address
 exists before enabling; a wrong address or occupied port produces `Error`, not a fallback.
@@ -220,7 +228,7 @@ exists before enabling; a wrong address or occupied port produces `Error`, not a
 ### Docker Compose
 
 Loopback inside a container is not the Docker host. The listener must bind `0.0.0.0` in the
-container (with protected-remote acknowledgement), while Compose restricts publication to the
+container (the default trusted-LAN mode), while Compose restricts publication to the
 host's VPN address:
 
 ```yaml
@@ -228,18 +236,18 @@ services:
   meshrik:
     ports:
       - "8000:8000"
-      - "10.8.0.1:4001:4001" # replace with the host VPN address
+      - "10.8.0.1:5000:5000" # replace with the host VPN address
 ```
 
-Do not use `4001:4001` without a host address on an untrusted host: it commonly publishes on every
-interface. Do not publish the physical `MESHCORE_TCP_PORT`. If port 4001 is occupied, choose another
+Do not use `5000:5000` without a host address on an untrusted host: it commonly publishes on every
+interface. Do not publish the physical `MESHCORE_TCP_PORT`. If port 5000 is occupied, choose another
 dedicated virtual port in both the integration and mapping. Restart the container after changing
 Compose port mappings, then verify the integration still reports `Listening`.
 
 ### Home Assistant add-on
 
 Home Assistant ingress exposes HTTP, not arbitrary Companion TCP. The add-on wrapper must explicitly
-publish a dedicated TCP port (for example `4001/tcp`) or use a reviewed host-network configuration;
+publish a dedicated TCP port (for example `5000/tcp`) or use a reviewed host-network configuration;
 otherwise a phone cannot reach a container-loopback listener. In the add-on case bind the listener
 inside the container as documented by that wrapper—commonly `0.0.0.0`—and restrict the host port to
 a VPN/firewall. Never treat ingress authentication as protection for the raw TCP port. If the

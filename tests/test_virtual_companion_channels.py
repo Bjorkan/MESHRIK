@@ -30,7 +30,7 @@ KEY_C = "33" * 16
 def _config(**changes):
     value = {
         "bind_host": "127.0.0.1",
-        "port": 4001,
+        "port": 5000,
         "unsafe_network_acknowledged": False,
         "secure_access": "",
         "virtual_channel_capacity": 3,
@@ -152,7 +152,7 @@ def test_config_normalizes_persisted_slots_and_rejects_invalid_secrets():
             "channel_slots": [KEY_A.lower(), None, KEY_B.lower()],
         },
     )
-    assert normalized == _config()
+    assert normalized == _config(bind_host="0.0.0.0")
 
     invalid = [
         {"virtual_channel_capacity": 0},
