@@ -21,7 +21,8 @@ For advanced setup and troubleshooting see [README_ADVANCED.md](README_ADVANCED.
 
 > [!CAUTION]
 > The virtual Companion listener is raw plaintext TCP and is not protected by MESHRIK HTTP Basic
-> auth or HTTPS. It defaults OFF. Use only loopback or a separately protected VPN/mTLS gateway,
+> auth or HTTPS. It defaults OFF with bind address `0.0.0.0` (all IPv4 interfaces). Restrict access
+> to trusted LAN devices using a firewall, or select loopback/a protected VPN/mTLS gateway;
 > never expose it publicly, and never give an app the physical radio's TCP endpoint. See the
 > [operator guide and release gate](docs/VIRTUAL_COMPANION.md).
 

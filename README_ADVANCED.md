@@ -82,8 +82,10 @@ The backend serves the SPA entry document for these paths, so direct loads and b
 
 The optional MeshCore App integration exposes a separate raw Companion TCP listener for trusted app
 clients. It defaults OFF and is configured in Settings → Integrations, not with a hidden environment
-variable. HTTP reverse-proxy authentication and TLS do not protect this socket. Use loopback or a
-separately protected VPN/mTLS gateway, map a dedicated container/add-on port, and never forward the
+variable. The default bind is `0.0.0.0` (all IPv4 interfaces); clients connect to the host's LAN IP.
+HTTP reverse-proxy authentication and TLS do not protect this socket. Restrict it to trusted LAN
+devices with a firewall, or select loopback/a protected VPN/mTLS gateway. Map a dedicated
+container/add-on port, never expose it publicly, and never forward the
 physical radio's TCP endpoint.
 
 See the [Virtual Companion operator guide and release checklist](docs/VIRTUAL_COMPANION.md) for
