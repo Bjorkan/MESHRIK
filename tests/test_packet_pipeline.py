@@ -84,6 +84,32 @@ def _build_ack_packet(code: bytes, *, route_type: RouteType = RouteType.DIRECT) 
 
 
 class TestHistoricalDmDecryptionStart:
+    def test_supervisor_can_restart_on_a_new_event_loop(self):
+        """A clean stop must not retain queue waiters bound to the old event loop."""
+        from app.packet_processor import HistoricalDecryptSupervisor
+
+        supervisor = HistoricalDecryptSupervisor(cap=2)
+
+        async def run_cycle(contact_key: str) -> None:
+            release_decrypt = asyncio.Event()
+
+            async def decrypt(*_args):
+                await release_decrypt.wait()
+
+            with (
+                patch("app.packet_processor.get_private_key", return_value=b"k" * 64),
+                patch("app.packet_processor.run_historical_dm_decryption", side_effect=decrypt),
+            ):
+                assert supervisor.admit(contact_key, "Alice")
+                join_task = asyncio.create_task(supervisor.pending.join())
+                await asyncio.sleep(0)
+                release_decrypt.set()
+                await asyncio.wait_for(join_task, timeout=5)
+                await supervisor.stop()
+
+        asyncio.run(run_cycle("aa" * 32))
+        asyncio.run(run_cycle("bb" * 32))
+
     @pytest.mark.asyncio
     async def test_repeated_automatic_attempts_skip_quietly_without_private_key(self):
         """Expected missing capability is logged once and never schedules decrypt work."""
