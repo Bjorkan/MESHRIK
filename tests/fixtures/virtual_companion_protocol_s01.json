@@ -1,0 +1,197 @@
+{
+  "note": "Synthetic firmware-source-derived wire examples; NOT captures of official app and NOT real credentials.",
+  "source": "User-supplied MeshCore-main firmware archive, MyMesh.h protocol14 (v1.18.0); earlier baseline protocol13 from MESHRIK test_companion_protocol_118.py",
+  "capture_status": "NOT VERIFIED: test with current official Android/iOS builds required before release",
+  "frame_format": {
+    "incoming_prefix": 60,
+    "outgoing_prefix": 62,
+    "length": "uint16 little endian",
+    "max_payload": 176
+  },
+  "examples": [
+    {
+      "name": "app_start",
+      "direction": "request",
+      "meaning": "APP_START 8-byte reserved request",
+      "source": "MyMesh.cpp:1076-1084",
+      "payload_hex": "0100000000000000",
+      "tcp_hex": "3c08000100000000000000"
+    },
+    {
+      "name": "device_query_v13",
+      "direction": "request",
+      "meaning": "DEVICE_QUERY app target protocol13",
+      "source": "MyMesh.cpp:1055-1075",
+      "payload_hex": "160d",
+      "tcp_hex": "3c0200160d"
+    },
+    {
+      "name": "device_query_v14",
+      "direction": "request",
+      "meaning": "DEVICE_QUERY app target protocol14",
+      "source": "MyMesh.cpp:1055-1075",
+      "payload_hex": "160e",
+      "tcp_hex": "3c0200160e"
+    },
+    {
+      "name": "get_contacts_since",
+      "direction": "request",
+      "meaning": "GET_CONTACTS with little-endian since",
+      "source": "MyMesh.cpp:1238-1258",
+      "payload_hex": "0404030201",
+      "tcp_hex": "3c05000404030201"
+    },
+    {
+      "name": "contacts_start",
+      "direction": "response",
+      "meaning": "CONTACTS_START total=2",
+      "source": "MyMesh.cpp:1248-1252",
+      "payload_hex": "0202000000",
+      "tcp_hex": "3e05000202000000"
+    },
+    {
+      "name": "contacts_end",
+      "direction": "response",
+      "meaning": "END_OF_CONTACTS most recent lastmod",
+      "source": "MyMesh.cpp:2403-2409",
+      "payload_hex": "0404030201",
+      "tcp_hex": "3e05000404030201"
+    },
+    {
+      "name": "contact_entry",
+      "direction": "response",
+      "meaning": "CONTACT full synthetic key, path64, name32, four uint32",
+      "source": "MyMesh.cpp:170-190",
+      "payload_hex": "0311111111111111111111111111111111111111111111111111111111111111110100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000053796e74686574696320436f6e7461637400000000000000000000000000000000f15365000000000000000064f15365",
+      "tcp_hex": "3e94000311111111111111111111111111111111111111111111111111111111111111110100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000053796e74686574696320436f6e7461637400000000000000000000000000000000f15365000000000000000064f15365"
+    },
+    {
+      "name": "get_channel",
+      "direction": "request",
+      "meaning": "GET_CHANNEL slot2",
+      "source": "MyMesh.cpp:1752-1766",
+      "payload_hex": "1f02",
+      "tcp_hex": "3c02001f02"
+    },
+    {
+      "name": "channel_info",
+      "direction": "response",
+      "meaning": "CHANNEL_INFO 32-byte name and 16-byte synthetic key",
+      "source": "MyMesh.cpp:1752-1765",
+      "payload_hex": "120253796e7468657469630000000000000000000000000000000000000000000000000102030405060708090a0b0c0d0e0f",
+      "tcp_hex": "3e3200120253796e7468657469630000000000000000000000000000000000000000000000000102030405060708090a0b0c0d0e0f"
+    },
+    {
+      "name": "self_info",
+      "direction": "response",
+      "meaning": "SELF_INFO existing identity-shaped synthetic status",
+      "source": "MyMesh.cpp:1076-1117",
+      "payload_hex": "05010e16222222222222222222222222222222222222222222222222222222222222222200000000000000000000000038f60d0090d003000b0553796e746865746963204e6f6465",
+      "tcp_hex": "3e480005010e16222222222222222222222222222222222222222222222222222222222222222200000000000000000000000038f60d0090d003000b0553796e746865746963204e6f6465"
+    },
+    {
+      "name": "device_info",
+      "direction": "response",
+      "meaning": "DEVICE_INFO source-defined fields, synthetic zero BLE PIN",
+      "source": "MyMesh.cpp:1055-1075",
+      "payload_hex": "0d0e190a000000003135204f637420323032360053796e74686574696320426f6172640000000000000000000000000000000000000000000000000076312e31382e30000000000000000000000000000001",
+      "tcp_hex": "3e52000d0e190a000000003135204f637420323032360053796e74686574696320426f6172640000000000000000000000000000000000000000000000000076312e31382e30000000000000000000000000000001"
+    },
+    {
+      "name": "get_next",
+      "direction": "request",
+      "meaning": "SYNC_NEXT_MESSAGE virtual cursor only",
+      "source": "MyMesh.cpp:1415-1423",
+      "payload_hex": "0a",
+      "tcp_hex": "3c01000a"
+    },
+    {
+      "name": "empty_queue",
+      "direction": "response",
+      "meaning": "NO_MORE_MESSAGES",
+      "source": "MyMesh.cpp:1415-1423",
+      "payload_hex": "0a",
+      "tcp_hex": "3e01000a"
+    },
+    {
+      "name": "waiting_push",
+      "direction": "response",
+      "meaning": "PUSH_CODE_MSG_WAITING",
+      "source": "MyMesh.cpp:470-473",
+      "payload_hex": "83",
+      "tcp_hex": "3e010083"
+    },
+    {
+      "name": "dm_receive_v3",
+      "direction": "response",
+      "meaning": "V3 DM synthetic prefix6, flood sentinel, quarter-SNR and text",
+      "source": "MyMesh.cpp:440-464",
+      "payload_hex": "10fc0000333333333333ff00c8f1536548656c6c6f",
+      "tcp_hex": "3e150010fc0000333333333333ff00c8f1536548656c6c6f"
+    },
+    {
+      "name": "channel_receive_v3",
+      "direction": "response",
+      "meaning": "V3 channel receive with synthetic slot2",
+      "source": "MyMesh.cpp:558-577",
+      "payload_hex": "11fc0000020000c8f153654368616e6e656c2068656c6c6f",
+      "tcp_hex": "3e180011fc0000020000c8f153654368616e6e656c2068656c6c6f"
+    },
+    {
+      "name": "dm_send",
+      "direction": "request",
+      "meaning": "SEND_TXT_MSG timestamp, prefix and text",
+      "source": "MyMesh.cpp:1132-1177",
+      "payload_hex": "020000c8f1536533333333333348656c6c6f",
+      "tcp_hex": "3c1200020000c8f1536533333333333348656c6c6f"
+    },
+    {
+      "name": "channel_send",
+      "direction": "request",
+      "meaning": "SEND_CHANNEL_TXT_MSG slot2 and text",
+      "source": "MyMesh.cpp:1178-1197",
+      "payload_hex": "030002c8f153654869",
+      "tcp_hex": "3c0900030002c8f153654869"
+    },
+    {
+      "name": "dm_sent",
+      "direction": "response",
+      "meaning": "RESP_SENT synthetic ACK code and estimate",
+      "source": "MyMesh.cpp:1167-1171",
+      "payload_hex": "060010203040e8030000",
+      "tcp_hex": "3e0a00060010203040e8030000"
+    },
+    {
+      "name": "ack_push",
+      "direction": "response",
+      "meaning": "PUSH_SEND_CONFIRMED synthetic ACK and trip time",
+      "source": "MyMesh.cpp:422-431",
+      "payload_hex": "8210203040d2040000",
+      "tcp_hex": "3e09008210203040d2040000"
+    },
+    {
+      "name": "unsupported",
+      "direction": "response",
+      "meaning": "ERR_CODE_UNSUPPORTED_CMD",
+      "source": "MyMesh.cpp:155-161",
+      "payload_hex": "0101",
+      "tcp_hex": "3e02000101"
+    },
+    {
+      "name": "not_found",
+      "direction": "response",
+      "meaning": "ERR_CODE_NOT_FOUND",
+      "source": "MyMesh.cpp:155-161",
+      "payload_hex": "0102",
+      "tcp_hex": "3e02000102"
+    },
+    {
+      "name": "disabled",
+      "direction": "response",
+      "meaning": "RESP_CODE_DISABLED",
+      "source": "MyMesh.cpp:163-168",
+      "payload_hex": "0f",
+      "tcp_hex": "3e01000f"
+    }
+  ]
+}
