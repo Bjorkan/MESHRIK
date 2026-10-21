@@ -3,6 +3,7 @@
 import asyncio
 import contextlib
 import itertools
+import time
 from dataclasses import dataclass, field
 
 from .dispatch import CommandDispatcher
@@ -41,6 +42,7 @@ class VirtualCompanionSession:
         outbox_size: int = DEFAULT_OUTBOX_SIZE,
         read_timeout: float = DEFAULT_READ_TIMEOUT,
         write_timeout: float = DEFAULT_WRITE_TIMEOUT,
+        now_fn=time.time,
     ) -> None:
         if outbox_size < 1:
             raise ValueError("outbox_size must be positive")
@@ -50,6 +52,9 @@ class VirtualCompanionSession:
         self.state = SessionState()
         self.read_timeout = read_timeout
         self.write_timeout = write_timeout
+        self._now = now_fn
+        self.connected_at = int(now_fn())
+        self.last_seen_at = self.connected_at
         self._outbox: asyncio.PriorityQueue[tuple[int, int, bytes]] = asyncio.PriorityQueue(
             maxsize=outbox_size
         )
@@ -117,6 +122,7 @@ class VirtualCompanionSession:
     async def _read_loop(self) -> None:
         while True:
             payload = await read_frame(self.reader, timeout=self.read_timeout)
+            self.last_seen_at = int(self._now())
             if payload == b"\x0a":
                 self._message_waiting_pending = False
             operation = asyncio.create_task(self.dispatcher.dispatch(payload, self.state))

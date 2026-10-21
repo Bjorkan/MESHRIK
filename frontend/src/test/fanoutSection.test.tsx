@@ -49,6 +49,24 @@ const webhookConfig: FanoutConfig = {
   created_at: 1000,
 };
 
+const virtualCompanionConfig: FanoutConfig = {
+  id: 'virtual-1',
+  type: 'virtual_companion_tcp',
+  name: 'MeshCore App',
+  enabled: false,
+  config: {
+    bind_host: '127.0.0.1',
+    port: 4001,
+    unsafe_network_acknowledged: false,
+    secure_access: '',
+    virtual_channel_capacity: 40,
+    channel_slots: [],
+  },
+  scope: { messages: 'none', raw_packets: 'none' },
+  sort_order: 0,
+  created_at: 1000,
+};
+
 function makeQueryClient() {
   return new QueryClient({
     defaultOptions: {
@@ -152,11 +170,16 @@ describe('SettingsFanoutSection', () => {
     const optionButtons = within(dialog)
       .getAllByRole('button')
       .filter((button) => button.hasAttribute('aria-pressed'));
-    expect(optionButtons).toHaveLength(11);
+    expect(optionButtons).toHaveLength(12);
     expect(within(dialog).getByRole('button', { name: 'Close' })).toBeInTheDocument();
     expect(within(dialog).getByRole('button', { name: 'Create' })).toBeInTheDocument();
     expect(
       within(dialog).getByRole('button', { name: startsWithAccessibleName('Private MQTT') })
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole('button', {
+        name: startsWithAccessibleName('MeshCore App (Virtual TCP Companion)'),
+      })
     ).toBeInTheDocument();
     expect(
       within(dialog).getByRole('button', { name: startsWithAccessibleName('MeshRank') })
@@ -198,6 +221,207 @@ describe('SettingsFanoutSection', () => {
     expect(genericCommunityIndex).toBeGreaterThan(-1);
     expect(meshRankIndex).toBeGreaterThan(-1);
     expect(genericCommunityIndex).toBeLessThan(meshRankIndex);
+  });
+
+  it('only opens a virtual Companion draft and creates it OFF by default', async () => {
+    mockedApi.createFanoutConfig.mockResolvedValue(virtualCompanionConfig);
+    renderSection();
+    const dialog = await openCreateIntegrationDialog();
+    expect(mockedApi.createFanoutConfig).not.toHaveBeenCalled();
+
+    fireEvent.click(
+      within(dialog).getByRole('button', {
+        name: startsWithAccessibleName('MeshCore App (Virtual TCP Companion)'),
+      })
+    );
+    confirmCreateIntegration();
+
+    expect(await screen.findByText(/MESHRIK's hostname/)).toBeInTheDocument();
+    expect(screen.getByText(/localhost cannot be reached by a phone/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Save as Disabled' }));
+
+    await waitFor(() =>
+      expect(mockedApi.createFanoutConfig).toHaveBeenCalledWith({
+        type: 'virtual_companion_tcp',
+        name: 'MeshCore App',
+        enabled: false,
+        config: {
+          bind_host: '127.0.0.1',
+          port: 4001,
+          unsafe_network_acknowledged: false,
+          secure_access: '',
+          virtual_channel_capacity: 40,
+          channel_slots: [],
+        },
+        scope: { messages: 'none', raw_packets: 'none' },
+      })
+    );
+  });
+
+  it('removes the singleton type from the create picker once configured', async () => {
+    mockedApi.getFanoutConfigs.mockResolvedValue([virtualCompanionConfig]);
+    renderSection();
+    const dialog = await openCreateIntegrationDialog();
+    expect(
+      within(dialog).queryByRole('button', {
+        name: startsWithAccessibleName('MeshCore App (Virtual TCP Companion)'),
+      })
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows truthful listener, redacted identity, and privacy-safe client status', async () => {
+    const enabled = { ...virtualCompanionConfig, enabled: true };
+    mockedApi.getFanoutConfigs.mockResolvedValue([enabled]);
+    renderSection({
+      health: {
+        ...baseHealth,
+        fanout_statuses: {
+          'virtual-1': {
+            name: enabled.name,
+            type: enabled.type,
+            status: 'listening',
+            bind_host: '127.0.0.1',
+            port: 4001,
+            clients: 2,
+            identity_status: 'verified',
+            identity_public_key: 'ab'.repeat(32),
+            client_sessions: [
+              {
+                session_id: 'session-1',
+                status: 'connected',
+                connected_at: 100,
+                last_seen_at: 120,
+                protocol_version: 14,
+                identity_verified: true,
+              },
+            ],
+          },
+        },
+      },
+    });
+    await waitFor(() => expect(screen.getByText(enabled.name)).toBeInTheDocument());
+    expect(screen.getByText('Listening')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+
+    expect(await screen.findByLabelText('Verified shared public identity')).toHaveTextContent(
+      /^abababababab…abababab$/
+    );
+    expect(screen.queryByText('ab'.repeat(32))).not.toBeInTheDocument();
+    expect(screen.getByText(/session-1 · connected/)).toBeInTheDocument();
+    expect(screen.getByText(/Protocol 14 · identity verified/)).toBeInTheDocument();
+  });
+
+  it('requires an acknowledged protected transport for remote binding', async () => {
+    mockedApi.createFanoutConfig.mockResolvedValue(virtualCompanionConfig);
+    renderSection();
+    const dialog = await openCreateIntegrationDialog();
+    fireEvent.click(
+      within(dialog).getByRole('button', {
+        name: startsWithAccessibleName('MeshCore App (Virtual TCP Companion)'),
+      })
+    );
+    confirmCreateIntegration();
+
+    fireEvent.change(await screen.findByLabelText('Access'), { target: { value: 'vpn' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save as Enabled' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(/protected literal bind address/i);
+    expect(mockedApi.createFanoutConfig).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText('Protected bind address'), {
+      target: { value: '10.8.0.4' },
+    });
+    fireEvent.click(
+      screen.getByLabelText(/I confirm this address is protected by the selected VPN/i)
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Save as Disabled' }));
+    await waitFor(() => expect(mockedApi.createFanoutConfig).toHaveBeenCalledTimes(1));
+    expect(mockedApi.createFanoutConfig.mock.calls[0][0]).toMatchObject({
+      enabled: false,
+      config: {
+        bind_host: '10.8.0.4',
+        secure_access: 'vpn',
+        unsafe_network_acknowledged: true,
+      },
+    });
+  });
+
+  it('preserves virtual indexes when removing and adding DB channels', async () => {
+    const keyA = '11'.repeat(16);
+    const keyB = '22'.repeat(16);
+    const keyC = '33'.repeat(16);
+    const configured = {
+      ...virtualCompanionConfig,
+      config: { ...virtualCompanionConfig.config, channel_slots: [keyA, null, keyB] },
+    };
+    mockedApi.getFanoutConfigs.mockResolvedValue([configured]);
+    mockedApi.getChannels.mockResolvedValue(
+      [
+        [keyA, 'Alpha'],
+        [keyB, 'Beta'],
+        [keyC, 'Gamma'],
+      ].map(([key, name]) => ({
+        key,
+        name,
+        is_hashtag: false,
+        on_radio: false,
+        radio_residency: 'database_only' as const,
+        last_read_at: null,
+        favorite: false,
+        muted: false,
+      }))
+    );
+    mockedApi.updateFanoutConfig.mockResolvedValue(configured);
+    renderSection();
+    await waitFor(() => expect(screen.getByText(configured.name)).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove virtual slot 0' }));
+    fireEvent.change(screen.getByLabelText('Channel to add to virtual slots'), {
+      target: { value: keyC },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Add stable slot' }));
+    expect(screen.getByText(/never reassign hardware channel slots/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Save as Disabled' }));
+
+    await waitFor(() => expect(mockedApi.updateFanoutConfig).toHaveBeenCalled());
+    expect(mockedApi.updateFanoutConfig.mock.calls[0][1]).toMatchObject({
+      config: { channel_slots: [keyC, null, keyB] },
+    });
+  });
+
+  it('does not show a false enabled state when listener startup fails', async () => {
+    mockedApi.getFanoutConfigs.mockResolvedValue([virtualCompanionConfig]);
+    mockedApi.updateFanoutConfig.mockRejectedValue(new Error('Listener unavailable (OS error 98)'));
+    renderSection();
+    await waitFor(() => expect(screen.getByText(virtualCompanionConfig.name)).toBeInTheDocument());
+
+    const toggle = screen.getByRole('checkbox', { name: `Enable ${virtualCompanionConfig.name}` });
+    expect(toggle).not.toBeChecked();
+    fireEvent.click(toggle);
+    await waitFor(() => expect(mockedApi.updateFanoutConfig).toHaveBeenCalled());
+    expect(toggle).not.toBeChecked();
+    expect(screen.getByText('Disabled')).toBeInTheDocument();
+  });
+
+  it('locks the virtual listener toggle while its request is pending', async () => {
+    let resolveUpdate: ((config: FanoutConfig) => void) | undefined;
+    mockedApi.getFanoutConfigs.mockResolvedValue([virtualCompanionConfig]);
+    mockedApi.updateFanoutConfig.mockImplementation(
+      () =>
+        new Promise<FanoutConfig>((resolve) => {
+          resolveUpdate = resolve;
+        })
+    );
+    renderSection();
+    await waitFor(() => expect(screen.getByText(virtualCompanionConfig.name)).toBeInTheDocument());
+
+    const toggle = screen.getByRole('checkbox', { name: `Enable ${virtualCompanionConfig.name}` });
+    fireEvent.click(toggle);
+    await waitFor(() => expect(mockedApi.updateFanoutConfig).toHaveBeenCalledTimes(1));
+    expect(toggle).toBeDisabled();
+    expect(toggle).not.toBeChecked();
+
+    resolveUpdate?.({ ...virtualCompanionConfig, enabled: true });
   });
 
   it('shows bot option in add integration dialog when bots are enabled', async () => {

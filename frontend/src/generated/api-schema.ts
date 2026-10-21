@@ -3095,8 +3095,16 @@ export interface components {
     FanoutStatusResponse: {
       /** Bind Host */
       bind_host?: string | null;
+      /** Client Sessions */
+      client_sessions?: components['schemas']['VirtualCompanionSessionStatusResponse'][] | null;
       /** Clients */
       clients?: number | null;
+      /** Configured Channel Slots */
+      configured_channel_slots?: number | null;
+      /** Identity Public Key */
+      identity_public_key?: string | null;
+      /** Identity Status */
+      identity_status?: ('verified' | 'unavailable') | null;
       /** Last Error */
       last_error?: string | null;
       /** Name */
@@ -3109,6 +3117,8 @@ export interface components {
       status: string;
       /** Type */
       type: string;
+      /** Virtual Channel Capacity */
+      virtual_channel_capacity?: number | null;
     };
     /** FavoriteRequest */
     FavoriteRequest: {
@@ -5176,6 +5186,24 @@ export interface components {
     VapidPublicKeyResponse: {
       /** Public Key */
       public_key: string;
+    };
+    /** VirtualCompanionSessionStatusResponse */
+    VirtualCompanionSessionStatusResponse: {
+      /** Connected At */
+      connected_at: number;
+      /**
+       * Identity Verified
+       * @default false
+       */
+      identity_verified: boolean;
+      /** Last Seen At */
+      last_seen_at: number;
+      /** Protocol Version */
+      protocol_version?: number | null;
+      /** Session Id */
+      session_id: string;
+      /** Status */
+      status: string;
     };
   };
   responses: never;

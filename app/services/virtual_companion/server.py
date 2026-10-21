@@ -2,6 +2,7 @@
 
 import asyncio
 import contextlib
+import itertools
 from collections.abc import Callable
 
 from app.repository.messages import MessageRepository
@@ -28,6 +29,8 @@ class VirtualCompanionServer:
         self.session_factory = session_factory
         self._server: asyncio.AbstractServer | None = None
         self._sessions: set[VirtualCompanionSession] = set()
+        self._session_ids: dict[VirtualCompanionSession, int] = {}
+        self._session_sequence = itertools.count(1)
         self._session_tasks: set[asyncio.Task[None]] = set()
 
     @property
@@ -37,6 +40,26 @@ class VirtualCompanionServer:
     @property
     def listening(self) -> bool:
         return self._server is not None
+
+    @property
+    def client_statuses(self) -> tuple[dict[str, object], ...]:
+        """Return privacy-safe session metadata without socket peer addresses."""
+        rows = []
+        for session in self._sessions:
+            session_id = self._session_ids.get(session)
+            if session_id is None:
+                continue
+            rows.append(
+                {
+                    "session_id": f"session-{session_id}",
+                    "status": "connected" if not session.closed else "closing",
+                    "connected_at": session.connected_at,
+                    "last_seen_at": session.last_seen_at,
+                    "protocol_version": session.state.protocol_version,
+                    "identity_verified": session.state.identity_generation is not None,
+                }
+            )
+        return tuple(sorted(rows, key=lambda row: int(str(row["session_id"]).split("-")[1])))
 
     @property
     def sockets(self):
@@ -54,6 +77,7 @@ class VirtualCompanionServer:
     ) -> None:
         session = self.session_factory(reader, writer, self.dispatcher)
         self._sessions.add(session)
+        self._session_ids[session] = next(self._session_sequence)
         task = asyncio.current_task()
         if task is not None:
             self._session_tasks.add(task)
@@ -61,6 +85,7 @@ class VirtualCompanionServer:
             await session.run()
         finally:
             self._sessions.discard(session)
+            self._session_ids.pop(session, None)
             if task is not None:
                 self._session_tasks.discard(task)
 

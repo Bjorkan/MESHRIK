@@ -25,6 +25,7 @@ from app.services.virtual_companion.command_policy import (
 from app.services.virtual_companion.contacts import register_contact_commands
 from app.services.virtual_companion.direct_send import register_direct_send_commands
 from app.services.virtual_companion.identity import (
+    IdentityUnavailable,
     build_identity_dispatcher,
     get_identity_snapshot,
     get_runtime_generation,
@@ -109,10 +110,20 @@ class VirtualCompanionTcpModule(FanoutModule):
 
     @property
     def status_details(self) -> dict[str, Any]:
+        try:
+            identity = get_identity_snapshot()
+            identity_public_key = identity.public_key.hex()
+            identity_status = "verified"
+        except IdentityUnavailable:
+            identity_public_key = None
+            identity_status = "unavailable"
         return {
             "bind_host": self._bind_host,
             "port": self._port,
             "clients": self._server.client_count,
+            "client_sessions": self._server.client_statuses,
+            "identity_status": identity_status,
+            "identity_public_key": identity_public_key,
             "virtual_channel_capacity": self._channels.capacity,
             "configured_channel_slots": self._configured_channel_slots,
             "network_warning": NETWORK_WARNING,

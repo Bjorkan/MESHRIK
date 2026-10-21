@@ -371,8 +371,18 @@ class FanoutManager:
             if info.get("enabled") is False:
                 if info.get("type") == "virtual_companion_tcp":
                     from app.fanout.virtual_companion_tcp import NETWORK_WARNING
+                    from app.services.virtual_companion.identity import (
+                        IdentityUnavailable,
+                        get_identity_snapshot,
+                    )
 
                     config = info.get("config", {})
+                    try:
+                        identity_public_key = get_identity_snapshot().public_key.hex()
+                        identity_status = "verified"
+                    except IdentityUnavailable:
+                        identity_public_key = None
+                        identity_status = "unavailable"
                     result[config_id] = {
                         "name": info.get("name", config_id),
                         "type": info.get("type", "unknown"),
@@ -381,6 +391,9 @@ class FanoutManager:
                         "bind_host": config.get("bind_host"),
                         "port": config.get("port"),
                         "clients": 0,
+                        "client_sessions": (),
+                        "identity_status": identity_status,
+                        "identity_public_key": identity_public_key,
                         "virtual_channel_capacity": config.get("virtual_channel_capacity", 40),
                         "configured_channel_slots": sum(
                             key is not None for key in config.get("channel_slots", [])

@@ -38,6 +38,7 @@ const BotCodeEditor = lazy(() =>
 const FANOUT_CONFIGS_QUERY_KEY = ['fanout', 'configs'] as const;
 
 const TYPE_LABELS: Record<string, string> = {
+  virtual_companion_tcp: 'MeshCore App (Virtual TCP Companion)',
   mqtt_private: 'Private MQTT',
   mqtt_community: 'Community Sharing',
   mqtt_ha: 'Home Assistant',
@@ -139,6 +140,7 @@ const DEFAULT_BOT_CODE = `def bot(**kwargs) -> str | list[str] | None:
     return None`;
 
 type DraftType =
+  | 'virtual_companion_tcp'
   | 'mqtt_private'
   | 'mqtt_ha'
   | 'mqtt_community'
@@ -159,6 +161,7 @@ type CreateIntegrationDefinition = {
   description: string;
   defaultName: string;
   nameMode: 'counted' | 'fixed';
+  defaultEnabled?: boolean;
   defaults: {
     config: Record<string, unknown>;
     scope: Record<string, unknown>;
@@ -166,6 +169,28 @@ type CreateIntegrationDefinition = {
 };
 
 const CREATE_INTEGRATION_DEFINITIONS: readonly CreateIntegrationDefinition[] = [
+  {
+    value: 'virtual_companion_tcp',
+    savedType: 'virtual_companion_tcp',
+    label: 'MeshCore App (Virtual TCP Companion)',
+    section: 'MeshCore Apps',
+    description:
+      "Let the official MeshCore app use MESHRIK's shared node and DB through a separate virtual TCP listener. This is not the physical radio's TCP endpoint and does not provide full firmware administration.",
+    defaultName: 'MeshCore App',
+    nameMode: 'fixed',
+    defaultEnabled: false,
+    defaults: {
+      config: {
+        bind_host: '127.0.0.1',
+        port: 4001,
+        unsafe_network_acknowledged: false,
+        secure_access: '',
+        virtual_channel_capacity: 40,
+        channel_slots: [],
+      },
+      scope: { messages: 'none', raw_packets: 'none' },
+    },
+  },
   {
     value: 'mqtt_private',
     savedType: 'mqtt_private',
@@ -466,6 +491,51 @@ function normalizeIntegrationConfigForSave(
     }
   }
 
+  if (configType === 'virtual_companion_tcp') {
+    const bindHost = String(normalized.bind_host ?? '')
+      .trim()
+      .toLowerCase();
+    const secureAccess = String(normalized.secure_access ?? '');
+    if (!bindHost && secureAccess) {
+      throw new Error('A protected literal bind address is required for remote access');
+    }
+    normalized.bind_host = bindHost === 'localhost' || !bindHost ? '127.0.0.1' : bindHost;
+    if (!isVirtualLoopbackHost(String(normalized.bind_host))) {
+      if (!isLiteralIpAddress(String(normalized.bind_host))) {
+        throw new Error('Remote bind address must be a literal IPv4 or IPv6 address');
+      }
+      if (
+        normalized.unsafe_network_acknowledged !== true ||
+        !['vpn', 'mtls_proxy'].includes(secureAccess)
+      ) {
+        throw new Error('Confirm a protected VPN or mTLS proxy before enabling remote access');
+      }
+    } else {
+      normalized.unsafe_network_acknowledged = false;
+      normalized.secure_access = '';
+    }
+    const port = normalized.port;
+    const parsedPort = typeof port === 'string' ? Number(port) : port;
+    if (!Number.isInteger(parsedPort) || Number(parsedPort) < 1 || Number(parsedPort) > 65535) {
+      throw new Error('Virtual TCP port must be an integer between 1 and 65535');
+    }
+    normalized.port = parsedPort;
+    const capacity = normalized.virtual_channel_capacity;
+    const parsedCapacity = typeof capacity === 'string' ? Number(capacity) : capacity;
+    if (
+      !Number.isInteger(parsedCapacity) ||
+      Number(parsedCapacity) < 1 ||
+      Number(parsedCapacity) > 255
+    ) {
+      throw new Error('Virtual channel capacity must be an integer between 1 and 255');
+    }
+    normalized.virtual_channel_capacity = parsedCapacity;
+    const slots = normalized.channel_slots;
+    if (!Array.isArray(slots) || slots.length > Number(parsedCapacity)) {
+      throw new Error('Virtual channel selection exceeds the configured slot capacity');
+    }
+  }
+
   return normalized;
 }
 
@@ -554,6 +624,9 @@ function normalizeDraftConfig(draftType: DraftType, config: Record<string, unkno
 }
 
 function normalizeDraftScope(draftType: DraftType, scope: Record<string, unknown>) {
+  if (draftType === 'virtual_companion_tcp') {
+    return { messages: 'none', raw_packets: 'none' };
+  }
   if (getCreateIntegrationDefinition(draftType).savedType === 'mqtt_community') {
     return { messages: 'none', raw_packets: 'all' };
   }
@@ -770,7 +843,11 @@ function getDefaultIntegrationName(type: string, configs: FanoutConfig[]) {
 }
 
 function getStatusLabel(status: string | undefined, type?: string) {
-  if (status === 'connected')
+  if (type === 'virtual_companion_tcp') {
+    if (status === 'listening') return 'Listening';
+    if (status === 'disabled') return 'Off';
+  }
+  if (status === 'connected' || status === 'listening')
     return type === 'bot' || type === 'webhook' || type === 'apprise' || type === 'map_upload'
       ? 'Active'
       : 'Connected';
@@ -781,11 +858,350 @@ function getStatusLabel(status: string | undefined, type?: string) {
 
 function getStatusColor(status: string | undefined, enabled?: boolean) {
   if (enabled === false) return 'bg-muted-foreground';
-  if (status === 'connected')
+  if (status === 'connected' || status === 'listening')
     return 'bg-status-connected shadow-[0_0_6px_hsl(var(--status-connected)/0.5)]';
   if (status === 'error' || status === 'disconnected')
     return 'bg-destructive shadow-[0_0_6px_hsl(var(--destructive)/0.5)]';
   return 'bg-muted-foreground';
+}
+
+function isVirtualLoopbackHost(host: string) {
+  const normalized = host.trim().toLowerCase();
+  return normalized === 'localhost' || normalized === '::1' || normalized.startsWith('127.');
+}
+
+function isLiteralIpAddress(host: string) {
+  const normalized = host.trim();
+  if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(normalized)) {
+    return normalized.split('.').every((part) => Number(part) <= 255);
+  }
+  return normalized.includes(':') && /^[0-9a-f:]+$/i.test(normalized);
+}
+
+function formatCompanionSessionTime(timestamp: number) {
+  return new Date(timestamp * 1000).toLocaleString();
+}
+
+function VirtualCompanionConfigEditor({
+  config,
+  onChange,
+  status,
+  radioConnected,
+}: {
+  config: Record<string, unknown>;
+  onChange: (config: Record<string, unknown>) => void;
+  status?: HealthStatus['fanout_statuses'][string];
+  radioConnected: boolean;
+}) {
+  const { data: channels = [] } = useQuery({
+    queryKey: queryKeys.channels(),
+    queryFn: ({ signal }) => api.getChannels(signal),
+  });
+  const bindHost = String(config.bind_host ?? '127.0.0.1');
+  const secureAccess = String(config.secure_access ?? '');
+  const remote =
+    secureAccess === 'vpn' || secureAccess === 'mtls_proxy' || !isVirtualLoopbackHost(bindHost);
+  const capacity = Number(config.virtual_channel_capacity ?? 40);
+  const slots = Array.isArray(config.channel_slots)
+    ? (config.channel_slots as Array<string | null>)
+    : [];
+  const used = new Set(slots.filter((key): key is string => typeof key === 'string'));
+  const availableChannels = channels.filter((channel) => !used.has(channel.key));
+  const [channelToAdd, setChannelToAdd] = useState('');
+  const sessions = status?.client_sessions ?? [];
+  const statusLabel =
+    status?.status === 'listening' ? 'Listening' : status?.status === 'error' ? 'Error' : 'Off';
+
+  const updateAccessMode = (mode: string) => {
+    if (mode === 'loopback') {
+      onChange({
+        ...config,
+        bind_host: '127.0.0.1',
+        secure_access: '',
+        unsafe_network_acknowledged: false,
+      });
+      return;
+    }
+    onChange({
+      ...config,
+      bind_host: isVirtualLoopbackHost(bindHost) ? '' : bindHost,
+      secure_access: mode,
+      unsafe_network_acknowledged: false,
+    });
+  };
+
+  const addChannel = () => {
+    if (!channelToAdd || used.has(channelToAdd)) return;
+    const next = [...slots];
+    let index = next.findIndex((key) => key === null);
+    if (index < 0) index = next.length;
+    if (index >= capacity) return;
+    next[index] = channelToAdd;
+    onChange({ ...config, channel_slots: next });
+    setChannelToAdd('');
+  };
+
+  const removeChannel = (index: number) => {
+    const next = [...slots];
+    next[index] = null;
+    while (next.length > 0 && next[next.length - 1] === null) next.pop();
+    onChange({ ...config, channel_slots: next });
+  };
+
+  return (
+    <div className="space-y-5">
+      <div className="rounded-md border border-warning/50 bg-warning/10 px-4 py-3 text-sm text-warning">
+        In the official app, enter <strong>MESHRIK&apos;s hostname</strong> and this virtual TCP
+        port. Never enter the physical Companion radio&apos;s TCP address or port.
+      </div>
+
+      <section className="space-y-3" aria-labelledby="virtual-companion-status-heading">
+        <h3
+          id="virtual-companion-status-heading"
+          className="text-base font-semibold tracking-tight"
+        >
+          Status
+        </h3>
+        <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
+          <div>
+            <span className="text-muted-foreground">Listener:</span> {statusLabel}
+          </div>
+          <div>
+            <span className="text-muted-foreground">Endpoint:</span> {status?.bind_host ?? bindHost}
+            :{status?.port ?? String(config.port ?? 4001)}
+          </div>
+          <div>
+            <span className="text-muted-foreground">Clients:</span> {status?.clients ?? 0}
+          </div>
+        </div>
+        {status?.identity_status === 'verified' && status.identity_public_key ? (
+          <div className="space-y-1">
+            <div className="text-[0.625rem] font-medium uppercase tracking-wider text-muted-foreground">
+              Shared node identity
+            </div>
+            <code className="text-xs" aria-label="Verified shared public identity">
+              {status.identity_public_key.slice(0, 12)}…{status.identity_public_key.slice(-8)}
+            </code>
+            <p className="text-[0.8125rem] text-muted-foreground">
+              Read-only public identity shared by all connected apps. Private keys never leave the
+              backend.
+            </p>
+          </div>
+        ) : (
+          <p className="text-[0.8125rem] text-muted-foreground">
+            Shared identity unavailable until the physical radio identity has been verified.
+          </p>
+        )}
+        {!radioConnected && (
+          <p className="text-[0.8125rem] text-warning" role="status">
+            Physical radio disconnected. The virtual listener can still serve cached data, but radio
+            sends are unavailable until it reconnects.
+          </p>
+        )}
+        {sessions.length > 0 ? (
+          <ul className="space-y-2" aria-label="Connected virtual Companion clients">
+            {sessions.map((session) => (
+              <li
+                key={session.session_id}
+                className="rounded-md border border-input px-3 py-2 text-xs"
+              >
+                <div className="font-medium">
+                  {session.session_id} · {session.status}
+                </div>
+                <div className="text-muted-foreground">
+                  Protocol {session.protocol_version ?? 'not negotiated'} · identity{' '}
+                  {session.identity_verified ? 'verified' : 'pending'}
+                </div>
+                <div className="text-muted-foreground">
+                  Connected {formatCompanionSessionTime(session.connected_at)} · last seen{' '}
+                  {formatCompanionSessionTime(session.last_seen_at)}
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-xs text-muted-foreground">No virtual app clients are connected.</p>
+        )}
+      </section>
+
+      <Separator />
+
+      <section className="space-y-3" aria-labelledby="virtual-companion-connection-heading">
+        <h3
+          id="virtual-companion-connection-heading"
+          className="text-base font-semibold tracking-tight"
+        >
+          Connection
+        </h3>
+        <div className="space-y-2">
+          <Label htmlFor="virtual-companion-access">Access</Label>
+          <select
+            id="virtual-companion-access"
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            value={remote ? secureAccess || 'vpn' : 'loopback'}
+            onChange={(event) => updateAccessMode(event.target.value)}
+          >
+            <option value="loopback">This MESHRIK device only (localhost)</option>
+            <option value="vpn">Remote through a protected VPN</option>
+            <option value="mtls_proxy">Remote through an mTLS proxy</option>
+          </select>
+        </div>
+        {remote ? (
+          <div className="space-y-3 rounded-md border border-destructive/50 bg-destructive/10 p-3">
+            <p className="text-[0.8125rem] text-destructive">
+              Raw Companion TCP has no HTTP Basic auth or built-in TLS. Bind only an address
+              reachable through the selected protected transport; never expose this port publicly.
+            </p>
+            <div className="space-y-2">
+              <Label htmlFor="virtual-companion-host">Protected bind address</Label>
+              <Input
+                id="virtual-companion-host"
+                value={bindHost}
+                placeholder="VPN or proxy-facing literal IP"
+                onChange={(event) => onChange({ ...config, bind_host: event.target.value })}
+                aria-describedby="virtual-companion-host-help"
+              />
+              <p id="virtual-companion-host-help" className="text-xs text-muted-foreground">
+                Use a literal IP assigned to this host. Wildcard/public exposure is not recommended.
+              </p>
+            </div>
+            <label className="flex items-start gap-3 text-sm">
+              <input
+                type="checkbox"
+                className="mt-0.5 h-4 w-4"
+                checked={config.unsafe_network_acknowledged === true}
+                onChange={(event) =>
+                  onChange({ ...config, unsafe_network_acknowledged: event.target.checked })
+                }
+              />
+              <span>
+                I confirm this address is protected by the selected VPN or mTLS proxy and is not
+                publicly exposed.
+              </span>
+            </label>
+            <a
+              className="text-sm text-primary underline underline-offset-4"
+              href="https://github.com/Bjorkan/MESHRIK/blob/main/README_ADVANCED.md"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Open the MESHRIK security guide
+            </a>
+          </div>
+        ) : (
+          <p className="text-[0.8125rem] text-muted-foreground">
+            Localhost cannot be reached by a phone or another device. Choose a protected remote
+            option only when your network transport is already secured.
+          </p>
+        )}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="virtual-companion-port">Virtual TCP port</Label>
+            <Input
+              id="virtual-companion-port"
+              type="number"
+              min="1"
+              max="65535"
+              value={getNumberInputValue(config.port, 4001)}
+              onChange={(event) =>
+                onChange({ ...config, port: parseIntegerInputValue(event.target.value) })
+              }
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="virtual-companion-capacity">Virtual channel slots</Label>
+            <Input
+              id="virtual-companion-capacity"
+              type="number"
+              min="1"
+              max="255"
+              value={getNumberInputValue(config.virtual_channel_capacity, 40)}
+              onChange={(event) =>
+                onChange({
+                  ...config,
+                  virtual_channel_capacity: parseIntegerInputValue(event.target.value),
+                })
+              }
+            />
+          </div>
+        </div>
+      </section>
+
+      <Separator />
+
+      <section className="space-y-3" aria-labelledby="virtual-companion-channels-heading">
+        <h3
+          id="virtual-companion-channels-heading"
+          className="text-base font-semibold tracking-tight"
+        >
+          DB-backed channel selection
+        </h3>
+        <p className="text-[0.8125rem] text-muted-foreground">
+          These stable virtual indexes select MESHRIK DB channels. They never reassign hardware
+          channel slots. Removing a channel leaves other virtual indexes unchanged.
+        </p>
+        {slots.some((key) => key !== null) ? (
+          <ul className="space-y-2" aria-label="Configured virtual channel slots">
+            {slots.map(
+              (key, index) =>
+                key && (
+                  <li
+                    key={`${index}-${key}`}
+                    className="flex items-center gap-2 rounded-md border border-input px-3 py-2 text-sm"
+                  >
+                    <span className="font-mono text-xs">Slot {index}</span>
+                    <span className="min-w-0 flex-1 truncate">
+                      {channels.find((channel) => channel.key === key)?.name ??
+                        'Deleted or unavailable channel'}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => removeChannel(index)}
+                      aria-label={`Remove virtual slot ${index}`}
+                    >
+                      Remove
+                    </Button>
+                  </li>
+                )
+            )}
+          </ul>
+        ) : (
+          <p className="text-xs text-muted-foreground">No virtual channels selected.</p>
+        )}
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <select
+            aria-label="Channel to add to virtual slots"
+            className="min-w-0 flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
+            value={channelToAdd}
+            onChange={(event) => setChannelToAdd(event.target.value)}
+          >
+            <option value="">Select a DB channel…</option>
+            {availableChannels.map((channel) => (
+              <option key={channel.key} value={channel.key}>
+                {channel.name}
+              </option>
+            ))}
+          </select>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={addChannel}
+            disabled={!channelToAdd || slots.filter((key) => key !== null).length >= capacity}
+          >
+            Add stable slot
+          </Button>
+        </div>
+      </section>
+
+      <div className="rounded-md border border-warning/50 bg-warning/10 px-3 py-2 text-xs text-warning">
+        Saving a changed bind address, port, channel map, or disabling this integration disconnects
+        virtual clients. It does not disconnect MESHRIK&apos;s physical radio or cancel active
+        scheduled radio jobs. Unsupported firmware administration actions remain blocked.
+      </div>
+    </div>
+  );
 }
 
 function MqttPrivateConfigEditor({
@@ -3479,9 +3895,12 @@ export function SettingsFanoutSection({
   const availableCreateOptions = useMemo(
     () =>
       CREATE_INTEGRATION_DEFINITIONS.filter(
-        (definition) => definition.savedType !== 'bot' || !health?.bots_disabled
+        (definition) =>
+          (definition.savedType !== 'bot' || !health?.bots_disabled) &&
+          (definition.savedType !== 'virtual_companion_tcp' ||
+            !configs.some((cfg) => cfg.type === 'virtual_companion_tcp'))
       ),
-    [health?.bots_disabled]
+    [configs, health?.bots_disabled]
   );
 
   useEffect(() => {
@@ -3500,10 +3919,25 @@ export function SettingsFanoutSection({
   }, [createDialogOpen, availableCreateOptions, createForm, selectedCreateType]);
 
   const handleToggleEnabled = async (cfg: FanoutConfig) => {
+    if (
+      cfg.type === 'virtual_companion_tcp' &&
+      cfg.enabled &&
+      !confirm(
+        'Disable the virtual listener and disconnect its app clients? The physical radio and scheduled jobs will keep running.'
+      )
+    ) {
+      return;
+    }
     try {
       await toggleConfigMutation.mutateAsync(cfg);
       await refreshConfigs();
-      if (onHealthRefresh) await onHealthRefresh();
+      if (onHealthRefresh) {
+        try {
+          await onHealthRefresh();
+        } catch (err) {
+          console.error('Failed to refresh health after toggling fanout config:', err);
+        }
+      }
       toast.success(cfg.enabled ? 'Integration disabled' : 'Integration enabled');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to update');
@@ -3563,12 +3997,22 @@ export function SettingsFanoutSection({
 
   const handleDelete = async (id: string) => {
     const cfg = configs.find((c) => c.id === id);
-    if (!confirm(`Delete "${cfg?.name}"? This cannot be undone.`)) return;
+    const warning =
+      cfg?.type === 'virtual_companion_tcp'
+        ? `Delete "${cfg.name}" and disconnect its virtual app clients? The physical radio and scheduled jobs will keep running. This cannot be undone.`
+        : `Delete "${cfg?.name}"? This cannot be undone.`;
+    if (!confirm(warning)) return;
     try {
       await deleteConfigMutation.mutateAsync(id);
       if (editingId === id) setEditingId(null);
       await refreshConfigs();
-      if (onHealthRefresh) await onHealthRefresh();
+      if (onHealthRefresh) {
+        try {
+          await onHealthRefresh();
+        } catch (err) {
+          console.error('Failed to refresh health after deleting fanout config:', err);
+        }
+      }
       toast.success('Integration deleted');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to delete');
@@ -3590,6 +4034,7 @@ export function SettingsFanoutSection({
     );
     editForm.setFieldValue('config', defaults.config);
     editForm.setFieldValue('scope', defaults.scope);
+    editForm.setFieldValue('enabled', definition.defaultEnabled ?? true);
   };
 
   const editingConfig = editingId ? configs.find((c) => c.id === editingId) : null;
@@ -3639,6 +4084,15 @@ export function SettingsFanoutSection({
             scope={editScope}
             onChange={setEditConfig}
             onScopeChange={setEditScope}
+          />
+        )}
+
+        {detailType === 'virtual_companion_tcp' && (
+          <VirtualCompanionConfigEditor
+            config={editConfig}
+            onChange={setEditConfig}
+            status={editingId ? health?.fanout_statuses?.[editingId] : undefined}
+            radioConnected={health?.radio_connected ?? false}
           />
         )}
 
@@ -3833,6 +4287,7 @@ export function SettingsFanoutSection({
                             type="checkbox"
                             checked={cfg.enabled}
                             onChange={() => handleToggleEnabled(cfg)}
+                            disabled={toggleConfigMutation.isPending}
                             className="w-4 h-4 rounded border-input accent-primary"
                             aria-label={`Enable ${cfg.name}`}
                           />
@@ -3927,6 +4382,28 @@ export function SettingsFanoutSection({
                               {(communityConfig.topic_template as string) ||
                                 DEFAULT_COMMUNITY_PACKET_TOPIC_TEMPLATE}
                             </code>
+                          </div>
+                        </div>
+                      )}
+
+                      {cfg.type === 'virtual_companion_tcp' && (
+                        <div className="space-y-1 border-t border-input px-3 py-2 text-xs text-muted-foreground">
+                          <div>
+                            Virtual endpoint:{' '}
+                            <code>
+                              {String(cfg.config.bind_host ?? '127.0.0.1')}:
+                              {String(cfg.config.port ?? 4001)}
+                            </code>
+                          </div>
+                          <div>
+                            {health?.fanout_statuses?.[cfg.id]?.clients ?? 0} connected app client
+                            {(health?.fanout_statuses?.[cfg.id]?.clients ?? 0) === 1
+                              ? ''
+                              : 's'} ·{' '}
+                            {Array.isArray(cfg.config.channel_slots)
+                              ? cfg.config.channel_slots.filter((key) => key !== null).length
+                              : 0}{' '}
+                            configured virtual slots
                           </div>
                         </div>
                       )}
