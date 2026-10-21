@@ -158,7 +158,9 @@ class VirtualCompanionSession:
         finally:
             if not reader_task.done():
                 reader_task.cancel()
-                await asyncio.gather(reader_task, return_exceptions=True)
+            # Always consume the reader result. During simultaneous peer EOF and
+            # listener shutdown it may already be done with an expected EOFError.
+            await asyncio.gather(reader_task, return_exceptions=True)
             await self.close()
 
     async def close(self) -> None:
