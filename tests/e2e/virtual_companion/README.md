@@ -34,19 +34,21 @@ PYTHONPATH=. uv run pytest tests/test_virtual_companion_*.py -q
 All physical-send proof remains at the single existing scheduled service seam. The listener,
 handshake, list, sync, contact mutation, and denied-command paths have no radio/SDK dispatcher.
 
-## Official Android/iOS acceptance status
+## Post-merge Android/iOS and managed-radio validation
 
-Release status: **BLOCKED pending sanitized official-app evidence.** No Android or iOS binary,
-device, OS version, or operator-supervised radio was available in deterministic CI. Source-derived
-fixtures and `meshcore_py` interoperability are not represented as mobile-app captures.
+This validation is intentionally performed only after the complete stack has merged; it is not a
+pre-merge requirement. No Android or iOS binary, device, OS version, or operator-supervised radio is
+used in deterministic CI. Source-derived fixtures and `meshcore_py` interoperability are not
+represented as mobile-app or physical-radio captures.
 
-Before removing the release block, record a sanitized transcript and screenshots for both rows.
+Before claiming released mobile compatibility, record a sanitized transcript and screenshots for
+both rows and perform the supervised managed-radio checks.
 Never record a private key, channel secret, message text, host IP, BLE PIN, or real peer address.
 
 | Platform | App version | OS/device | Two clients | Required checks | Evidence |
 | --- | --- | --- | --- | --- | --- |
-| Android official app | pending | pending | pending | connect, same identity twice, contacts/channels, incoming DM/channel, sends/ACK, reconnect, bad endpoint, unsupported actions | **BLOCKED** |
-| iOS official app | pending | pending | pending | connect, same identity twice, contacts/channels, incoming DM/channel, sends/ACK, reconnect, bad endpoint, unsupported actions | **BLOCKED** |
+| Android official app | pending | pending | pending | connect, same identity twice, contacts/channels, incoming DM/channel, sends/ACK, reconnect, bad endpoint, unsupported actions | post-merge pending |
+| iOS official app | pending | pending | pending | connect, same identity twice, contacts/channels, incoming DM/channel, sends/ACK, reconnect, bad endpoint, unsupported actions | post-merge pending |
 
 Use MESHRIK's virtual bind address and port, never the physical Companion endpoint. Start with a
 fake/controlled backend. An optional managed-radio smoke must be explicitly supervised and must not

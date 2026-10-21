@@ -3,9 +3,9 @@
 > [!CAUTION]
 > This feature is part of the unmerged S01–S13 stack under
 > [epic #224](https://github.com/Bjorkan/MESHRIK/issues/224). Keep every PR in the stack unmerged and
-> keep the listener OFF until the tip is green, reviewed, and the official Android and iOS rows in
-> [app acceptance](#official-app-acceptance-release-blocker) are complete. This document does not
-> announce a released feature.
+> keep the listener OFF until the hardware-free tip is green and reviewed. Official Android/iOS
+> devices and physical-radio behavior are intentionally validated only after the complete stack has
+> merged. This document does not announce a released feature.
 
 The MeshCore App integration lets Companion-protocol clients talk to a **virtual TCP endpoint owned
 by MESHRIK**. MESHRIK remains the only owner of the physical radio connection. This is not a TCP
@@ -66,14 +66,15 @@ For a client build that exposes a custom TCP connection, the functional sequence
 3. Connect and verify the public node identity matches MESHRIK.
 4. Confirm contact/channel sync, then send only after the app shows the expected shared node.
 
-### Official-app acceptance release blocker
+### Post-merge official-app hardware validation
 
 As of 2026-10-21, public upstream sources confirm Companion TCP support in the Android ecosystem,
 but they do not publish a stable, versioned click path for the currently released official Android
 and iOS UIs. The project has no authorized sanitized captures proving both current releases. Exact
 menu labels must therefore **not** be guessed in release documentation.
 
-Before release, complete the version/OS/click-path/transcript table in
+This is deliberately **not a pre-merge requirement**. After the complete stack has merged, and
+before claiming released mobile compatibility, complete the version/OS/click-path/transcript table in
 [`tests/e2e/virtual_companion/README.md`](../tests/e2e/virtual_companion/README.md) with real Android
 and iOS builds and two simultaneous clients. If a current build has no custom TCP option, cannot
 connect, or demands a private key, record that result and keep release blocked. The source-derived
@@ -270,7 +271,7 @@ below passes.
 | S09 channel send | [#233](https://github.com/Bjorkan/MESHRIK/issues/233) | [#246](https://github.com/Bjorkan/MESHRIK/pull/246) | S08 | canonical worker/stable key only |
 | S10 policy | [#234](https://github.com/Bjorkan/MESHRIK/issues/234) | [#247](https://github.com/Bjorkan/MESHRIK/pull/247) | S09 | exhaustive default deny |
 | S11 UI | [#235](https://github.com/Bjorkan/MESHRIK/issues/235) | [#248](https://github.com/Bjorkan/MESHRIK/pull/248) | S10 | create flow and persisted state remain OFF |
-| S12 proof | [#236](https://github.com/Bjorkan/MESHRIK/issues/236) | [#249](https://github.com/Bjorkan/MESHRIK/pull/249) | S11 | release blocked without mobile evidence |
+| S12 proof | [#236](https://github.com/Bjorkan/MESHRIK/issues/236) | [#249](https://github.com/Bjorkan/MESHRIK/pull/249) | S11 | hardware-free SDK/security proof |
 | S13 docs/release | [#237](https://github.com/Bjorkan/MESHRIK/issues/237) | this PR | S12 | documentation cannot activate listener |
 
 Parent: [#224](https://github.com/Bjorkan/MESHRIK/issues/224). Upstream protocol dependencies:
@@ -283,8 +284,6 @@ Before the **first** merge to `main`:
 
 - [ ] All 13 PRs remain draft/unmerged until S13 review begins; bases match the table.
 - [ ] Reviewer approves protocol policy, no-physical-bypass proof, UI warning and this runbook.
-- [ ] Android and iOS version/OS/click-path evidence is complete with two simultaneous clients, or
-      the entire feature remains release-blocked.
 - [ ] `PYTHONPATH=. uv run pytest tests/test_virtual_companion_*.py -q` passes.
 - [ ] `PYTHONPATH=. uv run python tests/e2e/virtual_companion/harness.py` passes.
 - [ ] `./scripts/quality/all_quality.sh` passes on the S13 tip.
@@ -299,6 +298,8 @@ and revalidate the remaining stack before continuing.
 
 After the final merge, but before release/public announcement:
 
+- [ ] Record Android and iOS app version/OS/click-path evidence with two simultaneous real devices.
+- [ ] Run the supervised managed-radio smoke checks; no real hardware is required before merge.
 - [ ] Fresh database: `GET /api/fanout` has no virtual integration and no virtual port is listening.
 - [ ] Creating the singleton without `enabled` persists OFF and does not bind.
 - [ ] Enabling a protected test endpoint shows `Listening`; disabling it closes only virtual clients.

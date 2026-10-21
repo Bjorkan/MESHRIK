@@ -1,6 +1,6 @@
 # Virtual TCP Companion: protocol contract and implementation decisions
 
-> **Status: implemented through S12 on an unmerged stack; S13 documents the gated rollout.** The listener remains disabled by default and the complete S01–S13 stack must pass its release gate before merge. See epic [#224](https://github.com/Bjorkan/MESHRIK/issues/224) and the [operator/release guide](VIRTUAL_COMPANION.md).
+> **Status: implemented through S12 on an unmerged stack; S13 documents the gated rollout.** The listener remains disabled by default and the complete S01–S13 stack must pass its hardware-free automated and review gates before merge. Real devices and a managed radio are validated after merge. See epic [#224](https://github.com/Bjorkan/MESHRIK/issues/224) and the [operator/release guide](VIRTUAL_COMPANION.md).
 
 ## Goal and non-negotiable trust boundary
 
@@ -20,7 +20,7 @@ This contract is based on the user-provided `MeshCore-main` firmware ZIP, specif
 - MESHRIK's existing `tests/fixtures/meshcore_companion_protocol_118.json` records protocol **13 vs 14** and `meshcore==2.3.16` fixtures. Protocol 13 is an existing baseline, **not** proven equivalent to v14 for every opcode/field.
 - Upstream [firmware](https://github.com/meshcore-dev/MeshCore), [published protocol](https://github.com/meshcore-dev/MeshCore/blob/main/docs/companion_protocol.md), [Python SDK](https://github.com/meshcore-dev/meshcore_py), [JS SDK](https://github.com/meshcore-dev/meshcore.js). [Official app listing](https://meshcore.io/) and [Android distribution](https://play.google.com/store/apps/details?id=com.liamcottle.meshcore.android), [iOS distribution](https://apps.apple.com/us/app/meshcore/id6742354151). **The archive does not include the current official iOS/Android app source or real TCP handshake traces.**
 
-**Unverified release gate:** Collect authorized sanitized request/response traces using *currently released native Android and iOS apps* against an isolated fake Companion, record app/build/OS, custom TCP host+port configuration availability, handshake sequence, reconnection, initial sync, send behavior, and reactions to denied private-key export and device settings writes. If either platform cannot use custom TCP or demands prohibited commands, mark it an explicit compatibility blocker; **do not claim native app compatibility or bypass the security policy**. See #225 and #236. This S01 PR adds source-derived **synthetic** test fixtures, **not** real app captures.
+**Post-merge release validation:** After the complete stack has merged, collect authorized sanitized request/response traces using *currently released native Android and iOS apps* against an isolated fake Companion, followed by supervised managed-radio checks. Record app/build/OS, custom TCP host+port configuration availability, handshake sequence, reconnection, initial sync, send behavior, and reactions to denied private-key export and device settings writes. If either platform cannot use custom TCP or demands prohibited commands, mark it an explicit compatibility blocker; **do not claim native app compatibility or bypass the security policy**. This is intentionally not a pre-merge gate. See #225 and #236. This S01 PR adds source-derived **synthetic** test fixtures, **not** real app captures.
 
 ## Binary wire contract
 
@@ -69,7 +69,7 @@ Golden fixtures: [`tests/fixtures/virtual_companion_protocol_s01.json`](../tests
 
 **A = proposed MESHRIK state read**, **B = candidate validated domain write** (only once S08/S09/S10 approves it), **C = explicitly denied by default**. **This table is not an already-active allowlist:** S02 starts with *every command denied* and layers explicitly enable only verified implementations. An A command with no verified cached state must report honest unsupported/unavailable, **never poll radio implicitly**. B does not imply permission to write the hardware; only already-authorized domain service. C MUST never fall through to `MeshCore.commands`.
 
-Pending unsupported response contract: prefer firmware `RESP_CODE_ERR=1` + `ERR_CODE_UNSUPPORTED_CMD=1` (`01 01`); use `RESP_CODE_DISABLED=15` (`0f`) only when source semantics and released-app behavior justify it. No silently successful `OK`. **Final per-command error code is a S01 official-app trace acceptance gate.** Syntax/source numbers below are actual `MyMesh.cpp` defines.
+Pending unsupported response contract: prefer firmware `RESP_CODE_ERR=1` + `ERR_CODE_UNSUPPORTED_CMD=1` (`01 01`); use `RESP_CODE_DISABLED=15` (`0f`) only when source semantics and later released-app behavior justify it. No silently successful `OK`. Pre-merge acceptance uses the source-derived contract and SDK tests; official-app behavior is validated after merge. Syntax/source numbers below are actual `MyMesh.cpp` defines.
 
 | Opcode | Command | Policy | Reason / proposed adapter | Definition |
 |---|---|:---:|---|---|
@@ -142,7 +142,7 @@ Numbers `44–49` are reserved for Wi-Fi operations; `53` is absent. Unknown fut
 - **S04** SELF_INFO/DEVICE_INFO from verified cached radio identity. Physical generation change fences old sessions; PIN/private key never revealed without explicit review.
 - **S05–S07** DB contact snapshots and durable lastmod revision decision; stable finite virtual channel slots; distinct client message cursors and push notifications. Never consume hardware queue.
 - **S08–S10** typed and validated DM/channel sends via existing `app/services/message_send.py` and single `radio_job_worker`, no RF retry on ambiguous/unknown outcome; explicit audited DB mutations, privileged commands blocked.
-- **S11–S13** settings UI, false-success/timeout/race tests, official app transcripts, threat model and operator docs. Parent issues [#224–#237](https://github.com/Bjorkan/MESHRIK/issues/224).
+- **S11–S13** settings UI, false-success/timeout/race tests, hardware-free SDK evidence, threat model and operator docs. Official-app and managed-radio evidence follows after merge. Parent issues [#224–#237](https://github.com/Bjorkan/MESHRIK/issues/224).
 
 ### Implemented S04 version and identity policy
 
@@ -319,13 +319,13 @@ uv run pytest -q -n 0 tests/test_virtual_companion_protocol_contract.py tests/te
 uv run ruff check tests/test_virtual_companion_protocol_contract.py
 ```
 
-`pytest` uses synthetic wire examples. It proves only layout/manifest checks, **not** that official released apps accept the emulation. This PR intentionally contains **no production TCP listener, no runtime config changes, RF commands, private keys, network sockets or production UI changes**. S01 should stay **draft/blocked for app-capture acceptance** if actual released-app trace evidence has not been collected.
+`pytest` uses synthetic wire examples. It proves only layout/manifest checks, **not** that official released apps accept the emulation. This PR intentionally contains **no production TCP listener, no runtime config changes, RF commands, private keys, network sockets or production UI changes**. Released-app capture and managed-radio validation are explicitly post-merge work and do not block S01 from merging with the completed stack.
 
 ### Implemented S11–S13 release surface
 
 S11 adds the singleton OFF-by-default integration UI, secure bind controls, truthful listener/client
 status and stable DB channel selection. S12 adds full-stack SDK/adversarial tests and the runnable
-two-client harness, while explicitly retaining Android/iOS evidence as a release blocker. S13 adds
+two-client harness. Android/iOS device and managed-radio evidence is collected after merge. S13 adds
 the operator/API/deployment guide, privacy-safe support snapshot and base-to-tip merge checklist.
 None of these layers changes the invariant that opening settings or creating a default integration
 does not bind a socket; only an explicit enable after valid configuration can start the listener.
