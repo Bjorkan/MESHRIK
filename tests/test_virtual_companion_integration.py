@@ -31,6 +31,8 @@ def virtual_config(**overrides):
         "port": 4001,
         "unsafe_network_acknowledged": False,
         "secure_access": "",
+        "virtual_channel_capacity": 40,
+        "channel_slots": [],
         **overrides,
     }
 

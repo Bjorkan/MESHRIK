@@ -34,9 +34,11 @@ _VIRTUAL_COMPANION_DEFAULT_HOST = "127.0.0.1"
 _VIRTUAL_COMPANION_DEFAULT_PORT = 4001
 _VIRTUAL_COMPANION_CONFIG_FIELDS = {
     "bind_host",
+    "channel_slots",
     "port",
     "unsafe_network_acknowledged",
     "secure_access",
+    "virtual_channel_capacity",
 }
 _VIRTUAL_COMPANION_SECURE_ACCESS = {"vpn", "mtls_proxy"}
 
@@ -199,6 +201,35 @@ def _validate_virtual_companion_config(config: dict) -> None:
             ),
         )
 
+    capacity = config.get("virtual_channel_capacity", 40)
+    if type(capacity) is not int or not 1 <= capacity <= 255:
+        raise HTTPException(
+            status_code=400,
+            detail="virtual_channel_capacity must be an integer between 1 and 255",
+        )
+    raw_slots = config.get("channel_slots", [])
+    if not isinstance(raw_slots, list) or len(raw_slots) > capacity:
+        raise HTTPException(
+            status_code=400,
+            detail="channel_slots must be a list no longer than virtual_channel_capacity",
+        )
+    channel_slots: list[str | None] = []
+    seen_slots: set[str] = set()
+    for value in raw_slots:
+        if value is None:
+            channel_slots.append(None)
+            continue
+        if not isinstance(value, str) or not re.fullmatch(r"[0-9a-fA-F]{32}", value):
+            raise HTTPException(
+                status_code=400,
+                detail="channel_slots entries must be null or 32-character hexadecimal keys",
+            )
+        key = value.upper()
+        if key in seen_slots:
+            raise HTTPException(status_code=400, detail="channel_slots entries must be unique")
+        seen_slots.add(key)
+        channel_slots.append(key)
+
     config.clear()
     config.update(
         {
@@ -206,6 +237,8 @@ def _validate_virtual_companion_config(config: dict) -> None:
             "port": port,
             "unsafe_network_acknowledged": acknowledged,
             "secure_access": secure_access,
+            "virtual_channel_capacity": capacity,
+            "channel_slots": channel_slots,
         }
     )
 
