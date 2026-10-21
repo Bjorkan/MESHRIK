@@ -75,20 +75,21 @@ def test_encoder_bounds_and_direction():
 @pytest.mark.asyncio
 async def test_dispatcher_is_default_deny_and_validates_lengths():
     dispatcher = CommandDispatcher()
-    assert await dispatcher.dispatch(b"\x17") == b"\x01\x01"  # private-key export
-    assert await dispatcher.dispatch(b"\x41") == b"\x01\x01"  # raw packet send
-    assert await dispatcher.dispatch(b"\x42") == b"\x01\x01"  # CLI
+    context = VirtualCompanionSession(asyncio.StreamReader(), RecordingWriter(), dispatcher).state
+    assert await dispatcher.dispatch(b"\x17", context) == b"\x01\x01"  # key export
+    assert await dispatcher.dispatch(b"\x41", context) == b"\x01\x01"  # raw send
+    assert await dispatcher.dispatch(b"\x42", context) == b"\x01\x01"  # CLI
 
     seen = []
 
-    async def handle(payload):
+    async def handle(payload, _context):
         seen.append(payload)
         return b"\x0d"
 
     dispatcher.register(0x16, handle, min_length=2, max_length=2)
-    assert await dispatcher.dispatch(b"\x16") == b"\x01\x06"
-    assert await dispatcher.dispatch(b"\x16\x0e\x00") == b"\x01\x06"
-    assert await dispatcher.dispatch(b"\x16\x0e") == b"\x0d"
+    assert await dispatcher.dispatch(b"\x16", context) == b"\x01\x06"
+    assert await dispatcher.dispatch(b"\x16\x0e\x00", context) == b"\x01\x06"
+    assert await dispatcher.dispatch(b"\x16\x0e", context) == b"\x0d"
     assert seen == [b"\x16\x0e"]
     with pytest.raises(ValueError):
         dispatcher.register(0x16, handle, min_length=2, max_length=2)
@@ -180,7 +181,7 @@ async def read_wire_frame(reader):
 async def test_loopback_server_keeps_two_clients_isolated_and_ordered():
     dispatcher = CommandDispatcher()
 
-    async def echo(payload):
+    async def echo(payload, _context):
         return bytes((0x20, payload[1]))
 
     dispatcher.register(0x16, echo, min_length=2, max_length=2)
@@ -218,7 +219,7 @@ async def test_server_shutdown_does_not_cancel_dispatched_domain_operation():
     completed = asyncio.Event()
     dispatcher = CommandDispatcher()
 
-    async def operation(_payload):
+    async def operation(_payload, _context):
         started.set()
         await release.wait()
         completed.set()

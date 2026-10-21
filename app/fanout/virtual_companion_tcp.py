@@ -5,23 +5,31 @@ commands never enter fanout event callbacks and no physical radio object is
 available here.
 """
 
+import asyncio
+import contextlib
 from typing import Any
 
 from app.fanout.base import FanoutModule
-from app.services.virtual_companion import CommandDispatcher, VirtualCompanionServer
+from app.services.virtual_companion import VirtualCompanionServer
+from app.services.virtual_companion.identity import (
+    build_identity_dispatcher,
+    get_runtime_generation,
+)
 
 NETWORK_WARNING = (
     "Raw Companion TCP is not protected by MESHRIK HTTP Basic auth. "
     "Keep loopback binding or use a VPN/mTLS gateway with allowlisted clients."
 )
+GENERATION_POLL_SECONDS = 0.25
 
 
 class VirtualCompanionTcpModule(FanoutModule):
     def __init__(self, config_id: str, config: dict, *, name: str = "") -> None:
         super().__init__(config_id, config, name=name)
-        self._server = VirtualCompanionServer(CommandDispatcher())
+        self._server = VirtualCompanionServer(build_identity_dispatcher())
         self._bind_host = str(config["bind_host"])
         self._port = int(config["port"])
+        self._generation_task: asyncio.Task[None] | None = None
 
     async def start(self) -> None:
         try:
@@ -29,10 +37,27 @@ class VirtualCompanionTcpModule(FanoutModule):
         except Exception as exc:
             self._set_last_error(_sanitize_listener_error(exc))
             raise
+        self._generation_task = asyncio.create_task(
+            self._watch_radio_generation(), name="virtual-companion-generation-watch"
+        )
         self._set_last_error(None)
 
     async def stop(self) -> None:
+        if self._generation_task is not None:
+            self._generation_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await self._generation_task
+            self._generation_task = None
         await self._server.stop()
+
+    async def _watch_radio_generation(self) -> None:
+        generation = get_runtime_generation()
+        while True:
+            await asyncio.sleep(GENERATION_POLL_SECONDS)
+            current = get_runtime_generation()
+            if current != generation:
+                generation = current
+                await self._server.disconnect_clients()
 
     @property
     def status(self) -> str:

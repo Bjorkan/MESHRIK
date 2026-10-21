@@ -22,6 +22,7 @@ class SessionState:
     """Mutable protocol state that must never be shared between clients."""
 
     protocol_version: int | None = None
+    identity_generation: int | None = None
     contact_cursor: int = 0
     message_cursor: int = 0
     metadata: dict[str, object] = field(default_factory=dict)
@@ -85,7 +86,7 @@ class VirtualCompanionSession:
     async def _read_loop(self) -> None:
         while True:
             payload = await read_frame(self.reader, timeout=self.read_timeout)
-            operation = asyncio.create_task(self.dispatcher.dispatch(payload))
+            operation = asyncio.create_task(self.dispatcher.dispatch(payload, self.state))
             try:
                 # Closing a virtual socket must not cancel an operation that a
                 # later adapter has already handed to a shared domain service.

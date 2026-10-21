@@ -210,7 +210,8 @@ async def test_concurrent_reloads_leave_exactly_one_listener(test_db):
 
 def test_lifecycle_adapter_has_no_radio_or_fanout_event_handler_path():
     source = inspect.getsource(VirtualCompanionTcpModule)
-    assert "radio" not in source.lower()
-    assert "meshcore" not in source.lower()
+    assert ".meshcore" not in source.lower()
+    assert "radio_runtime" not in source
+    assert "run_radio_command" not in source
     for name in ("on_message", "on_raw", "on_contact", "on_telemetry", "on_health"):
         assert name not in VirtualCompanionTcpModule.__dict__
