@@ -693,6 +693,65 @@ class MessageRepository:
         return MessageRepository._row_to_message(row)
 
     @staticmethod
+    def _companion_access_clause(channel_keys: tuple[str, ...]) -> tuple[str, list[Any]]:
+        """Build the durable, decrypted inbox boundary for virtual clients."""
+        channel_clause = "0"
+        params: list[Any] = []
+        if channel_keys:
+            placeholders = ",".join("?" for _ in channel_keys)
+            channel_clause = (
+                f"(messages.type = 'CHAN' AND messages.conversation_key IN ({placeholders}) "
+                "AND EXISTS (SELECT 1 FROM channels "
+                "WHERE channels.key = messages.conversation_key))"
+            )
+            params.extend(channel_keys)
+        contact_clause = (
+            "(messages.type = 'PRIV' AND length(messages.conversation_key) = 64 "
+            "AND EXISTS (SELECT 1 FROM contacts "
+            "WHERE contacts.public_key = lower(messages.conversation_key)))"
+        )
+        return (
+            "messages.outgoing = 0 AND messages.text IS NOT NULL "
+            f"AND ({contact_clause} OR {channel_clause})",
+            params,
+        )
+
+    @staticmethod
+    async def get_companion_initial_cursor(
+        channel_keys: tuple[str, ...], history_limit: int
+    ) -> int:
+        """Place a new session immediately before its bounded history window."""
+        if history_limit < 1:
+            raise ValueError("history_limit must be positive")
+        clause, params = MessageRepository._companion_access_clause(channel_keys)
+        query = (
+            "SELECT MIN(id) AS first_id FROM ("
+            f"SELECT messages.id FROM messages WHERE {clause} "
+            "ORDER BY messages.id DESC LIMIT ?)"
+        )
+        async with db.readonly() as conn:
+            async with conn.execute(query, (*params, history_limit)) as cursor:
+                row = await cursor.fetchone()
+        if row is None:
+            return 0
+        return max(0, int(row["first_id"] or 1) - 1)
+
+    @staticmethod
+    async def get_companion_message_after(
+        cursor_id: int, channel_keys: tuple[str, ...]
+    ) -> "Message | None":
+        """Read the next accessible inbound message in durable database-ID order."""
+        clause, params = MessageRepository._companion_access_clause(channel_keys)
+        query = (
+            f"SELECT {MessageRepository._message_select('messages')} FROM messages "
+            f"WHERE messages.id > ? AND {clause} ORDER BY messages.id ASC LIMIT 1"
+        )
+        async with db.readonly() as conn:
+            async with conn.execute(query, (cursor_id, *params)) as db_cursor:
+                row = await db_cursor.fetchone()
+        return MessageRepository._row_to_message(row) if row is not None else None
+
+    @staticmethod
     async def delete_by_id(message_id: int) -> None:
         """Delete a message row by ID."""
         async with db.tx() as conn:

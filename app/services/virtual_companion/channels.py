@@ -66,6 +66,19 @@ class VirtualCompanionChannels:
             return None
         return VirtualChannelSlot(index=index, key=key, channel=channel)
 
+    @property
+    def configured_keys(self) -> tuple[str, ...]:
+        """Return configured secrets without consulting physical radio slots."""
+        return tuple(key for key in self._slots if key is not None)
+
+    def configured_index(self, key: str) -> int | None:
+        """Resolve a stored channel key to its stable virtual slot."""
+        canonical = key.upper()
+        try:
+            return self._slots.index(canonical)
+        except ValueError:
+            return None
+
     async def get_channel(self, payload: bytes, _context: DispatchContext) -> bytes:
         slot = await self.resolve_slot(payload[1])
         if slot is None:

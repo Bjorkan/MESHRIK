@@ -1,6 +1,6 @@
 # Virtual TCP Companion: protocol contract and implementation decisions
 
-> **Status: implemented through S05 on an unmerged stack.** The listener remains disabled by default and the complete S01–S13 stack must pass its release gate before merge. See epic [#224](https://github.com/Bjorkan/MESHRIK/issues/224).
+> **Status: implemented through S07 on an unmerged stack.** The listener remains disabled by default and the complete S01–S13 stack must pass its release gate before merge. See epic [#224](https://github.com/Bjorkan/MESHRIK/issues/224).
 
 ## Goal and non-negotiable trust boundary
 
@@ -186,6 +186,29 @@ only `channels.key` and `channels.name`; it neither consults radio-residency cac
 physical GET/SET_CHANNEL or worker job. Operational status reports only capacity and configured-slot
 count, never channel secrets. Later outbound channel sends must resolve through the typed virtual
 slot object again and reject stale mappings before entering the canonical send service.
+
+### Implemented S07 virtual message queues
+
+`SYNC_NEXT_MESSAGE` reads only committed incoming `messages` rows and never calls the physical
+firmware queue. Each TCP session owns a monotonically increasing database-ID cursor, so EOF and
+interleaved reads cannot drain another client. A new or reconnected session starts immediately
+before its newest 200 accessible rows; this bounded replay window makes reconnect deterministic
+without claiming durable per-app identity. It then follows new rows without a page-size ceiling.
+Only full-key contacts still present in the contact catalog and channels assigned to current stable
+virtual slots are eligible. Deletions and retention gaps are skipped naturally.
+
+Replies use the negotiated Companion layout: V3 `CONTACT_MSG_RECV`/`CHANNEL_MSG_RECV` frames include
+retained SNR and path-status evidence, while legacy layouts are emitted only for an explicitly
+negotiated pre-V3 context. Missing evidence is represented by neutral SNR and the protocol's
+unavailable/direct path marker; no RF path or full sender key is synthesized. Signed room posts keep
+the room contact's six-byte conversation prefix and their separately stored four-byte author prefix.
+Only decrypted text rows are exposed, and UTF-8 payloads are truncated on character boundaries.
+
+After persistence, canonical realtime message broadcasts send a content-free `MSG_WAITING` hint to
+each current virtual session independently of fanout content scopes. Hints coalesce until that client
+requests its next message. Per-client output remains bounded; queue overflow or write timeout closes
+only the slow socket, while database storage and healthy clients continue. Radio-generation changes
+retain the existing session fence and disconnect every stale cursor.
 
 ### Hardware-free S01 quality gate
 

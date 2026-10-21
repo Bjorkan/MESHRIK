@@ -23,6 +23,7 @@ from app.services.virtual_companion.identity import (
     get_identity_snapshot,
     get_runtime_generation,
 )
+from app.services.virtual_companion.messages import register_message_commands
 
 NETWORK_WARNING = (
     "Raw Companion TCP is not protected by MESHRIK HTTP Basic auth. "
@@ -45,6 +46,7 @@ class VirtualCompanionTcpModule(FanoutModule):
         dispatcher = build_identity_dispatcher(virtual_identity)
         register_contact_commands(dispatcher)
         register_channel_commands(dispatcher, self._channels)
+        register_message_commands(dispatcher, self._channels)
         self._server = VirtualCompanionServer(dispatcher)
         self._bind_host = str(config["bind_host"])
         self._port = int(config["port"])
@@ -77,6 +79,12 @@ class VirtualCompanionTcpModule(FanoutModule):
             if current != generation:
                 generation = current
                 await self._server.disconnect_clients()
+
+    def notify_message_available(self, data: dict) -> None:
+        """Tickle clients only after a canonical incoming row was persisted."""
+        message_id = data.get("id")
+        if data.get("outgoing") is False and type(message_id) is int and message_id > 0:
+            self._server.notify_message_waiting(message_id)
 
     @property
     def status(self) -> str:

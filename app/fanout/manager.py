@@ -287,6 +287,13 @@ class FanoutManager:
             log_label="on_message",
         )
 
+    def notify_virtual_companions(self, data: dict) -> None:
+        """Send content-free inbox hints independent of fanout content scopes."""
+        for module, _scope in list(self._modules.values()):
+            notifier = getattr(module, "notify_message_available", None)
+            if notifier is not None:
+                notifier(data)
+
     async def broadcast_raw(self, data: dict) -> None:
         """Dispatch a raw packet to modules whose scope matches."""
         await self._dispatch_matching(

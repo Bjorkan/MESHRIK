@@ -86,3 +86,12 @@ class VirtualCompanionServer:
             task.cancel()
         if tasks:
             await asyncio.gather(*tasks, return_exceptions=True)
+
+    def notify_message_waiting(self, message_id: int) -> None:
+        """Fan out a content-free persisted-message hint to independent sessions."""
+        for session in tuple(self._sessions):
+            try:
+                session.notify_message_waiting(message_id)
+            except Exception:
+                # Queue overflow or a closing writer affects only this client.
+                asyncio.create_task(session.close())

@@ -14,6 +14,8 @@ class DispatchContext(Protocol):
 
     protocol_version: int | None
     identity_generation: int | None
+    message_cursor: int
+    metadata: dict[str, object]
 
 
 CommandResponse = bytes | tuple[bytes, ...]
