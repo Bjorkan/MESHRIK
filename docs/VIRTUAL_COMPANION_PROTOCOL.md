@@ -1,6 +1,6 @@
 # Virtual TCP Companion: protocol contract and implementation decisions
 
-> **Status: implemented through S10 on an unmerged stack.** The listener remains disabled by default and the complete S01–S13 stack must pass its release gate before merge. See epic [#224](https://github.com/Bjorkan/MESHRIK/issues/224).
+> **Status: implemented through S12 on an unmerged stack; S13 documents the gated rollout.** The listener remains disabled by default and the complete S01–S13 stack must pass its release gate before merge. See epic [#224](https://github.com/Bjorkan/MESHRIK/issues/224) and the [operator/release guide](VIRTUAL_COMPANION.md).
 
 ## Goal and non-negotiable trust boundary
 
@@ -320,3 +320,12 @@ uv run ruff check tests/test_virtual_companion_protocol_contract.py
 ```
 
 `pytest` uses synthetic wire examples. It proves only layout/manifest checks, **not** that official released apps accept the emulation. This PR intentionally contains **no production TCP listener, no runtime config changes, RF commands, private keys, network sockets or production UI changes**. S01 should stay **draft/blocked for app-capture acceptance** if actual released-app trace evidence has not been collected.
+
+### Implemented S11–S13 release surface
+
+S11 adds the singleton OFF-by-default integration UI, secure bind controls, truthful listener/client
+status and stable DB channel selection. S12 adds full-stack SDK/adversarial tests and the runnable
+two-client harness, while explicitly retaining Android/iOS evidence as a release blocker. S13 adds
+the operator/API/deployment guide, privacy-safe support snapshot and base-to-tip merge checklist.
+None of these layers changes the invariant that opening settings or creating a default integration
+does not bind a socket; only an explicit enable after valid configuration can start the listener.

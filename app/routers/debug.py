@@ -219,15 +219,18 @@ def _coerce_live_max_channels(device_info: dict[str, Any] | None) -> int | None:
 
 
 def _build_environment() -> DebugEnvironment:
+    def redacted(value: str) -> str:
+        return "[configured]" if value else ""
+
     return DebugEnvironment(
         connection_type=settings.connection_type,
-        serial_port=settings.serial_port,
+        serial_port=redacted(settings.serial_port),
         serial_baudrate=settings.serial_baudrate,
-        tcp_host=settings.tcp_host,
+        tcp_host=redacted(settings.tcp_host),
         tcp_port=settings.tcp_port,
-        ble_address=settings.ble_address,
+        ble_address=redacted(settings.ble_address),
         log_level=settings.log_level,
-        database_path=settings.database_path,
+        database_path=redacted(settings.database_path),
         disable_bots=settings.disable_bots,
         enable_message_poll_fallback=settings.enable_message_poll_fallback,
         force_channel_slot_reconfigure=settings.force_channel_slot_reconfigure,
@@ -276,7 +279,7 @@ def _build_debug_health_summary(
         return value if isinstance(value, str) and value else None
 
     fanouts_with_errors = {
-        config_id: status
+        config_id: _sanitize_debug_fanout_status(status)
         for config_id, status in health_data["fanout_statuses"].items()
         if _fanout_last_error(status)
     }
@@ -290,10 +293,29 @@ def _build_debug_health_summary(
     )
 
 
+def _sanitize_debug_fanout_status(status: Any) -> FanoutStatusResponse:
+    parsed = (
+        status
+        if isinstance(status, FanoutStatusResponse)
+        else FanoutStatusResponse.model_validate(status)
+    )
+    if parsed.type != "virtual_companion_tcp":
+        return parsed
+    return parsed.model_copy(
+        update={
+            "bind_host": None,
+            "client_sessions": None,
+            "identity_public_key": None,
+        }
+    )
+
+
 def _sanitize_radio_probe_self_info(self_info: dict[str, Any] | None) -> dict[str, Any]:
     sanitized = dict(self_info or {})
     sanitized.pop("adv_lat", None)
     sanitized.pop("adv_lon", None)
+    sanitized.pop("name", None)
+    sanitized.pop("public_key", None)
     return sanitized
 
 
@@ -397,7 +419,7 @@ async def _probe_radio() -> DebugRadioProbe:
         )
     except Exception as exc:
         logger.warning("Debug support snapshot radio probe failed: %s", exc, exc_info=True)
-        errors.append(str(exc))
+        errors.append(f"Radio probe failed ({type(exc).__name__})")
         return DebugRadioProbe(performed=False, errors=errors)
 
 

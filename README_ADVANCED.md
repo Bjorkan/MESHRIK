@@ -78,6 +78,18 @@ Canonical deep links use pathnames:
 
 The backend serves the SPA entry document for these paths, so direct loads and browser refreshes work when the proxy forwards unknown frontend paths to MESHRIK. Old `#channel/...`, `#contact/...`, and other hash-route bookmarks are intentionally unsupported and must be replaced with canonical pathname links.
 
+## Virtual Companion TCP
+
+The optional MeshCore App integration exposes a separate raw Companion TCP listener for trusted app
+clients. It defaults OFF and is configured in Settings → Integrations, not with a hidden environment
+variable. HTTP reverse-proxy authentication and TLS do not protect this socket. Use loopback or a
+separately protected VPN/mTLS gateway, map a dedicated container/add-on port, and never forward the
+physical radio's TCP endpoint.
+
+See the [Virtual Companion operator guide and release checklist](docs/VIRTUAL_COMPANION.md) for
+native, Docker and Home Assistant add-on deployment; status/error recovery; the supported command
+matrix; privacy-safe support capture; and the gated S01–S13 merge plan.
+
 ## HTTPS
 
 WebGPU channel-finding requires a secure context when you are not on `localhost`.
@@ -146,7 +158,7 @@ locally, while `transport_unavailable`/`radio_changed` indicates a connection li
 failure. If there is no matching backend request at all, investigate the proxy route and
 origin reachability rather than the radio protocol.
 
-You can also navigate to `/api/debug` (or go to Settings -> About -> "Open debug support snapshot" at the bottom). This debug block contains information about the operating environment, expectations around keys and channels, and radio status. It also includes the most recent logs. **Non-log information reveals no keys, channel names, or other privilege information beyond the names of your bots. The logs, however, may contain channel names or keys (but never your private key).** If you do not wish to include this information, copy up to the `STOP COPYING HERE` marker in the debug body.
+You can also navigate to `/api/debug` (or go to Settings -> About -> "Open debug support snapshot" at the bottom). This debug block contains redacted information about the operating environment, expectations around keys and channels, and radio status. It also includes the most recent logs. Non-log radio/virtual-Companion fields omit physical/virtual transport locations, database paths, node names, public/private identities, virtual client sessions, channel keys/names, and message text; bot names and integration error/port/count data may remain. Other integration errors can originate in third-party libraries, so review the snapshot for broker/service details before sharing it. **Logs can still contain channel names or keys (but never your private key), especially if sensitive payload logging was explicitly enabled.** For a safer attachment, copy only through the `STOP COPYING HERE` marker and review it before sharing.
 
 ## Development Notes
 
