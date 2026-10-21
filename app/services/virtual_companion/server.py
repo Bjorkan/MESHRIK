@@ -98,6 +98,14 @@ class VirtualCompanionServer:
                 # Queue overflow or a closing writer affects only this client.
                 asyncio.create_task(session.close())
 
+    def notify_contact_changed(self, payload: bytes) -> None:
+        """Fan out a validated contact update/tombstone to every live client."""
+        for session in tuple(self._sessions):
+            try:
+                session.enqueue_push(payload)
+            except Exception:
+                asyncio.create_task(session.close())
+
     async def notify_send_confirmed(self, ack_code: str, trip_time_ms: int) -> None:
         """Push only after the matching outgoing row is durably acknowledged."""
         sessions = tuple(

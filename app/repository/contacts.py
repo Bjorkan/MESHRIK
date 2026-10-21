@@ -27,6 +27,21 @@ class CompanionContactSnapshot:
     high_water: int
 
 
+@dataclass(frozen=True, slots=True)
+class CompanionContactMutation:
+    """Validated DB-only fields accepted from one Companion contact edit."""
+
+    public_key: str
+    expected_revision: int
+    name: str
+    contact_type: int
+    flags: int
+    favorite: bool
+    direct_path: str | None
+    direct_path_len: int
+    direct_path_hash_mode: int
+
+
 class AmbiguousPublicKeyPrefixError(ValueError):
     """Raised when a public key prefix matches multiple contacts."""
 
@@ -382,6 +397,72 @@ class ContactRepository:
             total=len(eligible),
             high_water=high_water,
         )
+
+    @staticmethod
+    async def apply_companion_mutation(
+        mutation: CompanionContactMutation,
+    ) -> tuple[Contact, int] | None:
+        """Atomically apply a revision-fenced edit to an existing DB contact.
+
+        Unknown contacts are deliberately not created from unsigned app frames.
+        The contact trigger advances the durable Companion revision in the same
+        SQLite transaction, so concurrent clients cannot both win a stale edit.
+        """
+        path, path_len, path_hash_mode = normalize_contact_route(
+            mutation.direct_path,
+            mutation.direct_path_len,
+            mutation.direct_path_hash_mode,
+        )
+        public_key = mutation.public_key.lower()
+        async with db.tx() as conn:
+            async with conn.execute(
+                """
+                UPDATE contacts
+                SET name = ?, type = ?, flags = ?, favorite = ?,
+                    direct_path = ?, direct_path_len = ?, direct_path_hash_mode = ?,
+                    direct_path_updated_at = CAST(strftime('%s', 'now') AS INTEGER)
+                WHERE public_key = ?
+                  AND EXISTS (
+                      SELECT 1 FROM virtual_companion_contact_changes changes
+                      WHERE changes.public_key = contacts.public_key
+                        AND changes.revision = ? AND changes.deleted = 0
+                  )
+                """,
+                (
+                    mutation.name,
+                    mutation.contact_type,
+                    mutation.flags,
+                    int(mutation.favorite),
+                    path or None,
+                    path_len,
+                    path_hash_mode,
+                    public_key,
+                    mutation.expected_revision,
+                ),
+            ) as cursor:
+                if cursor.rowcount != 1:
+                    return None
+            async with conn.execute(
+                "SELECT * FROM contacts WHERE public_key = ?", (public_key,)
+            ) as cursor:
+                row = await cursor.fetchone()
+            async with conn.execute(
+                "SELECT revision FROM virtual_companion_contact_changes WHERE public_key = ?",
+                (public_key,),
+            ) as cursor:
+                revision_row = await cursor.fetchone()
+            if row is None or revision_row is None:
+                return None
+            return ContactRepository._row_to_contact(row), int(revision_row["revision"])
+
+    @staticmethod
+    async def delete_companion_contact(public_key: str) -> bool:
+        """Delete one DB contact and report the atomic winner to virtual clients."""
+        async with db.tx() as conn:
+            async with conn.execute(
+                "DELETE FROM contacts WHERE public_key = ?", (public_key.lower(),)
+            ) as cursor:
+                return cursor.rowcount == 1
 
     @staticmethod
     async def get_repeaters_by_recent(limit: int = 8) -> list[Contact]:

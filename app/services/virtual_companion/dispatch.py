@@ -39,6 +39,11 @@ class CommandDispatcher:
     def __init__(self) -> None:
         self._commands: dict[int, CommandSpec] = {}
 
+    @property
+    def registered_commands(self) -> frozenset[int]:
+        """Expose the audited allowlist without exposing mutable handler state."""
+        return frozenset(self._commands)
+
     def register(
         self,
         command: int,
