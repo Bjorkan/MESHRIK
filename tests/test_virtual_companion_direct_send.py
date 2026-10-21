@@ -133,6 +133,7 @@ async def test_valid_send_returns_exact_real_sent_fields_and_no_service_retry():
     assert context.pending_virtual_acks == {"deadbeef": 7}
     kwargs = send_service.await_args.kwargs
     assert kwargs["requested_sender_timestamp"] == 0x10203040
+    assert kwargs["strict_sender_timestamp"] is True
     assert kwargs["schedule_retries"] is False
     assert kwargs["return_protocol_outcome"] is True
 

@@ -12,6 +12,7 @@ from typing import Any
 
 from app.fanout.base import FanoutModule
 from app.services.virtual_companion import VirtualCompanionServer
+from app.services.virtual_companion.channel_send import register_channel_send_commands
 from app.services.virtual_companion.channels import (
     DEFAULT_VIRTUAL_CHANNEL_CAPACITY,
     VirtualCompanionChannels,
@@ -49,6 +50,7 @@ class VirtualCompanionTcpModule(FanoutModule):
         register_channel_commands(dispatcher, self._channels)
         register_message_commands(dispatcher, self._channels)
         register_direct_send_commands(dispatcher)
+        register_channel_send_commands(dispatcher, self._channels)
         self._server = VirtualCompanionServer(dispatcher)
         self._bind_host = str(config["bind_host"])
         self._port = int(config["port"])

@@ -746,6 +746,7 @@ async def send_direct_message_to_contact(
     retry_task_scheduler: RetryTaskScheduler | None = None,
     retry_sleep_fn=None,
     requested_sender_timestamp: int | None = None,
+    strict_sender_timestamp: bool = False,
     schedule_retries: bool = True,
     return_protocol_outcome: bool = False,
     message_repository=MessageRepository,
@@ -789,6 +790,15 @@ async def send_direct_message_to_contact(
                 requested_sender_timestamp if requested_sender_timestamp is not None else sent_at
             ),
         )
+        if strict_sender_timestamp and sender_timestamp != requested_sender_timestamp:
+            await release_outgoing_sender_timestamp(
+                msg_type="PRIV",
+                conversation_key=contact.public_key.lower(),
+                text=text,
+                sender_timestamp=sender_timestamp,
+            )
+            sender_timestamp = None
+            raise HTTPException(status_code=409, detail="Outgoing DM identity already exists")
         # Commit the stable outgoing audit ID before crossing the RF boundary.
         # On crash/timeout this pending row remains as an uncertain TX intent;
         # never automatically retransmit it on reconnect.
@@ -943,6 +953,8 @@ async def send_channel_message_to_channel(
     now_fn: NowFn,
     temp_radio_slot: int,
     flood_scope_override: str | _ScopeUnset = SCOPE_UNSET,
+    requested_sender_timestamp: int | None = None,
+    strict_sender_timestamp: bool = False,
     message_repository=MessageRepository,
 ) -> Any:
     """Send a channel message and persist/broadcast the outgoing row.
@@ -972,8 +984,19 @@ async def send_channel_message_to_channel(
             msg_type="CHAN",
             conversation_key=channel_key_upper,
             text=text_with_sender,
-            requested_timestamp=sent_at,
+            requested_timestamp=(
+                requested_sender_timestamp if requested_sender_timestamp is not None else sent_at
+            ),
         )
+        if strict_sender_timestamp and sender_timestamp != requested_sender_timestamp:
+            await release_outgoing_sender_timestamp(
+                msg_type="CHAN",
+                conversation_key=channel_key_upper,
+                text=text_with_sender,
+                sender_timestamp=sender_timestamp,
+            )
+            sender_timestamp = None
+            raise HTTPException(status_code=409, detail="Outgoing channel identity already exists")
         timestamp_bytes = sender_timestamp.to_bytes(4, "little")
         outgoing_message = await create_outgoing_channel_message(
             conversation_key=channel_key_upper,
