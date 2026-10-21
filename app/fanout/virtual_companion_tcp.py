@@ -11,6 +11,7 @@ from typing import Any
 
 from app.fanout.base import FanoutModule
 from app.services.virtual_companion import VirtualCompanionServer
+from app.services.virtual_companion.contacts import register_contact_commands
 from app.services.virtual_companion.identity import (
     build_identity_dispatcher,
     get_runtime_generation,
@@ -26,7 +27,9 @@ GENERATION_POLL_SECONDS = 0.25
 class VirtualCompanionTcpModule(FanoutModule):
     def __init__(self, config_id: str, config: dict, *, name: str = "") -> None:
         super().__init__(config_id, config, name=name)
-        self._server = VirtualCompanionServer(build_identity_dispatcher())
+        dispatcher = build_identity_dispatcher()
+        register_contact_commands(dispatcher)
+        self._server = VirtualCompanionServer(dispatcher)
         self._bind_host = str(config["bind_host"])
         self._port = int(config["port"])
         self._generation_task: asyncio.Task[None] | None = None

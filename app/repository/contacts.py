@@ -1,6 +1,7 @@
 import logging
 import time
 from collections.abc import Mapping
+from dataclasses import dataclass
 from typing import Any
 
 from app.database import db
@@ -14,6 +15,16 @@ from app.models import (
 from app.path_utils import first_hop_hex, normalize_contact_route, normalize_route_override
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True, slots=True)
+class CompanionContactSnapshot:
+    """One transactionally consistent view for a Companion client sync."""
+
+    contacts: tuple[tuple[Contact, int], ...]
+    deleted_public_keys: tuple[str, ...]
+    total: int
+    high_water: int
 
 
 class AmbiguousPublicKeyPrefixError(ValueError):
@@ -305,6 +316,72 @@ class ContactRepository:
             ) as cursor:
                 rows = await cursor.fetchall()
         return [ContactRepository._row_to_contact(row) for row in rows]
+
+    @staticmethod
+    async def get_companion_snapshot(since: int = 0) -> CompanionContactSnapshot:
+        """Return eligible contacts and tombstones from one coherent DB snapshot.
+
+        Only unambiguous, full 32-byte public keys are serializable. Prefix-only,
+        malformed, and case-duplicate identities are withheld instead of padded or
+        guessed. Tombstones are retained durably and emitted only for incremental
+        requests; a first sync starts from the current catalog.
+        """
+        async with db.readonly() as conn:
+            async with conn.execute(
+                "SELECT * FROM contacts ORDER BY lower(public_key), public_key"
+            ) as cursor:
+                rows = list(await cursor.fetchall())
+            async with conn.execute(
+                """
+                SELECT public_key, revision, deleted
+                FROM virtual_companion_contact_changes
+                ORDER BY revision, public_key
+                """
+            ) as cursor:
+                change_rows = list(await cursor.fetchall())
+            async with conn.execute(
+                "SELECT revision FROM virtual_companion_contact_clock WHERE singleton = 1"
+            ) as cursor:
+                clock_row = await cursor.fetchone()
+
+        grouped: dict[str, list[Any]] = {}
+        for row in rows:
+            key = str(row["public_key"]).lower()
+            grouped.setdefault(key, []).append(row)
+
+        eligible: dict[str, Contact] = {}
+        for key, matches in grouped.items():
+            if len(matches) != 1 or len(key) != 64:
+                continue
+            try:
+                key_bytes = bytes.fromhex(key)
+            except ValueError:
+                continue
+            if len(key_bytes) != 32:
+                continue
+            eligible[key] = ContactRepository._row_to_contact(matches[0])
+
+        revisions = {str(row["public_key"]): int(row["revision"]) for row in change_rows}
+        high_water = int(clock_row["revision"]) if clock_row else 0
+        if since <= 0:
+            selected = (
+                (contact, revisions.get(key, high_water)) for key, contact in eligible.items()
+            )
+            deleted: tuple[str, ...] = ()
+        else:
+            changed_keys = [
+                str(row["public_key"]) for row in change_rows if int(row["revision"]) > since
+            ]
+            selected = ((eligible[key], revisions[key]) for key in changed_keys if key in eligible)
+            deleted = tuple(key for key in changed_keys if key not in eligible)
+
+        contacts = tuple(sorted(selected, key=lambda item: item[0].public_key.lower()))
+        return CompanionContactSnapshot(
+            contacts=contacts,
+            deleted_public_keys=deleted,
+            total=len(eligible),
+            high_water=high_water,
+        )
 
     @staticmethod
     async def get_repeaters_by_recent(limit: int = 8) -> list[Contact]:
