@@ -1,3 +1,4 @@
+import { t } from '@lingui/core/macro';
 import { toast } from '../components/ui/sonner';
 
 const CLIPBOARD_ERROR_DESCRIPTION = 'Clipboard access is unavailable or was denied';
@@ -6,13 +7,13 @@ const CLIPBOARD_ERROR_DESCRIPTION = 'Clipboard access is unavailable or was deni
 export async function copyTextWithFeedback(text: string, successMessage: string): Promise<boolean> {
   try {
     if (typeof navigator === 'undefined' || typeof navigator.clipboard?.writeText !== 'function') {
-      throw new Error('Clipboard API unavailable');
+      throw new Error(t`Clipboard API unavailable`);
     }
     await navigator.clipboard.writeText(text);
     toast.success(successMessage);
     return true;
   } catch {
-    toast.error('Copy failed', { description: CLIPBOARD_ERROR_DESCRIPTION });
+    toast.error(t`Copy failed`, { description: CLIPBOARD_ERROR_DESCRIPTION });
     return false;
   }
 }

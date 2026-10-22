@@ -1,3 +1,6 @@
+import { Trans } from '@lingui/react/macro';
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
 import { useState, useCallback, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { LoadingIndicator } from '../ui/loading-indicator';
@@ -18,6 +21,8 @@ export function ActionsPane({
   consoleLoading: boolean;
   pendingAction?: RepeaterPendingAction | null;
 }) {
+  useLingui();
+
   const [confirmReboot, setConfirmReboot] = useState(false);
 
   const handleReboot = useCallback(() => {
@@ -39,14 +44,16 @@ export function ActionsPane({
   return (
     <div className="border border-border rounded-lg overflow-hidden">
       <div className="px-3 py-2 bg-muted/50 border-b border-border">
-        <h3 className="text-sm font-medium">Actions</h3>
+        <h3 className="text-sm font-medium">
+          <Trans>Actions</Trans>
+        </h3>
       </div>
       <div className="p-3 flex flex-wrap gap-2 [&>button]:h-auto [&>button]:min-h-8 [&>button]:max-w-full [&>button]:whitespace-normal">
         <Button variant="outline" size="sm" onClick={onSendZeroHopAdvert} disabled={consoleLoading}>
           {pendingAction === 'zero-hop-advert' ? (
-            <LoadingIndicator label="Requesting zero-hop advert..." />
+            <LoadingIndicator label={t`Requesting zero-hop advert...`} />
           ) : (
-            'Zero Hop Advert'
+            t`Zero Hop Advert`
           )}
         </Button>
         <Button
@@ -56,39 +63,39 @@ export function ActionsPane({
           disabled={consoleLoading}
         >
           {pendingAction === 'flood-advert' ? (
-            <LoadingIndicator label="Requesting flood advert..." />
+            <LoadingIndicator label={t`Requesting flood advert...`} />
           ) : (
-            'Flood Advert'
+            t`Flood Advert`
           )}
         </Button>
         <Button variant="outline" size="sm" onClick={onSyncClock} disabled={consoleLoading}>
           {pendingAction === 'clock' ? (
-            <LoadingIndicator label="Requesting clock sync..." />
+            <LoadingIndicator label={t`Requesting clock sync...`} />
           ) : (
-            'Sync Clock'
+            t`Sync Clock`
           )}
         </Button>
         <Button
-          variant={confirmReboot ? 'destructive' : 'outline'}
+          variant={confirmReboot ? `destructive` : `outline`}
           size="sm"
           onClick={handleReboot}
           disabled={consoleLoading}
         >
           {pendingAction === 'reboot' ? (
-            <LoadingIndicator label="Requesting reboot..." />
+            <LoadingIndicator label={t`Requesting reboot...`} />
           ) : confirmReboot ? (
-            'Confirm Reboot'
+            t`Confirm Reboot`
           ) : (
-            'Reboot'
+            t`Reboot`
           )}
         </Button>
       </div>
       {consoleLoading && (
         <p className="px-3 pb-3 text-sm text-muted-foreground">
           {pendingAction === 'console' || !pendingAction ? (
-            <LoadingIndicator label="Waiting for console command..." />
+            <LoadingIndicator label={t`Waiting for console command...`} />
           ) : (
-            'Other actions are unavailable while this command is pending.'
+            t`Other actions are unavailable while this command is pending.`
           )}
         </p>
       )}

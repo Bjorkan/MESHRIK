@@ -1,3 +1,4 @@
+import { t } from '@lingui/core/macro';
 import { MeshCoreDecoder, PayloadType } from '@michaelhart/meshcore-decoder';
 import { CONTACT_TYPE_REPEATER, type Contact, type RawPacket } from '../types';
 import { hashString } from './contactAvatar';
@@ -100,14 +101,76 @@ const MAX_TRAFFIC_OBSERVATIONS = 200; // Per ambiguous prefix, to limit memory
 const TRAFFIC_OBSERVATION_MAX_AGE_MS = 30 * 60 * 1000; // 30 minutes - old observations are pruned
 
 export const PACKET_LEGEND_ITEMS = [
-  { label: 'AD', color: COLORS.particleAD, description: 'Advertisement' },
-  { label: 'GT', color: COLORS.particleGT, description: 'Group Text' },
-  { label: 'DM', color: COLORS.particleDM, description: 'Direct Message' },
-  { label: 'ACK', color: COLORS.particleACK, description: 'Acknowledgment' },
-  { label: 'TR', color: COLORS.particleTR, description: 'Trace' },
-  { label: 'RQ', color: COLORS.particleRQ, description: 'Request' },
-  { label: 'RS', color: COLORS.particleRS, description: 'Response' },
-  { label: '?', color: COLORS.particleUnknown, description: 'Other' },
+  {
+    get label() {
+      return t`AD`;
+    },
+    color: COLORS.particleAD,
+    get description() {
+      return t`Advertisement`;
+    },
+  },
+  {
+    get label() {
+      return t`GT`;
+    },
+    color: COLORS.particleGT,
+    get description() {
+      return t`Group Text`;
+    },
+  },
+  {
+    get label() {
+      return t`DM`;
+    },
+    color: COLORS.particleDM,
+    get description() {
+      return t`Direct Message`;
+    },
+  },
+  {
+    get label() {
+      return t`ACK`;
+    },
+    color: COLORS.particleACK,
+    get description() {
+      return t`Acknowledgment`;
+    },
+  },
+  {
+    get label() {
+      return t`TR`;
+    },
+    color: COLORS.particleTR,
+    get description() {
+      return t`Trace`;
+    },
+  },
+  {
+    get label() {
+      return t`RQ`;
+    },
+    color: COLORS.particleRQ,
+    get description() {
+      return t`Request`;
+    },
+  },
+  {
+    get label() {
+      return t`RS`;
+    },
+    color: COLORS.particleRS,
+    get description() {
+      return t`Response`;
+    },
+  },
+  {
+    label: '?',
+    color: COLORS.particleUnknown,
+    get description() {
+      return t`Other`;
+    },
+  },
 ] as const;
 
 export interface PathStep {

@@ -1,3 +1,6 @@
+import { Trans } from '@lingui/react/macro';
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
 import {
   lazy,
   Suspense,
@@ -50,14 +53,18 @@ const ChannelInfoPane = lazy(() =>
 
 type SidebarProps = ComponentProps<typeof Sidebar>;
 function LoadingInfoSheet({ title, onClose }: { title: string; onClose: () => void }) {
+  useLingui();
+
   return (
     <Sheet open onOpenChange={(open) => !open && onClose()}>
       <SheetContent side="right">
         <SheetHeader>
           <SheetTitle>{title}</SheetTitle>
-          <SheetDescription>Preparing details</SheetDescription>
+          <SheetDescription>
+            <Trans>Preparing details</Trans>
+          </SheetDescription>
         </SheetHeader>
-        <LoadingIndicator label="Loading details..." className="py-6" />
+        <LoadingIndicator label={t`Loading details...`} className="py-6" />
       </SheetContent>
     </Sheet>
   );
@@ -135,6 +142,8 @@ export function AppShell({
   channelInfoPaneProps,
   onRepeaterAutoLogin,
 }: AppShellProps) {
+  useLingui();
+
   usePagePinchZoomGuard();
 
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
@@ -245,20 +254,20 @@ export function AppShell({
   const settingsSidebarContent = (
     <nav
       className="sidebar w-60 h-full min-h-0 overflow-hidden bg-card border-r border-border flex flex-col"
-      aria-label="Settings"
+      aria-label={t`Settings`}
     >
       <div className="flex justify-between items-center px-3 py-2.5 border-b border-border">
         <h2 className="text-[0.625rem] uppercase tracking-wider text-muted-foreground font-medium">
-          Settings
+          <Trans>Settings</Trans>
         </h2>
         <button
           type="button"
           onClick={onCloseSettingsView}
           className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-status-connected/15 border border-status-connected/30 text-status-connected hover:bg-status-connected/25 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          title="Back to conversations"
-          aria-label="Back to conversations"
+          title={t`Back to conversations`}
+          aria-label={t`Back to conversations`}
         >
-          &larr; Back to Chat
+          <Trans>&larr; Back to Chat</Trans>
         </button>
       </div>
       <div className="flex-1 min-h-0 overflow-y-auto py-1 [contain:layout_paint]">
@@ -275,7 +284,7 @@ export function AppShell({
                 !disabled && 'hover:bg-accent',
                 settingsSection === section && !disabled && 'bg-accent border-l-primary'
               )}
-              aria-current={settingsSection === section ? 'true' : undefined}
+              aria-current={settingsSection === section ? `true` : undefined}
               onClick={() => onSettingsSectionChange(section)}
             >
               <span className="flex items-center gap-2">
@@ -305,7 +314,7 @@ export function AppShell({
           document.getElementById('main-content')?.focus();
         }}
       >
-        Skip to content
+        <Trans>Skip to content</Trans>
       </a>
       {localLabel.text && (
         <div
@@ -341,10 +350,12 @@ export function AppShell({
             <SheetHeader className="sr-only">
               <SheetTitle asChild>
                 <h2 ref={navigationTitleRef} tabIndex={-1}>
-                  Navigation
+                  <Trans>Navigation</Trans>
                 </h2>
               </SheetTitle>
-              <SheetDescription>Sidebar navigation</SheetDescription>
+              <SheetDescription>
+                <Trans>Sidebar navigation</Trans>
+              </SheetDescription>
             </SheetHeader>
             <div className="flex-1 overflow-hidden" {...closeSwipeHandlers}>
               {activeSidebarContent}
@@ -378,7 +389,7 @@ export function AppShell({
               <Suspense
                 fallback={
                   <div className="flex-1 flex items-center justify-center text-muted-foreground">
-                    <LoadingIndicator label="Loading search..." />
+                    <LoadingIndicator label={t`Loading search...`} />
                   </div>
                 }
               >
@@ -399,7 +410,7 @@ export function AppShell({
                 <Suspense
                   fallback={
                     <div className="flex-1 flex items-center justify-center p-8 text-muted-foreground">
-                      <LoadingIndicator label="Loading settings..." />
+                      <LoadingIndicator label={t`Loading settings...`} />
                     </div>
                   }
                 >
@@ -429,7 +440,7 @@ export function AppShell({
           <Suspense
             fallback={
               <div className="flex items-center justify-center h-full text-muted-foreground">
-                <LoadingIndicator label="Loading channel finder..." />
+                <LoadingIndicator label={t`Loading channel finder...`} />
               </div>
             }
           >
@@ -468,7 +479,7 @@ export function AppShell({
       {contactInfoPaneProps.contactKey !== null && (
         <Suspense
           fallback={
-            <LoadingInfoSheet title="Contact Info" onClose={contactInfoPaneProps.onClose} />
+            <LoadingInfoSheet title={t`Contact Info`} onClose={contactInfoPaneProps.onClose} />
           }
         >
           <ContactInfoPane {...contactInfoPaneProps} />
@@ -477,7 +488,7 @@ export function AppShell({
       {channelInfoPaneProps.channelKey !== null && (
         <Suspense
           fallback={
-            <LoadingInfoSheet title="Channel Info" onClose={channelInfoPaneProps.onClose} />
+            <LoadingInfoSheet title={t`Channel Info`} onClose={channelInfoPaneProps.onClose} />
           }
         >
           <ChannelInfoPane {...channelInfoPaneProps} />

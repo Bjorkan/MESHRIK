@@ -1,3 +1,5 @@
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
 import { useCallback, useEffect, useRef, type SetStateAction } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api';
@@ -6,6 +8,8 @@ import { toast } from '../components/ui/sonner';
 import type { AppSettings, AppSettingsUpdate } from '../types';
 
 export function useAppSettings() {
+  useLingui();
+
   const queryClient = useQueryClient();
   const settingsQuery = useQuery({
     queryKey: queryKeys.settings(),
@@ -74,7 +78,7 @@ export function useAppSettings() {
         } catch {
           // If refetch also fails, leave optimistic state
         }
-        toast.error('Failed to update blocked key');
+        toast.error(t`Failed to update blocked key`);
       }
     },
     [setAppSettings]
@@ -101,7 +105,7 @@ export function useAppSettings() {
         } catch {
           // If refetch also fails, leave optimistic state
         }
-        toast.error('Failed to update blocked name');
+        toast.error(t`Failed to update blocked name`);
       }
     },
     [setAppSettings]
@@ -136,7 +140,7 @@ export function useAppSettings() {
         if (typeof detail === 'object' && detail?.message) {
           toast.error(detail.message);
         } else {
-          toast.error('Failed to update tracked telemetry');
+          toast.error(t`Failed to update tracked telemetry`);
         }
       }
     },
@@ -172,7 +176,7 @@ export function useAppSettings() {
         if (typeof detail === 'object' && detail?.message) {
           toast.error(detail.message);
         } else {
-          toast.error('Failed to update tracked contact telemetry');
+          toast.error(t`Failed to update tracked contact telemetry`);
         }
       }
     },

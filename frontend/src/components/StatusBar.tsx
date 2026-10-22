@@ -1,3 +1,6 @@
+import { Trans } from '@lingui/react/macro';
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useDebouncer } from '@tanstack/react-pacer';
 import {
@@ -45,6 +48,8 @@ export function StatusBar({
   onSettingsClick,
   onMenuClick,
 }: StatusBarProps) {
+  useLingui();
+
   const [showBatteryPercent, setShowBatteryPercent] = useState(getShowBatteryPercent);
   const [showBatteryVoltage, setShowBatteryVoltage] = useState(getShowBatteryVoltage);
 
@@ -84,14 +89,14 @@ export function StatusBar({
   const connected = health?.radio_connected ?? false;
   const statusLabel =
     radioState === 'paused'
-      ? 'Radio Paused'
+      ? t`Radio Paused`
       : radioState === 'connecting'
-        ? 'Radio Connecting'
+        ? t`Radio Connecting`
         : radioState === 'initializing'
-          ? 'Radio Initializing'
+          ? t`Radio Initializing`
           : connected
-            ? 'Radio OK'
-            : 'Radio Disconnected';
+            ? t`Radio OK`
+            : t`Radio Disconnected`;
   const [reconnecting, setReconnecting] = useState(false);
   const reconnectingRef = useRef(false);
   // Track the *effective* theme (follow-os is resolved to original/light) so the
@@ -165,13 +170,13 @@ export function StatusBar({
     try {
       const result = await api.reconnectRadio();
       if (result.connected) {
-        toast.success('Reconnected', { description: result.message });
+        toast.success(t`Reconnected`, { description: result.message });
       } else {
-        toast.error('Radio is still disconnected', { description: result.message });
+        toast.error(t`Radio is still disconnected`, { description: result.message });
       }
     } catch (err) {
-      toast.error('Reconnection failed', {
-        description: err instanceof Error ? err.message : 'Check radio connection and power',
+      toast.error(t`Reconnection failed`, {
+        description: err instanceof Error ? err.message : t`Check radio connection and power`,
       });
     } finally {
       reconnectingRef.current = false;
@@ -192,7 +197,7 @@ export function StatusBar({
         <button
           onClick={onMenuClick}
           className="md:hidden inline-flex min-h-6 min-w-6 items-center justify-center rounded-sm bg-transparent border-none text-muted-foreground hover:text-foreground cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          aria-label="Open menu"
+          aria-label={t`Open menu`}
         >
           <Menu className="h-4 w-4" />
         </button>
@@ -209,7 +214,7 @@ export function StatusBar({
           <path d="m256 343.04c-5.6875 0-10.809 0.57031-15.93 2.2773l-106.38-135.96c-9.1016 10.809-20.48 19.344-32.996 25.602l106.38 135.96c-5.1211 8.5352-7.3945 18.203-7.3945 28.445 0 31.289 25.031 56.32 56.32 56.32s56.32-25.031 56.32-56.32c0-31.293-25.031-56.324-56.32-56.324z" />
           <path d="m356.69 114.91c3.9805-13.652 10.238-26.738 19.344-37.547-38.113-13.652-78.508-21.047-120.04-21.047-59.164 0-115.48 14.789-166.12 42.668-9.1016-6.8281-21.051-10.809-33.562-10.809-31.289-0.57031-56.32 25.027-56.32 55.75 0 31.289 25.031 56.32 56.32 56.32 31.289 0 56.32-25.031 56.32-56.32 0-3.4141-0.57031-6.8281-1.1367-9.6719 44.371-23.895 93.297-36.41 144.5-36.41 34.703 0 68.836 5.6914 100.69 17.066z" />
         </svg>
-        MESHRIK
+        <Trans>MESHRIK</Trans>
       </h1>
 
       <div className="flex items-center gap-1.5" role="status" aria-label={statusLabel}>
@@ -233,9 +238,9 @@ export function StatusBar({
       {connected && batteryInfo && (
         <div
           className={cn('flex items-center gap-1', batteryInfo.color)}
-          title={`Battery: ${batteryInfo.pct}% (${(batteryInfo.mv / 1000).toFixed(2)}V)`}
+          title={t`Battery: ${batteryInfo.pct}% (${(batteryInfo.mv / 1000).toFixed(2)}V)`}
           role="status"
-          aria-label={`Battery ${batteryInfo.pct} percent`}
+          aria-label={t`Battery ${batteryInfo.pct} percent`}
         >
           <batteryInfo.Icon className="h-4 w-4" aria-hidden="true" />
           <span className="hidden sm:inline text-sm">{batteryInfo.label}</span>
@@ -246,16 +251,16 @@ export function StatusBar({
         <div className="hidden min-w-0 max-w-[min(40vw,32rem)] items-center gap-2 text-muted-foreground lg:flex">
           <span
             className="max-w-40 truncate text-foreground font-medium"
-            title={config.name || 'Unnamed'}
+            title={config.name || t`Unnamed`}
           >
-            {config.name || 'Unnamed'}
+            {config.name || t`Unnamed`}
           </span>
           <button
             type="button"
             className="min-w-0 max-w-48 truncate rounded-sm font-mono text-sm text-muted-foreground cursor-pointer hover:text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             onClick={() => void copyTextWithFeedback(config.public_key, 'Public key copied!')}
             title={config.public_key.toLowerCase()}
-            aria-label="Copy public key"
+            aria-label={t`Copy public key`}
           >
             {config.public_key.toLowerCase()}
           </button>
@@ -268,7 +273,7 @@ export function StatusBar({
           disabled={reconnecting}
           className="min-h-6 px-3 py-1 bg-warning/10 border border-warning/20 text-warning rounded-md text-sm cursor-pointer hover:bg-warning/15 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          {reconnecting ? 'Reconnecting...' : radioState === 'paused' ? 'Connect' : 'Reconnect'}
+          {reconnecting ? t`Reconnecting...` : radioState === 'paused' ? t`Connect` : t`Reconnect`}
         </button>
       )}
       <button
@@ -280,13 +285,15 @@ export function StatusBar({
             : 'bg-secondary border border-border text-muted-foreground hover:bg-accent hover:text-foreground'
         )}
       >
-        {settingsMode ? 'Back to Chat' : 'Settings'}
+        {settingsMode ? t`Back to Chat` : t`Settings`}
       </button>
       <button
         onClick={handleThemeToggle}
         className="inline-flex min-h-6 min-w-6 items-center justify-center rounded-sm text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        title={currentTheme === 'light' ? 'Switch to classic theme' : 'Switch to light theme'}
-        aria-label={currentTheme === 'light' ? 'Switch to classic theme' : 'Switch to light theme'}
+        title={currentTheme === 'light' ? t`Switch to classic theme` : t`Switch to light theme`}
+        aria-label={
+          currentTheme === 'light' ? t`Switch to classic theme` : t`Switch to light theme`
+        }
       >
         {currentTheme === 'light' ? (
           <Moon className="h-4 w-4" aria-hidden="true" />

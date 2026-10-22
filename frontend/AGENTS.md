@@ -21,6 +21,11 @@ guides for [hooks](src/hooks/AGENTS.md),
   dirty forms on refresh. Table owns row semantics, Charts chart models,
   Virtual unbounded-window rendering, Pacer frontend rate control and
   Hotkeys global/route shortcuts.
+- Lingui owns frontend localization. Use `Trans` for JSX copy and the `t`
+  macro for attributes and imperative messages; keep protocol values, API
+  fields and user content language-neutral. Run `npm run i18n:update` after
+  copy changes and `npm run i18n:check` to verify reproducible, strictly
+  compilable catalogs.
 - `src/App.tsx` assembles hooks/data for `AppShell.tsx`. Keep heavy
   secondary views lazy loaded.
 - REST schema types are generated from `openapi/openapi.json` into
@@ -40,6 +45,7 @@ guides for [hooks](src/hooks/AGENTS.md),
 cd frontend
 npm ci
 npm run dev
+npm run i18n:check
 npm run test:run
 npm run docker:typecheck
 npm run build

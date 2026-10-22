@@ -1,3 +1,6 @@
+import { Trans } from '@lingui/react/macro';
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
 import { useEffect, useState } from 'react';
 import { useForm, useStore } from '@tanstack/react-form';
 import { useMutation } from '@tanstack/react-query';
@@ -39,6 +42,8 @@ interface SecurityWarningModalProps {
 }
 
 export function SecurityWarningModal({ health }: SecurityWarningModalProps) {
+  useLingui();
+
   const [acknowledged, setAcknowledged] = useState(readAcknowledgedState);
   const [botsDisabledLocally, setBotsDisabledLocally] = useState(false);
   const acknowledgementForm = useForm({
@@ -54,10 +59,10 @@ export function SecurityWarningModal({ health }: SecurityWarningModalProps) {
     retry: false,
     onSuccess: () => {
       setBotsDisabledLocally(true);
-      toast.success('Bots disabled until restart');
+      toast.success(t`Bots disabled until restart`);
     },
     onError: (err) => {
-      toast.error('Failed to disable bots', {
+      toast.error(t`Failed to disable bots`, {
         description: err instanceof Error ? err.message : undefined,
       });
     },
@@ -100,7 +105,7 @@ export function SecurityWarningModal({ health }: SecurityWarningModalProps) {
               <AlertTriangle className="h-5 w-5" aria-hidden="true" />
             </div>
             <DialogTitle className="leading-tight">
-              Unprotected bot execution is enabled
+              <Trans>Unprotected bot execution is enabled</Trans>
             </DialogTitle>
           </div>
         </DialogHeader>
@@ -109,39 +114,47 @@ export function SecurityWarningModal({ health }: SecurityWarningModalProps) {
 
         <div className="space-y-3 break-words text-sm leading-6 text-muted-foreground">
           <DialogDescription>
-            Bots are not disabled, and app-wide Basic Auth is not configured.
+            <Trans>Bots are not disabled, and app-wide Basic Auth is not configured.</Trans>
           </DialogDescription>
           <p>
-            Without one of those protections, or another access-control layer in front of MESHRIK,
-            anyone on your local network who can reach this app can run Python code on the computer
-            hosting this instance via the bot system.
+            <Trans>
+              Without one of those protections, or another access-control layer in front of MESHRIK,
+              anyone on your local network who can reach this app can run Python code on the
+              computer hosting this instance via the bot system.
+            </Trans>
           </p>
           <p className="font-semibold text-foreground">
-            This is only safe on protected or isolated networks with appropriate access control. If
-            your network is untrusted or later compromised, this setup may expose the host system to
-            arbitrary code execution.
+            <Trans>
+              This is only safe on protected or isolated networks with appropriate access control.
+              If your network is untrusted or later compromised, this setup may expose the host
+              system to arbitrary code execution.
+            </Trans>
           </p>
           <p>
-            To reduce that risk, run the server with environment variables to either disable bots
-            with{' '}
-            <code className="break-all rounded bg-muted px-1 py-0.5 text-foreground">
-              MESHCORE_DISABLE_BOTS=true
-            </code>{' '}
-            or enable the built-in login with{' '}
-            <code className="break-all rounded bg-muted px-1 py-0.5 text-foreground">
-              MESHCORE_BASIC_AUTH_USERNAME
-            </code>{' '}
-            /{' '}
-            <code className="break-all rounded bg-muted px-1 py-0.5 text-foreground">
-              MESHCORE_BASIC_AUTH_PASSWORD
-            </code>
-            . Another external auth or access-control system is also acceptable.
+            <Trans>
+              To reduce that risk, run the server with environment variables to either disable bots
+              with{' '}
+              <code className="break-all rounded bg-muted px-1 py-0.5 text-foreground">
+                MESHCORE_DISABLE_BOTS=true
+              </code>{' '}
+              or enable the built-in login with{' '}
+              <code className="break-all rounded bg-muted px-1 py-0.5 text-foreground">
+                MESHCORE_BASIC_AUTH_USERNAME
+              </code>{' '}
+              /{' '}
+              <code className="break-all rounded bg-muted px-1 py-0.5 text-foreground">
+                MESHCORE_BASIC_AUTH_PASSWORD
+              </code>
+              . Another external auth or access-control system is also acceptable.
+            </Trans>
           </p>
           <p>
-            If you just want a temporary safety measure while you learn the system, you can use the
-            button below to disable bots until the server restarts. That is only a temporary guard;
-            permanent protection through Basic Auth or env-based bot disablement is still
-            encouraged.
+            <Trans>
+              If you just want a temporary safety measure while you learn the system, you can use
+              the button below to disable bots until the server restarts. That is only a temporary
+              guard; permanent protection through Basic Auth or env-based bot disablement is still
+              encouraged.
+            </Trans>
           </p>
         </div>
 
@@ -153,8 +166,8 @@ export function SecurityWarningModal({ health }: SecurityWarningModalProps) {
             onClick={() => disableBotsMutation.mutate()}
           >
             {disableBotsMutation.isPending
-              ? 'Disabling Bots...'
-              : 'Disable Bots Until Server Restart'}
+              ? t`Disabling Bots...`
+              : t`Disable Bots Until Server Restart`}
           </Button>
         </div>
 
@@ -165,12 +178,14 @@ export function SecurityWarningModal({ health }: SecurityWarningModalProps) {
               onCheckedChange={(checked) =>
                 acknowledgementForm.setFieldValue('confirmedRisk', checked === true)
               }
-              aria-label="Acknowledge bot security risk"
+              aria-label={t`Acknowledge bot security risk`}
               className="mt-0.5"
             />
             <span className="text-sm leading-6 text-foreground">
-              I understand that continuing with my existing security setup may put me at risk on
-              untrusted networks or if my home network is compromised.
+              <Trans>
+                I understand that continuing with my existing security setup may put me at risk on
+                untrusted networks or if my home network is compromised.
+              </Trans>
             </span>
           </label>
 
@@ -181,7 +196,7 @@ export function SecurityWarningModal({ health }: SecurityWarningModalProps) {
             disabled={!confirmedRisk || disableBotsMutation.isPending}
             onClick={() => void acknowledgementForm.handleSubmit()}
           >
-            Do Not Warn Me On This Device Again
+            <Trans>Do Not Warn Me On This Device Again</Trans>
           </Button>
         </div>
       </DialogContent>

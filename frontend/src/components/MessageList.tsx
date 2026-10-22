@@ -1,3 +1,6 @@
+import { Trans } from '@lingui/react/macro';
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
 import {
   useEffect,
   useLayoutEffect,
@@ -68,6 +71,8 @@ interface MessageListProps {
 
 // Renders a MeshCore Open GIF payload, falling back to the raw text on load error.
 function GifPayload({ gifId, rawText }: { gifId: string; rawText: string }) {
+  useLingui();
+
   const [failed, setFailed] = useState(false);
   if (failed) {
     return <>{rawText}</>;
@@ -79,11 +84,11 @@ function GifPayload({ gifId, rawText }: { gifId: string; rawText: string }) {
       target="_blank"
       rel="noopener noreferrer"
       className="inline-block"
-      title="Open GIF on Giphy"
+      title={t`Open GIF on Giphy`}
     >
       <img
         src={url}
-        alt="GIF"
+        alt={t`GIF`}
         loading="lazy"
         onError={() => setFailed(true)}
         className="max-w-[240px] max-h-[240px] rounded-md"
@@ -95,10 +100,14 @@ function GifPayload({ gifId, rawText }: { gifId: string; rawText: string }) {
 // Renders a MeshCore Open reaction generically (emoji + "reacted"); the target
 // message is not resolved (see issue #291).
 function ReactionPayload({ emoji }: { emoji: string }) {
+  useLingui();
+
   return (
     <span className="inline-flex items-center gap-1.5">
       <span className="text-xl leading-none">{emoji}</span>
-      <span className="text-xs text-muted-foreground italic">reacted</span>
+      <span className="text-xs text-muted-foreground italic">
+        <Trans>reacted</Trans>
+      </span>
     </span>
   );
 }
@@ -326,6 +335,8 @@ interface HopCountBadgeProps {
 }
 
 function HopCountBadge({ paths, onClick, variant }: HopCountBadgeProps) {
+  useLingui();
+
   const { showPathHopWidth } = usePathHopWidth();
   const hopInfo = formatHopCounts(paths);
   const widthLabel = showPathHopWidth ? formatPathHopWidths(paths) : null;
@@ -346,8 +357,8 @@ function HopCountBadge({ paths, onClick, variant }: HopCountBadgeProps) {
         e.stopPropagation();
         onClick();
       }}
-      title={widthLabel ? `View message path (${widthLabel} per hop)` : 'View message path'}
-      aria-label={`${hopInfo.display}${widthLabel ? `, ${widthLabel} per hop` : ''}, view path`}
+      title={widthLabel ? t`View message path (${widthLabel} per hop)` : t`View message path`}
+      aria-label={t`${hopInfo.display}${widthLabel ? `, ${widthLabel} per hop` : ''}, view path`}
     >
       {label}
     </span>
@@ -356,10 +367,12 @@ function HopCountBadge({ paths, onClick, variant }: HopCountBadgeProps) {
 
 // Region scope badge for messages that arrived via a transport-routed (region-scoped) packet.
 function RegionBadge({ region }: { region: string }) {
+  useLingui();
+
   return (
     <span
       className="ml-1.5 align-middle text-[0.625rem] uppercase tracking-wider px-1.5 py-0.5 rounded bg-muted text-muted-foreground"
-      title={`Regional scope: ${region}`}
+      title={t`Regional scope: ${region}`}
     >
       {region}
     </span>
@@ -412,6 +425,8 @@ export function MessageList({
   onJumpToBottom,
   preSorted = false,
 }: MessageListProps) {
+  useLingui();
+
   const { renderRichPayloads } = useRichPayloads();
   const listRef = useRef<HTMLDivElement>(null);
   const prevMessagesLengthRef = useRef<number>(0);
@@ -492,7 +507,7 @@ export function MessageList({
       return;
     }
 
-    setPacketInspectorSource({ kind: 'loading', message: 'Loading packet analysis...' });
+    setPacketInspectorSource({ kind: 'loading', message: t`Loading packet analysis...` });
 
     try {
       const packet = await api.getPacket(message.packet_id);
@@ -502,7 +517,7 @@ export function MessageList({
       const description = error instanceof Error ? error.message : 'Unknown error';
       const isMissing = error instanceof Error && /not found/i.test(error.message);
       if (!isMissing) {
-        toast.error('Failed to load raw packet', { description });
+        toast.error(t`Failed to load raw packet`, { description });
       }
       setPacketInspectorSource({
         kind: 'unavailable',
@@ -1028,7 +1043,7 @@ export function MessageList({
   if (loading) {
     return (
       <div className="flex-1 overflow-y-auto p-5 text-center text-muted-foreground">
-        <LoadingIndicator label="Loading messages..." />
+        <LoadingIndicator label={t`Loading messages...`} />
       </div>
     );
   }
@@ -1036,7 +1051,7 @@ export function MessageList({
   if (messages.length === 0) {
     return (
       <div className="flex-1 overflow-y-auto p-5 text-center text-muted-foreground">
-        No messages yet
+        <Trans>No messages yet</Trans>
       </div>
     );
   }
@@ -1069,12 +1084,12 @@ export function MessageList({
       >
         {loadingOlder && (
           <div className="text-center py-2 text-muted-foreground text-sm">
-            <LoadingIndicator label="Loading older messages..." />
+            <LoadingIndicator label={t`Loading older messages...`} />
           </div>
         )}
         {!loadingOlder && hasOlderMessages && (
           <div className="text-center py-2 text-muted-foreground text-xs">
-            Scroll up for older messages
+            <Trans>Scroll up for older messages</Trans>
           </div>
         )}
         <div
@@ -1204,7 +1219,7 @@ export function MessageList({
                     >
                       <span className="h-px flex-1 bg-border" />
                       <span className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1">
-                        Unread messages
+                        <Trans>Unread messages</Trans>
                       </span>
                       <span className="h-px flex-1 bg-border" />
                     </button>
@@ -1215,7 +1230,7 @@ export function MessageList({
                     >
                       <span className="h-px flex-1 bg-border" />
                       <span className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1">
-                        Unread messages
+                        <Trans>Unread messages</Trans>
                       </span>
                       <span className="h-px flex-1 bg-border" />
                     </div>
@@ -1280,7 +1295,7 @@ export function MessageList({
                             tabIndex={0}
                             onKeyDown={handleKeyboardActivate}
                             onClick={() => onSenderClick(displaySender)}
-                            title={`Mention ${displaySender}`}
+                            title={t`Mention ${displaySender}`}
                           >
                             {displaySender}
                           </span>
@@ -1360,23 +1375,23 @@ export function MessageList({
                                   isOutgoingChan: msg.type === 'CHAN' && !!onResendChannelMessage,
                                 });
                               }}
-                              title="View echo paths"
-                              aria-label={`Acknowledged, ${msg.acked} echo${msg.acked !== 1 ? 's' : ''} — view paths`}
-                            >{` ✓${msg.acked > 1 ? msg.acked : ''}`}</span>
+                              title={t`View echo paths`}
+                              aria-label={t`Acknowledged, ${msg.acked} echo${msg.acked !== 1 ? 's' : ''} — view paths`}
+                            >{t` ✓${msg.acked > 1 ? msg.acked : ''}`}</span>
                           ) : (
-                            <span className="text-muted-foreground">{` ✓${msg.acked > 1 ? msg.acked : ''}`}</span>
+                            <span className="text-muted-foreground">{t` ✓${msg.acked > 1 ? msg.acked : ''}`}</span>
                           )
                         ) : msg.send_status === 'unknown' ? (
                           <span
                             className="text-warning"
-                            title="Radio did not confirm this send; delivery is unknown"
-                            aria-label="Delivery unknown because the radio did not confirm the send"
+                            title={t`Radio did not confirm this send; delivery is unknown`}
+                            aria-label={t`Delivery unknown because the radio did not confirm the send`}
                           >
                             {' '}
                             ⚠
                           </span>
                         ) : msg.send_status === 'pending' ? (
-                          <span className="text-muted-foreground" title="Send still pending">
+                          <span className="text-muted-foreground" title={t`Send still pending`}>
                             {' '}
                             …
                           </span>
@@ -1396,14 +1411,14 @@ export function MessageList({
                                 isOutgoingChan: true,
                               });
                             }}
-                            title="Message status"
-                            aria-label="No echoes yet — view message status"
+                            title={t`Message status`}
+                            aria-label={t`No echoes yet — view message status`}
                           >
                             {' '}
                             ?
                           </span>
                         ) : (
-                          <span className="text-muted-foreground" title="No repeats heard yet">
+                          <span className="text-muted-foreground" title={t`No repeats heard yet`}>
                             {' '}
                             ?
                           </span>
@@ -1417,12 +1432,12 @@ export function MessageList({
         </div>
         {loadingNewer && (
           <div className="text-center py-2 text-muted-foreground text-sm">
-            <LoadingIndicator label="Loading newer messages..." />
+            <LoadingIndicator label={t`Loading newer messages...`} />
           </div>
         )}
         {!loadingNewer && hasNewerMessages && (
           <div className="text-center py-2 text-muted-foreground text-xs">
-            Scroll down for newer messages
+            <Trans>Scroll down for newer messages</Trans>
           </div>
         )}
       </div>
@@ -1450,7 +1465,7 @@ export function MessageList({
               }}
               className="h-full px-3 text-sm font-medium hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              Jump to unread
+              <Trans>Jump to unread</Trans>
             </button>
             <button
               type="button"
@@ -1459,8 +1474,8 @@ export function MessageList({
                 setShowJumpToUnread(false);
               }}
               className="flex h-full w-9 items-center justify-center border-l border-border text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              aria-label="Dismiss jump to unread"
-              title="Dismiss jump to unread"
+              aria-label={t`Dismiss jump to unread`}
+              title={t`Dismiss jump to unread`}
             >
               ×
             </button>
@@ -1471,8 +1486,8 @@ export function MessageList({
         <button
           onClick={scrollToBottom}
           className="absolute bottom-4 right-4 w-9 h-9 rounded-full bg-card hover:bg-accent border border-border flex items-center justify-center shadow-lg transition-all hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          title="Scroll to bottom"
-          aria-label="Scroll to bottom"
+          title={t`Scroll to bottom`}
+          aria-label={t`Scroll to bottom`}
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -1528,8 +1543,8 @@ export function MessageList({
           }}
           channels={channels}
           source={packetInspectorSource}
-          title="Analyze Packet"
-          description="On-demand raw packet analysis for a message-backed archival packet."
+          title={t`Analyze Packet`}
+          description={t`On-demand raw packet analysis for a message-backed archival packet.`}
           notice={ANALYZE_PACKET_NOTICE}
           signalOverride={packetSignalOverrideRef.current}
         />

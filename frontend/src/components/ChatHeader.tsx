@@ -1,3 +1,6 @@
+import { Trans } from '@lingui/react/macro';
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
 import { useHotkey } from '@tanstack/react-hotkeys';
 import { useEffect, useRef, useState } from 'react';
 import { Bell, BellOff, ChevronsLeftRight, Globe2, Info, Route, Star, Trash2 } from 'lucide-react';
@@ -69,6 +72,8 @@ export function ChatHeader({
   onOpenContactInfo,
   onOpenChannelInfo,
 }: ChatHeaderProps) {
+  useLingui();
+
   const [showKey, setShowKey] = useState(false);
   const [pathDiscoveryOpen, setPathDiscoveryOpen] = useState(false);
   const [channelOverrideOpen, setChannelOverrideOpen] = useState(false);
@@ -191,8 +196,8 @@ export function ChatHeader({
             type="button"
             className="avatar-action-button flex-shrink-0 cursor-pointer rounded-full border-none bg-transparent p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             onClick={() => onOpenContactInfo(conversation.id)}
-            title="View contact info"
-            aria-label={`View info for ${conversation.name}`}
+            title={t`View contact info`}
+            aria-label={t`View info for ${conversation.name}`}
           >
             <ContactAvatar
               name={conversation.name}
@@ -211,7 +216,7 @@ export function ChatHeader({
                   <button
                     type="button"
                     className="flex max-w-full min-w-0 items-center gap-1.5 overflow-hidden rounded-sm text-left transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    aria-label={`View info for ${conversation.name}`}
+                    aria-label={t`View info for ${conversation.name}`}
                     onClick={handleOpenConversationInfo}
                   >
                     <span className="truncate">
@@ -245,9 +250,9 @@ export function ChatHeader({
                     e.stopPropagation();
                     setShowKey(true);
                   }}
-                  title="Reveal channel key"
+                  title={t`Reveal channel key`}
                 >
-                  Show Key
+                  <Trans>Show Key</Trans>
                 </button>
               ) : (
                 <button
@@ -262,9 +267,9 @@ export function ChatHeader({
                         : 'Contact key copied!'
                     );
                   }}
-                  title="Click to copy"
+                  title={t`Click to copy`}
                   aria-label={
-                    conversation.type === 'channel' ? 'Copy channel key' : 'Copy contact key'
+                    conversation.type === 'channel' ? t`Copy channel key` : t`Copy contact key`
                   }
                 >
                   {conversation.type === 'channel'
@@ -277,8 +282,8 @@ export function ChatHeader({
               <button
                 className="mt-0.5 flex basis-full items-center gap-1 text-left sm:hidden"
                 onClick={handleEditFloodScopeOverride}
-                title="Set regional override"
-                aria-label="Set regional override"
+                title={t`Set regional override`}
+                aria-label={t`Set regional override`}
               >
                 <Globe2
                   className="h-3.5 w-3.5 flex-shrink-0 text-[hsl(var(--region-override))]"
@@ -308,10 +313,10 @@ export function ChatHeader({
             onClick={() => setPathDiscoveryOpen(true)}
             title={
               activeContactIsPrefixOnly
-                ? 'Path Discovery unavailable until the full contact key is known'
-                : 'Path Discovery. Send a routed probe and inspect the forward and return paths'
+                ? t`Path Discovery unavailable until the full contact key is known`
+                : t`Path Discovery. Send a routed probe and inspect the forward and return paths`
             }
-            aria-label="Path Discovery"
+            aria-label={t`Path Discovery`}
             disabled={activeContactIsPrefixOnly}
           >
             <Route className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
@@ -323,10 +328,10 @@ export function ChatHeader({
             onClick={onTrace}
             title={
               activeContactIsPrefixOnly
-                ? 'Direct Trace unavailable until the full contact key is known'
-                : 'Direct Trace. Send a direct trace probe to this contact and display out and back SNR'
+                ? t`Direct Trace unavailable until the full contact key is known`
+                : t`Direct Trace. Send a direct trace probe to this contact and display out and back SNR`
             }
-            aria-label="Direct Trace"
+            aria-label={t`Direct Trace`}
             disabled={activeContactIsPrefixOnly}
           >
             <DirectTraceIcon className="h-4 w-4 text-muted-foreground" />
@@ -342,8 +347,8 @@ export function ChatHeader({
                 type="button"
                 className="p-1 rounded hover:bg-accent text-lg leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 onClick={() => setNotifDropdownOpen((v) => !v)}
-                title="Notification settings"
-                aria-label="Notification settings"
+                title={t`Notification settings`}
+                aria-label={t`Notification settings`}
                 aria-expanded={notifDropdownOpen}
                 aria-haspopup="dialog"
                 aria-controls="notification-settings-panel"
@@ -359,7 +364,7 @@ export function ChatHeader({
                         : 'text-muted-foreground'
                     )}
                     fill={
-                      notificationsEnabled || pushEnabledForConversation ? 'currentColor' : 'none'
+                      notificationsEnabled || pushEnabledForConversation ? `currentColor` : `none`
                     }
                     aria-hidden="true"
                   />
@@ -369,7 +374,7 @@ export function ChatHeader({
                 <div
                   id="notification-settings-panel"
                   role="dialog"
-                  aria-label="Notification settings"
+                  aria-label={t`Notification settings`}
                   className="absolute right-[-4.5rem] sm:right-0 top-full z-50 mt-1 w-[calc(100vw-2rem)] sm:w-72 max-w-72 rounded-md border border-border bg-popover p-3 shadow-lg space-y-3"
                 >
                   {notificationsSupported && (
@@ -383,12 +388,12 @@ export function ChatHeader({
                       />
                       <div className="min-w-0">
                         <span className="text-sm font-medium text-foreground block leading-tight">
-                          Desktop notifications (legacy)
+                          <Trans>Desktop notifications (legacy)</Trans>
                         </span>
                         <span className="text-xs text-muted-foreground leading-snug block mt-0.5">
                           {notificationsPermission === 'denied'
-                            ? 'Blocked by browser — check site permissions'
-                            : 'Alerts while this tab is open'}
+                            ? t`Blocked by browser — check site permissions`
+                            : t`Alerts while this tab is open`}
                         </span>
                       </div>
                     </label>
@@ -404,22 +409,24 @@ export function ChatHeader({
                         />
                         <div className="min-w-0">
                           <span className="text-sm font-medium text-foreground block leading-tight">
-                            Web Push (beta testing)
+                            <Trans>Web Push (beta testing)</Trans>
                           </span>
                           <span className="text-xs text-muted-foreground leading-snug block mt-0.5">
                             {pushSubscribed
-                              ? 'Alerts even when the browser is closed'
-                              : 'Alerts even when the browser is closed. Requires HTTPS.'}
+                              ? t`Alerts even when the browser is closed`
+                              : t`Alerts even when the browser is closed. Requires HTTPS.`}
                           </span>
                         </div>
                       </label>
                       <span className="text-xs text-muted-foreground leading-snug block mt-0.5">
-                        All notification types require a trusted HTTPS context. Depending on your
-                        browser, a snakeoil certificate may not be sufficient.
+                        <Trans>
+                          All notification types require a trusted HTTPS context. Depending on your
+                          browser, a snakeoil certificate may not be sufficient.
+                        </Trans>
                       </span>
                       {onOpenPushSettings && (
                         <p className="text-xs text-muted-foreground leading-snug mt-1.5">
-                          Manage Web Push enabled devices in{' '}
+                          <Trans>Manage Web Push enabled devices in</Trans>{' '}
                           <button
                             type="button"
                             onClick={() => {
@@ -428,7 +435,7 @@ export function ChatHeader({
                             }}
                             className="text-primary hover:underline transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                           >
-                            Settings &rarr; Local
+                            <Trans>Settings &rarr; Local</Trans>
                           </button>
                           .
                         </p>
@@ -447,10 +454,10 @@ export function ChatHeader({
                         />
                         <div className="min-w-0">
                           <span className="text-sm font-medium text-foreground block leading-tight">
-                            Mute channel
+                            <Trans>Mute channel</Trans>
                           </span>
                           <span className="text-xs text-muted-foreground leading-snug block mt-0.5">
-                            Hide unread counts and suppress all notifications
+                            <Trans>Hide unread counts and suppress all notifications</Trans>
                           </span>
                         </div>
                       </label>
@@ -464,8 +471,8 @@ export function ChatHeader({
           <button
             className="flex shrink-0 items-center gap-1 rounded px-1 py-1 text-lg leading-none transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             onClick={handleEditFloodScopeOverride}
-            title="Set regional override"
-            aria-label="Set regional override"
+            title={t`Set regional override`}
+            aria-label={t`Set regional override`}
           >
             <Globe2
               className={`h-4 w-4 ${activeFloodScopeLabel ? 'text-[hsl(var(--region-override))]' : 'text-muted-foreground'}`}
@@ -482,8 +489,8 @@ export function ChatHeader({
           <button
             className="flex shrink-0 items-center gap-1 rounded px-1 py-1 text-lg leading-none transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             onClick={handleEditPathHashModeOverride}
-            title="Set path hop width override"
-            aria-label="Set path hop width override"
+            title={t`Set path hop width override`}
+            aria-label={t`Set path hop width override`}
           >
             <ChevronsLeftRight
               className={`h-4 w-4 ${activePathHashModeOverride != null ? 'text-status-connected' : 'text-muted-foreground'}`}
@@ -498,7 +505,7 @@ export function ChatHeader({
               onToggleFavorite(conversation.type as 'channel' | 'contact', conversation.id)
             }
             title={favoriteTitle}
-            aria-label={isFav ? 'Remove from favorites' : 'Add to favorites'}
+            aria-label={isFav ? t`Remove from favorites` : t`Add to favorites`}
           >
             {isFav ? (
               <Star className="h-4 w-4 fill-current text-favorite" aria-hidden="true" />
@@ -517,8 +524,8 @@ export function ChatHeader({
                 onDeleteContact(conversation.id);
               }
             }}
-            title="Delete"
-            aria-label="Delete"
+            title={t`Delete`}
+            aria-label={t`Delete`}
           >
             <Trash2 className="h-4 w-4" aria-hidden="true" />
           </button>

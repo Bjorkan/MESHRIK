@@ -1,3 +1,6 @@
+import { Trans } from '@lingui/react/macro';
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
 import { formatForDisplay, useHotkeyRegistrations } from '@tanstack/react-hotkeys';
 
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from './ui/dialog';
@@ -21,6 +24,8 @@ function displayHotkey(hotkey: Parameters<typeof formatForDisplay>[0]): string {
 }
 
 export function ShortcutHelpDialog({ open, onOpenChange }: ShortcutHelpDialogProps) {
+  useLingui();
+
   const { hotkeys, sequences } = useHotkeyRegistrations();
   const entries: ShortcutHelpEntry[] = [
     ...hotkeys.flatMap((registration) => {
@@ -60,18 +65,22 @@ export function ShortcutHelpDialog({ open, onOpenChange }: ShortcutHelpDialogPro
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
-        <DialogTitle>Keyboard shortcuts</DialogTitle>
+        <DialogTitle>
+          <Trans>Keyboard shortcuts</Trans>
+        </DialogTitle>
         <DialogDescription>
-          Active shortcuts follow the current route and open panels. Disabled shortcuts remain
-          listed for discoverability.
+          <Trans>
+            Active shortcuts follow the current route and open panels. Disabled shortcuts remain
+            listed for discoverability.
+          </Trans>
         </DialogDescription>
-        <div className="space-y-2" aria-label="Keyboard shortcut registry">
+        <div className="space-y-2" aria-label={t`Keyboard shortcut registry`}>
           {entries.map((entry) => (
             <div
               key={entry.id}
               className="flex items-start justify-between gap-4 rounded-md border border-border px-3 py-2"
             >
-              <div className={entry.enabled ? undefined : 'opacity-50'}>
+              <div className={entry.enabled ? undefined : `opacity-50`}>
                 <div className="text-sm font-medium">{entry.name}</div>
                 {entry.description && (
                   <div className="text-xs text-muted-foreground">{entry.description}</div>

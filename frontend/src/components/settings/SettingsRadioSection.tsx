@@ -1,3 +1,7 @@
+import { Trans } from '@lingui/react/macro';
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
+import { getLocale } from '@/i18n';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useForm, useStore } from '@tanstack/react-form';
 import { useMutation } from '@tanstack/react-query';
@@ -154,6 +158,8 @@ function formatAirtime(secs: number): string {
 }
 
 function StatRow({ label, value, warn }: { label: string; value: string; warn?: boolean }) {
+  useLingui();
+
   return (
     <div className="flex items-center justify-between gap-2 py-0.5">
       <span className="text-xs text-muted-foreground">{label}</span>
@@ -167,6 +173,8 @@ function StatRow({ label, value, warn }: { label: string; value: string; warn?: 
 }
 
 function RadioDetailsCollapsible({ stats }: { stats: RadioStatsSnapshot }) {
+  useLingui();
+
   const age = stats.timestamp ? Math.max(0, Math.floor(Date.now() / 1000) - stats.timestamp) : null;
   const packets = {
     recv: stats.packets_recv,
@@ -181,62 +189,70 @@ function RadioDetailsCollapsible({ stats }: { stats: RadioStatsSnapshot }) {
     <details className="group">
       <summary className="text-sm font-medium text-foreground cursor-pointer select-none flex items-center gap-1">
         <ChevronDown className="h-3 w-3 transition-transform group-open:rotate-0 -rotate-90" />
-        Radio Details
+        <Trans>Radio Details</Trans>
       </summary>
       <div className="mt-2 space-y-2 rounded-md border border-input bg-muted/20 p-3">
         {age !== null && (
           <p className="text-[0.625rem] uppercase tracking-wider text-muted-foreground font-medium">
-            Updated {age < 5 ? 'just now' : `${age}s ago`}
+            <Trans>Updated {age < 5 ? 'just now' : `${age}s ago`}</Trans>
           </p>
         )}
 
         {/* Core */}
         {stats.uptime_secs != null && (
-          <StatRow label="Uptime" value={formatUptime(stats.uptime_secs)} />
+          <StatRow label={t`Uptime`} value={formatUptime(stats.uptime_secs)} />
         )}
         {stats.battery_mv != null && stats.battery_mv > 0 && (
-          <StatRow label="Battery" value={`${(stats.battery_mv / 1000).toFixed(2)}V`} />
+          <StatRow label={t`Battery`} value={`${(stats.battery_mv / 1000).toFixed(2)}V`} />
         )}
         {stats.queue_len != null && (
           <StatRow
-            label="TX Queue"
+            label={t`TX Queue`}
             value={`${stats.queue_len} / 16`}
             warn={stats.queue_len >= 14}
           />
         )}
         {stats.errors != null && (
-          <StatRow label="Errors" value={String(stats.errors)} warn={stats.errors > 0} />
+          <StatRow label={t`Errors`} value={String(stats.errors)} warn={stats.errors > 0} />
         )}
 
         {/* RF */}
         {stats.noise_floor != null && (
-          <StatRow label="Noise Floor" value={`${stats.noise_floor} dBm`} />
+          <StatRow label={t`Noise Floor`} value={`${stats.noise_floor} dBm`} />
         )}
-        {stats.last_rssi != null && <StatRow label="Last RSSI" value={`${stats.last_rssi} dBm`} />}
-        {stats.last_snr != null && <StatRow label="Last SNR" value={`${stats.last_snr} dB`} />}
+        {stats.last_rssi != null && (
+          <StatRow label={t`Last RSSI`} value={`${stats.last_rssi} dBm`} />
+        )}
+        {stats.last_snr != null && <StatRow label={t`Last SNR`} value={`${stats.last_snr} dB`} />}
 
         {/* Airtime */}
         {(stats.tx_air_secs != null || stats.rx_air_secs != null) && (
           <>
             {stats.tx_air_secs != null && (
-              <StatRow label="TX Airtime" value={formatAirtime(stats.tx_air_secs)} />
+              <StatRow label={t`TX Airtime`} value={formatAirtime(stats.tx_air_secs)} />
             )}
             {stats.rx_air_secs != null && (
-              <StatRow label="RX Airtime" value={formatAirtime(stats.rx_air_secs)} />
+              <StatRow label={t`RX Airtime`} value={formatAirtime(stats.rx_air_secs)} />
             )}
           </>
         )}
 
         {/* Packets */}
-        {packets.recv != null && <StatRow label="Packets Received" value={String(packets.recv)} />}
-        {packets.sent != null && <StatRow label="Packets Sent" value={String(packets.sent)} />}
-        {packets.flood_tx != null && <StatRow label="Flood TX" value={String(packets.flood_tx)} />}
-        {packets.flood_rx != null && <StatRow label="Flood RX" value={String(packets.flood_rx)} />}
+        {packets.recv != null && (
+          <StatRow label={t`Packets Received`} value={String(packets.recv)} />
+        )}
+        {packets.sent != null && <StatRow label={t`Packets Sent`} value={String(packets.sent)} />}
+        {packets.flood_tx != null && (
+          <StatRow label={t`Flood TX`} value={String(packets.flood_tx)} />
+        )}
+        {packets.flood_rx != null && (
+          <StatRow label={t`Flood RX`} value={String(packets.flood_rx)} />
+        )}
         {packets.direct_tx != null && (
-          <StatRow label="Direct TX" value={String(packets.direct_tx)} />
+          <StatRow label={t`Direct TX`} value={String(packets.direct_tx)} />
         )}
         {packets.direct_rx != null && (
-          <StatRow label="Direct RX" value={String(packets.direct_rx)} />
+          <StatRow label={t`Direct RX`} value={String(packets.direct_rx)} />
         )}
       </div>
     </details>
@@ -284,6 +300,8 @@ export function SettingsRadioSection({
   onClose: () => void;
   className?: string;
 }) {
+  useLingui();
+
   const saveRadioMutation = useMutation({
     mutationFn: (update: RadioConfigUpdate) => onSave(update),
     retry: false,
@@ -312,11 +330,11 @@ export function SettingsRadioSection({
       try {
         await saveRadioMutation.mutateAsync(update);
         if (value.rebootAfterSave) {
-          toast.success('Radio config saved, rebooting...');
+          toast.success(t`Radio config saved, rebooting...`);
           await rebootMutation.mutateAsync();
           if (!pageMode) onClose();
         } else {
-          toast.success('Radio config saved');
+          toast.success(t`Radio config saved`);
         }
       } catch (err) {
         radioForm.setFieldValue(
@@ -349,7 +367,7 @@ export function SettingsRadioSection({
   const [gettingLocation, setGettingLocation] = useState(false);
   const [officialPresets, setOfficialPresets] = useState<typeof RADIO_PRESETS>([]);
   const [officialPresetsStatus, setOfficialPresetsStatus] = useState(
-    'Bundled presets (offline fallback)'
+    t`Bundled presets (offline fallback)`
   );
   const allRadioPresets = useMemo(
     () => [
@@ -363,7 +381,7 @@ export function SettingsRadioSection({
     let active = true;
     fetch('/api/radio/presets', { credentials: 'same-origin' })
       .then((response) => {
-        if (!response.ok) throw new Error('presets unavailable');
+        if (!response.ok) throw new Error(t`presets unavailable`);
         return response.json();
       })
       .then((result: { stale: boolean; presets: typeof RADIO_PRESETS }) => {
@@ -371,12 +389,12 @@ export function SettingsRadioSection({
         if (Array.isArray(result.presets)) {
           setOfficialPresets(result.presets);
           setOfficialPresetsStatus(
-            result.stale ? 'Cached suggestions (offline)' : 'Official community suggestions'
+            result.stale ? t`Cached suggestions (offline)` : t`Official community suggestions`
           );
         }
       })
       .catch(() => {
-        if (active) setOfficialPresetsStatus('Bundled presets (offline fallback)');
+        if (active) setOfficialPresetsStatus(t`Bundled presets (offline fallback)`);
       });
     return () => {
       active = false;
@@ -387,20 +405,20 @@ export function SettingsRadioSection({
     defaultValues: { privateKey: '', serverError: '' },
     onSubmit: async ({ value }) => {
       if (!value.privateKey.trim()) {
-        identityForm.setFieldValue('serverError', 'Private key is required');
+        identityForm.setFieldValue('serverError', t`Private key is required`);
         return;
       }
       identityForm.setFieldValue('serverError', '');
       try {
         await setPrivateKeyMutation.mutateAsync(value.privateKey.trim());
         identityForm.setFieldValue('privateKey', '');
-        toast.success('Private key set, rebooting...');
+        toast.success(t`Private key set, rebooting...`);
         await rebootMutation.mutateAsync();
         if (!pageMode) onClose();
       } catch (err) {
         identityForm.setFieldValue(
           'serverError',
-          err instanceof Error ? err.message : 'Failed to set private key'
+          err instanceof Error ? err.message : t`Failed to set private key`
         );
       }
     },
@@ -422,7 +440,10 @@ export function SettingsRadioSection({
       floodForm.setFieldValue('serverError', '');
       const newMaxRadioContacts = parseRequiredNumber(value.maxRadioContacts, true);
       if (newMaxRadioContacts === null || newMaxRadioContacts < 1) {
-        floodForm.setFieldValue('serverError', 'Maximum radio contacts must be a positive integer');
+        floodForm.setFieldValue(
+          'serverError',
+          t`Maximum radio contacts must be a positive integer`
+        );
         return;
       }
       try {
@@ -441,7 +462,7 @@ export function SettingsRadioSection({
           update.max_radio_contacts = newMaxRadioContacts;
         }
         if (Object.keys(update).length > 0) await saveAppSettingsMutation.mutateAsync(update);
-        toast.success('Settings saved');
+        toast.success(t`Settings saved`);
       } catch (err) {
         floodForm.setFieldValue(
           'serverError',
@@ -474,7 +495,7 @@ export function SettingsRadioSection({
         if (newAdvertInterval !== appSettings.advert_interval) {
           await saveAppSettingsMutation.mutateAsync({ advert_interval: newAdvertInterval });
         }
-        toast.success('Advertising interval saved');
+        toast.success(t`Advertising interval saved`);
       } catch (err) {
         advertIntervalForm.setFieldValue(
           'serverError',
@@ -499,9 +520,9 @@ export function SettingsRadioSection({
       try {
         if (typeof data.private_key === 'string' && data.private_key) {
           await setPrivateKeyMutation.mutateAsync(data.private_key);
-          toast.success('Config + private key imported, saving & rebooting...');
+          toast.success(t`Config + private key imported, saving & rebooting...`);
         } else {
-          toast.success('Config imported, saving & rebooting...');
+          toast.success(t`Config imported, saving & rebooting...`);
         }
         await saveRadioMutation.mutateAsync(update);
         await rebootMutation.mutateAsync();
@@ -593,8 +614,10 @@ export function SettingsRadioSection({
 
   const handleGetLocation = () => {
     if (!navigator.geolocation) {
-      toast.error('Geolocation not supported', {
-        description: 'Your browser does not support geolocation',
+      toast.error(t`Geolocation not supported`, {
+        get description() {
+          return t`Your browser does not support geolocation`;
+        },
       });
       return;
     }
@@ -605,11 +628,11 @@ export function SettingsRadioSection({
         radioForm.setFieldValue('lat', position.coords.latitude.toFixed(6));
         radioForm.setFieldValue('lon', position.coords.longitude.toFixed(6));
         setGettingLocation(false);
-        toast.success('Location updated');
+        toast.success(t`Location updated`);
       },
       (err) => {
         setGettingLocation(false);
-        toast.error('Failed to get location', {
+        toast.error(t`Failed to get location`, {
           description: err.message,
         });
       },
@@ -639,13 +662,16 @@ export function SettingsRadioSection({
       await onAdvertise(mode);
       setAdvertiseResult({
         kind: 'accepted',
-        message: `${mode === 'zero_hop' ? 'Zero-hop' : 'Flood'} advertisement accepted by the radio. Peer receipt is not confirmed.`,
+        message:
+          mode === 'zero_hop'
+            ? t`Zero-hop advertisement accepted by the radio. Peer receipt is not confirmed.`
+            : t`Flood advertisement accepted by the radio. Peer receipt is not confirmed.`,
       });
     } catch (error) {
       setAdvertiseResult({
         kind: 'error',
         message:
-          error instanceof Error ? error.message : 'The advertisement request was not accepted',
+          error instanceof Error ? error.message : t`The advertisement request was not accepted`,
       });
     } finally {
       setAdvertisingMode(null);
@@ -680,12 +706,12 @@ export function SettingsRadioSection({
     const seen = new Set(existing.map((s) => s.toLowerCase()));
     const additions = regionDiscovery.regions.filter((r) => !seen.has(r.toLowerCase()));
     if (additions.length === 0) {
-      toast.info('All discovered regions are already listed');
+      toast.info(t`All discovered regions are already listed`);
       return;
     }
     floodForm.setFieldValue('knownRegions', [...existing, ...additions].join('\n'));
     toast.success(
-      `Added ${additions.length} region${additions.length === 1 ? '' : 's'} — review and Save Messaging Settings`
+      t`Added ${additions.length} region${additions.length === 1 ? '' : 's'} — review and Save Messaging Settings`
     );
   };
 
@@ -717,7 +743,7 @@ export function SettingsRadioSection({
     a.href = url;
     const safeName = (config.name || 'radio').replace(/[^a-zA-Z0-9_-]/g, '_');
     const timestamp = new Date()
-      .toLocaleString(undefined, {
+      .toLocaleString(getLocale(), {
         year: 'numeric',
         month: '2-digit',
         day: '2-digit',
@@ -737,11 +763,13 @@ export function SettingsRadioSection({
     try {
       const { private_key } = await api.getPrivateKey();
       downloadJson({ ...profile, private_key }, 'config');
-      toast.success('Export generated with private key');
+      toast.success(t`Export generated with private key`);
     } catch {
       downloadJson(profile, 'config');
-      toast.info('Export generated without private key', {
-        description: 'See README_ADVANCED.md for private key export enable',
+      toast.info(t`Export generated without private key`, {
+        get description() {
+          return t`See README_ADVANCED.md for private key export enable`;
+        },
       });
     }
   };
@@ -829,8 +857,10 @@ export function SettingsRadioSection({
       const data = JSON.parse(text);
 
       if (!validateImportData(data)) {
-        toast.error('Invalid config file', {
-          description: 'File must contain name and radio parameters (freq, bw, sf, cr)',
+        toast.error(t`Invalid config file`, {
+          get description() {
+            return t`File must contain name and radio parameters (freq, bw, sf, cr)`;
+          },
         });
         return;
       }
@@ -931,14 +961,14 @@ export function SettingsRadioSection({
     try {
       if (radioState === 'paused' || setupNeedsRetry) {
         await onReconnect();
-        toast.success(setupNeedsRetry ? 'Radio setup ready' : 'Radio reconnected');
+        toast.success(setupNeedsRetry ? t`Radio setup ready` : t`Radio reconnected`);
       } else {
         await onDisconnect();
-        toast.success('Radio connection paused');
+        toast.success(t`Radio connection paused`);
       }
     } catch (err) {
-      toast.error('Failed to change radio connection state', {
-        description: err instanceof Error ? err.message : 'Check radio connection and try again',
+      toast.error(t`Failed to change radio connection state`, {
+        description: err instanceof Error ? err.message : t`Check radio connection and try again`,
       });
     } finally {
       setConnectionBusy(false);
@@ -949,7 +979,9 @@ export function SettingsRadioSection({
     <div className={className}>
       {/* ── Connection ── */}
       <div className="space-y-3">
-        <h3 className="text-base font-semibold tracking-tight">Connection</h3>
+        <h3 className="text-base font-semibold tracking-tight">
+          <Trans>Connection</Trans>
+        </h3>
         <div className="flex items-center gap-2" role="status" aria-label={connectionStatusLabel}>
           <div
             className={`w-2 h-2 rounded-full ${
@@ -963,7 +995,7 @@ export function SettingsRadioSection({
           <span
             className={
               radioState === 'paused' || radioState === 'disconnected'
-                ? 'text-muted-foreground'
+                ? `text-muted-foreground`
                 : ''
             }
           >
@@ -975,27 +1007,39 @@ export function SettingsRadioSection({
         {(setupNeedsRetry || workerQuarantined) && (
           <div
             className="space-y-1 rounded-md border border-warning/40 bg-warning/10 p-3 text-xs"
-            role={radioSetupFailed || workerQuarantined ? 'alert' : 'status'}
+            role={radioSetupFailed || workerQuarantined ? `alert` : `status`}
           >
             {workerQuarantined ? (
               <p>
-                Radio command worker is quarantined
-                {health?.radio_scheduler?.last_job_kind
-                  ? ` after ${health.radio_scheduler.last_job_kind}`
-                  : ''}
-                . Restart MESHRIK before sending more radio commands.
+                <Trans>
+                  Radio command worker is quarantined
+                  {health?.radio_scheduler?.last_job_kind
+                    ? ` after ${health.radio_scheduler.last_job_kind}`
+                    : ''}
+                  . Restart MESHRIK before sending more radio commands.
+                </Trans>
               </p>
             ) : (
               <p>
                 {radioSetupFailed
-                  ? 'The transport is connected, but radio setup failed.'
-                  : 'The transport is connected and usable, but radio setup is degraded.'}
+                  ? t`The transport is connected, but radio setup failed.`
+                  : t`The transport is connected and usable, but radio setup is degraded.`}
               </p>
             )}
-            {health?.startup_stage && <p>Current setup stage: {health.startup_stage}</p>}
-            {health?.startup_error_stage && <p>Last failed stage: {health.startup_error_stage}</p>}
+            {health?.startup_stage && (
+              <p>
+                <Trans>Current setup stage: {health.startup_stage}</Trans>
+              </p>
+            )}
+            {health?.startup_error_stage && (
+              <p>
+                <Trans>Last failed stage: {health.startup_error_stage}</Trans>
+              </p>
+            )}
             {(health?.startup_skipped_stages?.length ?? 0) > 0 && (
-              <p>Skipped stages: {health?.startup_skipped_stages?.join(', ')}</p>
+              <p>
+                <Trans>Skipped stages: {health?.startup_skipped_stages?.join(', ')}</Trans>
+              </p>
             )}
           </div>
         )}
@@ -1009,18 +1053,18 @@ export function SettingsRadioSection({
           disabled={connectionBusy || workerQuarantined}
           className="w-full"
         >
-          {connectionBusy ? `${connectionActionLabel}...` : connectionActionLabel}
+          {connectionBusy ? t`${connectionActionLabel}...` : connectionActionLabel}
         </Button>
         <p className="text-[0.8125rem] text-muted-foreground">
           {workerQuarantined
-            ? 'A normal setup retry cannot safely recover an ambiguous or timed-out radio command.'
+            ? t`A normal setup retry cannot safely recover an ambiguous or timed-out radio command.`
             : setupNeedsRetry
-              ? 'Retries setup on the current transport without disconnecting or enabling destructive maintenance.'
+              ? t`Retries setup on the current transport without disconnecting or enabling destructive maintenance.`
               : radioState === 'paused'
-                ? 'Reconnects the configured radio transport and resumes automatic reconnect attempts.'
+                ? t`Reconnects the configured radio transport and resumes automatic reconnect attempts.`
                 : !transportConnected
-                  ? 'Stops automatic reconnect attempts and leaves the radio connection paused.'
-                  : 'Disconnect pauses automatic reconnect attempts so another device can use the radio.'}
+                  ? t`Stops automatic reconnect attempts and leaves the radio connection paused.`
+                  : t`Disconnect pauses automatic reconnect attempts so another device can use the radio.`}
         </p>
       </div>
 
@@ -1028,11 +1072,15 @@ export function SettingsRadioSection({
 
       {/* ── Identity ── */}
       <div className="space-y-2">
-        <h3 className="text-base font-semibold tracking-tight">Identity</h3>
+        <h3 className="text-base font-semibold tracking-tight">
+          <Trans>Identity</Trans>
+        </h3>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="name">Radio Name</Label>
+        <Label htmlFor="name">
+          <Trans>Radio Name</Trans>
+        </Label>
         <Input
           id="name"
           value={name}
@@ -1041,21 +1089,25 @@ export function SettingsRadioSection({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="public-key">Public Key</Label>
+        <Label htmlFor="public-key">
+          <Trans>Public Key</Trans>
+        </Label>
         <Input id="public-key" value={config.public_key} disabled className="font-mono text-xs" />
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="private-key">Set Private Key (write-only)</Label>
+        <Label htmlFor="private-key">
+          <Trans>Set Private Key (write-only)</Trans>
+        </Label>
         <Input
           id="private-key"
           type="password"
           autoComplete="off"
           value={privateKey}
           onChange={(e) => identityForm.setFieldValue('privateKey', e.target.value)}
-          placeholder="64-character hex private key"
+          placeholder={t`64-character hex private key`}
           aria-invalid={identityError ? true : undefined}
-          aria-describedby={identityError ? 'private-key-error' : undefined}
+          aria-describedby={identityError ? `private-key-error` : undefined}
         />
         <Button
           onClick={handleSetPrivateKey}
@@ -1064,8 +1116,8 @@ export function SettingsRadioSection({
           variant="outline"
         >
           {identityBusy || identityRebooting
-            ? 'Setting & Rebooting...'
-            : 'Set Private Key & Reboot'}
+            ? t`Setting & Rebooting...`
+            : t`Set Private Key & Reboot`}
         </Button>
       </div>
 
@@ -1079,18 +1131,24 @@ export function SettingsRadioSection({
 
       {/* ── Radio Parameters ── */}
       <div className="space-y-2">
-        <h3 className="text-base font-semibold tracking-tight">Radio Parameters</h3>
+        <h3 className="text-base font-semibold tracking-tight">
+          <Trans>Radio Parameters</Trans>
+        </h3>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="preset">Preset</Label>
+        <Label htmlFor="preset">
+          <Trans>Preset</Trans>
+        </Label>
         <select
           id="preset"
           value={currentPreset}
           onChange={(e) => handlePresetChange(e.target.value)}
           className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
         >
-          <option value="custom">Custom</option>
+          <option value="custom">
+            <Trans>Custom</Trans>
+          </option>
           {allRadioPresets.map((preset) => (
             <option key={preset.name} value={preset.name}>
               {preset.name}
@@ -1098,14 +1156,18 @@ export function SettingsRadioSection({
           ))}
         </select>
         <p className="text-xs text-muted-foreground">
-          {officialPresetsStatus}. Suggestions do not change the radio until saved. Verify local
-          radio regulations.
+          <Trans>
+            {officialPresetsStatus}. Suggestions do not change the radio until saved. Verify local
+            radio regulations.
+          </Trans>
         </p>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="freq">Frequency (MHz)</Label>
+          <Label htmlFor="freq">
+            <Trans>Frequency (MHz)</Trans>
+          </Label>
           <Input
             id="freq"
             type="number"
@@ -1113,11 +1175,13 @@ export function SettingsRadioSection({
             value={freq}
             onChange={(e) => radioForm.setFieldValue('freq', e.target.value)}
             aria-invalid={error ? true : undefined}
-            aria-describedby={error ? 'radio-config-error' : undefined}
+            aria-describedby={error ? `radio-config-error` : undefined}
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="bw">Bandwidth (kHz)</Label>
+          <Label htmlFor="bw">
+            <Trans>Bandwidth (kHz)</Trans>
+          </Label>
           <Input
             id="bw"
             type="number"
@@ -1125,14 +1189,16 @@ export function SettingsRadioSection({
             value={bw}
             onChange={(e) => radioForm.setFieldValue('bw', e.target.value)}
             aria-invalid={error ? true : undefined}
-            aria-describedby={error ? 'radio-config-error' : undefined}
+            aria-describedby={error ? `radio-config-error` : undefined}
           />
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="sf">Spreading Factor</Label>
+          <Label htmlFor="sf">
+            <Trans>Spreading Factor</Trans>
+          </Label>
           <Input
             id="sf"
             type="number"
@@ -1141,11 +1207,13 @@ export function SettingsRadioSection({
             value={sf}
             onChange={(e) => radioForm.setFieldValue('sf', e.target.value)}
             aria-invalid={error ? true : undefined}
-            aria-describedby={error ? 'radio-config-error' : undefined}
+            aria-describedby={error ? `radio-config-error` : undefined}
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="cr">Coding Rate</Label>
+          <Label htmlFor="cr">
+            <Trans>Coding Rate</Trans>
+          </Label>
           <Input
             id="cr"
             type="number"
@@ -1154,25 +1222,29 @@ export function SettingsRadioSection({
             value={cr}
             onChange={(e) => radioForm.setFieldValue('cr', e.target.value)}
             aria-invalid={error ? true : undefined}
-            aria-describedby={error ? 'radio-config-error' : undefined}
+            aria-describedby={error ? `radio-config-error` : undefined}
           />
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="tx-power">TX Power (dBm)</Label>
+          <Label htmlFor="tx-power">
+            <Trans>TX Power (dBm)</Trans>
+          </Label>
           <Input
             id="tx-power"
             type="number"
             value={txPower}
             onChange={(e) => radioForm.setFieldValue('txPower', e.target.value)}
             aria-invalid={error ? true : undefined}
-            aria-describedby={error ? 'radio-config-error' : undefined}
+            aria-describedby={error ? `radio-config-error` : undefined}
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="max-tx">Max TX Power</Label>
+          <Label htmlFor="max-tx">
+            <Trans>Max TX Power</Trans>
+          </Label>
           <Input id="max-tx" type="number" value={config.max_tx_power} disabled />
         </div>
       </div>
@@ -1187,10 +1259,14 @@ export function SettingsRadioSection({
             }
           />
           <div className="space-y-1">
-            <Label htmlFor="repeat-enabled">Companion Repeat Mode</Label>
+            <Label htmlFor="repeat-enabled">
+              <Trans>Companion Repeat Mode</Trans>
+            </Label>
             <p className="text-[0.8125rem] text-muted-foreground">
-              Repeat eligible mesh traffic through this companion radio. Firmware may reject this
-              setting on unsupported frequencies.
+              <Trans>
+                Repeat eligible mesh traffic through this companion radio. Firmware may reject this
+                setting on unsupported frequencies.
+              </Trans>
             </p>
           </div>
         </div>
@@ -1198,23 +1274,35 @@ export function SettingsRadioSection({
 
       {config.path_hash_mode_supported && (
         <div className="space-y-2">
-          <Label htmlFor="path-hash-mode">Path Hash Mode</Label>
+          <Label htmlFor="path-hash-mode">
+            <Trans>Path Hash Mode</Trans>
+          </Label>
           <select
             id="path-hash-mode"
             value={pathHashMode}
             onChange={(e) => radioForm.setFieldValue('pathHashMode', e.target.value)}
             className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
           >
-            <option value="0">1 byte — up to 63 hops (default)</option>
-            <option value="1">2 bytes — up to 32 hops</option>
-            <option value="2">3 bytes — up to 21 hops</option>
+            <option value="0">
+              <Trans>1 byte — up to 63 hops (default)</Trans>
+            </option>
+            <option value="1">
+              <Trans>2 bytes — up to 32 hops</Trans>
+            </option>
+            <option value="2">
+              <Trans>3 bytes — up to 21 hops</Trans>
+            </option>
           </select>
           <div className="rounded-md border border-warning/50 bg-warning/10 p-3 text-xs text-warning">
-            <p className="font-semibold mb-1">Compatibility Warning</p>
+            <p className="font-semibold mb-1">
+              <Trans>Compatibility Warning</Trans>
+            </p>
             <p>
-              ALL nodes along a message&apos;s route &mdash; your radio, every repeater, and the
-              recipient &mdash; must be running firmware that supports the selected mode. Messages
-              sent with 2-byte or 3-byte hops will be dropped by any node on older firmware.
+              <Trans>
+                ALL nodes along a message&apos;s route &mdash; your radio, every repeater, and the
+                recipient &mdash; must be running firmware that supports the selected mode. Messages
+                sent with 2-byte or 3-byte hops will be dropped by any node on older firmware.
+              </Trans>
             </p>
           </div>
         </div>
@@ -1225,7 +1313,9 @@ export function SettingsRadioSection({
       {/* ── Location ── */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <h3 className="text-base font-semibold tracking-tight">Location</h3>
+          <h3 className="text-base font-semibold tracking-tight">
+            <Trans>Location</Trans>
+          </h3>
           <Button
             type="button"
             variant="outline"
@@ -1234,11 +1324,11 @@ export function SettingsRadioSection({
             disabled={gettingLocation}
           >
             {gettingLocation ? (
-              'Getting...'
+              t`Getting...`
             ) : (
               <>
                 <MapPinned className="mr-1.5 h-4 w-4" aria-hidden="true" />
-                Use My Location
+                <Trans>Use My Location</Trans>
               </>
             )}
           </Button>
@@ -1246,7 +1336,7 @@ export function SettingsRadioSection({
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="lat" className="text-xs text-muted-foreground">
-              Latitude
+              <Trans>Latitude</Trans>
             </Label>
             <Input
               id="lat"
@@ -1255,12 +1345,12 @@ export function SettingsRadioSection({
               value={lat}
               onChange={(e) => radioForm.setFieldValue('lat', e.target.value)}
               aria-invalid={error ? true : undefined}
-              aria-describedby={error ? 'radio-config-error' : undefined}
+              aria-describedby={error ? `radio-config-error` : undefined}
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="lon" className="text-xs text-muted-foreground">
-              Longitude
+              <Trans>Longitude</Trans>
             </Label>
             <Input
               id="lon"
@@ -1269,12 +1359,14 @@ export function SettingsRadioSection({
               value={lon}
               onChange={(e) => radioForm.setFieldValue('lon', e.target.value)}
               aria-invalid={error ? true : undefined}
-              aria-describedby={error ? 'radio-config-error' : undefined}
+              aria-describedby={error ? `radio-config-error` : undefined}
             />
           </div>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="advert-location-source">Advert Location Source</Label>
+          <Label htmlFor="advert-location-source">
+            <Trans>Advert Location Source</Trans>
+          </Label>
           <select
             id="advert-location-source"
             value={advertLocationSource}
@@ -1283,15 +1375,21 @@ export function SettingsRadioSection({
             }
             className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
           >
-            <option value="off">Off</option>
-            <option value="current">Include Node Location</option>
+            <option value="off">
+              <Trans>Off</Trans>
+            </option>
+            <option value="current">
+              <Trans>Include Node Location</Trans>
+            </option>
           </select>
           <p className="text-[0.8125rem] text-muted-foreground">
-            Companion-radio firmware does not distinguish between saved coordinates and live GPS
-            here. When enabled, adverts include the node&apos;s current location state. That may be
-            the last coordinates you set from MESHRIK or live GPS coordinates if the node itself is
-            already updating them. MESHRIK cannot enable GPS on the node through the interface
-            library.
+            <Trans>
+              Companion-radio firmware does not distinguish between saved coordinates and live GPS
+              here. When enabled, adverts include the node&apos;s current location state. That may
+              be the last coordinates you set from MESHRIK or live GPS coordinates if the node
+              itself is already updating them. MESHRIK cannot enable GPS on the node through the
+              interface library.
+            </Trans>
           </p>
         </div>
       </div>
@@ -1300,17 +1398,21 @@ export function SettingsRadioSection({
 
       {/* ── Telemetry Sharing ── */}
       <div className="space-y-3">
-        <h3 className="text-base font-semibold tracking-tight">Telemetry Sharing</h3>
+        <h3 className="text-base font-semibold tracking-tight">
+          <Trans>Telemetry Sharing</Trans>
+        </h3>
         <p className="text-[0.8125rem] text-muted-foreground">
-          Controls what this radio shares when other nodes request its telemetry. &ldquo;Deny&rdquo;
-          blocks all requests, &ldquo;Per-Contact&rdquo; uses per-contact permission flags on the
-          radio, and &ldquo;Allow All&rdquo; shares with any requester.
+          <Trans>
+            Controls what this radio shares when other nodes request its telemetry.
+            &ldquo;Deny&rdquo; blocks all requests, &ldquo;Per-Contact&rdquo; uses per-contact
+            permission flags on the radio, and &ldquo;Allow All&rdquo; shares with any requester.
+          </Trans>
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="space-y-1.5">
             <Label htmlFor="telemetry-mode-base" className="text-sm">
-              Battery &amp; Base
+              <Trans>Battery &amp; Base</Trans>
             </Label>
             <select
               id="telemetry-mode-base"
@@ -1318,14 +1420,20 @@ export function SettingsRadioSection({
               onChange={(e) => radioForm.setFieldValue('telemetryModeBase', Number(e.target.value))}
               className="w-full h-9 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
             >
-              <option value={0}>Deny</option>
-              <option value={1}>Per-Contact</option>
-              <option value={2}>Allow All</option>
+              <option value={0}>
+                <Trans>Deny</Trans>
+              </option>
+              <option value={1}>
+                <Trans>Per-Contact</Trans>
+              </option>
+              <option value={2}>
+                <Trans>Allow All</Trans>
+              </option>
             </select>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="telemetry-mode-loc" className="text-sm">
-              Location
+              <Trans>Location</Trans>
             </Label>
             <select
               id="telemetry-mode-loc"
@@ -1333,14 +1441,20 @@ export function SettingsRadioSection({
               onChange={(e) => radioForm.setFieldValue('telemetryModeLoc', Number(e.target.value))}
               className="w-full h-9 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
             >
-              <option value={0}>Deny</option>
-              <option value={1}>Per-Contact</option>
-              <option value={2}>Allow All</option>
+              <option value={0}>
+                <Trans>Deny</Trans>
+              </option>
+              <option value={1}>
+                <Trans>Per-Contact</Trans>
+              </option>
+              <option value={2}>
+                <Trans>Allow All</Trans>
+              </option>
             </select>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="telemetry-mode-env" className="text-sm">
-              Environment Sensors
+              <Trans>Environment Sensors</Trans>
             </Label>
             <select
               id="telemetry-mode-env"
@@ -1348,9 +1462,15 @@ export function SettingsRadioSection({
               onChange={(e) => radioForm.setFieldValue('telemetryModeEnv', Number(e.target.value))}
               className="w-full h-9 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
             >
-              <option value={0}>Deny</option>
-              <option value={1}>Per-Contact</option>
-              <option value={2}>Allow All</option>
+              <option value={0}>
+                <Trans>Deny</Trans>
+              </option>
+              <option value={1}>
+                <Trans>Per-Contact</Trans>
+              </option>
+              <option value={2}>
+                <Trans>Allow All</Trans>
+              </option>
             </select>
           </div>
         </div>
@@ -1369,20 +1489,20 @@ export function SettingsRadioSection({
           variant="outline"
           className="flex-1"
         >
-          {busy && !rebooting ? 'Saving...' : 'Save Radio Config'}
+          {busy && !rebooting ? t`Saving...` : t`Save Radio Config`}
         </Button>
         <Button onClick={handleSaveAndReboot} disabled={busy || rebooting} className="flex-1">
-          {rebooting ? 'Rebooting...' : 'Save Radio Config & Reboot'}
+          {rebooting ? t`Rebooting...` : t`Save Radio Config & Reboot`}
         </Button>
       </div>
       <p className="text-[0.8125rem] text-muted-foreground">
-        Some settings may require a reboot to take effect on some radios.
+        <Trans>Some settings may require a reboot to take effect on some radios.</Trans>
       </p>
 
       <div className="flex gap-2">
         <Button variant="outline" size="sm" onClick={handleExportConfig} className="flex-1">
           <Download className="mr-1.5 h-4 w-4" aria-hidden="true" />
-          Export Config
+          <Trans>Export Config</Trans>
         </Button>
         <Button
           variant="outline"
@@ -1392,7 +1512,7 @@ export function SettingsRadioSection({
           className="flex-1"
         >
           <Upload className="mr-1.5 h-4 w-4" aria-hidden="true" />
-          Import &amp; Reboot
+          <Trans>Import &amp; Reboot</Trans>
         </Button>
         <input
           ref={importInputRef}
@@ -1406,15 +1526,19 @@ export function SettingsRadioSection({
         />
       </div>
       <p className="text-[0.8125rem] text-muted-foreground">
-        Export saves the current server config to a JSON file. Import loads a config file, applies
-        it, and reboots the radio.
+        <Trans>
+          Export saves the current server config to a JSON file. Import loads a config file, applies
+          it, and reboots the radio.
+        </Trans>
       </p>
 
       <Separator />
 
       {/* ── Messaging ── */}
       <div className="space-y-2">
-        <h3 className="text-base font-semibold tracking-tight">Messaging</h3>
+        <h3 className="text-base font-semibold tracking-tight">
+          <Trans>Messaging</Trans>
+        </h3>
       </div>
 
       <div className="space-y-2">
@@ -1428,11 +1552,15 @@ export function SettingsRadioSection({
             className="mt-0.5"
           />
           <div className="space-y-1">
-            <Label htmlFor="multi-acks-enabled">Extra Direct ACK Transmission</Label>
+            <Label htmlFor="multi-acks-enabled">
+              <Trans>Extra Direct ACK Transmission</Trans>
+            </Label>
             <p className="text-[0.8125rem] text-muted-foreground">
-              When enabled, the radio sends one extra direct ACK transmission before the normal ACK
-              for received direct messages. This is a firmware-level receive behavior, not a MESHRIK
-              retry setting.
+              <Trans>
+                When enabled, the radio sends one extra direct ACK transmission before the normal
+                ACK for received direct messages. This is a firmware-level receive behavior, not a
+                MESHRIK retry setting.
+              </Trans>
             </p>
           </div>
         </div>
@@ -1447,56 +1575,68 @@ export function SettingsRadioSection({
             className="mt-0.5"
           />
           <div className="space-y-1">
-            <Label htmlFor="auto-resend-channel">Auto-Resend Unheard Channel Messages</Label>
+            <Label htmlFor="auto-resend-channel">
+              <Trans>Auto-Resend Unheard Channel Messages</Trans>
+            </Label>
             <p className="text-[0.8125rem] text-muted-foreground">
-              When enabled, outgoing channel messages that receive no echo within 2 seconds are
-              automatically resent once (byte-perfect, within the 30-second dedup window). Repeaters
-              that already heard the original will ignore the duplicate. This functionality will NOT
-              create double-sent/duplicate messages.
+              <Trans>
+                When enabled, outgoing channel messages that receive no echo within 2 seconds are
+                automatically resent once (byte-perfect, within the 30-second dedup window).
+                Repeaters that already heard the original will ignore the duplicate. This
+                functionality will NOT create double-sent/duplicate messages.
+              </Trans>
             </p>
           </div>
         </div>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="flood-scope">Flood Scope / Region</Label>
+        <Label htmlFor="flood-scope">
+          <Trans>Flood Scope / Region</Trans>
+        </Label>
         <Input
           id="flood-scope"
           value={floodScope}
           onChange={(e) => floodForm.setFieldValue('floodScope', e.target.value)}
-          placeholder="MyRegion"
+          placeholder={t`MyRegion`}
         />
         <p className="text-[0.8125rem] text-muted-foreground">
-          Tag outgoing messages with a region name (e.g. MyRegion). Repeaters configured for that
-          region can forward the traffic, while repeaters configured to deny other regions may drop
-          it. Leave empty to send unscoped (plain flood). Forcing unscoped when a default scope is
-          configured on the radio requires firmware v12 or newer. Individual channels can override
-          this with their own region or an "always unscoped" setting.
+          <Trans>
+            Tag outgoing messages with a region name (e.g. MyRegion). Repeaters configured for that
+            region can forward the traffic, while repeaters configured to deny other regions may
+            drop it. Leave empty to send unscoped (plain flood). Forcing unscoped when a default
+            scope is configured on the radio requires firmware v12 or newer. Individual channels can
+            override this with their own region or an "always unscoped" setting.
+          </Trans>
         </p>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="known-regions">Known Regions (for decoding)</Label>
+        <Label htmlFor="known-regions">
+          <Trans>Known Regions (for decoding)</Trans>
+        </Label>
         <textarea
           id="known-regions"
           value={knownRegions}
           onChange={(e) => floodForm.setFieldValue('knownRegions', e.target.value)}
           rows={4}
-          placeholder={'nl-gr\nde-by\nMyRegion'}
+          placeholder={t`nl-gr\nde-by\nMyRegion`}
           spellCheck={false}
           className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
         />
         <p className="text-[0.8125rem] text-muted-foreground">
-          One region name per line. Incoming region-scoped (TransportFlood/TransportDirect) packets
-          are matched against this list so messages and the packet inspector show a readable region
-          label instead of a raw transport code. Saving a change re-tags existing messages whose
-          original packet is still stored.
+          <Trans>
+            One region name per line. Incoming region-scoped (TransportFlood/TransportDirect)
+            packets are matched against this list so messages and the packet inspector show a
+            readable region label instead of a raw transport code. Saving a change re-tags existing
+            messages whose original packet is still stored.
+          </Trans>
         </p>
 
         <div className="space-y-2 rounded-md border border-input bg-muted/20 p-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="text-[0.625rem] uppercase tracking-wider text-muted-foreground font-medium">
-              Discover regions from repeaters
+              <Trans>Discover regions from repeaters</Trans>
             </span>
             <Button
               type="button"
@@ -1507,32 +1647,40 @@ export function SettingsRadioSection({
               className="h-auto min-h-9 max-w-full whitespace-normal"
             >
               {regionDiscoveryLoading ? (
-                <LoadingIndicator label="Asking repeaters..." />
+                <LoadingIndicator label={t`Asking repeaters...`} />
               ) : (
-                'Discover Regions'
+                t`Discover Regions`
               )}
             </Button>
           </div>
           <p className="text-[0.8125rem] text-muted-foreground">
-            Asks nearby repeaters which regions they flood, so you can populate the list above. Uses
-            repeaters from your last mesh discovery sweep when available, otherwise your most
-            recently seen repeaters. Only repeaters in direct range answer, and this only reveals
-            flood-allowed regions (not blocked ones).
+            <Trans>
+              Asks nearby repeaters which regions they flood, so you can populate the list above.
+              Uses repeaters from your last mesh discovery sweep when available, otherwise your most
+              recently seen repeaters. Only repeaters in direct range answer, and this only reveals
+              flood-allowed regions (not blocked ones).
+            </Trans>
           </p>
           {!health?.radio_connected && (
-            <p className="text-sm text-destructive">Radio not connected</p>
+            <p className="text-sm text-destructive">
+              <Trans>Radio not connected</Trans>
+            </p>
           )}
           {regionDiscovery && (
             <div className="space-y-2">
               {regionDiscoveryLoading && (
-                <p className="text-sm text-muted-foreground">Previous region discovery results</p>
+                <p className="text-sm text-muted-foreground">
+                  <Trans>Previous region discovery results</Trans>
+                </p>
               )}
               <p className="text-sm font-medium">
-                {regionDiscovery.repeaters_answered}/{regionDiscovery.repeaters_queried} repeater
-                {regionDiscovery.repeaters_queried === 1 ? '' : 's'} answered
-                {regionDiscovery.regions.length > 0
-                  ? ` — ${regionDiscovery.regions.length} region${regionDiscovery.regions.length === 1 ? '' : 's'} found`
-                  : ''}
+                <Trans>
+                  {regionDiscovery.repeaters_answered}/{regionDiscovery.repeaters_queried} repeater
+                  {regionDiscovery.repeaters_queried === 1 ? '' : 's'} answered
+                  {regionDiscovery.regions.length > 0
+                    ? ` — ${regionDiscovery.regions.length} region${regionDiscovery.regions.length === 1 ? '' : 's'} found`
+                    : ''}
+                </Trans>
               </p>
               {regionDiscovery.regions.length > 0 ? (
                 <>
@@ -1553,13 +1701,13 @@ export function SettingsRadioSection({
                     onClick={handleAddDiscoveredRegions}
                     className="border-success/50 text-success hover:bg-success/10"
                   >
-                    Add to Known Regions
+                    <Trans>Add to Known Regions</Trans>
                   </Button>
                 </>
               ) : (
                 regionDiscovery.repeaters_queried > 0 && (
                   <p className="text-sm text-muted-foreground">
-                    No flood-allowed regions were reported.
+                    <Trans>No flood-allowed regions were reported.</Trans>
                   </p>
                 )
               )}
@@ -1569,7 +1717,9 @@ export function SettingsRadioSection({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="max-contacts">Max Contacts on Radio</Label>
+        <Label htmlFor="max-contacts">
+          <Trans>Max Contacts on Radio</Trans>
+        </Label>
         <Input
           id="max-contacts"
           type="number"
@@ -1578,17 +1728,21 @@ export function SettingsRadioSection({
           value={maxRadioContacts}
           onChange={(e) => floodForm.setFieldValue('maxRadioContacts', e.target.value)}
           aria-invalid={floodError ? true : undefined}
-          aria-describedby={floodError ? 'max-contacts-error' : undefined}
+          aria-describedby={floodError ? `max-contacts-error` : undefined}
         />
         <p className="text-[0.8125rem] text-muted-foreground">
-          Configured radio contact capacity. Favorites reload first, then background maintenance
-          refills to about 80% of this value and offloads once occupancy reaches about 95%.
+          <Trans>
+            Configured radio contact capacity. Favorites reload first, then background maintenance
+            refills to about 80% of this value and offloads once occupancy reaches about 95%.
+          </Trans>
         </p>
         {health?.radio_device_info?.max_contacts != null &&
           Number(maxRadioContacts) > health.radio_device_info.max_contacts && (
             <p className="text-xs text-warning">
-              Your radio reports a hardware limit of {health.radio_device_info.max_contacts}{' '}
-              contacts. The effective cap will be limited to what the radio supports.
+              <Trans>
+                Your radio reports a hardware limit of {health.radio_device_info.max_contacts}{' '}
+                contacts. The effective cap will be limited to what the radio supports.
+              </Trans>
             </p>
           )}
       </div>
@@ -1600,17 +1754,21 @@ export function SettingsRadioSection({
       )}
 
       <Button onClick={handleSaveFloodSettings} disabled={floodBusy} className="w-full">
-        {floodBusy ? 'Saving...' : 'Save Messaging Settings'}
+        {floodBusy ? t`Saving...` : t`Save Messaging Settings`}
       </Button>
 
       <Separator />
 
       {/* ── Advertising & Discovery ── */}
       <div className="space-y-5">
-        <h3 className="text-base font-semibold tracking-tight">Advertising &amp; Discovery</h3>
+        <h3 className="text-base font-semibold tracking-tight">
+          <Trans>Advertising &amp; Discovery</Trans>
+        </h3>
 
         <div className="space-y-2">
-          <Label htmlFor="advert-interval">Periodic Advertising Interval</Label>
+          <Label htmlFor="advert-interval">
+            <Trans>Periodic Advertising Interval</Trans>
+          </Label>
           <div className="flex items-center gap-2">
             <Input
               id="advert-interval"
@@ -1620,13 +1778,17 @@ export function SettingsRadioSection({
               onChange={(e) => advertIntervalForm.setFieldValue('hours', e.target.value)}
               className="w-28"
               aria-invalid={advertIntervalError ? true : undefined}
-              aria-describedby={advertIntervalError ? 'advert-interval-error' : undefined}
+              aria-describedby={advertIntervalError ? `advert-interval-error` : undefined}
             />
-            <span className="text-sm text-muted-foreground">hours (0 = off)</span>
+            <span className="text-sm text-muted-foreground">
+              <Trans>hours (0 = off)</Trans>
+            </span>
           </div>
           <p className="text-[0.8125rem] text-muted-foreground">
-            How often to automatically advertise presence. Set to 0 to disable. Minimum: 1 hour.
-            Recommended: 24 hours or higher.
+            <Trans>
+              How often to automatically advertise presence. Set to 0 to disable. Minimum: 1 hour.
+              Recommended: 24 hours or higher.
+            </Trans>
           </p>
           {advertIntervalError && (
             <div id="advert-interval-error" className="text-sm text-destructive" role="alert">
@@ -1638,15 +1800,19 @@ export function SettingsRadioSection({
             disabled={advertIntervalBusy}
             className="w-full"
           >
-            {advertIntervalBusy ? 'Saving...' : 'Save Advertising Interval'}
+            {advertIntervalBusy ? t`Saving...` : t`Save Advertising Interval`}
           </Button>
         </div>
 
         <div className="space-y-2">
-          <h4 className="text-sm font-semibold">Send Advertisement</h4>
+          <h4 className="text-sm font-semibold">
+            <Trans>Send Advertisement</Trans>
+          </h4>
           <p className="text-[0.8125rem] text-muted-foreground">
-            Flood adverts propagate through repeaters. Zero-hop adverts are local-only and use less
-            airtime.
+            <Trans>
+              Flood adverts propagate through repeaters. Zero-hop adverts are local-only and use
+              less airtime.
+            </Trans>
           </p>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <Button
@@ -1654,27 +1820,29 @@ export function SettingsRadioSection({
               disabled={advertisingMode !== null || !health?.radio_connected}
               className="w-full bg-warning hover:bg-warning/90 text-warning-foreground"
             >
-              {advertisingMode === 'flood' ? 'Sending...' : 'Send Flood Advertisement'}
+              {advertisingMode === 'flood' ? t`Sending...` : t`Send Flood Advertisement`}
             </Button>
             <Button
               onClick={() => handleAdvertise('zero_hop')}
               disabled={advertisingMode !== null || !health?.radio_connected}
               className="w-full"
             >
-              {advertisingMode === 'zero_hop' ? 'Sending...' : 'Send Zero-Hop Advertisement'}
+              {advertisingMode === 'zero_hop' ? t`Sending...` : t`Send Zero-Hop Advertisement`}
             </Button>
           </div>
           {!health?.radio_connected && (
-            <p className="text-sm text-destructive">Radio not connected</p>
+            <p className="text-sm text-destructive">
+              <Trans>Radio not connected</Trans>
+            </p>
           )}
           {advertiseResult && (
             <p
               className={
                 advertiseResult.kind === 'error'
-                  ? 'text-sm text-destructive'
-                  : 'text-sm text-muted-foreground'
+                  ? `text-sm text-destructive`
+                  : `text-sm text-muted-foreground`
               }
-              role={advertiseResult.kind === 'error' ? 'alert' : 'status'}
+              role={advertiseResult.kind === 'error' ? `alert` : `status`}
             >
               {advertiseResult.message}
             </p>
@@ -1682,16 +1850,35 @@ export function SettingsRadioSection({
         </div>
 
         <div className="space-y-3">
-          <h4 className="text-sm font-semibold">Mesh Discovery</h4>
+          <h4 className="text-sm font-semibold">
+            <Trans>Mesh Discovery</Trans>
+          </h4>
           <p className="text-[0.8125rem] text-muted-foreground">
-            Discover nearby node types that currently respond to mesh discovery requests: repeaters
-            and sensors.
+            <Trans>
+              Discover nearby node types that currently respond to mesh discovery requests:
+              repeaters and sensors.
+            </Trans>
           </p>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             {[
-              { target: 'repeaters', label: 'Discover Repeaters' },
-              { target: 'sensors', label: 'Discover Sensors' },
-              { target: 'all', label: 'Discover Both' },
+              {
+                target: 'repeaters',
+                get label() {
+                  return t`Discover Repeaters`;
+                },
+              },
+              {
+                target: 'sensors',
+                get label() {
+                  return t`Discover Sensors`;
+                },
+              },
+              {
+                target: 'all',
+                get label() {
+                  return t`Discover Both`;
+                },
+              },
             ].map(({ target, label }) => (
               <Button
                 key={target}
@@ -1702,7 +1889,7 @@ export function SettingsRadioSection({
                 className="h-auto min-h-9 w-full min-w-0 whitespace-normal"
               >
                 {meshDiscoveryLoadingTarget === target ? (
-                  <LoadingIndicator label="Waiting for discovery replies..." />
+                  <LoadingIndicator label={t`Waiting for discovery replies...`} />
                 ) : (
                   label
                 )}
@@ -1710,7 +1897,9 @@ export function SettingsRadioSection({
             ))}
           </div>
           {!health?.radio_connected && (
-            <p className="text-sm text-destructive">Radio not connected</p>
+            <p className="text-sm text-destructive">
+              <Trans>Radio not connected</Trans>
+            </p>
           )}
           {discoverError && (
             <p className="text-sm text-destructive" role="alert">
@@ -1720,20 +1909,24 @@ export function SettingsRadioSection({
           {meshDiscovery && (
             <div className="space-y-2 rounded-md border border-input bg-muted/20 p-3">
               {meshDiscoveryLoadingTarget !== null && (
-                <p className="text-sm text-muted-foreground">Previous mesh discovery results</p>
+                <p className="text-sm text-muted-foreground">
+                  <Trans>Previous mesh discovery results</Trans>
+                </p>
               )}
               <div className="flex items-center justify-between gap-4">
                 <p className="text-sm font-medium">
-                  Last sweep: {meshDiscovery.results.length} node
-                  {meshDiscovery.results.length === 1 ? '' : 's'}
+                  <Trans>
+                    Last sweep: {meshDiscovery.results.length} node
+                    {meshDiscovery.results.length === 1 ? '' : 's'}
+                  </Trans>
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {meshDiscovery.duration_seconds.toFixed(0)}s listen window
+                  <Trans>{meshDiscovery.duration_seconds.toFixed(0)}s listen window</Trans>
                 </p>
               </div>
               {meshDiscovery.results.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  No supported nodes responded during the last discovery sweep.
+                  <Trans>No supported nodes responded during the last discovery sweep.</Trans>
                 </p>
               ) : (
                 <div className="space-y-2">
@@ -1747,7 +1940,9 @@ export function SettingsRadioSection({
                           {result.name ?? <span className="capitalize">{result.node_type}</span>}
                         </span>
                         <span className="text-xs text-muted-foreground">
-                          heard {result.heard_count} time{result.heard_count === 1 ? '' : 's'}
+                          <Trans>
+                            heard {result.heard_count} time{result.heard_count === 1 ? '' : 's'}
+                          </Trans>
                         </span>
                       </div>
                       {result.name && (
@@ -1759,9 +1954,11 @@ export function SettingsRadioSection({
                         {result.public_key}
                       </p>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        Heard here: {result.local_snr ?? 'n/a'} dB SNR /{' '}
-                        {result.local_rssi ?? 'n/a'} dBm RSSI. Remote heard us:{' '}
-                        {result.remote_snr ?? 'n/a'} dB SNR.
+                        <Trans>
+                          Heard here: {result.local_snr ?? 'n/a'} dB SNR /{' '}
+                          {result.local_rssi ?? 'n/a'} dBm RSSI. Remote heard us:{' '}
+                          {result.remote_snr ?? 'n/a'} dB SNR.
+                        </Trans>
                       </p>
                     </div>
                   ))}
@@ -1782,11 +1979,15 @@ export function SettingsRadioSection({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Import includes Private Key</DialogTitle>
+            <DialogTitle>
+              <Trans>Import includes Private Key</Trans>
+            </DialogTitle>
             <DialogDescription>
-              This config file contains a private key. Importing it will change your radio&apos;s
-              identity &mdash; your radio will have a new public key and other nodes will see it as
-              a different device. This cannot be undone without the original key.
+              <Trans>
+                This config file contains a private key. Importing it will change your radio&apos;s
+                identity &mdash; your radio will have a new public key and other nodes will see it
+                as a different device. This cannot be undone without the original key.
+              </Trans>
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -1797,14 +1998,14 @@ export function SettingsRadioSection({
                 pendingImportRef.current = null;
               }}
             >
-              Cancel
+              <Trans>Cancel</Trans>
             </Button>
             <Button
               onClick={handleConfirmKeyImport}
               className="border-destructive/50 text-destructive hover:bg-destructive/10"
               variant="outline"
             >
-              Import Config &amp; Key
+              <Trans>Import Config &amp; Key</Trans>
             </Button>
           </DialogFooter>
         </DialogContent>

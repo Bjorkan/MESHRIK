@@ -1,3 +1,6 @@
+import { Trans } from '@lingui/react/macro';
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
 import { useEffect, useState } from 'react';
 import { Checkbox } from '../ui/checkbox';
 import { PACKET_LEGEND_ITEMS } from '../../utils/visualizerUtils';
@@ -72,6 +75,8 @@ export function VisualizerControls({
   onExpandContract,
   onClearAndReset,
 }: VisualizerControlsProps) {
+  useLingui();
+
   const [observationWindowInput, setObservationWindowInput] = useState(
     String(observationWindowSec)
   );
@@ -91,7 +96,9 @@ export function VisualizerControls({
         <div className="absolute bottom-4 left-4 bg-background/80 backdrop-blur-sm rounded-lg p-3 text-xs border border-border z-10">
           <div className="flex gap-6">
             <div className="flex flex-col gap-1.5">
-              <div className="text-muted-foreground font-medium mb-1">Packets</div>
+              <div className="text-muted-foreground font-medium mb-1">
+                <Trans>Packets</Trans>
+              </div>
               {PACKET_LEGEND_ITEMS.map((item) => (
                 <div key={item.label} className="flex items-center gap-2">
                   <div
@@ -105,7 +112,9 @@ export function VisualizerControls({
               ))}
             </div>
             <div className="flex flex-col gap-1.5">
-              <div className="text-muted-foreground font-medium mb-1">Nodes</div>
+              <div className="text-muted-foreground font-medium mb-1">
+                <Trans>Nodes</Trans>
+              </div>
               {NODE_LEGEND_ITEMS.map((item) => (
                 <div key={item.label} className="flex items-center gap-2">
                   <div
@@ -134,7 +143,9 @@ export function VisualizerControls({
                 checked={showControls}
                 onCheckedChange={(c) => setShowControls(c === true)}
               />
-              <span title="Toggle legends and controls visibility">Show controls</span>
+              <span title={t`Toggle legends and controls visibility`}>
+                <Trans>Show controls</Trans>
+              </span>
             </label>
             {onFullScreenChange && (
               <label className="flex items-center gap-2 cursor-pointer">
@@ -142,7 +153,9 @@ export function VisualizerControls({
                   checked={!fullScreen}
                   onCheckedChange={(c) => onFullScreenChange(c !== true)}
                 />
-                <span title="Show or hide the packet feed sidebar">Show packet feed sidebar</span>
+                <span title={t`Show or hide the packet feed sidebar`}>
+                  <Trans>Show packet feed sidebar</Trans>
+                </span>
               </label>
             )}
           </div>
@@ -154,8 +167,10 @@ export function VisualizerControls({
                     checked={showAmbiguousPaths}
                     onCheckedChange={(c) => setShowAmbiguousPaths(c === true)}
                   />
-                  <span title="Show placeholder nodes for repeaters when the 1-byte prefix matches multiple contacts">
-                    Show ambiguous repeaters
+                  <span
+                    title={t`Show placeholder nodes for repeaters when the 1-byte prefix matches multiple contacts`}
+                  >
+                    <Trans>Show ambiguous repeaters</Trans>
                   </span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -163,13 +178,15 @@ export function VisualizerControls({
                     checked={showAmbiguousNodes}
                     onCheckedChange={(c) => setShowAmbiguousNodes(c === true)}
                   />
-                  <span title="Show placeholder nodes for senders/recipients when only a 1-byte prefix is known">
-                    Show ambiguous sender/recipient
+                  <span
+                    title={t`Show placeholder nodes for senders/recipients when only a 1-byte prefix is known`}
+                  >
+                    <Trans>Show ambiguous sender/recipient</Trans>
                   </span>
                 </label>
                 <details className="rounded border border-border/60 px-2 py-1">
                   <summary className="cursor-pointer select-none text-muted-foreground">
-                    Advanced
+                    <Trans>Advanced</Trans>
                   </summary>
                   <div className="mt-2 flex flex-col gap-2">
                     <label className="flex items-center gap-2 cursor-pointer">
@@ -179,10 +196,10 @@ export function VisualizerControls({
                         disabled={!showAmbiguousPaths}
                       />
                       <span
-                        title="Use stored repeater advert paths to assign likely identity labels for ambiguous repeater nodes."
-                        className={!showAmbiguousPaths ? 'text-muted-foreground' : ''}
+                        title={t`Use stored repeater advert paths to assign likely identity labels for ambiguous repeater nodes.`}
+                        className={!showAmbiguousPaths ? `text-muted-foreground` : ''}
                       >
-                        Use repeater advert-path identity hints
+                        <Trans>Use repeater advert-path identity hints</Trans>
                       </span>
                     </label>
                     <label className="flex items-center gap-2 cursor-pointer">
@@ -192,12 +209,12 @@ export function VisualizerControls({
                         disabled={!showAmbiguousPaths || !useAdvertPathHints}
                       />
                       <span
-                        title="When an ambiguous repeater has a high-confidence likely-identity that matches a sibling definitely-known repeater, and they both connect to the same next hop, collapse them into the known repeater. This should resolve more ambiguity as the mesh navigates the 1.14 upgrade."
+                        title={t`When an ambiguous repeater has a high-confidence likely-identity that matches a sibling definitely-known repeater, and they both connect to the same next hop, collapse them into the known repeater. This should resolve more ambiguity as the mesh navigates the 1.14 upgrade.`}
                         className={
-                          !showAmbiguousPaths || !useAdvertPathHints ? 'text-muted-foreground' : ''
+                          !showAmbiguousPaths || !useAdvertPathHints ? `text-muted-foreground` : ''
                         }
                       >
-                        Collapse likely sibling repeaters
+                        <Trans>Collapse likely sibling repeaters</Trans>
                       </span>
                     </label>
                     <label className="flex items-center gap-2 cursor-pointer">
@@ -207,19 +224,19 @@ export function VisualizerControls({
                         disabled={!showAmbiguousPaths}
                       />
                       <span
-                        title="Split ambiguous repeaters into separate nodes based on traffic patterns (prev→next). Helps identify colliding prefixes representing different physical nodes, but requires enough traffic to disambiguate."
-                        className={!showAmbiguousPaths ? 'text-muted-foreground' : ''}
+                        title={t`Split ambiguous repeaters into separate nodes based on traffic patterns (prev→next). Helps identify colliding prefixes representing different physical nodes, but requires enough traffic to disambiguate.`}
+                        className={!showAmbiguousPaths ? `text-muted-foreground` : ''}
                       >
-                        Heuristically group repeaters by traffic pattern
+                        <Trans>Heuristically group repeaters by traffic pattern</Trans>
                       </span>
                     </label>
                     <div className="flex items-center gap-2">
                       <label
                         htmlFor="observation-window-3d"
                         className="text-muted-foreground"
-                        title="How long to wait for duplicate packets via different paths before animating"
+                        title={t`How long to wait for duplicate packets via different paths before animating`}
                       >
-                        Ack/echo listen window:
+                        <Trans>Ack/echo listen window:</Trans>
                       </label>
                       <input
                         id="observation-window-3d"
@@ -247,7 +264,9 @@ export function VisualizerControls({
                         }}
                         className="w-12 px-1 py-0.5 bg-background border border-border rounded text-xs text-center"
                       />
-                      <span className="text-muted-foreground">sec</span>
+                      <span className="text-muted-foreground">
+                        <Trans>sec</Trans>
+                      </span>
                     </div>
                   </div>
                 </details>
@@ -257,8 +276,10 @@ export function VisualizerControls({
                       checked={pruneStaleNodes}
                       onCheckedChange={(c) => setPruneStaleNodes(c === true)}
                     />
-                    <span title="Automatically remove nodes with no traffic within the configured window to keep the mesh manageable">
-                      Only show recently heard/in-a-path nodes
+                    <span
+                      title={t`Automatically remove nodes with no traffic within the configured window to keep the mesh manageable`}
+                    >
+                      <Trans>Only show recently heard/in-a-path nodes</Trans>
                     </span>
                   </label>
                   {pruneStaleNodes && (
@@ -267,7 +288,7 @@ export function VisualizerControls({
                         htmlFor="prune-window"
                         className="text-muted-foreground whitespace-nowrap"
                       >
-                        Window:
+                        <Trans>Window:</Trans>
                       </label>
                       <input
                         id="prune-window"
@@ -297,7 +318,7 @@ export function VisualizerControls({
                         className="w-14 rounded border border-border bg-background px-2 py-0.5 text-sm"
                       />
                       <span className="text-muted-foreground" aria-hidden="true">
-                        min
+                        <Trans>min</Trans>
                       </span>
                     </div>
                   )}
@@ -306,8 +327,10 @@ export function VisualizerControls({
                       checked={letEmDrift}
                       onCheckedChange={(c) => setLetEmDrift(c === true)}
                     />
-                    <span title="When enabled, the graph continuously reorganizes itself into a better layout">
-                      Let &apos;em drift
+                    <span
+                      title={t`When enabled, the graph continuously reorganizes itself into a better layout`}
+                    >
+                      <Trans>Let &apos;em drift</Trans>
                     </span>
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer">
@@ -315,17 +338,17 @@ export function VisualizerControls({
                       checked={autoOrbit}
                       onCheckedChange={(c) => setAutoOrbit(c === true)}
                     />
-                    <span title="Automatically orbit the camera around the scene">
-                      Orbit the mesh
+                    <span title={t`Automatically orbit the camera around the scene`}>
+                      <Trans>Orbit the mesh</Trans>
                     </span>
                   </label>
                   <div className="flex flex-col gap-1 mt-1">
                     <label
                       htmlFor="viz-repulsion"
                       className="text-muted-foreground"
-                      title="How strongly nodes repel each other. Higher values spread nodes out more."
+                      title={t`How strongly nodes repel each other. Higher values spread nodes out more.`}
                     >
-                      Repulsion: {Math.abs(chargeStrength)}
+                      <Trans>Repulsion: {Math.abs(chargeStrength)}</Trans>
                     </label>
                     <input
                       id="viz-repulsion"
@@ -341,9 +364,9 @@ export function VisualizerControls({
                     <label
                       htmlFor="viz-packet-speed"
                       className="text-muted-foreground"
-                      title="How fast particles travel along links. Higher values make packets move faster."
+                      title={t`How fast particles travel along links. Higher values make packets move faster.`}
                     >
-                      Packet speed: {particleSpeedMultiplier}x
+                      <Trans>Packet speed: {particleSpeedMultiplier}x</Trans>
                     </label>
                     <input
                       id="viz-packet-speed"
@@ -360,21 +383,25 @@ export function VisualizerControls({
                 <button
                   onClick={onExpandContract}
                   className="mt-1 px-3 py-1.5 bg-primary/20 hover:bg-primary/30 text-primary rounded text-xs transition-colors"
-                  title="Expand nodes apart then contract back - can help untangle the graph"
+                  title={t`Expand nodes apart then contract back - can help untangle the graph`}
                 >
-                  Oooh Big Stretch!
+                  <Trans>Oooh Big Stretch!</Trans>
                 </button>
                 <button
                   onClick={onClearAndReset}
                   className="mt-1 rounded border border-warning/40 bg-warning/10 px-3 py-1.5 text-warning text-xs transition-colors hover:bg-warning/20"
-                  title="Clear all nodes and links from the visualization - packets are preserved"
+                  title={t`Clear all nodes and links from the visualization - packets are preserved`}
                 >
-                  Clear &amp; Reset
+                  <Trans>Clear &amp; Reset</Trans>
                 </button>
               </div>
               <div className="border-t border-border pt-2 mt-1">
-                <div>Nodes: {nodeCount}</div>
-                <div>Links: {linkCount}</div>
+                <div>
+                  <Trans>Nodes: {nodeCount}</Trans>
+                </div>
+                <div>
+                  <Trans>Links: {linkCount}</Trans>
+                </div>
               </div>
             </>
           )}

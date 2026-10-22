@@ -1,3 +1,5 @@
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
 import { useEffect, useMemo, useRef } from 'react';
 
 import type { Channel, Contact } from '../types';
@@ -105,7 +107,7 @@ async function loadBaseFaviconSvg(): Promise<string> {
     baseFaviconSvgPromise = fetch(BASE_FAVICON_PATH, { cache: 'force-cache' })
       .then(async (response) => {
         if (!response.ok) {
-          throw new Error(`Failed to load favicon SVG: ${response.status}`);
+          throw new Error(t`Failed to load favicon SVG: ${response.status}`);
         }
         return response.text();
       })
@@ -142,6 +144,8 @@ export function useUnreadTitle(
   contacts: Contact[],
   channels: Channel[]
 ): void {
+  useLingui();
+
   const title = useMemo(
     () => getUnreadTitle(unreadCounts, contacts, channels),
     [contacts, channels, unreadCounts]
@@ -161,6 +165,8 @@ export function useFaviconBadge(
   mentions: Record<string, boolean>,
   channels: Channel[]
 ): void {
+  useLingui();
+
   const objectUrlRef = useRef<string | null>(null);
   const badgeState = useMemo(
     () => deriveFaviconBadgeState(unreadCounts, mentions, channels),

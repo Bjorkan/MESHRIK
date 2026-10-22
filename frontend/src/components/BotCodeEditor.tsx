@@ -1,3 +1,5 @@
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
 import CodeMirror from '@uiw/react-codemirror';
 import { python } from '@codemirror/lang-python';
 import { oneDark } from '@codemirror/theme-one-dark';
@@ -10,6 +12,8 @@ interface BotCodeEditorProps {
 }
 
 export function BotCodeEditor({ value, onChange, id, height = '256px' }: BotCodeEditorProps) {
+  useLingui();
+
   return (
     <div className="w-full overflow-hidden rounded-md border border-input">
       <CodeMirror
@@ -25,7 +29,7 @@ export function BotCodeEditor({ value, onChange, id, height = '256px' }: BotCode
         }}
         className="text-sm"
         id={id}
-        aria-label="Bot code editor"
+        aria-label={t`Bot code editor`}
       />
     </div>
   );

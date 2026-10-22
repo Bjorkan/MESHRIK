@@ -1,3 +1,7 @@
+import { Trans } from '@lingui/react/macro';
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
+import { getLocale } from '@/i18n';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useForm, useStore } from '@tanstack/react-form';
 import { useMutation } from '@tanstack/react-query';
@@ -76,7 +80,7 @@ const contactColumns = [
 ] satisfies Array<ColumnDef<typeof contactTableFeatures, Contact>>;
 
 function formatDate(ts: number): string {
-  return new Date(ts * 1000).toLocaleDateString([], {
+  return new Date(ts * 1000).toLocaleDateString(getLocale(), {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -110,6 +114,8 @@ export function BulkDeleteContactsModal({
   contacts,
   onDeleted,
 }: BulkDeleteContactsModalProps) {
+  useLingui();
+
   const selectionScrollRef = useRef<HTMLDivElement>(null);
   const confirmationScrollRef = useRef<HTMLDivElement>(null);
   const pendingDeletionRef = useRef<PendingDeletion | null>(null);
@@ -134,7 +140,9 @@ export function BulkDeleteContactsModal({
         const deletedLabel = `Deleted ${result.deleted} contact${result.deleted === 1 ? '' : 's'}`;
         if (result.radio_failed > 0) {
           toast.warning(deletedLabel, {
-            description: `${result.radio_failed} could not be removed from the radio and may return during synchronization.`,
+            get description() {
+              return t`${result.radio_failed} could not be removed from the radio and may return during synchronization.`;
+            },
           });
         } else {
           toast.success(deletedLabel);
@@ -143,7 +151,7 @@ export function BulkDeleteContactsModal({
         resetAndClose();
       } catch (err) {
         console.error('Bulk delete failed:', err);
-        toast.error('Bulk delete failed', {
+        toast.error(t`Bulk delete failed`, {
           description: err instanceof Error ? err.message : undefined,
         });
       }
@@ -262,12 +270,12 @@ export function BulkDeleteContactsModal({
       <DialogContent className="sm:max-w-2xl max-h-[85dvh] flex flex-col">
         <DialogHeader>
           <DialogTitle>
-            {step === 'select' ? 'Bulk Delete Contacts' : 'Confirm Deletion'}
+            {step === 'select' ? t`Bulk Delete Contacts` : t`Confirm Deletion`}
           </DialogTitle>
           <DialogDescription>
             {step === 'select'
-              ? 'Select contacts to delete. Message history will be preserved and accessible if a contact is re-added, but will no longer appear in the sidebar.'
-              : 'Review the contacts that will be permanently deleted.'}
+              ? t`Select contacts to delete. Message history will be preserved and accessible if a contact is re-added, but will no longer appear in the sidebar.`
+              : t`Review the contacts that will be permanently deleted.`}
           </DialogDescription>
         </DialogHeader>
 
@@ -276,9 +284,11 @@ export function BulkDeleteContactsModal({
             <div className="flex flex-col gap-3">
               <div className="flex flex-wrap items-end gap-3">
                 <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">Show</label>
+                  <label className="text-xs text-muted-foreground">
+                    <Trans>Show</Trans>
+                  </label>
                   <select
-                    value={typeFilter === 'all' ? 'all' : String(typeFilter)}
+                    value={typeFilter === 'all' ? `all` : String(typeFilter)}
                     onChange={(e) =>
                       form.setFieldValue(
                         'typeFilter',
@@ -287,17 +297,29 @@ export function BulkDeleteContactsModal({
                     }
                     className="block h-8 rounded-md border border-input bg-background px-2 text-sm"
                   >
-                    <option value="all">All</option>
-                    <option value="1">Clients</option>
-                    <option value="2">Repeaters</option>
-                    <option value="3">Room Servers</option>
-                    <option value="4">Sensors</option>
+                    <option value="all">
+                      <Trans>All</Trans>
+                    </option>
+                    <option value="1">
+                      <Trans>Clients</Trans>
+                    </option>
+                    <option value="2">
+                      <Trans>Repeaters</Trans>
+                    </option>
+                    <option value="3">
+                      <Trans>Room Servers</Trans>
+                    </option>
+                    <option value="4">
+                      <Trans>Sensors</Trans>
+                    </option>
                   </select>
                 </div>
               </div>
               <div className="flex flex-wrap items-end gap-3">
                 <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">Created after</label>
+                  <label className="text-xs text-muted-foreground">
+                    <Trans>Created after</Trans>
+                  </label>
                   <Input
                     type="datetime-local"
                     value={startDate}
@@ -306,7 +328,9 @@ export function BulkDeleteContactsModal({
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">Created before</label>
+                  <label className="text-xs text-muted-foreground">
+                    <Trans>Created before</Trans>
+                  </label>
                   <Input
                     type="datetime-local"
                     value={endDate}
@@ -317,7 +341,9 @@ export function BulkDeleteContactsModal({
               </div>
               <div className="flex flex-wrap items-end gap-3">
                 <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">Last heard after</label>
+                  <label className="text-xs text-muted-foreground">
+                    <Trans>Last heard after</Trans>
+                  </label>
                   <Input
                     type="datetime-local"
                     value={lastHeardAfter}
@@ -326,7 +352,9 @@ export function BulkDeleteContactsModal({
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">Last heard before</label>
+                  <label className="text-xs text-muted-foreground">
+                    <Trans>Last heard before</Trans>
+                  </label>
                   <Input
                     type="datetime-local"
                     value={lastHeardBefore}
@@ -337,19 +365,21 @@ export function BulkDeleteContactsModal({
               </div>
               <div className="flex gap-1.5">
                 <Button type="button" variant="outline" size="sm" onClick={handleSelectAll}>
-                  Select all
+                  <Trans>Select all</Trans>
                 </Button>
                 <Button type="button" variant="outline" size="sm" onClick={handleSelectNone}>
-                  Select none
+                  <Trans>Select none</Trans>
                 </Button>
               </div>
             </div>
 
             <div role="status" aria-live="polite" className="text-xs text-muted-foreground">
-              {filteredContacts.length} contact{filteredContacts.length === 1 ? '' : 's'} shown
-              {hasFilters && ' (filtered)'}
-              {' · '}
-              {selectedKeys.size} selected
+              <Trans>
+                {filteredContacts.length} contact{filteredContacts.length === 1 ? '' : 's'} shown
+                {hasFilters && ' (filtered)'}
+                {' · '}
+                {selectedKeys.size} selected
+              </Trans>
             </div>
 
             <div
@@ -358,7 +388,7 @@ export function BulkDeleteContactsModal({
             >
               {filteredContacts.length === 0 ? (
                 <div className="p-4 text-center text-sm text-muted-foreground">
-                  No contacts match the selected filters.
+                  <Trans>No contacts match the selected filters.</Trans>
                 </div>
               ) : (
                 <table className="w-full text-sm">
@@ -372,7 +402,7 @@ export function BulkDeleteContactsModal({
                               key={header.id}
                               className={`px-3 py-1.5 ${header.id === 'select' ? 'w-8' : ''} ${header.id === 'type' || header.id === 'first_seen' || header.id === 'last_seen' ? 'hidden sm:table-cell' : ''}`}
                               aria-sort={
-                                sorted ? (sorted === 'asc' ? 'ascending' : 'descending') : 'none'
+                                sorted ? (sorted === 'asc' ? `ascending` : `descending`) : `none`
                               }
                             >
                               {header.column.getCanSort() ? (
@@ -423,7 +453,7 @@ export function BulkDeleteContactsModal({
                             {getContactDisplayName(c.name, c.public_key, c.last_advert)}
                           </td>
                           <td className="px-3 py-1.5 hidden sm:table-cell text-xs text-muted-foreground">
-                            {CONTACT_TYPE_LABELS[c.type] ?? 'Unknown'}
+                            {CONTACT_TYPE_LABELS[c.type] ?? t`Unknown`}
                           </td>
                           <td className="px-3 py-1.5 font-mono text-xs text-muted-foreground truncate max-w-[8rem]">
                             {c.public_key.slice(0, 12)}
@@ -444,7 +474,7 @@ export function BulkDeleteContactsModal({
 
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="secondary" onClick={resetAndClose}>
-                Cancel
+                <Trans>Cancel</Trans>
               </Button>
               <Button
                 variant="outline"
@@ -452,7 +482,7 @@ export function BulkDeleteContactsModal({
                 disabled={selectedKeys.size === 0}
                 onClick={handleProceed}
               >
-                Proceed to confirmation ({selectedKeys.size})
+                <Trans>Proceed to confirmation ({selectedKeys.size})</Trans>
               </Button>
             </div>
           </>
@@ -499,7 +529,7 @@ export function BulkDeleteContactsModal({
                           {getContactDisplayName(c.name, c.public_key, c.last_advert)}
                         </td>
                         <td className="px-3 py-1.5 text-xs text-muted-foreground">
-                          {CONTACT_TYPE_LABELS[c.type] ?? 'Unknown'}
+                          {CONTACT_TYPE_LABELS[c.type] ?? t`Unknown`}
                         </td>
                         <td className="px-3 py-1.5 font-mono text-xs text-muted-foreground truncate max-w-[8rem]">
                           {c.public_key.slice(0, 12)}
@@ -525,8 +555,8 @@ export function BulkDeleteContactsModal({
                 onClick={() => void form.handleSubmit()}
               >
                 {deleting
-                  ? 'Deleting...'
-                  : `I confirm permanent, irrevocable deletion of all listed nodes above, totalling ${[
+                  ? t`Deleting...`
+                  : t`I confirm permanent, irrevocable deletion of all listed nodes above, totalling ${[
                       contactCount > 0 && `${contactCount} contact${contactCount === 1 ? '' : 's'}`,
                       repeaterCount > 0 &&
                         `${repeaterCount} repeater${repeaterCount === 1 ? '' : 's'}`,
@@ -544,7 +574,7 @@ export function BulkDeleteContactsModal({
                 }}
                 disabled={deleting}
               >
-                Back
+                <Trans>Back</Trans>
               </Button>
             </div>
           </>

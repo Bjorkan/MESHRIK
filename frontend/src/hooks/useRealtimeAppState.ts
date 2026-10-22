@@ -1,3 +1,5 @@
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
 import {
   useCallback,
   useMemo,
@@ -109,6 +111,8 @@ export function useRealtimeAppState({
   notifyIncomingMessage,
   maxRawPackets = MAX_RAW_PACKETS,
 }: UseRealtimeAppStateArgs): UseWebSocketOptions {
+  useLingui();
+
   const mergeChannelIntoList = useCallback(
     (updated: Channel) => {
       setChannels((prev) => {
@@ -146,7 +150,7 @@ export function useRealtimeAppState({
 
         if (prev !== null && prev.radio_connected !== data.radio_connected) {
           if (data.radio_connected) {
-            toast.success('Radio connected', {
+            toast.success(t`Radio connected`, {
               description: data.connection_info
                 ? `Connected via ${data.connection_info}`
                 : undefined,
@@ -154,10 +158,12 @@ export function useRealtimeAppState({
             fetchConfig();
           } else {
             if (nextRadioState === 'paused') {
-              toast.success('Radio connection paused');
+              toast.success(t`Radio connection paused`);
             } else {
-              toast.error('Radio disconnected', {
-                description: 'Check radio connection and power',
+              toast.error(t`Radio disconnected`, {
+                get description() {
+                  return t`Check radio connection and power`;
+                },
               });
             }
           }

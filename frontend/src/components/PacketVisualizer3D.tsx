@@ -1,3 +1,5 @@
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
 import { useEffect, useRef, useState } from 'react';
 
 import { api } from '../api';
@@ -23,6 +25,8 @@ export function PacketVisualizer3D({
   fullScreen,
   onFullScreenChange,
 }: PacketVisualizer3DProps) {
+  useLingui();
+
   const containerRef = useRef<HTMLDivElement>(null);
 
   const [savedSettings] = useState(getVisualizerSettings);
@@ -136,7 +140,7 @@ export function PacketVisualizer3D({
       ref={containerRef}
       className="w-full h-full bg-background relative overflow-hidden"
       role="img"
-      aria-label="3D mesh network visualizer showing radio nodes as colored spheres and packet transmissions as animated arcs between them"
+      aria-label={t`3D mesh network visualizer showing radio nodes as colored spheres and packet transmissions as animated arcs between them`}
     >
       <VisualizerControls
         showControls={showControls}

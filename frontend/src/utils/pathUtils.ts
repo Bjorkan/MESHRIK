@@ -1,3 +1,4 @@
+import { getLocale } from '@/i18n';
 import type { Contact, ContactRoute, RadioConfig, MessagePath } from '../types';
 import type { DistanceUnit } from './distanceUnits';
 import { CONTACT_TYPE_REPEATER } from '../types';
@@ -378,9 +379,9 @@ export function isValidLocation(lat: number | null, lon: number | null): boolean
  * Format distance in human-readable form using the selected display unit.
  */
 export function formatDistance(km: number, unit: DistanceUnit = 'imperial'): string {
-  const formatInteger = (value: number) => value.toLocaleString();
+  const formatInteger = (value: number) => value.toLocaleString(getLocale());
   const formatOneDecimal = (value: number) =>
-    value.toLocaleString(undefined, {
+    value.toLocaleString(getLocale(), {
       minimumFractionDigits: 1,
       maximumFractionDigits: 1,
     });

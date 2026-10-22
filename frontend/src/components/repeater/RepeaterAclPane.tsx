@@ -1,3 +1,6 @@
+import { Trans } from '@lingui/react/macro';
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
 import { tableFeatures, useTable, type ColumnDef } from '@tanstack/react-table';
 import { cn } from '@/lib/utils';
 import { RepeaterPane, NotFetched } from './repeaterPaneShared';
@@ -27,6 +30,8 @@ export function AclPane({
   onRefresh: () => void;
   disabled?: boolean;
 }) {
+  useLingui();
+
   const permColor: Record<number, string> = {
     0: 'bg-muted text-muted-foreground',
     1: 'bg-info/10 text-info',
@@ -41,11 +46,13 @@ export function AclPane({
   });
 
   return (
-    <RepeaterPane title="ACL" state={state} onRefresh={onRefresh} disabled={disabled}>
+    <RepeaterPane title={t`ACL`} state={state} onRefresh={onRefresh} disabled={disabled}>
       {!data ? (
         <NotFetched />
       ) : data.acl.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No ACL entries</p>
+        <p className="text-sm text-muted-foreground">
+          <Trans>No ACL entries</Trans>
+        </p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">

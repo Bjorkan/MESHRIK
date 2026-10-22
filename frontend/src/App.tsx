@@ -1,3 +1,5 @@
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
 import { useEffect, useCallback, useRef, useState, useMemo, type MouseEvent } from 'react';
 import { QueryClientProvider, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { api } from './api';
@@ -113,6 +115,8 @@ interface AppProps {
 }
 
 export function App(props: AppProps = {}) {
+  useLingui();
+
   const [fallbackQueryClient] = useState(() => {
     const client = createAppQueryClient();
     primePrefetchCache(client);
@@ -140,6 +144,8 @@ function AppContent({
   onNavigateSettings,
   onCloseSettingsRoute,
 }: AppProps) {
+  useLingui();
+
   const queryClient = useQueryClient();
   const quoteSearchOperatorValue = useCallback((value: string) => {
     return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
@@ -366,7 +372,7 @@ function AppContent({
             prev.map((c) => (c.key === id ? { ...c, favorite: !c.favorite } : c))
           );
         }
-        toast.error('Failed to update favorite');
+        toast.error(t`Failed to update favorite`);
       }
     },
     [setContacts, setChannels]
@@ -491,7 +497,7 @@ function AppContent({
         await refreshUnreads();
       } catch {
         setChannels((prev) => prev.map((c) => (c.key === key ? { ...c, muted: !c.muted } : c)));
-        toast.error('Failed to update mute');
+        toast.error(t`Failed to update mute`);
       }
     },
     [setChannels, refreshUnreads]

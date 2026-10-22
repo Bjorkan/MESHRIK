@@ -1,3 +1,5 @@
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { toast } from '../components/ui/sonner';
 import { api } from '../api';
@@ -102,6 +104,8 @@ export interface PushSubscriptionState {
 }
 
 export function usePushSubscription(): PushSubscriptionState {
+  useLingui();
+
   const [isSupported, setIsSupported] = useState(false);
   const [currentSubscriptionId, setCurrentSubscriptionId] = useState<string | null>(null);
   const [allSubscriptions, setAllSubscriptions] = useState<PushSubscriptionInfo[]>([]);
@@ -222,8 +226,8 @@ export function usePushSubscription(): PushSubscriptionState {
       return result.id;
     } catch (err) {
       console.error('Push subscribe failed:', err);
-      toast.error('Failed to enable push notifications', {
-        description: err instanceof Error ? err.message : 'Check that notifications are allowed',
+      toast.error(t`Failed to enable push notifications`, {
+        description: err instanceof Error ? err.message : t`Check that notifications are allowed`,
         duration: 8_000,
       });
       return null;
@@ -257,7 +261,7 @@ export function usePushSubscription(): PushSubscriptionState {
       const updated = await api.togglePushConversation(conversationKey);
       setPushConversations(updated);
     } catch {
-      toast.error('Failed to update push preferences');
+      toast.error(t`Failed to update push preferences`);
     }
   }, []);
 
@@ -289,9 +293,9 @@ export function usePushSubscription(): PushSubscriptionState {
   const testPush = useCallback(async (subscriptionId: string) => {
     try {
       await api.testPushSubscription(subscriptionId);
-      toast.success('Test notification sent');
+      toast.success(t`Test notification sent`);
     } catch {
-      toast.error('Test notification failed');
+      toast.error(t`Test notification failed`);
     }
   }, []);
 

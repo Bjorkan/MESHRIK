@@ -1,3 +1,4 @@
+import { plural, t } from '@lingui/core/macro';
 import * as THREE from 'three';
 import type { SimulationLinkDatum } from 'd3-force';
 import type { SimulationNodeDatum3D } from 'd3-force-3d';
@@ -40,10 +41,34 @@ export const NODE_COLORS = {
 } as const;
 
 export const NODE_LEGEND_ITEMS = [
-  { color: '#22c55e', label: 'You', size: 14 },
-  { color: '#3b82f6', label: 'Repeater', size: 10 },
-  { color: '#ffffff', label: 'Node', size: 10 },
-  { color: '#9ca3af', label: 'Ambiguous', size: 10 },
+  {
+    color: '#22c55e',
+    get label() {
+      return t`You`;
+    },
+    size: 14,
+  },
+  {
+    color: '#3b82f6',
+    get label() {
+      return t`Repeater`;
+    },
+    size: 10,
+  },
+  {
+    color: '#ffffff',
+    get label() {
+      return t`Node`;
+    },
+    size: 10,
+  },
+  {
+    color: '#9ca3af',
+    get label() {
+      return t`Ambiguous`;
+    },
+    size: 10,
+  },
 ] as const;
 
 export function getBaseNodeColor(node: Pick<GraphNode, 'type' | 'isAmbiguous'>): number {
@@ -70,15 +95,16 @@ export function arraysEqual(a: string[], b: string[]): boolean {
 
 export function formatRelativeTime(timestamp: number): string {
   const seconds = Math.floor((Date.now() - timestamp) / 1000);
-  if (seconds < 5) return 'just now';
-  if (seconds < 60) return `${seconds}s ago`;
+  if (seconds < 5) return t`just now`;
+  if (seconds < 60) return plural(seconds, { one: '# second ago', other: '# seconds ago' });
   const minutes = Math.floor(seconds / 60);
   const secs = seconds % 60;
-  return secs > 0 ? `${minutes}m ${secs}s ago` : `${minutes}m ago`;
+  if (secs === 0) return plural(minutes, { one: '# minute ago', other: '# minutes ago' });
+  return t`${minutes}m ${secs}s ago`;
 }
 
 export function getSceneNodeLabel(node: Pick<GraphNode, 'id' | 'name' | 'type' | 'isAmbiguous'>) {
-  const baseLabel = node.name || (node.type === 'self' ? 'Me' : node.id.slice(0, 8));
+  const baseLabel = node.name || (node.type === 'self' ? t`Me` : node.id.slice(0, 8));
   return node.isAmbiguous ? `${baseLabel} (?)` : baseLabel;
 }
 

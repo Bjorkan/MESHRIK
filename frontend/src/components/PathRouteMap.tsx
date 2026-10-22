@@ -1,3 +1,6 @@
+import { Trans } from '@lingui/react/macro';
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
 import { useCallback, useRef, useState } from 'react';
 import MapLibreMap, { AttributionControl, Marker, Popup, type MapRef } from 'react-map-gl/maplibre';
 import { EMBEDDED_MAP_ATTRIBUTION } from '../utils/mapLibre';
@@ -57,6 +60,8 @@ function NumberedMarker({
   latitude: number;
   description: React.ReactNode;
 }) {
+  useLingui();
+
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -66,7 +71,7 @@ function NumberedMarker({
           className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-white/80 text-[0.6875rem] font-bold text-white shadow-md"
           style={{ backgroundColor: color }}
           onClick={() => setOpen(true)}
-          aria-label={`Show ${label} node details`}
+          aria-label={t`Show ${label} node details`}
         >
           {label}
         </button>
@@ -88,6 +93,8 @@ function NumberedMarker({
 }
 
 export function PathRouteMap({ resolved, senderInfo, height = 220 }: PathRouteMapProps) {
+  useLingui();
+
   const { mapStyle } = useMapStyle();
   const mapRef = useRef<MapRef>(null);
   const points = collectPoints(resolved);
@@ -128,7 +135,7 @@ export function PathRouteMap({ resolved, senderInfo, height = 220 }: PathRouteMa
   if (!hasAnyGps) {
     return (
       <div className="h-14 rounded border border-border bg-muted/30 flex items-center justify-center text-sm text-muted-foreground">
-        No nodes in this route have GPS coordinates
+        <Trans>No nodes in this route have GPS coordinates</Trans>
       </div>
     );
   }
@@ -139,7 +146,7 @@ export function PathRouteMap({ resolved, senderInfo, height = 220 }: PathRouteMa
       <div
         className="rounded border border-border overflow-hidden"
         role="img"
-        aria-label="Map showing message route between nodes"
+        aria-label={t`Map showing message route between nodes`}
         style={{ height }}
       >
         <MapLibreMap
@@ -153,7 +160,7 @@ export function PathRouteMap({ resolved, senderInfo, height = 220 }: PathRouteMa
           <AttributionControl {...EMBEDDED_MAP_ATTRIBUTION} />
           {isValidLocation(resolved.sender.lat, resolved.sender.lon) && (
             <NumberedMarker
-              label="S"
+              label={t`S`}
               color={SENDER_COLOR}
               longitude={resolved.sender.lon!}
               latitude={resolved.sender.lat!}
@@ -161,7 +168,7 @@ export function PathRouteMap({ resolved, senderInfo, height = 220 }: PathRouteMa
                 <>
                   <span className="font-mono">{resolved.sender.prefix}</span>
                   {' · '}
-                  {senderInfo.name || 'Sender'}
+                  {senderInfo.name || t`Sender`}
                 </>
               }
             />
@@ -188,7 +195,7 @@ export function PathRouteMap({ resolved, senderInfo, height = 220 }: PathRouteMa
           )}
           {isValidLocation(resolved.receiver.lat, resolved.receiver.lon) && (
             <NumberedMarker
-              label="R"
+              label={t`R`}
               color={RECEIVER_COLOR}
               longitude={resolved.receiver.lon!}
               latitude={resolved.receiver.lat!}
@@ -196,7 +203,7 @@ export function PathRouteMap({ resolved, senderInfo, height = 220 }: PathRouteMa
                 <>
                   <span className="font-mono">{resolved.receiver.prefix}</span>
                   {' · '}
-                  {resolved.receiver.name || 'Receiver'}
+                  {resolved.receiver.name || t`Receiver`}
                 </>
               }
             />
@@ -205,7 +212,7 @@ export function PathRouteMap({ resolved, senderInfo, height = 220 }: PathRouteMa
       </div>
       {someMissingGps && (
         <p className="text-xs text-muted-foreground mt-1">
-          Some nodes in this route have no GPS and are not shown
+          <Trans>Some nodes in this route have no GPS and are not shown</Trans>
         </p>
       )}
     </div>

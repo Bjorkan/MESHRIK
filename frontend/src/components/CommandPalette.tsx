@@ -1,3 +1,6 @@
+import { Trans } from '@lingui/react/macro';
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
 import { useCallback, useMemo, useState } from 'react';
 import { formatForDisplay } from '@tanstack/react-hotkeys';
 import {
@@ -132,6 +135,8 @@ export function CommandPalette({
   onOpenShortcutHelp,
   onRepeaterAutoLogin,
 }: CommandPaletteProps) {
+  useLingui();
+
   const [query, setQuery] = useState('');
 
   const select = useCallback(
@@ -224,14 +229,20 @@ export function CommandPalette({
       }}
     >
       <DialogContent className="overflow-hidden p-0 shadow-lg" hideCloseButton>
-        <DialogTitle className="sr-only">Command palette</DialogTitle>
+        <DialogTitle className="sr-only">
+          <Trans>Command palette</Trans>
+        </DialogTitle>
         <DialogDescription className="sr-only">
-          Search for conversations, settings, and tools
+          <Trans>Search for conversations, settings, and tools</Trans>
         </DialogDescription>
         <Command shouldFilter={false}>
-          <CommandInput placeholder="Jump to..." value={query} onValueChange={setQuery} />
+          <CommandInput placeholder={t`Jump to...`} value={query} onValueChange={setQuery} />
           <CommandList>
-            {totalResults === 0 && <CommandEmpty>No results found.</CommandEmpty>}
+            {totalResults === 0 && (
+              <CommandEmpty>
+                <Trans>No results found.</Trans>
+              </CommandEmpty>
+            )}
 
             {fTools.length > 0 && (
               <CommandGroup heading="Tools">
@@ -356,7 +367,7 @@ export function CommandPalette({
           </CommandList>
           <div className="flex items-center justify-between border-t border-border px-3 py-2 text-xs text-muted-foreground">
             <span>
-              Toggle palette{' '}
+              <Trans>Toggle palette</Trans>{' '}
               <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono">
                 {String(formatForDisplay(APP_HOTKEYS.commandPalette.binding))}
               </kbd>
@@ -366,7 +377,7 @@ export function CommandPalette({
               className="rounded px-2 py-1 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               onClick={() => select(onOpenShortcutHelp)}
             >
-              Keyboard shortcuts{' '}
+              <Trans>Keyboard shortcuts</Trans>{' '}
               <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono">
                 {String(formatForDisplay(APP_HOTKEYS.shortcutHelp.binding))}
               </kbd>
@@ -393,6 +404,8 @@ function ContactGroup({
   onSelect: (action: () => void) => void;
   onSelectConversation: (conv: Conversation) => void;
 }) {
+  useLingui();
+
   return (
     <CommandGroup heading={heading}>
       {items.map(({ contact: c, displayName }) => (
@@ -428,6 +441,8 @@ function RepeaterGroup({
   onSelectConversation: (conv: Conversation) => void;
   onRepeaterAutoLogin: (publicKey: string, displayName: string) => void;
 }) {
+  useLingui();
+
   return (
     <CommandGroup heading={heading}>
       {items.flatMap(({ contact: c, displayName }) => [
@@ -449,7 +464,10 @@ function RepeaterGroup({
         >
           <Waypoints className="text-muted-foreground" />
           <span>
-            {displayName} <span className="text-muted-foreground">(ACL login + load all)</span>
+            {displayName}{' '}
+            <span className="text-muted-foreground">
+              <Trans>(ACL login + load all)</Trans>
+            </span>
           </span>
         </CommandItem>,
       ])}

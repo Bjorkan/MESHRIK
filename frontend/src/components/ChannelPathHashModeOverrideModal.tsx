@@ -1,3 +1,6 @@
+import { Trans } from '@lingui/react/macro';
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
 import { useEffect, useRef } from 'react';
 import { useForm, useStore } from '@tanstack/react-form';
 
@@ -35,6 +38,8 @@ export function ChannelPathHashModeOverrideModal({
   radioDefault,
   onSetOverride,
 }: ChannelPathHashModeOverrideModalProps) {
+  useLingui();
+
   const form = useForm({
     defaultValues: {
       selected: null as number | null,
@@ -73,23 +78,39 @@ export function ChannelPathHashModeOverrideModal({
   const options: { value: number | null; label: string; description: string }[] = [
     {
       value: null,
-      label: `Radio default (${radioDefaultLabel})`,
-      description: 'Use the radio-wide path hash mode setting',
+      get label() {
+        return t`Radio default (${radioDefaultLabel})`;
+      },
+      get description() {
+        return t`Use the radio-wide path hash mode setting`;
+      },
     },
     {
       value: 0,
-      label: '1-byte hop identifiers',
-      description: 'Least repeater disambiguation, up to 63 hops',
+      get label() {
+        return t`1-byte hop identifiers`;
+      },
+      get description() {
+        return t`Least repeater disambiguation, up to 63 hops`;
+      },
     },
     {
       value: 1,
-      label: '2-byte hop identifiers',
-      description: 'Better repeater disambiguation, up to 32 hops',
+      get label() {
+        return t`2-byte hop identifiers`;
+      },
+      get description() {
+        return t`Better repeater disambiguation, up to 32 hops`;
+      },
     },
     {
       value: 2,
-      label: '3-byte hop identifiers',
-      description: 'Best repeater disambiguation, up to 21 hops',
+      get label() {
+        return t`3-byte hop identifiers`;
+      },
+      get description() {
+        return t`Best repeater disambiguation, up to 21 hops`;
+      },
     },
   ];
 
@@ -97,11 +118,15 @@ export function ChannelPathHashModeOverrideModal({
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && !saving && onClose()}>
       <DialogContent className="sm:max-w-[520px]">
         <DialogHeader>
-          <DialogTitle>Path Hop Width Override</DialogTitle>
+          <DialogTitle>
+            <Trans>Path Hop Width Override</Trans>
+          </DialogTitle>
           <DialogDescription>
-            Override the path hash mode for this channel. Wider hop identifiers improve repeater
-            disambiguation but extend send time and will prevent users on old (&lt;1.14) firmware
-            from receiving the message.
+            <Trans>
+              Override the path hash mode for this channel. Wider hop identifiers improve repeater
+              disambiguation but extend send time and will prevent users on old (&lt;1.14) firmware
+              from receiving the message.
+            </Trans>
           </DialogDescription>
         </DialogHeader>
 
@@ -109,16 +134,24 @@ export function ChannelPathHashModeOverrideModal({
           <div className="rounded-md border border-border bg-muted/20 p-3 text-sm">
             <div className="break-words font-medium">{channelName}</div>
             <div className="mt-1 text-muted-foreground">
-              Current override:{' '}
-              {currentOverride != null
-                ? (PATH_HASH_MODE_LABELS[currentOverride] ?? `mode ${currentOverride}`)
-                : `none (using radio default: ${radioDefaultLabel})`}
+              <Trans>
+                Current override:{' '}
+                {currentOverride != null
+                  ? (PATH_HASH_MODE_LABELS[currentOverride] ?? `mode ${currentOverride}`)
+                  : `none (using radio default: ${radioDefaultLabel})`}
+              </Trans>
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label>Hop width for this channel</Label>
-            <div className="space-y-1.5" role="radiogroup" aria-label="Hop width for this channel">
+            <Label>
+              <Trans>Hop width for this channel</Trans>
+            </Label>
+            <div
+              className="space-y-1.5"
+              role="radiogroup"
+              aria-label={t`Hop width for this channel`}
+            >
               {options.map((opt, index) => (
                 <button
                   key={String(opt.value)}
@@ -183,7 +216,7 @@ export function ChannelPathHashModeOverrideModal({
                 void form.handleSubmit();
               }}
             >
-              {saving ? 'Saving...' : 'Save hop width'}
+              {saving ? t`Saving...` : t`Save hop width`}
             </Button>
             <Button
               type="button"
@@ -192,7 +225,7 @@ export function ChannelPathHashModeOverrideModal({
               disabled={saving}
               onClick={onClose}
             >
-              Cancel
+              <Trans>Cancel</Trans>
             </Button>
           </div>
         </DialogFooter>

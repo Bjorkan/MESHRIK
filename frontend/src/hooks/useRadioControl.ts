@@ -1,3 +1,5 @@
+import { plural, t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
 import { useState, useCallback, useEffect, useRef, type SetStateAction } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api';
@@ -13,6 +15,8 @@ import type {
 } from '../types';
 
 export function useRadioControl() {
+  useLingui();
+
   const queryClient = useQueryClient();
   const healthQuery = useQuery({
     queryKey: queryKeys.health(),
@@ -136,13 +140,16 @@ export function useRadioControl() {
       setMeshDiscovery(data);
       toast.success(
         data.results.length === 0
-          ? 'No nearby nodes responded'
-          : `Found ${data.results.length} nearby node${data.results.length === 1 ? '' : 's'}`
+          ? t`No nearby nodes responded`
+          : plural(data.results.length, {
+              one: 'Found # nearby node',
+              other: 'Found # nearby nodes',
+            })
       );
     } catch (err) {
       console.error('Failed to discover nearby nodes:', err);
-      toast.error('Failed to run mesh discovery', {
-        description: err instanceof Error ? err.message : 'Check radio connection',
+      toast.error(t`Failed to run mesh discovery`, {
+        description: err instanceof Error ? err.message : t`Check radio connection`,
       });
     } finally {
       setMeshDiscoveryLoadingTarget(null);
@@ -155,20 +162,20 @@ export function useRadioControl() {
       const data = await api.discoverRegions(publicKeys);
       setRegionDiscovery(data);
       if (data.repeaters_queried === 0) {
-        toast.info('No repeaters available to query for regions');
+        toast.info(t`No repeaters available to query for regions`);
       } else if (data.regions.length === 0) {
         toast.info(
-          `No regions reported (${data.repeaters_answered}/${data.repeaters_queried} repeaters answered)`
+          t`No regions reported (${data.repeaters_answered}/${data.repeaters_queried} repeaters answered)`
         );
       } else {
         toast.success(
-          `Found ${data.regions.length} region${data.regions.length === 1 ? '' : 's'} from ${data.repeaters_answered}/${data.repeaters_queried} repeaters`
+          t`Found ${data.regions.length} region${data.regions.length === 1 ? '' : 's'} from ${data.repeaters_answered}/${data.repeaters_queried} repeaters`
         );
       }
     } catch (err) {
       console.error('Failed to discover regions:', err);
-      toast.error('Failed to discover regions', {
-        description: err instanceof Error ? err.message : 'Check radio connection',
+      toast.error(t`Failed to discover regions`, {
+        description: err instanceof Error ? err.message : t`Check radio connection`,
       });
     } finally {
       setRegionDiscoveryLoading(false);
