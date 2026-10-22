@@ -34,6 +34,7 @@ def _register_module_types() -> None:
     from app.fanout.mqtt_ha import MqttHaModule
     from app.fanout.mqtt_private import MqttPrivateModule
     from app.fanout.sqs import SqsModule
+    from app.fanout.virtual_companion_tcp import VirtualCompanionTcpModule
     from app.fanout.webhook import WebhookModule
 
     _MODULE_TYPES["mqtt_private"] = MqttPrivateModule
@@ -44,6 +45,7 @@ def _register_module_types() -> None:
     _MODULE_TYPES["apprise"] = AppriseModule
     _MODULE_TYPES["sqs"] = SqsModule
     _MODULE_TYPES["map_upload"] = MapUploadModule
+    _MODULE_TYPES["virtual_companion_tcp"] = VirtualCompanionTcpModule
 
 
 def _matches_filter(filter_value: Any, key: str) -> bool:
@@ -139,10 +141,13 @@ class FanoutManager:
 
         configs = await FanoutConfigRepository.get_enabled()
         for cfg in configs:
-            await self._start_module(cfg)
+            lock = self._restart_locks.setdefault(cfg["id"], asyncio.Lock())
+            async with lock:
+                await self._start_module(cfg)
 
-    async def _start_module(self, cfg: dict[str, Any]) -> None:
+    async def _start_module(self, cfg: dict[str, Any]) -> str | None:
         """Instantiate and start a single module from a config dict."""
+        _register_module_types()
         config_id = cfg["id"]
         config_type = cfg["type"]
         config_blob = cfg["config"]
@@ -155,40 +160,54 @@ class FanoutManager:
                 config_id,
                 self.get_bots_disabled_source(),
             )
-            return
+            return None
 
         cls = _MODULE_TYPES.get(config_type)
         if cls is None:
             logger.warning("Unknown fanout type %r for config %s, skipping", config_type, config_id)
-            return
+            return None
 
+        module: FanoutModule | None = None
         try:
-            module = cls(config_id, config_blob, name=cfg.get("name", ""))
-            await module.start()
-            self._modules[config_id] = (module, scope)
+            candidate = cls(config_id, config_blob, name=cfg.get("name", ""))
+            if not isinstance(candidate, FanoutModule):
+                raise TypeError(f"Invalid fanout module class for {config_type}")
+            module = candidate
+            await candidate.start()
+            self._modules[config_id] = (candidate, scope)
             self._clear_module_error(config_id)
             logger.info(
                 "Started fanout module %s (type=%s)", cfg.get("name", config_id), config_type
             )
+            return None
         except Exception as exc:
             logger.exception("Failed to start fanout module %s", config_id)
-            self._set_module_error(config_id, _format_error_detail(exc))
+            error = module.last_error if module is not None else None
+            error = error or _format_error_detail(exc)
+            self._set_module_error(config_id, error)
+            return error
 
-    async def reload_config(self, config_id: str) -> None:
+    async def reload_config(self, config_id: str) -> str | None:
         """Stop old module (if any) and start updated config."""
         lock = self._restart_locks.setdefault(config_id, asyncio.Lock())
         async with lock:
-            await self.remove_config(config_id)
+            await self._remove_config_unlocked(config_id)
 
             from app.repository.fanout import FanoutConfigRepository
 
             cfg = await FanoutConfigRepository.get(config_id)
             if cfg is None or not cfg["enabled"]:
-                return
-            await self._start_module(cfg)
+                return None
+            return await self._start_module(cfg)
 
     async def remove_config(self, config_id: str) -> None:
         """Stop and remove a module."""
+        lock = self._restart_locks.setdefault(config_id, asyncio.Lock())
+        async with lock:
+            await self._remove_config_unlocked(config_id)
+
+    async def _remove_config_unlocked(self, config_id: str) -> None:
+        """Stop one module while its per-config lifecycle lock is held."""
         entry = self._modules.pop(config_id, None)
         if entry is not None:
             module, _ = entry
@@ -268,6 +287,32 @@ class FanoutManager:
             log_label="on_message",
         )
 
+    def notify_virtual_companions(self, data: dict) -> None:
+        """Send content-free inbox hints independent of fanout content scopes."""
+        for module, _scope in list(self._modules.values()):
+            notifier = getattr(module, "notify_message_available", None)
+            if notifier is not None:
+                notifier(data)
+
+    async def notify_virtual_companion_ack(self, ack_code: str, trip_time_ms: int) -> None:
+        """Route a committed ACK to virtual sessions that own its real tag."""
+        tasks = []
+        config_ids = []
+        for config_id, (module, _scope) in list(self._modules.items()):
+            notifier = getattr(module, "notify_send_confirmed", None)
+            if notifier is not None:
+                tasks.append(notifier(ack_code, trip_time_ms))
+                config_ids.append(config_id)
+        if tasks:
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            for config_id, result in zip(config_ids, results, strict=True):
+                if isinstance(result, BaseException):
+                    logger.error(
+                        "Virtual Companion ACK notification failed for %s: %s",
+                        config_id,
+                        type(result).__name__,
+                    )
+
     async def broadcast_raw(self, data: dict) -> None:
         """Dispatch a raw packet to modules whose scope matches."""
         await self._dispatch_matching(
@@ -315,15 +360,46 @@ class FanoutManager:
         self._restart_locks.clear()
         self._module_errors.clear()
 
-    def get_statuses(self) -> dict[str, dict[str, str | None]]:
+    def get_statuses(self) -> dict[str, dict[str, Any]]:
         """Return status info for each active module."""
         from app.repository.fanout import _configs_cache
 
-        result: dict[str, dict[str, str | None]] = {}
+        result: dict[str, dict[str, Any]] = {}
         all_ids = set(_configs_cache) | set(self._modules) | set(self._module_errors)
         for config_id in all_ids:
             info = _configs_cache.get(config_id, {})
             if info.get("enabled") is False:
+                if info.get("type") == "virtual_companion_tcp":
+                    from app.fanout.virtual_companion_tcp import NETWORK_WARNING
+                    from app.services.virtual_companion.identity import (
+                        IdentityUnavailable,
+                        get_identity_snapshot,
+                    )
+
+                    config = info.get("config", {})
+                    try:
+                        identity_public_key = get_identity_snapshot().public_key.hex()
+                        identity_status = "verified"
+                    except IdentityUnavailable:
+                        identity_public_key = None
+                        identity_status = "unavailable"
+                    result[config_id] = {
+                        "name": info.get("name", config_id),
+                        "type": info.get("type", "unknown"),
+                        "status": "disabled",
+                        "last_error": None,
+                        "bind_host": config.get("bind_host"),
+                        "port": config.get("port"),
+                        "clients": 0,
+                        "client_sessions": (),
+                        "identity_status": identity_status,
+                        "identity_public_key": identity_public_key,
+                        "virtual_channel_capacity": config.get("virtual_channel_capacity", 40),
+                        "configured_channel_slots": sum(
+                            key is not None for key in config.get("channel_slots", [])
+                        ),
+                        "network_warning": NETWORK_WARNING,
+                    }
                 continue
 
             module_entry = self._modules.get(config_id)
@@ -346,6 +422,7 @@ class FanoutManager:
                 "type": info.get("type", "unknown"),
                 "status": status,
                 "last_error": last_error,
+                **(module.status_details if module is not None else {}),
             }
         return result
 

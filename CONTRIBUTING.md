@@ -245,6 +245,12 @@ npx playwright test
 
 ## Pull Request Expectations
 
+Virtual Companion changes also follow the reviewed S01–S13 stack and release procedure in
+[`docs/VIRTUAL_COMPANION.md`](docs/VIRTUAL_COMPANION.md). Do not merge, reorder, retarget around, or
+enable a partial layer independently: the listener must remain OFF until the complete tip passes its
+hardware-free protocol/SDK, no-physical-bypass and All Quality gates. Official-app devices and a
+managed physical radio are intentionally validated only after the full stack has merged.
+
 - Keep scope tight.
 - Explain why the change is needed.
 - Link the issue or discussion where the behavior was agreed on.

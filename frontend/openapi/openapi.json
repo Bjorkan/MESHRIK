@@ -2626,6 +2626,79 @@
       },
       "FanoutStatusResponse": {
         "properties": {
+          "bind_host": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bind Host"
+          },
+          "client_sessions": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/VirtualCompanionSessionStatusResponse"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Sessions"
+          },
+          "clients": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clients"
+          },
+          "configured_channel_slots": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Configured Channel Slots"
+          },
+          "identity_public_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Identity Public Key"
+          },
+          "identity_status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "verified",
+                  "unavailable"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Identity Status"
+          },
           "last_error": {
             "anyOf": [
               {
@@ -2641,6 +2714,28 @@
             "title": "Name",
             "type": "string"
           },
+          "network_warning": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Network Warning"
+          },
+          "port": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Port"
+          },
           "status": {
             "title": "Status",
             "type": "string"
@@ -2648,6 +2743,17 @@
           "type": {
             "title": "Type",
             "type": "string"
+          },
+          "virtual_channel_capacity": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Virtual Channel Capacity"
           }
         },
         "required": [
@@ -6663,6 +6769,50 @@
           "public_key"
         ],
         "title": "VapidPublicKeyResponse",
+        "type": "object"
+      },
+      "VirtualCompanionSessionStatusResponse": {
+        "properties": {
+          "connected_at": {
+            "title": "Connected At",
+            "type": "integer"
+          },
+          "identity_verified": {
+            "default": false,
+            "title": "Identity Verified",
+            "type": "boolean"
+          },
+          "last_seen_at": {
+            "title": "Last Seen At",
+            "type": "integer"
+          },
+          "protocol_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Protocol Version"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "status",
+          "connected_at",
+          "last_seen_at"
+        ],
+        "title": "VirtualCompanionSessionStatusResponse",
         "type": "object"
       }
     }

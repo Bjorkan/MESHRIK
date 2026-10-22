@@ -11,12 +11,20 @@ Connect your radio over Serial, TCP, or BLE, and then you can:
 - Access your radio remotely over your network or VPN
 - Search for hashtag channel names for channels you don't have keys for yet
 - Forward packets, messages, and automatic repeater telemetry to MQTT, Home Assistant, LetsMesh, MeshRank, SQS, Apprise, etc.
+- Optionally let official apps use MESHRIK through a separate, OFF-by-default virtual Companion TCP listener (release-gated; never the physical radio port)
 - Use the more recent 1.14+ firmwares which support multibyte pathing
 - Visualize the mesh as a map or node set, view repeater stats, and more!
 
 For advanced setup and troubleshooting see [README_ADVANCED.md](README_ADVANCED.md). If you plan to contribute, read [CONTRIBUTING.md](CONTRIBUTING.md).
 
 **Warning:** This app is for trusted environments only. _Do not put this on an untrusted network, or open it to the public._ You can optionally set `MESHCORE_BASIC_AUTH_USERNAME` and `MESHCORE_BASIC_AUTH_PASSWORD` for app-wide HTTP Basic auth, but that is only a coarse gate and must be paired with HTTPS. The bots can execute arbitrary Python code which means anyone who gets access to the app can, too. To completely disable the bot system, start the server with `MESHCORE_DISABLE_BOTS=true` — this prevents all bot execution and blocks bot configuration changes via the API. If you need stronger access control, consider using a reverse proxy like Nginx, or extending FastAPI; full access control and user management are outside the scope of this app.
+
+> [!CAUTION]
+> The virtual Companion listener is raw plaintext TCP and is not protected by MESHRIK HTTP Basic
+> auth or HTTPS. It defaults OFF with bind address `0.0.0.0` (all IPv4 interfaces). Restrict access
+> to trusted LAN devices using a firewall, or select loopback/a protected VPN/mTLS gateway;
+> never expose it publicly, and never give an app the physical radio's TCP endpoint. See the
+> [operator guide and release gate](docs/VIRTUAL_COMPANION.md).
 
 ![Screenshot of the application's web interface](app_screenshot.png)
 
@@ -235,6 +243,7 @@ If you enable Basic Auth, protect the app with HTTPS. HTTP Basic credentials are
 
 - Advanced setup, troubleshooting, HTTPS, systemd, remediation variables, and debug logging: [README_ADVANCED.md](README_ADVANCED.md)
 - Home Assistant-specific guidance and entity/sensor naming schemes: [README_HA.md](README_HA.md)
+- Virtual Companion setup, security, API, deployment, support matrix, and controlled stacked rollout: [docs/VIRTUAL_COMPANION.md](docs/VIRTUAL_COMPANION.md)
 - Contributing, tests, linting, E2E notes, and important AGENTS files: [CONTRIBUTING.md](CONTRIBUTING.md)
 - Live API docs after the backend is running: http://localhost:8000/docs
 

@@ -1,8 +1,17 @@
 import time
+from dataclasses import dataclass
 from typing import Literal
 
 from app.database import db
 from app.models import Channel
+
+
+@dataclass(frozen=True, slots=True)
+class CompanionChannelRecord:
+    """The only channel fields exposed to the virtual Companion adapter."""
+
+    key: str
+    name: str
 
 
 class ChannelRepository:
@@ -88,6 +97,19 @@ class ChannelRepository:
             ) as cursor:
                 rows = await cursor.fetchall()
         return [ChannelRepository._from_row(row) for row in rows]
+
+    @staticmethod
+    async def get_companion_channel(key: str) -> CompanionChannelRecord | None:
+        """Read a channel without consulting physical radio-slot residency."""
+        async with db.readonly() as conn:
+            async with conn.execute(
+                "SELECT key, name FROM channels WHERE key = ?",
+                (key.upper(),),
+            ) as cursor:
+                row = await cursor.fetchone()
+        if row is None:
+            return None
+        return CompanionChannelRecord(key=str(row["key"]), name=str(row["name"]))
 
     @staticmethod
     async def set_on_radio(key: str, value: bool) -> bool:

@@ -129,6 +129,7 @@ def broadcast_event(event_type: str, data: dict, *, realtime: bool = True) -> No
         from app.fanout.manager import fanout_manager
 
         if event_type == "message":
+            fanout_manager.notify_virtual_companions(data)
             asyncio.create_task(fanout_manager.broadcast_message(data))
 
             from app.push.manager import push_manager
