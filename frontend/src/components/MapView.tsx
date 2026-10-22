@@ -199,7 +199,7 @@ function MapBoundsHandler({
   contacts,
   focusedContact,
 }: {
-  mapRef: React.RefObject<MapRef>;
+  mapRef: React.RefObject<MapRef | null>;
   contacts: Contact[];
   focusedContact: Contact | null;
 }) {
@@ -267,7 +267,7 @@ function ParticleOverlay({
   mapRef,
   particles,
 }: {
-  mapRef: React.RefObject<MapRef>;
+  mapRef: React.RefObject<MapRef | null>;
   particles: MapParticle[];
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
