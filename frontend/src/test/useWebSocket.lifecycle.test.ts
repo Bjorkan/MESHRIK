@@ -1,5 +1,4 @@
 import { act, renderHook } from '@testing-library/react';
-import { createElement, StrictMode, type PropsWithChildren } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useWebSocket } from '../useWebSocket';
@@ -44,10 +43,6 @@ class MockWebSocket {
   }
 }
 
-function strictWrapper({ children }: PropsWithChildren) {
-  return createElement(StrictMode, null, children);
-}
-
 const originalWebSocket = globalThis.WebSocket;
 
 describe('useWebSocket lifecycle', () => {
@@ -88,15 +83,20 @@ describe('useWebSocket lifecycle', () => {
     expect(MockWebSocket.instances).toHaveLength(1);
   });
 
-  it('ignores delayed callbacks from a superseded StrictMode socket', () => {
+  it('ignores delayed callbacks from a superseded socket after reconnect', () => {
     const onConnectionChange = vi.fn();
     const onHealth = vi.fn();
-    renderHook(() => useWebSocket({ onConnectionChange, onHealth }), {
-      wrapper: strictWrapper,
-    });
+    renderHook(() => useWebSocket({ onConnectionChange, onHealth }));
 
+    expect(MockWebSocket.instances).toHaveLength(1);
+    const superseded = MockWebSocket.instances[0];
+    act(() => superseded.emitClose());
+    act(() => vi.advanceTimersByTime(3000));
+
+    // Explicit reconnection makes the stale-socket scenario independent of
+    // React 18/19 StrictMode effect replay behavior.
     expect(MockWebSocket.instances).toHaveLength(2);
-    const [superseded, active] = MockWebSocket.instances;
+    const active = MockWebSocket.instances[1];
 
     act(() => {
       active.emitOpen();
@@ -107,7 +107,7 @@ describe('useWebSocket lifecycle', () => {
     });
 
     expect(MockWebSocket.instances).toHaveLength(2);
-    expect(onConnectionChange).toHaveBeenCalledTimes(1);
+    expect(onConnectionChange).toHaveBeenCalledTimes(2);
     expect(onConnectionChange).toHaveBeenLastCalledWith('live');
     expect(onHealth).not.toHaveBeenCalled();
   });
