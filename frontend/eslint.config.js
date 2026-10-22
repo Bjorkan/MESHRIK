@@ -10,7 +10,11 @@ export default tseslint.config(
       'react-hooks': reactHooks,
     },
     rules: {
-      ...reactHooks.configs.recommended.rules,
+      // Preserve the pre-v7 Hooks lint baseline. Version 7 expands the
+      // recommended preset with React Compiler diagnostics, which require
+      // a separate, reviewed code migration rather than an automatic bump.
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'warn',
       // Allow unused vars prefixed with _
       '@typescript-eslint/no-unused-vars': [
         'error',
