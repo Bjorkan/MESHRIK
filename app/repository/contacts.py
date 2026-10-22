@@ -1,6 +1,7 @@
 import logging
 import time
 from collections.abc import Mapping
+from dataclasses import dataclass
 from typing import Any
 
 from app.database import db
@@ -14,6 +15,31 @@ from app.models import (
 from app.path_utils import first_hop_hex, normalize_contact_route, normalize_route_override
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True, slots=True)
+class CompanionContactSnapshot:
+    """One transactionally consistent view for a Companion client sync."""
+
+    contacts: tuple[tuple[Contact, int], ...]
+    deleted_public_keys: tuple[str, ...]
+    total: int
+    high_water: int
+
+
+@dataclass(frozen=True, slots=True)
+class CompanionContactMutation:
+    """Validated DB-only fields accepted from one Companion contact edit."""
+
+    public_key: str
+    expected_revision: int
+    name: str
+    contact_type: int
+    flags: int
+    favorite: bool
+    direct_path: str | None
+    direct_path_len: int
+    direct_path_hash_mode: int
 
 
 class AmbiguousPublicKeyPrefixError(ValueError):
@@ -305,6 +331,149 @@ class ContactRepository:
             ) as cursor:
                 rows = await cursor.fetchall()
         return [ContactRepository._row_to_contact(row) for row in rows]
+
+    @staticmethod
+    async def get_companion_snapshot(since: int = 0) -> CompanionContactSnapshot:
+        """Return eligible contacts and tombstones from one coherent DB snapshot.
+
+        Only unambiguous, full 32-byte public keys are serializable. Prefix-only,
+        malformed, and case-duplicate identities are withheld instead of padded or
+        guessed. Tombstones are retained durably and emitted only for incremental
+        requests; a first sync starts from the current catalog.
+        """
+        async with db.readonly() as conn:
+            async with conn.execute(
+                "SELECT * FROM contacts ORDER BY lower(public_key), public_key"
+            ) as cursor:
+                rows = list(await cursor.fetchall())
+            async with conn.execute(
+                """
+                SELECT public_key, revision, deleted
+                FROM virtual_companion_contact_changes
+                ORDER BY revision, public_key
+                """
+            ) as cursor:
+                change_rows = list(await cursor.fetchall())
+            async with conn.execute(
+                "SELECT revision FROM virtual_companion_contact_clock WHERE singleton = 1"
+            ) as cursor:
+                clock_row = await cursor.fetchone()
+
+        grouped: dict[str, list[Any]] = {}
+        for row in rows:
+            key = str(row["public_key"]).lower()
+            grouped.setdefault(key, []).append(row)
+
+        eligible: dict[str, Contact] = {}
+        for key, matches in grouped.items():
+            if len(matches) != 1 or len(key) != 64:
+                continue
+            try:
+                key_bytes = bytes.fromhex(key)
+            except ValueError:
+                continue
+            if len(key_bytes) != 32:
+                continue
+            eligible[key] = ContactRepository._row_to_contact(matches[0])
+
+        revisions = {str(row["public_key"]): int(row["revision"]) for row in change_rows}
+        high_water = int(clock_row["revision"]) if clock_row else 0
+        if since <= 0:
+            selected = (
+                (contact, revisions.get(key, high_water)) for key, contact in eligible.items()
+            )
+            deleted: tuple[str, ...] = ()
+        else:
+            changed_keys = [
+                str(row["public_key"]) for row in change_rows if int(row["revision"]) > since
+            ]
+            selected = ((eligible[key], revisions[key]) for key in changed_keys if key in eligible)
+            # Prefix-only and malformed database identities have never been
+            # exposed as Companion contacts and cannot form 32-byte tombstones.
+            tombstones = []
+            for key in changed_keys:
+                if key in eligible or len(key) != 64:
+                    continue
+                try:
+                    if len(bytes.fromhex(key)) == 32:
+                        tombstones.append(key)
+                except ValueError:
+                    continue
+            deleted = tuple(tombstones)
+
+        contacts = tuple(sorted(selected, key=lambda item: item[0].public_key.lower()))
+        return CompanionContactSnapshot(
+            contacts=contacts,
+            deleted_public_keys=deleted,
+            total=len(eligible),
+            high_water=high_water,
+        )
+
+    @staticmethod
+    async def apply_companion_mutation(
+        mutation: CompanionContactMutation,
+    ) -> tuple[Contact, int] | None:
+        """Atomically apply a revision-fenced edit to an existing DB contact.
+
+        Unknown contacts are deliberately not created from unsigned app frames.
+        The contact trigger advances the durable Companion revision in the same
+        SQLite transaction, so concurrent clients cannot both win a stale edit.
+        """
+        path, path_len, path_hash_mode = normalize_contact_route(
+            mutation.direct_path,
+            mutation.direct_path_len,
+            mutation.direct_path_hash_mode,
+        )
+        public_key = mutation.public_key.lower()
+        async with db.tx() as conn:
+            async with conn.execute(
+                """
+                UPDATE contacts
+                SET name = ?, type = ?, flags = ?, favorite = ?,
+                    direct_path = ?, direct_path_len = ?, direct_path_hash_mode = ?,
+                    direct_path_updated_at = CAST(strftime('%s', 'now') AS INTEGER)
+                WHERE public_key = ?
+                  AND EXISTS (
+                      SELECT 1 FROM virtual_companion_contact_changes changes
+                      WHERE changes.public_key = contacts.public_key
+                        AND changes.revision = ? AND changes.deleted = 0
+                  )
+                """,
+                (
+                    mutation.name,
+                    mutation.contact_type,
+                    mutation.flags,
+                    int(mutation.favorite),
+                    path or None,
+                    path_len,
+                    path_hash_mode,
+                    public_key,
+                    mutation.expected_revision,
+                ),
+            ) as cursor:
+                if cursor.rowcount != 1:
+                    return None
+            async with conn.execute(
+                "SELECT * FROM contacts WHERE public_key = ?", (public_key,)
+            ) as cursor:
+                row = await cursor.fetchone()
+            async with conn.execute(
+                "SELECT revision FROM virtual_companion_contact_changes WHERE public_key = ?",
+                (public_key,),
+            ) as cursor:
+                revision_row = await cursor.fetchone()
+            if row is None or revision_row is None:
+                return None
+            return ContactRepository._row_to_contact(row), int(revision_row["revision"])
+
+    @staticmethod
+    async def delete_companion_contact(public_key: str) -> bool:
+        """Delete one DB contact and report the atomic winner to virtual clients."""
+        async with db.tx() as conn:
+            async with conn.execute(
+                "DELETE FROM contacts WHERE public_key = ?", (public_key.lower(),)
+            ) as cursor:
+                return cursor.rowcount == 1
 
     @staticmethod
     async def get_repeaters_by_recent(limit: int = 8) -> list[Contact]:

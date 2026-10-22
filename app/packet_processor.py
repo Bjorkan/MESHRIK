@@ -243,6 +243,7 @@ class HistoricalDecryptSupervisor:
     """One bounded, coalesced historical scan worker, never per-advert tasks."""
 
     def __init__(self, cap: int = 128):
+        self._capacity = cap
         self.pending: asyncio.Queue[tuple[str, str | None]] = asyncio.Queue(maxsize=cap)
         self.known: set[str] = set()
         self.worker: asyncio.Task | None = None
@@ -298,6 +299,9 @@ class HistoricalDecryptSupervisor:
             self.pending.get_nowait()
             self.pending.task_done()
         self.known.clear()
+        # asyncio.Queue retains loop-bound waiter state after join(). Recreate it so a
+        # stopped supervisor can safely start again after an application/event-loop restart.
+        self.pending = asyncio.Queue(maxsize=self._capacity)
 
 
 historical_decrypt_supervisor = HistoricalDecryptSupervisor()
