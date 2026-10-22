@@ -27,17 +27,16 @@ an application default and should not be committed to runtime config.
   quarantine, or unexpected changes to contact/channel slots. Do **not**
   automatically retry an uncertain transmission.
 
-## Phase A: passive _startup_ / observation
+## Phase A: full baseline startup / observation
 
 Run from the repo root with a fresh test database and no other owner of the
-radio's TCP port. `MESHCORE_STARTUP_POLICY=passive` intentionally skips key
-export, clock update, flood-scope write, destructive radio offload, startup
-advertisement, pending-message drain and periodic maintenance. Startup still
-queries metadata/time and enables incoming event reception. This startup
-bootstrap now runs as bounded, generation-fenced worker stages. This is **not** a
-read-only API security policy: clicking Send, Reboot, settings, CLI, etc. in
-an accessible UI may still issue device/RF commands. During phase A do not
-issue such requests.
+radio's TCP port. The default `full` baseline skips key export, clock update,
+flood-scope write, destructive radio offload, startup advertisement,
+pending-message drain and periodic maintenance. Startup reads metadata/time
+and contact/channel snapshots and enables incoming event reception. It runs as
+bounded, generation-fenced worker stages. This is **not** a read-only API
+security policy: clicking Send, Reboot, settings, CLI, etc. in an accessible UI
+may still issue device/RF commands. During phase A do not issue such requests.
 
 ```bash
 MESHCORE_TCP_HOST=10.50.2.80 \
@@ -45,7 +44,7 @@ MESHCORE_TCP_PORT=5000 \
 MESHCORE_DATABASE_PATH=data/meshcore-hardware-smoke.db \
 MESHCORE_DISABLE_BOTS=true \
 MESHCORE_ENABLE_LOCAL_PRIVATE_KEY_EXPORT=false \
-MESHCORE_STARTUP_POLICY=passive \
+MESHCORE_STARTUP_POLICY=full \
 MESHCORE_AUTO_REBOOT_ON_CLOCK_SKEW=false \
 uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 1
 ```
@@ -56,7 +55,10 @@ second simultaneous transport. Record radio model/firmware, API health and
 `/api/radio/jobs`, `/api/radio/activity`, WebSocket and Radio Activity UI.
 The app may report physical RF state as **unavailable**; command status is not
 proof of actual transmission/listening. Observe inbound traffic and ensure
-there is no startup advertisement or radio reboot.
+there is no MESHRIK-initiated startup advertisement or radio reboot. Physical
+Companion UI actions may transmit independently and must not be attributed to
+the application; current firmware evidence does not show an automatic boot
+advertisement.
 
 ## Phase B: one deliberate transmission at a time
 
@@ -80,13 +82,14 @@ DB, a single client, and verified channel/recipient configuration:
    before deliberately retrying after an ambiguous outcome.
 
 `MESHCORE_AUTO_REBOOT_ON_CLOCK_SKEW` defaults to **false**; only set it to true
-if an operator knowingly permits a reboot during clock recovery. The default `MESHCORE_STARTUP_POLICY=sync` reads contacts and channels into
-SQLite without changing radio settings or sending advertisements.
-`MESHCORE_STARTUP_POLICY=full` only enables individually opted-in maintenance;
+if an operator knowingly permits a reboot during clock recovery. The default
+`MESHCORE_STARTUP_POLICY=full` reads contacts and channels into SQLite without
+changing radio settings or sending advertisements. It only enables individually
+opted-in maintenance;
 `MESHCORE_STARTUP_CLEAR_CHANNEL_SLOTS` and
 `MESHCORE_STARTUP_ALLOW_PERIODIC_OFFLOAD` are explicitly destructive and
 must not be enabled on a real device merely for a test. See
-`RADIO_STARTUP_LIFECYCLE.md` for the complete policy matrix and rollback.
+`RADIO_STARTUP_LIFECYCLE.md` for the complete stage matrix, migration and rollback.
 
 ## Phase C: fault injection only after ordinary sends succeed
 

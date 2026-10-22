@@ -44,6 +44,14 @@ describe('MessageList channel sender rendering', () => {
     });
   });
 
+  it('announces initial message loading and removes the indicator when finished', () => {
+    const { rerender } = render(<MessageList messages={[]} contacts={[]} loading={true} />);
+    expect(screen.getByRole('status')).toHaveTextContent('Loading messages...');
+    expect(screen.getByRole('status')).toHaveAttribute('aria-busy', 'true');
+    rerender(<MessageList messages={[]} contacts={[]} loading={false} />);
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
   it('renders explicit corrupt placeholder and warning avatar for unnamed corrupt channel packets', () => {
     render(
       <MessageList

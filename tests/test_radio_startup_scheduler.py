@@ -29,10 +29,16 @@ def _device() -> MagicMock:
     return mc
 
 
-async def _prepare(monkeypatch, policy=StartupPolicy.PASSIVE):
+async def _prepare(monkeypatch, policy=StartupPolicy.FULL):
     monkeypatch.setattr(settings, "startup_policy", policy)
-    monkeypatch.setattr(settings, "passive_startup", False)
-    monkeypatch.setattr(settings, "skip_post_connect_sync", False)
+    monkeypatch.setattr(
+        "app.radio_sync.sync_contacts_from_radio",
+        AsyncMock(return_value={"synced": 0, "radio_contacts": {}}),
+    )
+    monkeypatch.setattr(
+        "app.radio_sync.sync_channels_from_radio",
+        AsyncMock(return_value={"synced": 0, "cleared": 0}),
+    )
     for name in (
         "startup_export_private_key",
         "startup_sync_clock",
@@ -57,7 +63,7 @@ async def _prepare(monkeypatch, policy=StartupPolicy.PASSIVE):
 
 
 @pytest.mark.asyncio
-async def test_passive_bootstrap_runs_as_worker_job_and_blocks_user_admission(monkeypatch):
+async def test_full_bootstrap_runs_as_worker_jobs_and_blocks_user_admission(monkeypatch):
     manager, scheduler, worker = await _prepare(monkeypatch)
     entered, release = asyncio.Event(), asyncio.Event()
 
@@ -87,7 +93,8 @@ async def test_passive_bootstrap_runs_as_worker_job_and_blocks_user_admission(mo
         assert all(job.state == RadioJobState.COMPLETED for job in scheduler.list_jobs())
         assert [job.kind for job in scheduler.list_jobs()] == [
             RadioJobKind.LIFECYCLE_DEVICE_INFO,
-            RadioJobKind.LIFECYCLE_MESSAGE_DRAIN,
+            RadioJobKind.LIFECYCLE_CONTACT_SYNC,
+            RadioJobKind.LIFECYCLE_CHANNEL_SYNC,
             RadioJobKind.LIFECYCLE_AUTO_FETCH,
         ]
         manager.meshcore.commands.set_time.assert_not_called()
@@ -117,8 +124,8 @@ async def test_failed_device_bootstrap_never_admits_user_jobs(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_sync_policy_reads_but_cannot_offload_or_advertise(monkeypatch):
-    manager, scheduler, worker = await _prepare(monkeypatch, StartupPolicy.SYNC)
+async def test_full_baseline_reads_but_cannot_offload_or_advertise(monkeypatch):
+    manager, scheduler, worker = await _prepare(monkeypatch, StartupPolicy.FULL)
     contacts = AsyncMock(return_value={"synced": 1, "radio_contacts": {}})
     channels = AsyncMock(return_value={"synced": 1, "cleared": 0})
     with (
@@ -134,9 +141,7 @@ async def test_sync_policy_reads_but_cannot_offload_or_advertise(monkeypatch):
             await asyncio.wait_for(run_post_connect_setup(manager), 2)
             assert manager.readiness_state == "ready"
             assert all(job.state == RadioJobState.COMPLETED for job in scheduler.list_jobs())
-            assert (
-                len(scheduler.list_jobs()) == 5
-            )  # bootstrap, drain, contacts, channels, auto-fetch
+            assert len(scheduler.list_jobs()) == 4
             contacts.assert_awaited_once()
             channels.assert_awaited_once()
             for mutation in (offload, advert, clock, key):
@@ -165,6 +170,7 @@ async def test_full_policy_without_individual_permissions_emits_no_radio_writes(
         patch("app.radio_sync.send_advertisement", new_callable=AsyncMock) as advert,
         patch("app.radio_sync.sync_and_offload_channels", new_callable=AsyncMock) as clear,
         patch("app.radio_sync.start_periodic_sync") as periodic,
+        patch("app.radio_sync.request_inbound_catchup") as catchup,
     ):
         try:
             await asyncio.wait_for(run_post_connect_setup(manager), 2)
@@ -172,6 +178,7 @@ async def test_full_policy_without_individual_permissions_emits_no_radio_writes(
             advert.assert_not_awaited()
             clear.assert_not_awaited()
             periodic.assert_not_called()
+            catchup.assert_not_called()
             manager.meshcore.commands.set_channel.assert_not_called()
         finally:
             await worker.stop()
@@ -220,17 +227,6 @@ async def test_disconnect_during_stage_cancels_remaining_stages(monkeypatch):
             if not task.done():
                 task.cancel()
             await worker.stop()
-
-
-def test_legacy_startup_flags_only_reduce_authority(monkeypatch):
-    monkeypatch.setattr(settings, "startup_policy", StartupPolicy.FULL)
-    monkeypatch.setattr(settings, "passive_startup", True)
-    assert settings.effective_startup_policy == StartupPolicy.PASSIVE
-    monkeypatch.setattr(settings, "passive_startup", False)
-    monkeypatch.setattr(settings, "skip_post_connect_sync", True)
-    assert settings.effective_startup_policy == StartupPolicy.PASSIVE
-    monkeypatch.setattr(settings, "skip_post_connect_sync", False)
-    assert settings.effective_startup_policy == StartupPolicy.FULL
 
 
 @pytest.mark.asyncio
@@ -287,7 +283,8 @@ async def test_concurrent_duplicate_startup_events_coalesce_per_generation(monke
             await asyncio.wait_for(asyncio.gather(first, second), 2)
             assert [j.kind for j in scheduler.list_jobs()] == [
                 RadioJobKind.LIFECYCLE_DEVICE_INFO,
-                RadioJobKind.LIFECYCLE_MESSAGE_DRAIN,
+                RadioJobKind.LIFECYCLE_CONTACT_SYNC,
+                RadioJobKind.LIFECYCLE_CHANNEL_SYNC,
                 RadioJobKind.LIFECYCLE_AUTO_FETCH,
             ]
             manager.meshcore.commands.send_device_query.assert_awaited_once()
@@ -298,7 +295,7 @@ async def test_concurrent_duplicate_startup_events_coalesce_per_generation(monke
 
 @pytest.mark.asyncio
 async def test_partial_contact_snapshot_failure_is_degraded_not_ready(monkeypatch):
-    manager, scheduler, worker = await _prepare(monkeypatch, StartupPolicy.SYNC)
+    manager, scheduler, worker = await _prepare(monkeypatch, StartupPolicy.FULL)
 
     async def partial_contact_failure(_mc):
         raise RuntimeError("database failure after first contact")
@@ -321,7 +318,6 @@ async def test_partial_contact_snapshot_failure_is_degraded_not_ready(monkeypatc
             assert manager.is_setup_complete
             assert [j.kind for j in scheduler.list_jobs()] == [
                 RadioJobKind.LIFECYCLE_DEVICE_INFO,
-                RadioJobKind.LIFECYCLE_MESSAGE_DRAIN,
                 RadioJobKind.LIFECYCLE_CONTACT_SYNC,
                 RadioJobKind.LIFECYCLE_CHANNEL_SYNC,
                 RadioJobKind.LIFECYCLE_AUTO_FETCH,
@@ -346,7 +342,8 @@ async def test_repeated_idle_disconnect_and_reconnect_has_one_workflow_each(monk
                 ]
                 assert [j.kind for j in jobs] == [
                     RadioJobKind.LIFECYCLE_DEVICE_INFO,
-                    RadioJobKind.LIFECYCLE_MESSAGE_DRAIN,
+                    RadioJobKind.LIFECYCLE_CONTACT_SYNC,
+                    RadioJobKind.LIFECYCLE_CHANNEL_SYNC,
                     RadioJobKind.LIFECYCLE_AUTO_FETCH,
                 ]
                 assert all(j.state == RadioJobState.COMPLETED for j in jobs)
@@ -366,12 +363,11 @@ async def test_repeated_idle_disconnect_and_reconnect_has_one_workflow_each(monk
 @pytest.mark.parametrize(
     ("policy", "flag", "expected_stage"),
     [
-        (StartupPolicy.PASSIVE, "startup_send_advertisement", None),
-        (StartupPolicy.SYNC, "startup_send_advertisement", None),
         (StartupPolicy.FULL, "startup_send_advertisement", RadioJobKind.LIFECYCLE_ADVERTISEMENT),
         (StartupPolicy.FULL, "startup_sync_clock", RadioJobKind.LIFECYCLE_CLOCK_SYNC),
         (StartupPolicy.FULL, "startup_export_private_key", RadioJobKind.LIFECYCLE_KEY_EXPORT),
         (StartupPolicy.FULL, "startup_clear_channel_slots", RadioJobKind.LIFECYCLE_CHANNEL_CLEAR),
+        (StartupPolicy.FULL, "startup_drain_messages", RadioJobKind.LIFECYCLE_MESSAGE_DRAIN),
     ],
 )
 async def test_startup_policy_selectively_admits_only_the_consented_command(
@@ -410,8 +406,6 @@ async def test_startup_policy_selectively_admits_only_the_consented_command(
         try:
             await asyncio.wait_for(run_post_connect_setup(manager), 2)
             kinds = [job.kind for job in scheduler.list_jobs()]
-            # The bounded backlog drain is unconditional for every policy.
-            assert kinds.count(RadioJobKind.LIFECYCLE_MESSAGE_DRAIN) == 1
             if expected_stage is not None:
                 assert kinds.count(expected_stage) == 1
             allowed = [
@@ -423,6 +417,7 @@ async def test_startup_policy_selectively_admits_only_the_consented_command(
                     RadioJobKind.LIFECYCLE_CLOCK_SYNC,
                     RadioJobKind.LIFECYCLE_ADVERTISEMENT,
                     RadioJobKind.LIFECYCLE_CHANNEL_CLEAR,
+                    RadioJobKind.LIFECYCLE_MESSAGE_DRAIN,
                 }
             ]
             assert allowed == ([expected_stage] if expected_stage is not None else [])
@@ -433,7 +428,9 @@ async def test_startup_policy_selectively_admits_only_the_consented_command(
                 (RadioJobKind.LIFECYCLE_CHANNEL_CLEAR, clear),
             ):
                 assert operation.await_count == (1 if expected_stage == kind else 0)
-            assert drain.await_count == 1
+            assert drain.await_count == (
+                1 if expected_stage == RadioJobKind.LIFECYCLE_MESSAGE_DRAIN else 0
+            )
             assert manager.readiness_state == "ready"
         finally:
             await worker.stop()
@@ -443,7 +440,7 @@ async def test_startup_policy_selectively_admits_only_the_consented_command(
 async def test_manual_force_retry_recovers_degraded_generation_using_worker(monkeypatch):
     from app.services.radio_lifecycle import prepare_connected_radio
 
-    manager, scheduler, worker = await _prepare(monkeypatch, StartupPolicy.SYNC)
+    manager, scheduler, worker = await _prepare(monkeypatch, StartupPolicy.FULL)
     contacts = AsyncMock(
         side_effect=[
             RuntimeError("partial DB error"),
@@ -469,7 +466,7 @@ async def test_manual_force_retry_recovers_degraded_generation_using_worker(monk
             assert manager.readiness_state == "ready"
             assert manager.startup_error_stage is None
             assert contacts.await_count == 2
-            assert len(scheduler.list_jobs()) == previous + 5
+            assert len(scheduler.list_jobs()) == previous + 4
             assert all(j.kind.name.startswith("LIFECYCLE_") for j in scheduler.list_jobs())
         finally:
             await worker.stop()
@@ -477,7 +474,7 @@ async def test_manual_force_retry_recovers_degraded_generation_using_worker(monk
 
 @pytest.mark.asyncio
 async def test_disconnect_during_channel_sync_fences_old_generation(monkeypatch):
-    manager, scheduler, worker = await _prepare(monkeypatch, StartupPolicy.SYNC)
+    manager, scheduler, worker = await _prepare(monkeypatch, StartupPolicy.FULL)
     entered, release = asyncio.Event(), asyncio.Event()
     calls = 0
 

@@ -18,11 +18,12 @@ import { ConsolePane } from './repeater/RepeaterConsolePane';
 import { RepeaterLogin } from './RepeaterLogin';
 import { ServerLoginStatusBanner } from './ServerLoginStatusBanner';
 import { useRememberedServerPassword } from '../hooks/useRememberedServerPassword';
+import type { ServerLoginAttemptState, ServerLoginMethod } from '../utils/serverLoginState';
 import {
-  buildServerLoginAttemptFromError,
-  buildServerLoginAttemptFromResponse,
-  type ServerLoginAttemptState,
-} from '../utils/serverLoginState';
+  resetServerLoginStoreForTests,
+  startServerLogin,
+  useServerLogin,
+} from '../stores/serverLoginStore';
 
 interface RoomServerPanelProps {
   contact: Contact;
@@ -119,6 +120,7 @@ function setCachedRoom(publicKey: string, entry: RoomCacheEntry) {
 
 export function resetRoomCacheForTests() {
   roomCache.clear();
+  resetServerLoginStoreForTests('room');
 }
 
 export function RoomServerPanel({ contact, onAuthenticatedChange }: RoomServerPanelProps) {
@@ -126,13 +128,12 @@ export function RoomServerPanel({ contact, onAuthenticatedChange }: RoomServerPa
     useRememberedServerPassword('room', contact.public_key);
 
   const cached = useMemo(() => getCachedRoom(contact.public_key), [contact.public_key]);
+  const loginRecord = useServerLogin('room', contact.public_key);
 
-  const [loginLoading, setLoginLoading] = useState(false);
-  const [loginError, setLoginError] = useState<string | null>(cached?.loginError ?? null);
-  const [authenticated, setAuthenticated] = useState(cached?.authenticated ?? false);
-  const [lastLoginAttempt, setLastLoginAttempt] = useState<ServerLoginAttemptState | null>(
-    cached?.lastLoginAttempt ?? null
-  );
+  const loginLoading = loginRecord?.phase === 'pending';
+  const loginError = loginRecord ? loginRecord.error : (cached?.loginError ?? null);
+  const authenticated = loginRecord?.accessGranted ?? cached?.authenticated ?? false;
+  const lastLoginAttempt = loginRecord ? loginRecord.attempt : (cached?.lastLoginAttempt ?? null);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [paneData, setPaneData] = useState<RoomPaneData>(cached?.paneData ?? createInitialPaneData);
   const [paneStates, setPaneStates] = useState<RoomPaneStates>(
@@ -206,47 +207,44 @@ export function RoomServerPanel({ contact, onAuthenticatedChange }: RoomServerPa
   );
 
   const performLogin = useCallback(
-    async (nextPassword: string, method: 'password' | 'blank') => {
-      if (loginLoading) return false;
-
-      setLoginLoading(true);
-      setLoginError(null);
-      try {
-        const result = await api.roomLogin(contact.public_key, nextPassword);
-        setLastLoginAttempt(buildServerLoginAttemptFromResponse(method, result, 'room server'));
-        setAuthenticated(true);
-        if (result.authenticated) {
-          toast.success('Login confirmed by the room server.');
-        } else {
-          toast.warning("Couldn't confirm room login", {
-            description:
-              result.message ??
-              'No confirmation came back from the room server. You can still open tools and try again.',
-          });
-        }
-        return result.authenticated;
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'Unknown error';
-        setLastLoginAttempt(buildServerLoginAttemptFromError(method, message, 'room server'));
-        setAuthenticated(true);
-        setLoginError(message);
-        toast.error('Room login request failed', {
-          description: `${message}. You can still open tools and retry the login from here.`,
-        });
-        return false;
-      } finally {
-        setLoginLoading(false);
-      }
+    (
+      nextPassword: string,
+      method: ServerLoginMethod,
+      lifecycle: { onStarted?: () => void; onConfirmed?: () => void } = {}
+    ) => {
+      return startServerLogin({
+        kind: 'room',
+        targetKey: contact.public_key,
+        password: nextPassword,
+        method,
+        onStarted: lifecycle.onStarted,
+        onConfirmed: lifecycle.onConfirmed,
+        onSettled: (record) => {
+          if (record.authenticated) {
+            toast.success('Login confirmed by the room server.');
+          } else if (record.attempt?.outcome === 'not_confirmed') {
+            toast.warning("Couldn't confirm room login", {
+              description:
+                record.error ??
+                'No confirmation came back from the room server. You can still open tools and try again.',
+            });
+          } else {
+            toast.error('Room login request failed', {
+              description: `${record.error ?? 'Unknown error'}. You can still open tools and retry the login from here.`,
+            });
+          }
+        },
+      }).promise;
     },
-    [contact.public_key, loginLoading]
+    [contact.public_key]
   );
 
   const handleLogin = useCallback(
     async (nextPassword: string, shouldRemember = rememberPassword) => {
-      recordLoginAttempt(nextPassword, shouldRemember);
-      if (await performLogin(nextPassword, 'password')) {
-        persistConfirmedPassword(nextPassword, shouldRemember);
-      }
+      await performLogin(nextPassword, 'password', {
+        onStarted: () => recordLoginAttempt(nextPassword, shouldRemember),
+        onConfirmed: () => persistConfirmedPassword(nextPassword, shouldRemember),
+      });
     },
     [performLogin, persistConfirmedPassword, recordLoginAttempt, rememberPassword]
   );

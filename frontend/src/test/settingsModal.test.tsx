@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { SettingsModal } from '../components/SettingsModal';
@@ -403,15 +404,15 @@ describe('SettingsModal', () => {
     {
       state: 'degraded' as const,
       connected: true,
-      label: 'Connected (degraded at channel sync)',
-      action: 'Disconnect',
+      label: 'Transport connected — setup degraded at channel sync',
+      action: 'Retry setup',
       indicatorClass: 'bg-warning',
     },
     {
       state: 'failed' as const,
       connected: true,
-      label: 'Connected — setup failed at device bootstrap',
-      action: 'Disconnect',
+      label: 'Transport connected — setup failed at device bootstrap',
+      action: 'Retry setup',
       indicatorClass: 'bg-status-disconnected',
     },
     {
@@ -473,6 +474,138 @@ describe('SettingsModal', () => {
     expect(screen.queryByRole('button', { name: 'Disconnect' })).not.toBeInTheDocument();
   });
 
+  it.each(['degraded', 'failed'] as const)(
+    'retries %s setup without pausing the connected transport',
+    async (radioState) => {
+      const onReconnect = vi.fn(async () => {});
+      const onDisconnect = vi.fn(async () => {});
+      renderModal({
+        onReconnect,
+        onDisconnect,
+        health: {
+          ...baseHealth,
+          radio_state: radioState,
+          startup_stage: 'recovery_required',
+          startup_error_stage: 'device_info',
+        },
+      });
+      openRadioSection();
+
+      expect(screen.getByText('Current setup stage: recovery_required')).toBeInTheDocument();
+      expect(screen.getByText('Last failed stage: device_info')).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Retry setup' }));
+
+      await waitFor(() => expect(onReconnect).toHaveBeenCalledTimes(1));
+      expect(onDisconnect).not.toHaveBeenCalled();
+    }
+  );
+
+  it('keeps keyboard setup recovery safe and fully labelled on a narrow viewport', async () => {
+    const user = userEvent.setup();
+    const onReconnect = vi.fn(async () => {});
+    const onDisconnect = vi.fn(async () => {});
+    renderModal({
+      mobile: true,
+      onReconnect,
+      onDisconnect,
+      health: {
+        ...baseHealth,
+        radio_state: 'failed',
+        startup_stage: 'recovery_required',
+        startup_error_stage: 'device_info',
+      },
+    });
+    openRadioSection();
+
+    expect(
+      screen.getByRole('status', { name: 'Transport connected — setup failed at device_info' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Retries setup on the current transport without disconnecting or enabling destructive maintenance.'
+      )
+    ).toBeInTheDocument();
+    const retry = screen.getByRole('button', { name: 'Retry setup' });
+    retry.focus();
+    await user.keyboard('{Enter}');
+
+    await waitFor(() => expect(onReconnect).toHaveBeenCalledTimes(1));
+    expect(onDisconnect).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    {
+      state: 'paused' as const,
+      action: 'Reconnect',
+      help: 'Reconnects the configured radio transport and resumes automatic reconnect attempts.',
+    },
+    {
+      state: 'disconnected' as const,
+      action: 'Stop Trying',
+      help: 'Stops automatic reconnect attempts and leaves the radio connection paused.',
+    },
+  ])('keeps the $state action understandable on a narrow viewport', ({ state, action, help }) => {
+    renderModal({
+      mobile: true,
+      health: { ...baseHealth, radio_connected: false, radio_state: state },
+    });
+    openRadioSection();
+
+    expect(screen.getByRole('button', { name: action })).toHaveClass('w-full');
+    expect(screen.getByText(help)).toBeInTheDocument();
+  });
+
+  it.each([
+    { state: 'initializing' as const, connected: true, action: 'Disconnect' },
+    { state: 'connecting' as const, connected: false, action: 'Stop Trying' },
+    { state: 'disconnected' as const, connected: false, action: 'Stop Trying' },
+  ])('dispatches the $action action for $state', async ({ state, connected, action }) => {
+    const onReconnect = vi.fn(async () => {});
+    const onDisconnect = vi.fn(async () => {});
+    renderModal({
+      onReconnect,
+      onDisconnect,
+      health: { ...baseHealth, radio_connected: connected, radio_state: state },
+    });
+    openRadioSection();
+
+    expect(onReconnect).not.toHaveBeenCalled();
+    expect(onDisconnect).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: action }));
+
+    await waitFor(() => expect(onDisconnect).toHaveBeenCalledTimes(1));
+    expect(onReconnect).not.toHaveBeenCalled();
+  });
+
+  it('blocks setup retry and shows restart guidance while the radio worker is quarantined', () => {
+    const onReconnect = vi.fn(async () => {});
+    const onDisconnect = vi.fn(async () => {});
+    renderModal({
+      onReconnect,
+      onDisconnect,
+      health: {
+        ...baseHealth,
+        radio_state: 'failed',
+        startup_stage: 'recovery_required',
+        startup_error_stage: 'device_info',
+        radio_scheduler: {
+          quarantined: true,
+          last_job_kind: 'radio_config',
+          recoverable_after_reconnect: false,
+          requires_restart: true,
+        },
+      },
+    });
+    openRadioSection();
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Radio command worker is quarantined after radio_config'
+    );
+    expect(screen.getByRole('button', { name: 'Restart required' })).toBeDisabled();
+    expect(onReconnect).not.toHaveBeenCalled();
+    expect(onDisconnect).not.toHaveBeenCalled();
+  });
+
   it('runs repeater mesh discovery from the radio tab', async () => {
     const { onDiscoverMesh } = renderModal();
     openRadioSection();
@@ -483,6 +616,24 @@ describe('SettingsModal', () => {
       expect(onDiscoverMesh).toHaveBeenCalledWith('repeaters');
     });
   });
+
+  it.each<RadioDiscoveryTarget>(['repeaters', 'sensors', 'all'])(
+    'shows waiting feedback and labels previous mesh results during %s discovery',
+    (target) => {
+      renderModal({
+        meshDiscoveryLoadingTarget: target,
+        meshDiscovery: { target: 'all', duration_seconds: 8, results: [] },
+      });
+      openRadioSection();
+      expect(
+        screen.getByText('Waiting for discovery replies...').closest('[role="status"]')
+      ).toHaveAttribute('aria-busy', 'true');
+      expect(
+        screen.getByRole('button', { name: 'Waiting for discovery replies...' })
+      ).toBeDisabled();
+      expect(screen.getByText('Previous mesh discovery results')).toBeInTheDocument();
+    }
+  );
 
   it('renders mesh discovery results in the radio tab', () => {
     renderModal({

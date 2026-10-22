@@ -31,6 +31,8 @@ import type { SearchViewProps } from './SearchView';
 import type { SettingsModalProps } from './SettingsModal';
 import { cn } from '@/lib/utils';
 import { useAppHotkeys } from '../hooks/useAppHotkeys';
+import { usePagePinchZoomGuard } from '../hooks/usePagePinchZoomGuard';
+import { LoadingIndicator } from './ui/loading-indicator';
 
 const SettingsModal = lazy(() =>
   import('./SettingsModal').then((m) => ({ default: m.SettingsModal }))
@@ -47,6 +49,19 @@ const ChannelInfoPane = lazy(() =>
 );
 
 type SidebarProps = ComponentProps<typeof Sidebar>;
+function LoadingInfoSheet({ title, onClose }: { title: string; onClose: () => void }) {
+  return (
+    <Sheet open onOpenChange={(open) => !open && onClose()}>
+      <SheetContent side="right">
+        <SheetHeader>
+          <SheetTitle>{title}</SheetTitle>
+          <SheetDescription>Preparing details</SheetDescription>
+        </SheetHeader>
+        <LoadingIndicator label="Loading details..." className="py-6" />
+      </SheetContent>
+    </Sheet>
+  );
+}
 type ConversationPaneProps = ComponentProps<typeof ConversationPane>;
 type NewMessageModalProps = Omit<ComponentProps<typeof NewMessageModal>, 'open' | 'onClose'>;
 type BulkAddChannelResultModalProps = Omit<
@@ -120,6 +135,8 @@ export function AppShell({
   channelInfoPaneProps,
   onRepeaterAutoLogin,
 }: AppShellProps) {
+  usePagePinchZoomGuard();
+
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [shortcutHelpOpen, setShortcutHelpOpen] = useState(false);
   const [searchFocusRequestVersion, setSearchFocusRequestVersion] = useState(0);
@@ -195,6 +212,7 @@ export function AppShell({
   );
 
   const searchMounted = useRef(false);
+  const navigationTitleRef = useRef<HTMLHeadingElement>(null);
   if (conversationPaneProps.activeConversation?.type === 'search') {
     searchMounted.current = true;
   }
@@ -236,14 +254,14 @@ export function AppShell({
         <button
           type="button"
           onClick={onCloseSettingsView}
-          className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-status-connected/15 border border-status-connected/30 text-status-connected hover:bg-status-connected/25 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+          className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-status-connected/15 border border-status-connected/30 text-status-connected hover:bg-status-connected/25 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           title="Back to conversations"
           aria-label="Back to conversations"
         >
           &larr; Back to Chat
         </button>
       </div>
-      <div className="flex-1 min-h-0 overflow-y-auto py-1 contain-[layout_paint]">
+      <div className="flex-1 min-h-0 overflow-y-auto py-1 [contain:layout_paint]">
         {SETTINGS_SECTION_ORDER.map((section) => {
           const Icon = SETTINGS_SECTION_ICONS[section];
           const disabled = disabledSettingsSections.includes(section);
@@ -253,7 +271,7 @@ export function AppShell({
               type="button"
               disabled={disabled}
               className={cn(
-                'w-full px-3 py-2 text-left text-[0.8125rem] border-l-2 border-transparent transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:cursor-not-allowed disabled:opacity-50',
+                'w-full px-3 py-2 text-left text-[0.8125rem] border-l-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:cursor-not-allowed disabled:opacity-50',
                 !disabled && 'hover:bg-accent',
                 settingsSection === section && !disabled && 'bg-accent border-l-primary'
               )}
@@ -318,12 +336,14 @@ export function AppShell({
             side="left"
             className="w-[280px] p-0 flex flex-col"
             hideCloseButton
-            onOpenAutoFocus={(event) => {
-              event.preventDefault();
-            }}
+            initialFocusRef={navigationTitleRef}
           >
             <SheetHeader className="sr-only">
-              <SheetTitle>Navigation</SheetTitle>
+              <SheetTitle asChild>
+                <h2 ref={navigationTitleRef} tabIndex={-1}>
+                  Navigation
+                </h2>
+              </SheetTitle>
               <SheetDescription>Sidebar navigation</SheetDescription>
             </SheetHeader>
             <div className="flex-1 overflow-hidden" {...closeSwipeHandlers}>
@@ -358,7 +378,7 @@ export function AppShell({
               <Suspense
                 fallback={
                   <div className="flex-1 flex items-center justify-center text-muted-foreground">
-                    Loading search...
+                    <LoadingIndicator label="Loading search..." />
                   </div>
                 }
               >
@@ -379,7 +399,7 @@ export function AppShell({
                 <Suspense
                   fallback={
                     <div className="flex-1 flex items-center justify-center p-8 text-muted-foreground">
-                      Loading settings...
+                      <LoadingIndicator label="Loading settings..." />
                     </div>
                   }
                 >
@@ -409,7 +429,7 @@ export function AppShell({
           <Suspense
             fallback={
               <div className="flex items-center justify-center h-full text-muted-foreground">
-                Loading channel finder...
+                <LoadingIndicator label="Loading channel finder..." />
               </div>
             }
           >
@@ -446,12 +466,20 @@ export function AppShell({
       <ShortcutHelpDialog open={shortcutHelpOpen} onOpenChange={setShortcutHelpOpen} />
       <SecurityWarningModal health={statusProps.health} />
       {contactInfoPaneProps.contactKey !== null && (
-        <Suspense fallback={null}>
+        <Suspense
+          fallback={
+            <LoadingInfoSheet title="Contact Info" onClose={contactInfoPaneProps.onClose} />
+          }
+        >
           <ContactInfoPane {...contactInfoPaneProps} />
         </Suspense>
       )}
       {channelInfoPaneProps.channelKey !== null && (
-        <Suspense fallback={null}>
+        <Suspense
+          fallback={
+            <LoadingInfoSheet title="Channel Info" onClose={channelInfoPaneProps.onClose} />
+          }
+        >
           <ChannelInfoPane {...channelInfoPaneProps} />
         </Suspense>
       )}

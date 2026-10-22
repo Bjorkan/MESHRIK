@@ -2318,3 +2318,35 @@ class TestChannelSendLockScope:
         ack_events = [entry for entry in broadcasts if entry["type"] == "message_acked"]
         assert len(message_events) == 1
         assert len(ack_events) == 1
+
+
+@pytest.mark.asyncio
+async def test_channel_timeout_preserves_original_408_even_when_status_write_fails(test_db):
+    mc = _make_mc(name="Node")
+    channel_key = "fa" * 16
+    await ChannelRepository.upsert(key=channel_key, name="#ambiguous")
+    mc.commands.send_chan_msg = AsyncMock(return_value=None)
+
+    original_update = MessageRepository.update_send_status
+
+    async def failing_status_update(message_id, status):
+        if status == "unknown":
+            raise OSError("transient SQLite failure")
+        return await original_update(message_id, status)
+
+    with (
+        patch("app.routers.messages.radio_manager.require_connected", return_value=mc),
+        patch.object(radio_manager, "_meshcore", mc),
+        patch.object(MessageRepository, "update_send_status", side_effect=failing_status_update),
+        pytest.raises(HTTPException) as error,
+    ):
+        await send_channel_message(
+            SendChannelMessageRequest(channel_key=channel_key, text="one attempt only")
+        )
+    assert error.value.status_code == 408
+    persisted = await MessageRepository.get_all(
+        msg_type="CHAN", conversation_key=channel_key.upper(), limit=10
+    )
+    assert len(persisted) == 1 and persisted[0].outgoing
+    assert persisted[0].send_status == "pending"
+    mc.commands.send_chan_msg.assert_awaited_once()

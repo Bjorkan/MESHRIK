@@ -12,6 +12,12 @@ permissions:
 
 jobs:
   autofix:
+    # Do not let autofix.ci add commits to Renovate-owned PR branches.
+    # Renovate may treat external commits as manual changes and stop updating the PR.
+    if: >-
+      github.event_name != 'pull_request' ||
+      (github.event.pull_request.user.login != 'renovate[bot]' &&
+       !startsWith(github.head_ref, 'renovate/'))
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -46,7 +52,7 @@ jobs:
           python-version: '3.14'
 
       - name: Set up uv
-        uses: astral-sh/setup-uv@v10.3.0
+        uses: astral-sh/setup-uv@v10.2.0
         with:
           enable-cache: true
 

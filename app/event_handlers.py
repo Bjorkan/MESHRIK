@@ -146,8 +146,14 @@ async def on_contact_message(event: "Event") -> None:
     from app.services.radio_jobs import RadioActivityKind
 
     radio_job_scheduler.record_activity(RadioActivityKind.CONTACT_MESSAGE_OBSERVED)
+    # Fallback events are decoded by the Companion library, so fail closed if
+    # their type metadata is absent or malformed. Treating an unknown type as
+    # ordinary chat could expose a privileged CLI response in a conversation.
+    txt_type = payload.get("txt_type")
+    if type(txt_type) is not int or txt_type not in (0, 1, 2, 3):
+        logger.warning("Skipping contact message with invalid txt_type metadata")
+        return
     # Never treat CLI responses (1) or remote CLI commands (3) as private chat.
-    txt_type = payload.get("txt_type", 0)
     if txt_type in (1, 3):
         logger.debug("Skipping non-chat Companion message type %s", txt_type)
         return
@@ -424,7 +430,16 @@ async def on_ack(event: "Event") -> None:
 
     radio_job_scheduler.record_activity(RadioActivityKind.ACK_OBSERVED)
     logger.debug("Received ACK with code %s", ack_code)
-    matched = await apply_dm_ack_code(ack_code, broadcast_fn=broadcast_event)
+    trip_time_ms = payload.get("trip_time")
+    matched = await apply_dm_ack_code(
+        ack_code,
+        broadcast_fn=broadcast_event,
+        trip_time_ms=trip_time_ms,
+    )
+    if type(trip_time_ms) is int and 0 <= trip_time_ms <= 0xFFFFFFFF:
+        from app.fanout.manager import fanout_manager
+
+        await fanout_manager.notify_virtual_companion_ack(ack_code, trip_time_ms)
     if matched:
         logger.info("ACK received for code %s", ack_code)
     else:

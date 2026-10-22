@@ -10,9 +10,11 @@ import pytest
 from meshcore import EventType
 
 from app.keystore import (
+    PrivateKeyExportStatus,
     clear_keys,
     export_and_store_private_key,
     get_private_key,
+    get_private_key_export_status,
     get_public_key,
     has_private_key,
     set_private_key,
@@ -119,6 +121,7 @@ class TestExportAndStorePrivateKey:
         assert result is True
         assert has_private_key()
         assert get_private_key() == VALID_KEY
+        assert get_private_key_export_status() is PrivateKeyExportStatus.AVAILABLE
 
     @pytest.mark.asyncio
     async def test_disabled_returns_false(self):
@@ -133,6 +136,7 @@ class TestExportAndStorePrivateKey:
 
         assert result is False
         assert not has_private_key()
+        assert get_private_key_export_status() is PrivateKeyExportStatus.FIRMWARE_UNSUPPORTED
 
     @pytest.mark.asyncio
     async def test_error_returns_false(self):
@@ -147,6 +151,7 @@ class TestExportAndStorePrivateKey:
 
         assert result is False
         assert not has_private_key()
+        assert get_private_key_export_status() is PrivateKeyExportStatus.FAILED
 
     @pytest.mark.asyncio
     async def test_no_event_received_raises_runtime_error(self):
@@ -161,6 +166,7 @@ class TestExportAndStorePrivateKey:
             await export_and_store_private_key(mock_mc)
 
         assert not has_private_key()
+        assert get_private_key_export_status() is PrivateKeyExportStatus.FAILED
 
     @pytest.mark.asyncio
     async def test_exception_returns_false(self):
@@ -172,3 +178,4 @@ class TestExportAndStorePrivateKey:
 
         assert result is False
         assert not has_private_key()
+        assert get_private_key_export_status() is PrivateKeyExportStatus.FAILED

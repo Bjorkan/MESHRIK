@@ -3093,14 +3093,32 @@ export interface components {
     };
     /** FanoutStatusResponse */
     FanoutStatusResponse: {
+      /** Bind Host */
+      bind_host?: string | null;
+      /** Client Sessions */
+      client_sessions?: components['schemas']['VirtualCompanionSessionStatusResponse'][] | null;
+      /** Clients */
+      clients?: number | null;
+      /** Configured Channel Slots */
+      configured_channel_slots?: number | null;
+      /** Identity Public Key */
+      identity_public_key?: string | null;
+      /** Identity Status */
+      identity_status?: ('verified' | 'unavailable') | null;
       /** Last Error */
       last_error?: string | null;
       /** Name */
       name: string;
+      /** Network Warning */
+      network_warning?: string | null;
+      /** Port */
+      port?: number | null;
       /** Status */
       status: string;
       /** Type */
       type: string;
+      /** Virtual Channel Capacity */
+      virtual_channel_capacity?: number | null;
     };
     /** FavoriteRequest */
     FavoriteRequest: {
@@ -3193,10 +3211,10 @@ export interface components {
       startup_error_stage?: string | null;
       /**
        * Startup Policy
-       * @default sync
-       * @enum {string}
+       * @default full
+       * @constant
        */
-      startup_policy: 'passive' | 'sync' | 'full';
+      startup_policy: 'full';
       /** Startup Skipped Stages */
       startup_skipped_stages?: string[];
       /** Startup Stage */
@@ -3217,8 +3235,9 @@ export interface components {
        */
       status:
         | 'started'
-        | 'unavailable_policy'
         | 'unavailable_export'
+        | 'unavailable_firmware'
+        | 'unavailable_export_failed'
         | 'unavailable_key'
         | 'invalid_contact_key';
     };
@@ -3673,6 +3692,8 @@ export interface components {
        * Format: date-time
        */
       at: string;
+      /** Connected */
+      connected?: boolean | null;
       /** Hops */
       hops?: number | null;
       /** Job Id */
@@ -3681,8 +3702,36 @@ export interface components {
       /** Packet Type */
       packet_type?:
         ('channel' | 'direct' | 'advertisement' | 'ack' | 'path' | 'control' | 'other') | null;
+      /** Previous Connected */
+      previous_connected?: boolean | null;
+      /** Previous Readiness */
+      previous_readiness?:
+        | (
+            | 'ready'
+            | 'connected'
+            | 'degraded'
+            | 'failed'
+            | 'initializing'
+            | 'connecting'
+            | 'disconnected'
+            | 'paused'
+          )
+        | null;
       /** Radio Generation */
       radio_generation: number;
+      /** Readiness */
+      readiness?:
+        | (
+            | 'ready'
+            | 'connected'
+            | 'degraded'
+            | 'failed'
+            | 'initializing'
+            | 'connecting'
+            | 'disconnected'
+            | 'paused'
+          )
+        | null;
       /** Rssi */
       rssi?: number | null;
       /** Sequence */
@@ -3988,6 +4037,10 @@ export interface components {
       | 'server_query'
       | 'contact_query'
       | 'radio_query'
+      | 'companion_local_cli'
+      | 'remote_companion_cli'
+      | 'channel_datagram'
+      | 'radio_diagnostics'
       | 'periodic_sync'
       | 'radio_stats_sample'
       | 'periodic_advertisement'
@@ -4306,10 +4359,10 @@ export interface components {
       sequence: number;
       /**
        * Startup Policy
-       * @default sync
-       * @enum {string}
+       * @default full
+       * @constant
        */
-      startup_policy: 'passive' | 'sync' | 'full';
+      startup_policy: 'full';
       startup_stage?: components['schemas']['RadioStartupStage'] | null;
     };
     /**
@@ -5133,6 +5186,24 @@ export interface components {
     VapidPublicKeyResponse: {
       /** Public Key */
       public_key: string;
+    };
+    /** VirtualCompanionSessionStatusResponse */
+    VirtualCompanionSessionStatusResponse: {
+      /** Connected At */
+      connected_at: number;
+      /**
+       * Identity Verified
+       * @default false
+       */
+      identity_verified: boolean;
+      /** Last Seen At */
+      last_seen_at: number;
+      /** Protocol Version */
+      protocol_version?: number | null;
+      /** Session Id */
+      session_id: string;
+      /** Status */
+      status: string;
     };
   };
   responses: never;

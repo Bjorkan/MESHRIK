@@ -1,5 +1,6 @@
 """Tests for community MQTT publisher."""
 
+import asyncio
 import json
 import time
 from contextlib import asynccontextmanager
@@ -83,6 +84,67 @@ def _assert_utc_z_timestamp(value: str) -> None:
     assert "+00:00" not in value
     parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
     assert parsed.tzinfo == UTC
+
+
+class AuthenticatedBrokerClient:
+    """MQTT client double backed by an authenticated broker event stream."""
+
+    def __init__(self, *, username: str, password: str, error_topic: str | None = None):
+        self.expected_username = username
+        self.expected_password = password
+        self.error_topic = error_topic
+        self.authenticated = False
+        self.events: list[tuple[str, str]] = []
+        self._messages: asyncio.Queue[SimpleNamespace] = asyncio.Queue()
+        self._error_sent = False
+
+    @property
+    def messages(self):
+        return self
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        return await self._messages.get()
+
+    def authenticate(self, *, username: str | None, password: str | None) -> None:
+        self.authenticated = (
+            username == self.expected_username and password == self.expected_password
+        )
+
+    async def subscribe(self, topic: str, *, qos: int) -> None:
+        assert self.authenticated and qos == 0
+        self.events.append(("subscribe", topic))
+
+    async def publish(self, topic: str, _payload: str, *, retain: bool) -> None:
+        assert self.authenticated
+        self.events.append(("publish", topic))
+        if self.error_topic is not None and not self._error_sent:
+            self._error_sent = True
+            await self.emit_error(
+                self.error_topic,
+                "PUBLISH_UNKNOWN_IATA",
+                at="2026-10-16T12:00:00Z",
+            )
+
+    async def emit_error(self, topic: str, code: str, *, at: str) -> None:
+        await self._messages.put(
+            SimpleNamespace(
+                topic=topic,
+                payload=json.dumps(
+                    {"code": code, "message": "broker-private detail", "at": at}
+                ).encode(),
+            )
+        )
+
+
+async def _wait_for_broker_code(publisher: CommunityMqttPublisher, code: str) -> None:
+    for _ in range(100):
+        if publisher.broker_error_code == code:
+            return
+        await asyncio.sleep(0)
+    raise AssertionError(f"Broker error {code} was not observed")
 
 
 class TestBase64UrlEncode:
@@ -753,6 +815,131 @@ class TestBuildStatusTopic:
         assert topic == f"meshcore/LAX/{key}/status"
 
 
+class TestBrokerDiagnostics:
+    @pytest.mark.asyncio
+    async def test_authenticated_broker_subscribes_before_publish_and_delivers_error(self):
+        publisher = CommunityMqttPublisher()
+        _, public_key = _make_test_keys()
+        public_key_hex = public_key.hex().upper()
+        own_error = f"meshcore/ARN/{public_key_hex}/error"
+        settings = _make_community_settings(
+            community_mqtt_broker_host="broker.test",
+            community_mqtt_broker_port=1883,
+            community_mqtt_transport="tcp",
+            community_mqtt_use_tls=False,
+            community_mqtt_tls_verify=False,
+            community_mqtt_auth_mode="password",
+            community_mqtt_username="observer",
+            community_mqtt_password="broker-secret",
+            community_mqtt_iata="ARN",
+            community_mqtt_profile="letsmesh",
+            community_mqtt_token="",
+            community_mqtt_topic_template="meshcore/{IATA}/{PUBLIC_KEY}/packets",
+            community_mqtt_publish_status=True,
+            community_mqtt_publish_neighbors=True,
+        )
+        radio = SimpleNamespace(
+            meshcore=SimpleNamespace(self_info={"name": "Observer"}),
+            device_info_loaded=True,
+            device_model="Fake Companion",
+            firmware_version="1.18",
+            firmware_build="",
+            repeat_enabled_supported=False,
+            repeat_enabled=None,
+        )
+
+        with (
+            patch("app.keystore.get_public_key", return_value=public_key),
+            patch("app.keystore.get_private_key", return_value=None),
+            patch("app.services.radio_runtime.radio_runtime", radio),
+            patch.object(publisher, "_fetch_stats", new_callable=AsyncMock, return_value=None),
+            patch(
+                "app.repository.observed_neighbors.get_recent_observations",
+                new_callable=AsyncMock,
+                return_value=[],
+            ),
+            patch(
+                "app.repository.observed_neighbors.build_observed_neighbors_payload",
+                return_value={"origin_id": public_key_hex, "neighbors": []},
+            ),
+            patch("app.fanout.mqtt_base._broadcast_health"),
+        ):
+            kwargs = publisher._build_client_kwargs(settings)
+            broker = AuthenticatedBrokerClient(
+                username="observer",
+                password="broker-secret",
+                error_topic=own_error,
+            )
+            broker.authenticate(username=kwargs.get("username"), password=kwargs.get("password"))
+            assert broker.authenticated is True
+            publisher._client = broker  # type: ignore[assignment]
+            publisher.connected = True
+
+            try:
+                await publisher._on_connected_async(settings)
+                await _wait_for_broker_code(publisher, "PUBLISH_UNKNOWN_IATA")
+            finally:
+                await publisher._on_disconnected_async()
+
+        assert broker.events[:2] == [
+            ("subscribe", own_error),
+            ("subscribe", f"meshcore/XXX/{public_key_hex}/error"),
+        ]
+        assert broker.events[2:] == [
+            ("publish", f"meshcore/ARN/{public_key_hex}/status"),
+            ("publish", f"meshcore/ARN/{public_key_hex}/neighbors"),
+        ]
+        assert publisher.broker_error_at == "2026-10-16T12:00:00Z"
+
+    @pytest.mark.asyncio
+    async def test_iata_and_stale_status_remedies_ignore_another_observer(self):
+        publisher = CommunityMqttPublisher()
+        own_key = "AA" * 32
+        own_topic = f"meshcore/ARN/{own_key}/error"
+        placeholder_topic = f"meshcore/XXX/{own_key}/error"
+        broker = AuthenticatedBrokerClient(username="observer", password="secret")
+        broker.authenticate(username="observer", password="secret")
+        publisher._client = broker  # type: ignore[assignment]
+
+        with patch("app.fanout.mqtt_base._broadcast_health"):
+            reader = asyncio.create_task(
+                publisher._read_broker_errors((own_topic, placeholder_topic))
+            )
+            try:
+                await broker.emit_error(
+                    f"meshcore/ARN/{'BB' * 32}/error",
+                    "PUBLISH_STALE_STATUS",
+                    at="2026-10-16T12:01:00Z",
+                )
+                await asyncio.sleep(0)
+                assert publisher.broker_error_code is None
+
+                await broker.emit_error(
+                    placeholder_topic,
+                    "PUBLISH_UNKNOWN_IATA",
+                    at="2026-10-16T12:02:00Z",
+                )
+                await _wait_for_broker_code(publisher, "PUBLISH_UNKNOWN_IATA")
+                assert publisher.last_error == (
+                    "PUBLISH_UNKNOWN_IATA: Choose an IATA code supported by this broker."
+                )
+
+                await broker.emit_error(
+                    own_topic,
+                    "PUBLISH_STALE_STATUS",
+                    at="2026-10-16T12:03:00Z",
+                )
+                await _wait_for_broker_code(publisher, "PUBLISH_STALE_STATUS")
+                assert publisher.last_error == (
+                    "PUBLISH_STALE_STATUS: Check the server clock and reconnect to refresh "
+                    "online status."
+                )
+            finally:
+                reader.cancel()
+                with pytest.raises(asyncio.CancelledError):
+                    await reader
+
+
 class TestRenderPacketTopic:
     def test_uses_default_template(self):
         topic = _render_packet_topic(
@@ -1092,6 +1279,65 @@ class TestLwtAndStatusPublish:
             await pub._on_connected_async(settings)
 
         mock_publish.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_initial_connect_and_reconnect_recompute_status_and_neighbor_topics(self):
+        pub = CommunityMqttPublisher()
+        _, public_key = _make_test_keys()
+        pubkey_hex = public_key.hex().upper()
+        pub.connected = True
+        initial = _make_community_settings(
+            community_mqtt_profile="letsmesh",
+            community_mqtt_iata="LAX",
+            community_mqtt_token="",
+            community_mqtt_topic_template="meshcore/{IATA}/{PUBLIC_KEY}/packets",
+            community_mqtt_publish_status=True,
+            community_mqtt_publish_neighbors=True,
+        )
+        reconnected = _make_community_settings(
+            community_mqtt_profile="letsmesh",
+            community_mqtt_iata="PDX",
+            community_mqtt_token="",
+            community_mqtt_topic_template="meshcore/{IATA}/{PUBLIC_KEY}/packets",
+            community_mqtt_publish_status=True,
+            community_mqtt_publish_neighbors=True,
+        )
+        radio = SimpleNamespace(
+            meshcore=SimpleNamespace(self_info={"name": "TestNode"}),
+            device_info_loaded=True,
+            device_model="Fake Companion",
+            firmware_version="1.18",
+            firmware_build="",
+            repeat_enabled_supported=False,
+            repeat_enabled=None,
+        )
+
+        with (
+            patch("app.keystore.get_public_key", return_value=public_key),
+            patch("app.services.radio_runtime.radio_runtime", radio),
+            patch.object(pub, "_fetch_stats", new_callable=AsyncMock, return_value=None),
+            patch.object(pub, "publish", new_callable=AsyncMock) as mock_publish,
+            patch(
+                "app.repository.observed_neighbors.get_recent_observations",
+                new_callable=AsyncMock,
+                return_value=[],
+            ),
+            patch(
+                "app.repository.observed_neighbors.build_observed_neighbors_payload",
+                return_value={"origin_id": pubkey_hex, "neighbors": []},
+            ),
+        ):
+            await pub._on_connected_async(initial)
+            await pub._on_connected_async(reconnected)
+
+        topics = [call.args[0] for call in mock_publish.await_args_list]
+        assert topics == [
+            f"meshcore/LAX/{pubkey_hex}/status",
+            f"meshcore/LAX/{pubkey_hex}/neighbors",
+            f"meshcore/PDX/{pubkey_hex}/status",
+            f"meshcore/PDX/{pubkey_hex}/neighbors",
+        ]
+        assert all(call.kwargs["retain"] is False for call in mock_publish.await_args_list)
 
     @pytest.mark.asyncio
     async def test_on_connected_async_uses_fallback_device_name(self):

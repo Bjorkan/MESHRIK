@@ -1,9 +1,12 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 import { ContactInfoPane } from '../components/ContactInfoPane';
+import { toast } from '../components/ui/sonner';
 import type { Contact, ContactAnalytics } from '../types';
 import { renderWithRouter } from './renderWithRouter';
+import { THEME_CHANGE_EVENT } from '../utils/theme';
 
 const { getContactAnalytics, contactTelemetryHistory } = vi.hoisted(() => ({
   getContactAnalytics: vi.fn(),
@@ -34,15 +37,38 @@ vi.mock('react-map-gl/maplibre', () => ({
   default: ({
     children,
     attributionControl,
+    mapStyle,
   }: {
     children: React.ReactNode;
     attributionControl?: boolean;
-  }) => <div data-default-attribution={String(attributionControl)}>{children}</div>,
+    mapStyle?: string;
+  }) => (
+    <div
+      data-testid="contact-embedded-map"
+      data-default-attribution={String(attributionControl)}
+      data-map-style={mapStyle}
+    >
+      {children}
+    </div>
+  ),
   AttributionControl: ({ compact }: { compact?: boolean }) => (
     <div data-testid="embedded-attribution" data-compact={String(compact)} />
   ),
-  Marker: () => null,
-  Popup: () => null,
+  Marker: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  Popup: ({
+    children,
+    closeOnClick,
+    onClose,
+  }: {
+    children: React.ReactNode;
+    closeOnClick?: boolean;
+    onClose?: () => void;
+  }) => (
+    <div data-testid="contact-map-popup" data-close-on-click={String(closeOnClick)}>
+      {children}
+      <button type="button" onClick={onClose} aria-label="Simulate contact map background click" />
+    </div>
+  ),
 }));
 
 vi.mock('../components/ui/sonner', () => ({
@@ -51,6 +77,8 @@ vi.mock('../components/ui/sonner', () => ({
     success: vi.fn(),
   },
 }));
+
+const mockedToast = vi.mocked(toast);
 
 function createContact(overrides: Partial<Contact> = {}): Contact {
   return {
@@ -117,6 +145,7 @@ const baseProps = {
 
 describe('ContactInfoPane', () => {
   beforeEach(() => {
+    localStorage.clear();
     getContactAnalytics.mockReset();
     contactTelemetryHistory.mockReset();
     contactTelemetryHistory.mockResolvedValue([]);
@@ -135,6 +164,23 @@ describe('ContactInfoPane', () => {
       expect(screen.getByText('Hop Width')).toBeInTheDocument();
       expect(screen.getByText('2-byte IDs')).toBeInTheDocument();
     });
+  });
+
+  it('reports a rejected contact-key copy without false success', async () => {
+    const contact = createContact({ public_key: '56'.repeat(32) });
+    getContactAnalytics.mockResolvedValue(createAnalytics(contact));
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: vi.fn().mockRejectedValue(new Error('denied')) },
+    });
+    render(<ContactInfoPane {...baseProps} contactKey={contact.public_key} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: contact.public_key }));
+
+    await waitFor(() =>
+      expect(mockedToast.error).toHaveBeenCalledWith('Copy failed', expect.anything())
+    );
+    expect(mockedToast.success).not.toHaveBeenCalledWith('Public key copied!');
   });
 
   it('does not show hop width for flood-routed contacts', async () => {
@@ -296,6 +342,48 @@ describe('ContactInfoPane', () => {
     expect(windowOpen).not.toHaveBeenCalled();
   });
 
+  it('supports keyboard map navigation and Back in a narrow viewport', async () => {
+    const previousWidth = window.innerWidth;
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 375 });
+    window.dispatchEvent(new Event('resize'));
+    try {
+      const user = userEvent.setup();
+      const contact = createContact({
+        public_key: '12'.repeat(32),
+        name: 'Synthetic Node',
+        lat: 12.34567,
+        lon: -45.6789,
+      });
+      const onClose = vi.fn();
+      getContactAnalytics.mockResolvedValue(createAnalytics(contact));
+
+      const { router } = await renderWithRouter(
+        <ContactInfoPane
+          {...baseProps}
+          contactKey={contact.public_key}
+          contacts={[contact]}
+          onClose={onClose}
+        />
+      );
+      const mapLink = await screen.findByRole('link', { name: 'View Synthetic Node on map' });
+
+      mapLink.focus();
+      await user.keyboard('{Enter}');
+
+      await waitFor(() => {
+        expect(router.state.location.pathname).toBe('/map');
+        expect(router.state.location.search).toEqual({ focus: contact.public_key });
+      });
+      expect(onClose).toHaveBeenCalledOnce();
+
+      act(() => router.history.back());
+      await waitFor(() => expect(router.state.location.pathname).toBe('/'));
+    } finally {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: previousWidth });
+      window.dispatchEvent(new Event('resize'));
+    }
+  });
+
   it('uses collapsed attribution in the contact telemetry map', async () => {
     const contact = createContact();
     getContactAnalytics.mockResolvedValue(createAnalytics(contact));
@@ -322,5 +410,68 @@ describe('ContactInfoPane', () => {
       'data-default-attribution',
       'false'
     );
+  });
+
+  it('closes the contact telemetry popup on map background click', async () => {
+    const contact = createContact();
+    getContactAnalytics.mockResolvedValue(createAnalytics(contact));
+    contactTelemetryHistory.mockResolvedValue([
+      {
+        timestamp: 1_700_000_000,
+        data: {
+          lpp_sensors: [
+            {
+              channel: 1,
+              type_name: 'gps',
+              value: { latitude: 59.3293, longitude: 18.0686 },
+            },
+          ],
+        },
+      },
+    ]);
+
+    render(<ContactInfoPane {...baseProps} contactKey={contact.public_key} />);
+    fireEvent.click(await screen.findByRole('button', { name: /GPS:/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Show Alice on map' }));
+
+    expect(screen.getByTestId('contact-map-popup')).toHaveAttribute('data-close-on-click', 'true');
+    fireEvent.click(screen.getByRole('button', { name: 'Simulate contact map background click' }));
+    expect(screen.queryByTestId('contact-map-popup')).not.toBeInTheDocument();
+  });
+
+  it('keeps the contact popup open while changing the theme style in place', async () => {
+    const contact = createContact();
+    getContactAnalytics.mockResolvedValue(createAnalytics(contact));
+    contactTelemetryHistory.mockResolvedValue([
+      {
+        timestamp: 1_700_000_000,
+        data: {
+          lpp_sensors: [
+            {
+              channel: 1,
+              type_name: 'gps',
+              value: { latitude: 59.3293, longitude: 18.0686 },
+            },
+          ],
+        },
+      },
+    ]);
+
+    render(<ContactInfoPane {...baseProps} contactKey={contact.public_key} />);
+    fireEvent.click(await screen.findByRole('button', { name: /GPS:/ }));
+    const map = screen.getByTestId('contact-embedded-map');
+    fireEvent.click(screen.getByRole('button', { name: 'Show Alice on map' }));
+
+    localStorage.setItem('meshrik-theme', 'light');
+    window.dispatchEvent(new CustomEvent(THEME_CHANGE_EVENT, { detail: 'light' }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('contact-embedded-map')).toHaveAttribute(
+        'data-map-style',
+        'https://tiles.openfreemap.org/styles/liberty'
+      )
+    );
+    expect(screen.getByTestId('contact-embedded-map')).toBe(map);
+    expect(screen.getByTestId('contact-map-popup')).toHaveTextContent('Alice');
   });
 });

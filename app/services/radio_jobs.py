@@ -59,6 +59,10 @@ class RadioJobKind(StrEnum):
     SERVER_QUERY = "server_query"
     CONTACT_QUERY = "contact_query"
     RADIO_QUERY = "radio_query"
+    COMPANION_LOCAL_CLI = "companion_local_cli"
+    REMOTE_COMPANION_CLI = "remote_companion_cli"
+    CHANNEL_DATAGRAM = "channel_datagram"
+    RADIO_DIAGNOSTICS = "radio_diagnostics"
     PERIODIC_SYNC = "periodic_sync"
     RADIO_STATS_SAMPLE = "radio_stats_sample"
     PERIODIC_ADVERTISEMENT = "periodic_advertisement"
@@ -211,6 +215,16 @@ class RadioActivitySource(StrEnum):
 
 
 RadioPacketType = Literal["channel", "direct", "advertisement", "ack", "path", "control", "other"]
+RadioReadinessState = Literal[
+    "ready",
+    "connected",
+    "degraded",
+    "failed",
+    "initializing",
+    "connecting",
+    "disconnected",
+    "paused",
+]
 
 
 class RadioActivityRecord(BaseModel):
@@ -231,6 +245,10 @@ class RadioActivityRecord(BaseModel):
     rssi: int | None = Field(default=None, ge=-160, le=0)
     snr: float | None = Field(default=None, ge=-40, le=40)
     hops: int | None = Field(default=None, ge=0, le=64)
+    previous_connected: bool | None = None
+    connected: bool | None = None
+    previous_readiness: RadioReadinessState | None = None
+    readiness: RadioReadinessState | None = None
 
 
 class RadioConnectionStatus(StrEnum):
@@ -272,7 +290,7 @@ class RadioStatusSnapshot(BaseModel):
     command_status: RadioCommandStatus
     radio_generation: int = Field(ge=0)
     sequence: int = Field(ge=0)
-    startup_policy: Literal["passive", "sync", "full"] = "sync"
+    startup_policy: Literal["full"] = "full"
     startup_stage: RadioStartupStage | None = None
     # Physical TX/listening state is NOT supported by the present driver.
     physical_rf_state: Literal["unavailable"] = "unavailable"

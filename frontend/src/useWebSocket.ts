@@ -40,6 +40,7 @@ export function useWebSocket(options: UseWebSocketOptions) {
   const reconnectTimeoutRef = useRef<number | null>(null);
   const shouldReconnectRef = useRef(true);
   const hasConnectedRef = useRef(false);
+  const parseDiagnosticCountRef = useRef(0);
 
   // Store options in ref to avoid stale closures in WebSocket handlers.
   // The onmessage callback captures this ref, and we keep the ref updated
@@ -62,6 +63,7 @@ export function useWebSocket(options: UseWebSocketOptions) {
     const ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
+      if (wsRef.current !== ws) return;
       optionsRef.current.onConnectionChange?.('live');
       // Connection established (or re-established after disconnect)
       if (reconnectTimeoutRef.current) {
@@ -75,6 +77,7 @@ export function useWebSocket(options: UseWebSocketOptions) {
     };
 
     ws.onclose = () => {
+      if (wsRef.current !== ws) return;
       optionsRef.current.onConnectionChange?.('offline');
       // Connection lost — will auto-reconnect after delay
       wsRef.current = null;
@@ -88,16 +91,20 @@ export function useWebSocket(options: UseWebSocketOptions) {
         clearTimeout(reconnectTimeoutRef.current);
       }
       reconnectTimeoutRef.current = window.setTimeout(() => {
+        reconnectTimeoutRef.current = null;
+        if (!shouldReconnectRef.current || wsRef.current !== null) return;
         // Reconnect attempt after disconnect
         connect();
       }, 3000);
     };
 
     ws.onerror = (error) => {
+      if (wsRef.current !== ws) return;
       console.error('WebSocket error:', error);
     };
 
     ws.onmessage = (event) => {
+      if (wsRef.current !== ws) return;
       try {
         const msg = parseWsEvent(event.data);
         // Access handlers through ref to always use current versions
@@ -105,33 +112,29 @@ export function useWebSocket(options: UseWebSocketOptions) {
 
         switch (msg.type) {
           case 'health':
-            handlers.onHealth?.(msg.data as HealthStatus);
+            handlers.onHealth?.(msg.data);
             break;
           case 'message':
-            handlers.onMessage?.(msg.data as Message);
+            handlers.onMessage?.(msg.data);
             break;
           case 'contact':
-            handlers.onContact?.(msg.data as Contact);
+            handlers.onContact?.(msg.data);
             break;
           case 'contact_resolved': {
-            const resolved = msg.data as {
-              previous_public_key: string;
-              contact: Contact;
-            };
-            handlers.onContactResolved?.(resolved.previous_public_key, resolved.contact);
+            handlers.onContactResolved?.(msg.data.previous_public_key, msg.data.contact);
             break;
           }
           case 'channel':
-            handlers.onChannel?.(msg.data as Channel);
+            handlers.onChannel?.(msg.data);
             break;
           case 'contact_deleted':
-            handlers.onContactDeleted?.((msg.data as { public_key: string }).public_key);
+            handlers.onContactDeleted?.(msg.data.public_key);
             break;
           case 'channel_deleted':
-            handlers.onChannelDeleted?.((msg.data as { key: string }).key);
+            handlers.onChannelDeleted?.(msg.data.key);
             break;
           case 'raw_packet':
-            handlers.onRawPacket?.(msg.data as RawPacket);
+            handlers.onRawPacket?.(msg.data);
             break;
           case 'radio_job':
             handlers.onRadioJob?.(msg.data);
@@ -140,25 +143,19 @@ export function useWebSocket(options: UseWebSocketOptions) {
             handlers.onRadioActivity?.(msg.data);
             break;
           case 'message_acked': {
-            const ackData = msg.data as {
-              message_id: number;
-              ack_count: number;
-              paths?: MessagePath[];
-              packet_id?: number | null;
-            };
             handlers.onMessageAcked?.(
-              ackData.message_id,
-              ackData.ack_count,
-              ackData.paths,
-              ackData.packet_id
+              msg.data.message_id,
+              msg.data.ack_count,
+              msg.data.paths,
+              msg.data.packet_id
             );
             break;
           }
           case 'error':
-            handlers.onError?.(msg.data as ErrorEvent);
+            handlers.onError?.(msg.data);
             break;
           case 'success':
-            handlers.onSuccess?.(msg.data as SuccessEvent);
+            handlers.onSuccess?.(msg.data);
             break;
           case 'pong':
             // Heartbeat response, ignore
@@ -166,8 +163,17 @@ export function useWebSocket(options: UseWebSocketOptions) {
           case 'unknown':
             console.warn('Unknown WebSocket message type:', msg.rawType);
         }
-      } catch (e) {
-        console.error('Failed to parse WebSocket message:', e);
+      } catch (error) {
+        const count = parseDiagnosticCountRef.current;
+        if (count < 5) {
+          console.error(
+            'Rejected invalid WebSocket message:',
+            error instanceof Error ? error.message : 'Unknown parse error'
+          );
+        } else if (count === 5) {
+          console.error('Further invalid WebSocket message diagnostics suppressed');
+        }
+        parseDiagnosticCountRef.current = count + 1;
       }
     };
 
@@ -192,9 +198,9 @@ export function useWebSocket(options: UseWebSocketOptions) {
         clearTimeout(reconnectTimeoutRef.current);
         reconnectTimeoutRef.current = null;
       }
-      if (wsRef.current) {
-        wsRef.current.close();
-      }
+      const activeSocket = wsRef.current;
+      wsRef.current = null;
+      activeSocket?.close();
     };
   }, [connect]);
 }

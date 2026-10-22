@@ -22,6 +22,10 @@ class TestStartupLifespan:
         with (
             patch("app.main.db.connect", new=AsyncMock()),
             patch("app.main.db.disconnect", new=AsyncMock()),
+            patch(
+                "app.repository.messages.MessageRepository.recover_interrupted_outgoing_sends",
+                new=AsyncMock(return_value=0),
+            ),
             patch("app.radio_sync.ensure_default_channels", new=AsyncMock()),
             patch("app.radio.radio_manager.start_connection_monitor", new=AsyncMock()),
             patch("app.radio.radio_manager.stop_connection_monitor", new=AsyncMock()),

@@ -84,15 +84,39 @@ def _build_ack_packet(code: bytes, *, route_type: RouteType = RouteType.DIRECT) 
 
 
 class TestHistoricalDmDecryptionStart:
+    def test_supervisor_can_restart_on_a_new_event_loop(self):
+        """A clean stop must not retain queue waiters bound to the old event loop."""
+        from app.packet_processor import HistoricalDecryptSupervisor
+
+        supervisor = HistoricalDecryptSupervisor(cap=2)
+
+        async def run_cycle(contact_key: str) -> None:
+            release_decrypt = asyncio.Event()
+
+            async def decrypt(*_args):
+                await release_decrypt.wait()
+
+            with (
+                patch("app.packet_processor.get_private_key", return_value=b"k" * 64),
+                patch("app.packet_processor.run_historical_dm_decryption", side_effect=decrypt),
+            ):
+                assert supervisor.admit(contact_key, "Alice")
+                join_task = asyncio.create_task(supervisor.pending.join())
+                await asyncio.sleep(0)
+                release_decrypt.set()
+                await asyncio.wait_for(join_task, timeout=5)
+                await supervisor.stop()
+
+        asyncio.run(run_cycle("aa" * 32))
+        asyncio.run(run_cycle("bb" * 32))
+
     @pytest.mark.asyncio
     async def test_repeated_automatic_attempts_skip_quietly_without_private_key(self):
         """Expected missing capability is logged once and never schedules decrypt work."""
         import app.packet_processor as packet_processor
-        from app.config import StartupPolicy
 
         packet_processor._last_historical_dm_skip_status = None
         fake_settings = SimpleNamespace(
-            effective_startup_policy=StartupPolicy.SYNC,
             startup_export_private_key=False,
         )
         with (
@@ -110,32 +134,35 @@ class TestHistoricalDmDecryptionStart:
                 for index in range(12)
             ]
 
-        assert {result.status for result in results} == {"unavailable_policy"}
+        assert {result.status for result in results} == {"unavailable_export"}
         assert log_info.call_count == 1
         run_decrypt.assert_not_awaited()
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
-        ("policy", "export_enabled", "expected_status"),
+        ("export_enabled", "export_status", "expected_status"),
         [
-            ("passive", False, "unavailable_policy"),
-            ("sync", False, "unavailable_policy"),
-            ("full", False, "unavailable_export"),
-            ("full", True, "unavailable_key"),
+            (False, "not_attempted", "unavailable_export"),
+            (True, "not_attempted", "unavailable_key"),
+            (True, "firmware_unsupported", "unavailable_firmware"),
+            (True, "failed", "unavailable_export_failed"),
         ],
     )
-    async def test_missing_key_result_distinguishes_startup_policy(
-        self, policy, export_enabled, expected_status
+    async def test_missing_key_result_distinguishes_export_state(
+        self, export_enabled, export_status, expected_status
     ):
         import app.packet_processor as packet_processor
-        from app.config import StartupPolicy
+        from app.keystore import PrivateKeyExportStatus
 
         fake_settings = SimpleNamespace(
-            effective_startup_policy=StartupPolicy(policy),
             startup_export_private_key=export_enabled,
         )
         with (
             patch("app.packet_processor.has_private_key", return_value=False),
+            patch(
+                "app.packet_processor.get_private_key_export_status",
+                return_value=PrivateKeyExportStatus(export_status),
+            ),
             patch("app.config.settings", fake_settings),
         ):
             result = await packet_processor.start_historical_dm_decryption(None, "aa" * 32)
@@ -146,7 +173,7 @@ class TestHistoricalDmDecryptionStart:
     async def test_available_key_admits_contact_to_supervisor_after_unavailable_attempt(self):
         import app.packet_processor as packet_processor
 
-        packet_processor._last_historical_dm_skip_status = "unavailable_policy"
+        packet_processor._last_historical_dm_skip_status = "unavailable_export"
         background_tasks = MagicMock()
         private_key = b"k" * 64
         supervisor = packet_processor.historical_decrypt_supervisor
@@ -286,6 +313,35 @@ class TestChannelMessagePipeline:
         # No message broadcast (only raw_packet broadcast)
         message_broadcasts = [b for b in broadcasts if b["type"] == "message"]
         assert len(message_broadcasts) == 0
+
+    @pytest.mark.asyncio
+    async def test_unknown_payload_emits_one_sanitized_activity_category(
+        self, test_db, captured_broadcasts
+    ):
+        from app.packet_processor import process_raw_packet
+        from app.services.radio_jobs import RadioActivityKind
+
+        # Payload type 12 is not assigned by MeshCore. It must stay in the raw
+        # feed while activity gets classification only, never packet contents.
+        packet_bytes = bytes([0x30, 0x00, 0xA5])
+        _, mock_broadcast = captured_broadcasts
+
+        with (
+            patch("app.packet_processor.broadcast_event", mock_broadcast),
+            patch(
+                "app.services.radio_job_worker.radio_job_scheduler.record_activity"
+            ) as record_activity,
+        ):
+            await process_raw_packet(packet_bytes, timestamp=1_700_000_000, rssi=-97, snr=2.5)
+            await process_raw_packet(packet_bytes, timestamp=1_700_000_001, rssi=-97, snr=2.5)
+
+        record_activity.assert_called_once_with(
+            RadioActivityKind.PACKET_RECEIVED,
+            packet_type="other",
+            rssi=-97,
+            snr=2.5,
+            hops=None,
+        )
 
 
 class TestAdvertisementPipeline:
@@ -2115,8 +2171,12 @@ class TestProcessDirectMessageDispatch:
         assert messages[0].outgoing is False
 
     @pytest.mark.asyncio
-    async def test_decrypted_dm_debug_log_excludes_plaintext(self, test_db, caplog):
-        """Incoming decrypted DM text must not enter app or diagnostic logs."""
+    @pytest.mark.parametrize("payload_logging", [False, True])
+    async def test_decrypted_dm_debug_log_requires_explicit_opt_in(
+        self, test_db, caplog, monkeypatch, payload_logging
+    ):
+        """Incoming decrypted DM text is logged only under the warned opt-in."""
+        from app.config import settings
         from app.decoder import DecryptedDirectMessage
         from app.packet_processor import _process_direct_message
 
@@ -2129,6 +2189,7 @@ class TestProcessDirectMessageDispatch:
             timestamp=1000, flags=0, message=sentinel, dest_hash="fa", src_hash="a1"
         )
         caplog.set_level(logging.DEBUG, logger="app.packet_processor")
+        monkeypatch.setattr(settings, "log_sensitive_payloads", payload_logging)
 
         with self._keystore_patches(has_key=True):
             with patch("app.packet_processor.try_decrypt_dm", return_value=mock_decrypted):
@@ -2142,8 +2203,8 @@ class TestProcessDirectMessageDispatch:
 
         assert result is not None
         captured = "\n".join(record.getMessage() for record in caplog.records)
-        assert sentinel not in captured
-        assert "UTF-8 bytes" in captured
+        assert (sentinel in captured) is payload_logging
+        assert ("UTF-8 bytes" in captured) is not payload_logging
 
 
 class TestProcessRawPacketIntegration:

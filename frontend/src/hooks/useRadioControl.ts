@@ -114,6 +114,14 @@ export function useRadioControl() {
     if (!result.connected || !refreshedHealth.radio_connected) {
       throw new Error(result.message || 'Radio is still disconnected');
     }
+    if (!['ready', 'connected'].includes(refreshedHealth.radio_state ?? 'connected')) {
+      const failedStage = refreshedHealth.startup_error_stage;
+      throw new Error(
+        failedStage
+          ? `Radio setup is still ${refreshedHealth.radio_state} at ${failedStage}`
+          : result.message || 'Radio setup did not become ready'
+      );
+    }
     await fetchConfig();
   }, [fetchConfig, setHealth]);
 

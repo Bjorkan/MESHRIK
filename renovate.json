@@ -13,12 +13,10 @@
   "semanticCommits": "enabled",
   "semanticCommitType": "chore",
   "semanticCommitScope": "deps",
-  "minimumReleaseAge": "14 days",
   "internalChecksFilter": "strict",
   "dependencyDashboardApproval": false,
   "prCreation": "immediate",
   "automerge": false,
-  "npmrc": "omit=optional",
   "ignorePaths": [
     "**/node_modules/**",
     "**/bower_components/**",
@@ -29,6 +27,20 @@
     "frontend/lib/meshcore-decoder/**"
   ],
   "packageRules": [
+    {
+      "description": "Enforce a 14-day release cooldown for dependency updates, but not lock file maintenance",
+      "matchUpdateTypes": ["major", "minor", "patch", "digest", "pinDigest"],
+      "minimumReleaseAge": "14 days"
+    },
+    {
+      "description": "Avoid npm lockfile maintenance timeout while retaining release age checks for normal updates",
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["lockFileMaintenance"],
+      "minimumReleaseAge": null,
+      "prBodyNotes": [
+        "Lock file maintenance re-resolves transitive npm dependencies without the 14-day release-age cutoff. Review the lockfile diff before merging."
+      ]
+    },
     {
       "description": "Update React and its type packages together",
       "matchManagers": ["npm"],

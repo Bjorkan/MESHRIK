@@ -106,8 +106,8 @@ app/
 - `RadioManager.post_connect_setup()` delegates to `services/radio_lifecycle.py`.
 - Routers, startup/lifespan code, fanout helpers, and `radio_sync.py` should reach radio state through `services/radio_runtime.py`, not by importing `app.radio.radio_manager` directly.
 - Shared reconnect/setup helpers in `services/radio_lifecycle.py` are used by startup, the monitor, and manual reconnect/reboot flows before broadcasting healthy state.
-- Startup is a generation-fenced lifecycle workflow with **separate bounded worker jobs** for read-only device bootstrap and (depending on `MESHCORE_STARTUP_POLICY`) contact/channel snapshots and individually opted-in maintenance. Ordinary radio jobs remain gated while lifecycle setup is in progress. `disconnected`, `connecting`, `initializing`, `ready`, `degraded`, and `failed` are distinct readiness states; transport connection alone does not imply radio readiness.
-- Policy defaults to safe non-destructive `sync`; `passive` performs only device bootstrap/receiving, and `full` allows only explicitly enabled maintenance stages. Key export, clock/flood writes, advertisement, drain and destructive offload are **not** automatic. See `RADIO_STARTUP_LIFECYCLE.md` and `HARDWARE_SMOKE_TEST.md`.
+- Startup is a generation-fenced lifecycle workflow with **separate bounded worker jobs** for read-only device bootstrap, contact/channel snapshots and individually opted-in maintenance. Ordinary radio jobs remain gated while lifecycle setup is in progress. `disconnected`, `connecting`, `initializing`, `ready`, `degraded`, and `failed` are distinct readiness states; transport connection alone does not imply radio readiness.
+- `full` is the only supported startup policy. Its baseline is non-destructive; key export, clock/flood writes, advertisement, drain and destructive offload are **not** automatic. Obsolete `passive`/`sync` policy values and enabled legacy startup flags fail at configuration load. See `RADIO_STARTUP_LIFECYCLE.md` and `HARDWARE_SMOKE_TEST.md`.
 - Failed stages are reported without indefinite retries; use manual recovery or a new fenced connection generation. Separate worker command timeouts protect radio transport sections; incoming events are not queued behind response waits.
 
 ## Important Behaviors
@@ -577,6 +577,12 @@ When changing backend behavior:
 4. If API contract changed, update frontend types and AGENTS docs.
 
 ### Radio job scheduler (#38–#41)
+
+Radio Activity uses distinct payload-free job kinds for local Companion CLI (on-device),
+remote Companion CLI (RF request), channel datagrams (RF request), and read-only advanced
+diagnostics. `classify_operation` preserves their existing priority/deadline behavior;
+command completion does not prove remote execution or RF delivery. The producer regression
+suite audits literal operation names against an explicit generic-query allowlist.
 
 `services/radio_jobs.py` defines the public payload-free lifecycle and event types;
 `radio_job_scheduler.py` bounds and orders command admissions and activity history;

@@ -168,10 +168,28 @@ class MessageRepository:
                     paths = []
             except (TypeError, ValueError):
                 paths = []
-            if any(
-                isinstance(p, dict) and p.get("path") == path and p.get("path_len") == path_len
-                for p in paths
-            ):
+            for observation in paths:
+                if not isinstance(observation, dict):
+                    continue
+                if observation.get("path") != path or observation.get("path_len") != path_len:
+                    continue
+                # Echo/replay on an already known route is not a new ACK or
+                # path. Keep its first-seen timestamp; refresh only changed
+                # metrics once per observation tick to bound SQLite writes.
+                changed = False
+                previous = observation.get("last_seen_at") or observation.get("received_at") or 0
+                if received_at is not None and received_at > previous:
+                    observation["last_seen_at"] = received_at
+                    changed = True
+                for key, value in (("rssi", rssi), ("snr", snr)):
+                    if value is not None and value != observation.get(key):
+                        observation[key] = value
+                        changed = True
+                if changed:
+                    await conn.execute(
+                        "UPDATE messages SET paths=? WHERE id=?",
+                        (json.dumps(paths[:16]), message_id),
+                    )
                 return [MessagePath(**p) for p in paths[:16]], False
             # Keep earliest evidence and the latest 15 distinct observations.
             paths = ([paths[0]] + paths[-14:] if len(paths) >= 16 else paths) + [entry]
@@ -623,6 +641,21 @@ class MessageRepository:
         return row["acked"] if row else 1
 
     @staticmethod
+    async def recover_interrupted_outgoing_sends() -> int:
+        """Fail closed on process restart: pending TX may already have reached RF.
+
+        A pending row means the intent was committed before the radio command.
+        After a crash we cannot distinguish never-dispatched from sent-without-
+        response, so do not automatically retry it or display it as delivered.
+        """
+        async with db.tx() as conn:
+            async with conn.execute(
+                "UPDATE messages SET send_status='unknown' "
+                "WHERE outgoing=1 AND send_status='pending'"
+            ) as cursor:
+                return cursor.rowcount
+
+    @staticmethod
     async def update_send_status(message_id: int, send_status: str) -> None:
         """Update an outgoing message's persisted radio-send outcome."""
         if send_status not in {"pending", "confirmed", "unknown"}:
@@ -658,6 +691,65 @@ class MessageRepository:
             return None
 
         return MessageRepository._row_to_message(row)
+
+    @staticmethod
+    def _companion_access_clause(channel_keys: tuple[str, ...]) -> tuple[str, list[Any]]:
+        """Build the durable, decrypted inbox boundary for virtual clients."""
+        channel_clause = "0"
+        params: list[Any] = []
+        if channel_keys:
+            placeholders = ",".join("?" for _ in channel_keys)
+            channel_clause = (
+                f"(messages.type = 'CHAN' AND messages.conversation_key IN ({placeholders}) "
+                "AND EXISTS (SELECT 1 FROM channels "
+                "WHERE channels.key = messages.conversation_key))"
+            )
+            params.extend(channel_keys)
+        contact_clause = (
+            "(messages.type = 'PRIV' AND length(messages.conversation_key) = 64 "
+            "AND EXISTS (SELECT 1 FROM contacts "
+            "WHERE contacts.public_key = lower(messages.conversation_key)))"
+        )
+        return (
+            "messages.outgoing = 0 AND messages.text IS NOT NULL "
+            f"AND ({contact_clause} OR {channel_clause})",
+            params,
+        )
+
+    @staticmethod
+    async def get_companion_initial_cursor(
+        channel_keys: tuple[str, ...], history_limit: int
+    ) -> int:
+        """Place a new session immediately before its bounded history window."""
+        if history_limit < 1:
+            raise ValueError("history_limit must be positive")
+        clause, params = MessageRepository._companion_access_clause(channel_keys)
+        query = (
+            "SELECT MIN(id) AS first_id FROM ("
+            f"SELECT messages.id FROM messages WHERE {clause} "
+            "ORDER BY messages.id DESC LIMIT ?)"
+        )
+        async with db.readonly() as conn:
+            async with conn.execute(query, (*params, history_limit)) as cursor:
+                row = await cursor.fetchone()
+        if row is None:
+            return 0
+        return max(0, int(row["first_id"] or 1) - 1)
+
+    @staticmethod
+    async def get_companion_message_after(
+        cursor_id: int, channel_keys: tuple[str, ...]
+    ) -> "Message | None":
+        """Read the next accessible inbound message in durable database-ID order."""
+        clause, params = MessageRepository._companion_access_clause(channel_keys)
+        query = (
+            f"SELECT {MessageRepository._message_select('messages')} FROM messages "
+            f"WHERE messages.id > ? AND {clause} ORDER BY messages.id ASC LIMIT 1"
+        )
+        async with db.readonly() as conn:
+            async with conn.execute(query, (cursor_id, *params)) as db_cursor:
+                row = await db_cursor.fetchone()
+        return MessageRepository._row_to_message(row) if row is not None else None
 
     @staticmethod
     async def delete_by_id(message_id: int) -> None:
@@ -743,6 +835,113 @@ class MessageRepository:
             return None
 
         return MessageRepository._row_to_message(row)
+
+    @staticmethod
+    async def get_companion_outgoing_channel(
+        channel_key: str, text: str, sender_timestamp: int
+    ) -> "Message | None":
+        """Find one virtual-app channel send by its stable on-air identity."""
+        async with db.readonly() as conn:
+            async with conn.execute(
+                f"SELECT {MessageRepository._message_select('messages')} FROM messages "
+                "WHERE type='CHAN' AND outgoing=1 AND conversation_key=? "
+                "AND sender_timestamp=? ORDER BY id ASC",
+                (channel_key.upper(), sender_timestamp),
+            ) as cursor:
+                rows = await cursor.fetchall()
+        for row in rows:
+            message = MessageRepository._row_to_message(row)
+            stored_body = message.text
+            if message.sender_name:
+                prefix = f"{message.sender_name}: "
+                if stored_body.startswith(prefix):
+                    stored_body = stored_body[len(prefix) :]
+            if stored_body == text:
+                return message
+        return None
+
+    @staticmethod
+    async def reserve_companion_channel_send(
+        *,
+        identity_key: str,
+        virtual_index: int,
+        sender_timestamp: int,
+        text_hash: str,
+        created_at: int,
+        retention_seconds: int,
+    ) -> bool:
+        """Atomically reserve one app message identity without storing its text."""
+        async with db.tx() as conn:
+            await conn.execute(
+                "DELETE FROM virtual_companion_channel_sends WHERE created_at < ?",
+                (created_at - retention_seconds,),
+            )
+            async with conn.execute(
+                """
+                INSERT OR IGNORE INTO virtual_companion_channel_sends
+                    (identity_key, virtual_index, sender_timestamp, text_hash, status, created_at)
+                VALUES (?, ?, ?, ?, 'pending', ?)
+                """,
+                (
+                    identity_key.lower(),
+                    virtual_index,
+                    sender_timestamp,
+                    text_hash,
+                    created_at,
+                ),
+            ) as cursor:
+                return cursor.rowcount == 1
+
+    @staticmethod
+    async def finish_companion_channel_send(
+        *,
+        identity_key: str,
+        virtual_index: int,
+        sender_timestamp: int,
+        text_hash: str,
+        status: str,
+    ) -> None:
+        if status not in {"ok", "uncertain"}:
+            raise ValueError("invalid virtual channel send status")
+        async with db.tx() as conn:
+            await conn.execute(
+                """
+                UPDATE virtual_companion_channel_sends SET status=?
+                WHERE identity_key=? AND virtual_index=?
+                  AND sender_timestamp=? AND text_hash=?
+                """,
+                (
+                    status,
+                    identity_key.lower(),
+                    virtual_index,
+                    sender_timestamp,
+                    text_hash,
+                ),
+            )
+
+    @staticmethod
+    async def release_companion_channel_send(
+        *,
+        identity_key: str,
+        virtual_index: int,
+        sender_timestamp: int,
+        text_hash: str,
+    ) -> None:
+        """Release only a pre-dispatch reservation whose outcome is still pending."""
+        async with db.tx() as conn:
+            await conn.execute(
+                """
+                DELETE FROM virtual_companion_channel_sends
+                WHERE identity_key=? AND virtual_index=?
+                  AND sender_timestamp=? AND text_hash=? AND status='pending'
+                """,
+                (
+                    identity_key.lower(),
+                    virtual_index,
+                    sender_timestamp,
+                    text_hash,
+                ),
+            )
 
     @staticmethod
     async def get_unread_counts(

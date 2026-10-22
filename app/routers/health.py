@@ -26,11 +26,29 @@ class AppInfoResponse(BaseModel):
     commit_hash: str | None = None
 
 
+class VirtualCompanionSessionStatusResponse(BaseModel):
+    session_id: str
+    status: str
+    connected_at: int
+    last_seen_at: int
+    protocol_version: int | None = None
+    identity_verified: bool = False
+
+
 class FanoutStatusResponse(BaseModel):
     name: str
     type: str
     status: str
     last_error: str | None = None
+    bind_host: str | None = None
+    port: int | None = None
+    clients: int | None = None
+    client_sessions: list[VirtualCompanionSessionStatusResponse] | None = None
+    identity_status: Literal["verified", "unavailable"] | None = None
+    identity_public_key: str | None = None
+    virtual_channel_capacity: int | None = None
+    configured_channel_slots: int | None = None
+    network_warning: str | None = None
 
 
 class RadioStatsSnapshot(BaseModel):
@@ -71,7 +89,7 @@ class HealthResponse(BaseModel):
         "disconnected",
         "paused",
     ] = "disconnected"
-    startup_policy: Literal["passive", "sync", "full"] = "sync"
+    startup_policy: Literal["full"] = "full"
     startup_stage: str | None = None
     startup_error_stage: str | None = None
     startup_skipped_stages: list[str] = Field(default_factory=list)
@@ -190,9 +208,7 @@ async def build_health_data(radio_connected: bool, connection_info: str | None) 
             "direct_rx": packets.get("direct_rx"),
         }
 
-    startup_policy = getattr(radio_manager, "startup_policy", "sync")
-    if startup_policy not in {"passive", "sync", "full"}:
-        startup_policy = "sync"
+    startup_policy = "full"
     startup_stage = getattr(radio_manager, "startup_stage", None)
     startup_error_stage = getattr(radio_manager, "startup_error_stage", None)
     startup_skipped_stages = getattr(radio_manager, "startup_skipped_stages", [])

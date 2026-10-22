@@ -8,23 +8,21 @@ _generation-fenced workflow_, with separate bounded worker jobs for each
 command stage. The manager's underlying operation lock remains a final
 transport guard, not an alternative production scheduler.
 
-## Startup policies
+## Full-only startup
 
-`MESHCORE_STARTUP_POLICY` accepts `passive`, `sync` or `full` (default:
-`sync`). These are _startup policies_, not an authorization boundary for
-manual REST/API radio commands. All production policies bootstrap device
-metadata and clock **by reading**, register receive handlers and start
-incoming auto-fetch. Transport establishment and teardown remain manager-owned.
+`MESHCORE_STARTUP_POLICY` accepts only `full`, which is also the default.
+Startup policy is not an authorization boundary for manual REST/API radio
+commands. The baseline bootstraps device metadata and clock **by reading**,
+registers receive handlers, and reads radio contact/channel snapshots into
+SQLite. Transport establishment and teardown remain manager-owned.
 
-| Policy           | Startup work                                                                 | Radio writes and on-air traffic                                       |
-| ---------------- | ---------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| `passive`        | Read firmware/device info and current clock, enable inbound packet reception | **None**                                                              |
-| `sync` (default) | Passive work, read radio contact/channel snapshots into SQLite               | **None**; do not offload/remove radio-resident contacts/channels      |
-| `full`           | Sync work plus _individually enabled_ maintenance stages                     | Only stages explicitly enabled below; `full` by itself is not consent |
+`full` does not itself authorize radio writes, sensitive reads, queue drains,
+slot offload, reboot, or on-air traffic. Those operations require the specific
+opt-ins below.
 
 All maintenance opt-ins default to `false`:
 
-| Configuration env var                          | Effect when policy is `full`                                                                                     |
+| Configuration env var                          | Effect                                                                                                           |
 | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | `MESHCORE_STARTUP_EXPORT_PRIVATE_KEY`          | Read/export key into the authorized local keystore; **sensitive** (never emit in job snapshots)                  |
 | `MESHCORE_STARTUP_SYNC_CLOCK`                  | Write device clock; may trigger later periodic clock sync                                                        |
@@ -36,30 +34,38 @@ All maintenance opt-ins default to `false`:
 | `MESHCORE_STARTUP_ALLOW_PERIODIC_OFFLOAD`      | Enable recurring contact/channel offload and slot removal; **destructive**, independent of clock sync            |
 | `MESHCORE_STARTUP_ENABLE_TELEMETRY_COLLECTION` | Start telemetry collection                                                                                       |
 
-A `full` startup with every flag unset has the same device-write and
-RF-transmission budget as `sync`. Key export may change application storage
+A `full` startup with every flag unset has no device-write or RF-transmission
+budget. Key export may change application storage
 but must not be confused with a read-only data operation. Contact/channel
 snapshotting **must not mark radio contacts as evicted**. Channel rows read
 from physical slots retain `on_radio=true` (including subsequent lookups for
 incoming channel messages); only a confirmed slot clear changes this to false.
 
+Community MQTT may use the Companion's on-device signing commands when the
+firmware supports them (tracked in #122); that does not export the secret key.
+Historical DM decryption still requires the separately authorized private-key
+export. Neither capability is enabled merely by selecting `full`.
+
 The 60-second **radio statistics sample** is an independent, read-only health
-query. It may run during `passive`/`sync` and appears in Radio Activity as
+query. It may run during normal operation and appears in Radio Activity as
 "Radio stats sample", never as a periodic maintenance/offload sync. It does
 not authorize any device writes or unsolicited RF transmission.
 
-### Legacy flags and rollback
+### Configuration migration and rollback
 
-The deprecated `MESHCORE_PASSIVE_STARTUP=true` and
-`MESHCORE_SKIP_POST_CONNECT_SYNC=true` both force the effective policy to
-`passive`, **regardless** of `MESHCORE_STARTUP_POLICY`. They can only reduce
-privileges; they cannot silently enable writes. MESHRIK warns about deprecated
-usage. Replace either with `MESHCORE_STARTUP_POLICY=passive` when updating
-configuration; remove old flags when selecting `sync` or `full`. To roll
-back to a read-only bootstrap, set `MESHCORE_STARTUP_POLICY=passive`, stop
-the one server, then restart it; do not automatically replay unknown sends.
-Do not casually switch to `full` or turn on slot clearing/offload against an
-existing device without an explicit data backup and operator approval.
+Remove `MESHCORE_PASSIVE_STARTUP` and `MESHCORE_SKIP_POST_CONNECT_SYNC` from
+service files, containers and shell environments. An enabled legacy flag now
+fails configuration load with an actionable error. Remove `passive` or `sync`
+values for `MESHCORE_STARTUP_POLICY`; leaving the variable unset or setting it
+to `full` selects the same non-destructive baseline.
+
+Before upgrading, record all explicitly enabled `MESHCORE_STARTUP_*` switches.
+To roll back operational behavior, stop the single server, disable every
+sensitive/state-changing switch, and restart on the `full` baseline. Do not
+automatically replay unknown sends. A software-version rollback must also
+restore the previous documented configuration; never enable slot clearing or
+periodic offload against an existing device without a backup and operator
+approval.
 
 ## Lifecycle and readiness
 
@@ -70,7 +76,7 @@ disconnected -> connecting -> initializing -> ready | degraded | failed
 - `connected` means the TCP/serial/BLE transport exists; it does **not** mean
   contacts/channels have been synchronized or the device is ready for user
   commands. Read `/api/health` or the radio status API for readiness, the
-  effective policy, current stage, skipped stages and failing stage.
+  fixed policy, current stage, skipped stages and failing stage.
 - At each new connection **generation**, the worker admits `lifecycle_*`
   stages and holds back normal user jobs until initialization settles.
   Each stage acquires/releases the one command permit; incoming RF events
@@ -90,7 +96,7 @@ disconnected -> connecting -> initializing -> ready | degraded | failed
   starts a new bounded generation and fences stale jobs and responses.
 - Shutdown, reboot and key import must respect the same worker/transport
   ownership and generation fencing. Manual actions still require the normal
-  application authorization, and passive startup does not prevent them.
+  application authorization; startup policy does not prevent them.
 
 ## Stage classification
 
@@ -105,17 +111,21 @@ clock sync is enabled. The radio configuration cannot be atomically rolled
 back by a generic MeshCore transaction after arbitrary hardware failures;
 inspect and restore operator-approved settings after such incidents.
 
+This policy governs commands initiated by MESHRIK. A Companion's physical UI
+may independently trigger RF actions such as an advertisement; current
+firmware evidence does not demonstrate an automatic Companion boot advert.
+
 ## Verification / release gate
 
 Run `./scripts/quality/all_quality.sh` with a reproducible uv+Node install.
 Hardware-independent regressions live in
 `tests/test_radio_startup_scheduler.py` and existing lifecycle/connection
-monitor suites. They cover one-worker admission, policy read-only stages,
-legacy flags, failure and cancellation. CI must never require hardware.
+monitor suites. They cover one-worker admission, the full read-only baseline,
+rejected legacy configuration, failure and cancellation. CI must never require hardware.
 
 For a live node, follow `HARDWARE_SMOKE_TEST.md`: single process and backed-up
-DB; start `passive`, record configuration before/after, then optionally test
-non-destructive `sync`. Do not test mid-transmission disconnect or enable
+DB; start with the full baseline and record configuration before/after. Do not
+test mid-transmission disconnect or enable
 slot deletion just to satisfy CI. Any `degraded`/`failed`, unexpected RF
 advertisement or radio write is a blocker pending diagnosis.
 

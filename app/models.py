@@ -223,8 +223,9 @@ class HistoricalDmDecryptStart(BaseModel):
 
     status: Literal[
         "started",
-        "unavailable_policy",
         "unavailable_export",
+        "unavailable_firmware",
+        "unavailable_export_failed",
         "unavailable_key",
         "invalid_contact_key",
     ]

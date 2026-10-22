@@ -29,7 +29,13 @@ from app.decoder import (
     try_decrypt_path,
     verify_advert_signature,
 )
-from app.keystore import get_private_key, get_public_key, has_private_key
+from app.keystore import (
+    PrivateKeyExportStatus,
+    get_private_key,
+    get_private_key_export_status,
+    get_public_key,
+    has_private_key,
+)
 from app.models import (
     Contact,
     ContactUpsert,
@@ -237,6 +243,7 @@ class HistoricalDecryptSupervisor:
     """One bounded, coalesced historical scan worker, never per-advert tasks."""
 
     def __init__(self, cap: int = 128):
+        self._capacity = cap
         self.pending: asyncio.Queue[tuple[str, str | None]] = asyncio.Queue(maxsize=cap)
         self.known: set[str] = set()
         self.worker: asyncio.Task | None = None
@@ -292,6 +299,9 @@ class HistoricalDecryptSupervisor:
             self.pending.get_nowait()
             self.pending.task_done()
         self.known.clear()
+        # asyncio.Queue retains loop-bound waiter state after join(). Recreate it so a
+        # stopped supervisor can safely start again after an application/event-loop restart.
+        self.pending = asyncio.Queue(maxsize=self._capacity)
 
 
 historical_decrypt_supervisor = HistoricalDecryptSupervisor()
@@ -306,24 +316,31 @@ async def start_historical_dm_decryption(
     global _last_historical_dm_skip_status
 
     if not has_private_key():
-        from app.config import StartupPolicy, settings
+        from app.config import settings
 
-        policy = settings.effective_startup_policy
-        if policy is not StartupPolicy.FULL:
-            result = HistoricalDmDecryptStart(
-                status="unavailable_policy",
-                message=(
-                    f"Startup policy '{policy.value}' intentionally does not export the radio's "
-                    "private key. Historical DM decryption is unavailable, but live radio "
-                    "messages are unaffected."
-                ),
-            )
-        elif not settings.startup_export_private_key:
+        if not settings.startup_export_private_key:
             result = HistoricalDmDecryptStart(
                 status="unavailable_export",
                 message=(
-                    "Private-key export is not enabled for full startup. Historical DM "
-                    "decryption is unavailable, but live radio messages are unaffected."
+                    "Set MESHCORE_STARTUP_EXPORT_PRIVATE_KEY=true to enable private-key "
+                    "export. Historical DM decryption is unavailable, but live radio "
+                    "messages are unaffected."
+                ),
+            )
+        elif get_private_key_export_status() is PrivateKeyExportStatus.FIRMWARE_UNSUPPORTED:
+            result = HistoricalDmDecryptStart(
+                status="unavailable_firmware",
+                message=(
+                    "The connected firmware does not permit private-key export. Historical DM "
+                    "decryption is unavailable, but on-device signing may still be supported."
+                ),
+            )
+        elif get_private_key_export_status() is PrivateKeyExportStatus.FAILED:
+            result = HistoricalDmDecryptStart(
+                status="unavailable_export_failed",
+                message=(
+                    "The authorized private-key export attempt failed. Inspect the startup key "
+                    "export stage and reconnect before retrying historical DM decryption."
                 ),
             )
         else:
@@ -563,9 +580,10 @@ async def process_raw_packet(
     category: RadioPacketType = (
         categories.get(payload_type, "other") if payload_type is not None else "other"
     )
-    # Suppress unactionable unknown/control spam; the existing raw packet feed
-    # still receives every observation, including unknown packets and repeats.
-    if category != "other" and is_new_packet:
+    # Payload-hash deduplication keeps repeated low-information observations
+    # from flooding activity history, while the first unknown/encrypted packet
+    # still gets an explicit privacy-safe category in the operator view.
+    if is_new_packet:
         radio_job_scheduler.record_activity(
             RadioActivityKind.PACKET_RECEIVED,
             packet_type=category,
@@ -896,12 +914,22 @@ async def _process_direct_message(
                         existing_outgoing.id,
                     )
 
-            logger.debug(
-                "Decrypted DM %s contact %s (%d UTF-8 bytes)",
-                "to" if effective_outgoing else "from",
-                contact.name or contact.public_key[:12],
-                len(result.message.encode("utf-8")) if result.message else 0,
-            )
+            from app.config import settings
+
+            if settings.log_sensitive_payloads:
+                logger.debug(
+                    "Decrypted DM %s contact %s: %s",
+                    "to" if effective_outgoing else "from",
+                    contact.name or contact.public_key[:12],
+                    result.message,
+                )
+            else:
+                logger.debug(
+                    "Decrypted DM %s contact %s (%d UTF-8 bytes)",
+                    "to" if effective_outgoing else "from",
+                    contact.name or contact.public_key[:12],
+                    len(result.message.encode("utf-8")) if result.message else 0,
+                )
 
             # Create message (or add path to existing if duplicate)
             msg_id = await create_dm_message_from_decrypted(

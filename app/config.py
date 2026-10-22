@@ -1,19 +1,18 @@
 import logging
 import logging.config
+import os
 from collections import deque
 from enum import StrEnum
 from threading import Lock
 from typing import Literal
 
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class StartupPolicy(StrEnum):
     """Effective automatic behavior for each new radio generation."""
 
-    PASSIVE = "passive"
-    SYNC = "sync"
     FULL = "full"
 
 
@@ -27,6 +26,7 @@ class Settings(BaseSettings):
     ble_address: str = ""
     ble_pin: str = ""
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
+    log_sensitive_payloads: bool = False
     database_path: str = "data/meshcore.db"
     disable_bots: bool = False
     enable_message_poll_fallback: bool = False
@@ -39,7 +39,7 @@ class Settings(BaseSettings):
     load_with_autoevict: bool = False
     # Safe generation-start policy. ``full`` only makes the individually
     # enabled maintenance switches below eligible; it is not blanket consent.
-    startup_policy: StartupPolicy = StartupPolicy.SYNC
+    startup_policy: StartupPolicy = StartupPolicy.FULL
     startup_export_private_key: bool = False
     startup_sync_clock: bool = False
     startup_apply_flood_scope: bool = False
@@ -52,12 +52,6 @@ class Settings(BaseSettings):
     startup_allow_periodic_offload: bool = False
     startup_enable_telemetry_collection: bool = False
 
-    # Deprecated compatibility switches. Either switch can only reduce the
-    # effective policy to passive; neither can authorize writes or RF traffic.
-    skip_post_connect_sync: bool = False
-    # Passive connection diagnostics: query radio metadata and receive events,
-    # but do not change device state or trigger startup RF traffic.
-    passive_startup: bool = False
     # A failed clock adjustment alone must never reboot a live node by default.
     auto_reboot_on_clock_skew: bool = False
     # Bounded RF reply wait; transport and queue deadlines remain independent.
@@ -71,8 +65,29 @@ class Settings(BaseSettings):
     basic_auth_password: str = ""
     vapid_subject: str = "mailto:noreply@meshcore.local"
 
+    @field_validator("startup_policy", mode="before")
+    @classmethod
+    def validate_full_startup_policy(cls, value: object) -> object:
+        if value not in (StartupPolicy.FULL, StartupPolicy.FULL.value):
+            raise ValueError(
+                "MESHCORE_STARTUP_POLICY only supports 'full'; remove obsolete "
+                "'passive'/'sync' configuration. Sensitive maintenance remains separately opt-in."
+            )
+        return value
+
     @model_validator(mode="after")
     def validate_transport_exclusivity(self) -> "Settings":
+        enabled_values = {"1", "true", "yes", "on"}
+        retired_flags = [
+            name
+            for name in ("MESHCORE_PASSIVE_STARTUP", "MESHCORE_SKIP_POST_CONNECT_SYNC")
+            if os.getenv(name, "").strip().lower() in enabled_values
+        ]
+        if retired_flags:
+            raise ValueError(
+                f"Remove obsolete startup flag(s): {', '.join(retired_flags)}. "
+                "MESHRIK now uses FULL startup with sensitive maintenance separately opt-in."
+            )
         transports_set = sum(
             [
                 bool(self.serial_port),
@@ -110,13 +125,6 @@ class Settings(BaseSettings):
     def basic_auth_partially_configured(self) -> bool:
         any_credentials_set = bool(self.basic_auth_username or self.basic_auth_password)
         return any_credentials_set and not self.basic_auth_enabled
-
-    @property
-    def effective_startup_policy(self) -> StartupPolicy:
-        """Resolve legacy safety switches without ever broadening authority."""
-        if self.passive_startup or self.skip_post_connect_sync:
-            return StartupPolicy.PASSIVE
-        return self.startup_policy
 
 
 settings = Settings()
@@ -291,7 +299,17 @@ def setup_logging() -> None:
     meshcore_logger = logging.getLogger("meshcore")
     if not any(isinstance(item, _RepeatSquelch) for item in meshcore_logger.filters):
         meshcore_logger.addFilter(_RepeatSquelch())
-    if not any(
-        isinstance(item, _SensitiveMeshcorePayloadFilter) for item in meshcore_logger.filters
-    ):
+    payload_filters = [
+        item
+        for item in meshcore_logger.filters
+        if isinstance(item, _SensitiveMeshcorePayloadFilter)
+    ]
+    if settings.log_sensitive_payloads:
+        for item in payload_filters:
+            meshcore_logger.removeFilter(item)
+        logging.getLogger(__name__).warning(
+            "Sensitive payload logging is enabled; logs and debug snapshots may contain "
+            "private message, channel message, or CLI content"
+        )
+    elif not payload_filters:
         meshcore_logger.addFilter(_SensitiveMeshcorePayloadFilter())

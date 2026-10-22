@@ -174,6 +174,9 @@ export function buildTelemetryCsv(
 
 interface TelemetryHistoryPaneProps {
   entries: TelemetryHistoryEntry[];
+  loading?: boolean;
+  loadError?: string | null;
+  onRetry?: () => void;
   publicKey: string;
   contacts: Contact[];
   trackedTelemetryRepeaters: string[];
@@ -182,6 +185,9 @@ interface TelemetryHistoryPaneProps {
 
 export function TelemetryHistoryPane({
   entries,
+  loading = false,
+  loadError = null,
+  onRetry,
   publicKey,
   contacts,
   trackedTelemetryRepeaters,
@@ -472,6 +478,24 @@ export function TelemetryHistoryPane({
         )}
       </div>
       <div className="p-3">
+        {loading && entries.length === 0 && (
+          <p role="status" className="mb-3 text-sm text-muted-foreground">
+            Loading saved telemetry…
+          </p>
+        )}
+        {loadError && (
+          <div
+            role="alert"
+            className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded border border-destructive/40 bg-destructive/5 px-3 py-2"
+          >
+            <span className="text-sm text-destructive">{loadError}</span>
+            {onRetry && (
+              <Button variant="outline" size="sm" onClick={onRetry} disabled={loading}>
+                Retry saved telemetry
+              </Button>
+            )}
+          </div>
+        )}
         {/* Explanation + tracking toggle */}
         <div className="mb-3 space-y-3">
           <p className="text-xs text-muted-foreground leading-relaxed">
@@ -559,11 +583,11 @@ export function TelemetryHistoryPane({
           ))}
         </div>
 
-        {entries.length === 0 ? (
+        {entries.length === 0 && !loading && !loadError ? (
           <p className="text-sm text-muted-foreground italic">
-            No history yet. Fetch status above to record data points.
+            No telemetry collected yet. Fetch status above to record data points.
           </p>
-        ) : (
+        ) : entries.length > 0 ? (
           <div>
             <TanStackTimeSeriesChart
               data={chartData.map((point) => ({
@@ -626,7 +650,7 @@ export function TelemetryHistoryPane({
               </div>
             )}
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

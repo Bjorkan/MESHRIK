@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { RawPacketDetailModal } from '../components/RawPacketDetailModal';
+import { RawPacketDetailModal, RawPacketInspectorDialog } from '../components/RawPacketDetailModal';
 import type { Channel, RawPacket } from '../types';
 
 vi.mock('../components/ui/sonner', () => ({
@@ -15,6 +15,7 @@ vi.mock('../components/ui/sonner', () => ({
 const { toast } = await import('../components/ui/sonner');
 const mockToast = toast as unknown as {
   success: ReturnType<typeof vi.fn>;
+  error: ReturnType<typeof vi.fn>;
 };
 
 const BOT_CHANNEL: Channel = {
@@ -53,6 +54,33 @@ const SCOPED_PACKET: RawPacket = {
 };
 
 describe('RawPacketDetailModal', () => {
+  it('announces packet loading but does not animate an unavailable result', () => {
+    const props = {
+      open: true,
+      onOpenChange: vi.fn(),
+      channels: [],
+      title: 'Packet',
+      description: 'Packet details',
+    };
+    const { rerender } = render(
+      <RawPacketInspectorDialog
+        {...props}
+        source={{ kind: 'loading', message: 'Loading packet...' }}
+      />
+    );
+    expect(screen.getByRole('status')).toHaveTextContent('Loading packet...');
+    rerender(
+      <RawPacketInspectorDialog
+        {...props}
+        source={{ kind: 'unavailable', message: 'Packet unavailable' }}
+      />
+    );
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    expect(screen.getByText('Packet unavailable')).toBeInTheDocument();
+  });
+
+  beforeEach(() => vi.clearAllMocks());
+
   it('copies the full packet hex to the clipboard', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.assign(navigator, {
@@ -65,6 +93,21 @@ describe('RawPacketDetailModal', () => {
 
     expect(writeText).toHaveBeenCalledWith(BOT_PACKET.data);
     await waitFor(() => expect(mockToast.success).toHaveBeenCalledWith('Packet hex copied!'));
+  });
+
+  it('reports a rejected packet-hex copy without false success', async () => {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: vi.fn().mockRejectedValue(new Error('denied')) },
+    });
+    render(<RawPacketDetailModal packet={BOT_PACKET} channels={[BOT_CHANNEL]} onClose={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Copy' }));
+
+    await waitFor(() =>
+      expect(mockToast.error).toHaveBeenCalledWith('Copy failed', expect.anything())
+    );
+    expect(mockToast.success).not.toHaveBeenCalledWith('Packet hex copied!');
   });
 
   it('renders path hops as nowrap arrow-delimited groups and links hover state to the full packet hex', () => {

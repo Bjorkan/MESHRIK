@@ -184,9 +184,21 @@ describe('MessageInput', () => {
   });
 
   describe('hard limit enforcement', () => {
-    it('disables sending when the UTF-8 byte limit is reached', () => {
+    it('allows sending when the UTF-8 byte limit is reached exactly', async () => {
       renderInput({ conversationType: 'contact' });
       const text = '🥝'.repeat(39); // 39 × 4 = 156 bytes
+      fireEvent.change(getInput(), { target: { value: text } });
+
+      expect(getSendButton()).toBeEnabled();
+      expect(getInput()).toHaveAttribute('aria-invalid', 'false');
+      fireEvent.click(getSendButton());
+
+      await waitFor(() => expect(onSend).toHaveBeenCalledWith(text));
+    });
+
+    it('disables sending only when the UTF-8 byte limit is exceeded', () => {
+      renderInput({ conversationType: 'contact' });
+      const text = `${'界'.repeat(52)}x`; // 157 UTF-8 bytes
       fireEvent.change(getInput(), { target: { value: text } });
 
       expect(getSendButton()).toBeDisabled();
@@ -239,13 +251,13 @@ describe('MessageInput', () => {
       expect(getSendButton()).toBeDisabled();
     });
 
-    it('counts surrounding whitespace in the enforced payload limit', () => {
+    it('counts surrounding whitespace while allowing the exact payload limit', () => {
       renderInput({ conversationType: 'contact' });
       const payload = ` ${'x'.repeat(154)} `;
       fireEvent.change(getInput(), { target: { value: payload } });
 
       expect(screen.getAllByText(/156\/156/).length).toBeGreaterThan(0);
-      expect(getSendButton()).toBeDisabled();
+      expect(getSendButton()).toBeEnabled();
     });
   });
 

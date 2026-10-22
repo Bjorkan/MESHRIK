@@ -137,7 +137,7 @@ class TestRadioOperationLock:
         await holder_task
 
     @pytest.mark.asyncio
-    async def test_suspend_auto_fetch_stops_and_restarts(self):
+    async def test_suspend_auto_fetch_never_starts_unscheduled_get_msg(self):
         mc = MagicMock()
         mc.stop_auto_message_fetching = AsyncMock()
         mc.start_auto_message_fetching = AsyncMock()
@@ -150,18 +150,18 @@ class TestRadioOperationLock:
             pass
 
         mc.stop_auto_message_fetching.assert_awaited_once()
-        mc.start_auto_message_fetching.assert_awaited_once()
+        mc.start_auto_message_fetching.assert_not_awaited()
 
     @pytest.mark.asyncio
-    async def test_lock_released_when_auto_fetch_restart_is_cancelled(self):
+    async def test_lock_released_when_auto_fetch_stop_is_cancelled(self):
         mc = MagicMock()
-        mc.stop_auto_message_fetching = AsyncMock()
-        mc.start_auto_message_fetching = AsyncMock(side_effect=asyncio.CancelledError())
+        mc.stop_auto_message_fetching = AsyncMock(side_effect=asyncio.CancelledError())
+        mc.start_auto_message_fetching = AsyncMock()
         radio_manager._meshcore = mc
 
         with pytest.raises(asyncio.CancelledError):
             async with radio_manager.radio_operation(
-                "cancelled_restart",
+                "cancelled_stop",
                 suspend_auto_fetch=True,
             ):
                 pass

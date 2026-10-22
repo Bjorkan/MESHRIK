@@ -96,11 +96,44 @@ describe('useWebSocket dispatch', () => {
     expect(onHealth).toHaveBeenCalledWith(healthData);
   });
 
+  it('replays periodic health without inventing radio activity events', () => {
+    const onHealth = vi.fn();
+    const onRadioActivity = vi.fn();
+    renderHook(() => useWebSocket({ onHealth, onRadioActivity }));
+
+    const unchangedHealth = { radio_connected: true, radio_state: 'ready' };
+    for (let index = 0; index < 120; index += 1) {
+      fireMessage({ type: 'health', data: unchangedHealth });
+    }
+    expect(onHealth).toHaveBeenCalledTimes(120);
+    expect(onRadioActivity).not.toHaveBeenCalled();
+
+    const transition = {
+      sequence: 42,
+      kind: 'connection_changed',
+      source: 'radio_lifecycle',
+      radio_generation: 9,
+      previous_connected: true,
+      connected: false,
+      previous_readiness: 'ready',
+      readiness: 'disconnected',
+      at: '2026-10-16T12:00:00Z',
+    };
+    fireMessage({ type: 'radio_activity', data: transition });
+    expect(onRadioActivity).toHaveBeenCalledOnce();
+    expect(onRadioActivity).toHaveBeenCalledWith(transition);
+  });
+
   it('routes message event to onMessage with correct Message shape', () => {
     const onMessage = vi.fn();
     renderHook(() => useWebSocket({ onMessage }));
 
-    const { type, data } = fixtures.channel_message.expected_ws_event;
+    const { type, data: fixtureData } = fixtures.channel_message.expected_ws_event;
+    const data = {
+      ...fixtureData,
+      id: 17,
+      received_at: fixtureData.sender_timestamp,
+    };
     fireMessage({ type, data });
 
     expect(onMessage).toHaveBeenCalledOnce();
@@ -111,7 +144,8 @@ describe('useWebSocket dispatch', () => {
     const onContact = vi.fn();
     renderHook(() => useWebSocket({ onContact }));
 
-    const { type, data } = fixtures.advertisement_with_gps.expected_ws_event;
+    const { type, data: fixtureData } = fixtures.advertisement_with_gps.expected_ws_event;
+    const data = { ...fixtureData, flags: 0 };
     fireMessage({ type, data });
 
     expect(onContact).toHaveBeenCalledOnce();
@@ -280,5 +314,26 @@ describe('useWebSocket dispatch', () => {
     });
 
     Object.values(handlers).forEach((fn) => expect(fn).not.toHaveBeenCalled());
+  });
+
+  it('bounds invalid-event diagnostics without logging payload contents', () => {
+    const onMessage = vi.fn();
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    renderHook(() => useWebSocket({ onMessage }));
+
+    for (let index = 0; index < 20; index += 1) {
+      fireMessage({
+        type: 'message',
+        data: { id: `invalid-${index}`, text: 'PRIVATE-PAYLOAD-CONTENT' },
+      });
+    }
+
+    expect(onMessage).not.toHaveBeenCalled();
+    expect(errorSpy).toHaveBeenCalledTimes(6);
+    expect(JSON.stringify(errorSpy.mock.calls)).not.toContain('PRIVATE-PAYLOAD-CONTENT');
+    expect(errorSpy.mock.calls[errorSpy.mock.calls.length - 1]?.[0]).toBe(
+      'Further invalid WebSocket message diagnostics suppressed'
+    );
+    errorSpy.mockRestore();
   });
 });

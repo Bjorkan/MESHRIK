@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { StatusBar } from '../components/StatusBar';
 import { api } from '../api';
 import { toast } from '../components/ui/sonner';
-import type { HealthStatus } from '../types';
+import type { HealthStatus, RadioConfig } from '../types';
 import {
   STATUS_DOT_PULSE_DURATION_MS,
   STATUS_DOT_PULSE_PACKET_EVENT,
@@ -25,6 +25,22 @@ const baseHealth: HealthStatus = {
   oldest_undecrypted_timestamp: null,
   fanout_statuses: {},
   bots_disabled: false,
+};
+
+const syntheticConfig: RadioConfig = {
+  public_key: '12'.repeat(32),
+  name: 'Synthetic Radio',
+  lat: 0,
+  lon: 0,
+  tx_power: 17,
+  max_tx_power: 22,
+  radio: { freq: 910.525, bw: 62.5, sf: 7, cr: 5 },
+  path_hash_mode: 0,
+  path_hash_mode_supported: false,
+  advert_location_source: 'off',
+  multi_acks_enabled: false,
+  repeat_enabled: null,
+  repeat_enabled_supported: false,
 };
 
 describe('StatusBar', () => {
@@ -144,6 +160,50 @@ describe('StatusBar', () => {
 
     resolveReconnect({ status: 'ok', message: 'Connected', connected: true });
     await waitFor(() => expect(screen.getByRole('button', { name: 'Reconnect' })).toBeEnabled());
+  });
+
+  it('reports unavailable clipboard access from the public-key control', async () => {
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: undefined });
+    render(<StatusBar health={baseHealth} config={syntheticConfig} onSettingsClick={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Copy public key' }));
+
+    await waitFor(() =>
+      expect(mockedToast.error).toHaveBeenCalledWith('Copy failed', {
+        description: 'Clipboard access is unavailable or was denied',
+      })
+    );
+    expect(mockedToast.success).not.toHaveBeenCalledWith('Public key copied!');
+  });
+
+  it('keeps header controls touchable and bounds long synthetic identity text', () => {
+    const longName = `Synthetic ${'device-'.repeat(30)}`;
+    const longConfig = { ...syntheticConfig, name: longName };
+    render(
+      <StatusBar
+        health={baseHealth}
+        config={longConfig}
+        onSettingsClick={vi.fn()}
+        onMenuClick={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole('button', { name: 'Open menu' })).toHaveClass('min-h-6', 'min-w-6');
+    expect(screen.getByRole('button', { name: /switch to .* theme/i })).toHaveClass(
+      'min-h-6',
+      'min-w-6'
+    );
+    expect(screen.getByText(longName)).toHaveClass('truncate', 'max-w-40');
+    expect(screen.getByText(longName)).toHaveAttribute('title', longName);
+    expect(screen.getByRole('button', { name: 'Copy public key' })).toHaveClass(
+      'truncate',
+      'max-w-48',
+      'text-sm'
+    );
+    expect(screen.getByRole('button', { name: 'Copy public key' })).toHaveAttribute(
+      'title',
+      syntheticConfig.public_key.toLowerCase()
+    );
   });
 
   it('toggles between classic and light themes from the shortcut button', () => {

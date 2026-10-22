@@ -123,6 +123,7 @@ describe('channel override modals', () => {
     );
 
     const threeByte = screen.getByRole('radio', { name: /3-byte hop identifiers/i });
+    expect(screen.getByRole('dialog')).toHaveClass('max-h-[calc(100dvh-2rem)]', 'overflow-y-auto');
     fireEvent.click(threeByte);
     expect(threeByte).toHaveAttribute('aria-checked', 'true');
     fireEvent.click(screen.getByRole('button', { name: 'Save hop width' }));
@@ -152,5 +153,32 @@ describe('channel override modals', () => {
     fireEvent.click(screen.getByRole('radio', { name: /Radio default/i }));
     fireEvent.click(screen.getByRole('button', { name: 'Save hop width' }));
     await waitFor(() => expect(onSetOverride).toHaveBeenCalledWith(null));
+  });
+
+  it('supports roving arrow-key focus across hop-width radios', () => {
+    render(
+      <ChannelPathHashModeOverrideModal
+        open
+        onClose={vi.fn()}
+        channelName="Test channel"
+        currentOverride={null}
+        radioDefault={1}
+        onSetOverride={vi.fn().mockResolvedValue(undefined)}
+      />
+    );
+
+    const radioDefault = screen.getByRole('radio', { name: /Radio default/i });
+    const oneByte = screen.getByRole('radio', { name: /1-byte hop identifiers/i });
+    expect(radioDefault).toHaveAttribute('tabindex', '0');
+    expect(oneByte).toHaveAttribute('tabindex', '-1');
+
+    radioDefault.focus();
+    fireEvent.keyDown(radioDefault, { key: 'ArrowDown' });
+    expect(oneByte).toHaveFocus();
+    expect(oneByte).toHaveAttribute('aria-checked', 'true');
+    expect(oneByte).toHaveAttribute('tabindex', '0');
+
+    fireEvent.keyDown(oneByte, { key: 'End' });
+    expect(screen.getByRole('radio', { name: /3-byte hop identifiers/i })).toHaveFocus();
   });
 });

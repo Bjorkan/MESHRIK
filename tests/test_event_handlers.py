@@ -22,7 +22,7 @@ from app.repository import (
     ContactRepository,
     MessageRepository,
 )
-from app.services.dm_ack_tracker import _buffered_acks, _pending_acks
+from app.services.dm_ack_tracker import _buffered_acks, _pending_acks, discard_buffered_ack
 
 
 @pytest.fixture(autouse=True)
@@ -112,15 +112,17 @@ class TestAckTracking:
         assert len(_pending_acks) == 50
         assert all(k.startswith("valid_") for k in _pending_acks)
 
-    def test_track_pending_ack_consumes_buffered_ack(self):
-        """A buffered ACK should be matched immediately when the send registers later."""
+    def test_track_pending_ack_retains_buffered_ack_until_commit(self):
+        """A buffered ACK matches immediately but stays buffered until durable commit."""
         _buffered_acks["early"] = time.time()
 
         matched = track_pending_ack("early", message_id=42, timeout_ms=5000)
 
         assert matched is True
+        assert "early" in _buffered_acks
+        assert "early" in _pending_acks
+        discard_buffered_ack("early")
         assert "early" not in _buffered_acks
-        assert "early" not in _pending_acks
 
     def test_cleanup_removes_expired_buffered_acks(self):
         """Buffered ACKs should expire so unmatched early ACKs do not leak forever."""
@@ -315,8 +317,8 @@ class TestAckEventHandler:
 
             assert "earlyack" in _buffered_acks
             assert track_pending_ack("earlyack", message_id=msg_id, timeout_ms=10000) is True
-            assert "earlyack" not in _buffered_acks
-            assert "earlyack" not in _pending_acks
+            assert "earlyack" in _buffered_acks
+            assert "earlyack" in _pending_acks
             ack_count, _ = await MessageRepository.get_ack_and_paths(msg_id)
             assert ack_count == 0
             mock_broadcast.assert_not_called()
@@ -591,25 +593,26 @@ class TestContactMessageCLIFiltering:
             assert payload["sender_key"] == author_prefix
 
     @pytest.mark.asyncio
-    async def test_missing_txt_type_defaults_to_normal(self, test_db):
-        """Messages without txt_type field are treated as normal (not filtered)."""
+    @pytest.mark.parametrize("invalid_txt_type", [None, "1", 1.0, True, -1, 4])
+    async def test_invalid_txt_type_fails_closed(self, test_db, invalid_txt_type):
+        """Untrusted fallback metadata cannot turn CLI content into normal chat."""
         from app.event_handlers import on_contact_message
 
-        with patch("app.event_handlers.broadcast_event"):
+        with patch("app.event_handlers.broadcast_event") as mock_broadcast:
 
             class MockEvent:
                 payload = {
                     "pubkey_prefix": "abc123def456",
-                    "text": "Message without txt_type field",
+                    "text": "privileged CLI output",
                     "sender_timestamp": 1700000000,
-                    # No txt_type field
                 }
 
+            if invalid_txt_type is not None:
+                MockEvent.payload["txt_type"] = invalid_txt_type
             await on_contact_message(MockEvent())
 
-            # SHOULD still be processed (defaults to txt_type=0)
-            messages = await MessageRepository.get_all()
-            assert len(messages) == 1
+            assert await MessageRepository.get_all() == []
+            mock_broadcast.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_unknown_full_key_dm_creates_placeholder_contact(self, test_db):
@@ -855,6 +858,47 @@ class TestContactMessageCLIFiltering:
             assert len(messages) == 1
             assert messages[0].text == "Hello from a repeater"
             assert mock_broadcast.call_args_list[-1].args[0] == "message"
+
+    @pytest.mark.asyncio
+    async def test_repeater_role_correction_preserves_ordinary_messages(self, test_db):
+        """Changing a contact's role must not orphan its existing conversation."""
+        from app.event_handlers import on_contact_message
+
+        public_key = "df" * 32
+        await ContactRepository.upsert(
+            {
+                "public_key": public_key,
+                "name": "Misclassified node",
+                "type": 2,
+                "flags": 0,
+            }
+        )
+
+        class MockEvent:
+            payload = {
+                "public_key": public_key,
+                "text": "ordinary direct message",
+                "txt_type": 0,
+                "sender_timestamp": 1700000000,
+            }
+
+        with patch("app.event_handlers.broadcast_event"):
+            await on_contact_message(MockEvent())
+        before = await MessageRepository.get_all(conversation_key=public_key)
+        assert len(before) == 1
+
+        await ContactRepository.upsert(
+            {
+                "public_key": public_key,
+                "name": "Corrected chat node",
+                "type": 1,
+                "flags": 0,
+            }
+        )
+
+        after = await MessageRepository.get_all(conversation_key=public_key)
+        assert [message.id for message in after] == [before[0].id]
+        assert after[0].text == "ordinary direct message"
 
     @pytest.mark.asyncio
     async def test_repeater_cli_response_skipped_not_stored(self, test_db):

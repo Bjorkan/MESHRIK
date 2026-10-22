@@ -11,6 +11,7 @@ Connect your radio over Serial, TCP, or BLE, and then you can:
 - Access your radio remotely over your network or VPN
 - Search for hashtag channel names for channels you don't have keys for yet
 - Forward packets, messages, and automatic repeater telemetry to MQTT, Home Assistant, LetsMesh, MeshRank, SQS, Apprise, etc.
+- Optionally let official apps use MESHRIK through a separate, OFF-by-default virtual Companion TCP listener (release-gated; never the physical radio port)
 - Use the more recent 1.14+ firmwares which support multibyte pathing
 - Visualize the mesh as a map or node set, view repeater stats, and more!
 
@@ -18,10 +19,25 @@ For advanced setup and troubleshooting see [README_ADVANCED.md](README_ADVANCED.
 
 **Warning:** This app is for trusted environments only. _Do not put this on an untrusted network, or open it to the public._ You can optionally set `MESHCORE_BASIC_AUTH_USERNAME` and `MESHCORE_BASIC_AUTH_PASSWORD` for app-wide HTTP Basic auth, but that is only a coarse gate and must be paired with HTTPS. The bots can execute arbitrary Python code which means anyone who gets access to the app can, too. To completely disable the bot system, start the server with `MESHCORE_DISABLE_BOTS=true` — this prevents all bot execution and blocks bot configuration changes via the API. If you need stronger access control, consider using a reverse proxy like Nginx, or extending FastAPI; full access control and user management are outside the scope of this app.
 
+> [!CAUTION]
+> The virtual Companion listener is raw plaintext TCP and is not protected by MESHRIK HTTP Basic
+> auth or HTTPS. It defaults OFF with bind address `0.0.0.0` (all IPv4 interfaces). Restrict access
+> to trusted LAN devices using a firewall, or select loopback/a protected VPN/mTLS gateway;
+> never expose it publicly, and never give an app the physical radio's TCP endpoint. See the
+> [operator guide and release gate](docs/VIRTUAL_COMPANION.md).
+
 ![Screenshot of the application's web interface](app_screenshot.png)
 
 > [!WARNING]
 > MESHRIK does _full_ management of the radio, meaning that once a radio is connected to MESHRIK, all contacts/channels will be imported and offloaded to MESHRIK and the contacts actually synced to the device will be governed by MESHRIK. This means that MESHRIK can be a poor fit for users who are looking to swap radios in and out, maintaining radio state (favorites, channels, etc.) irrespective of app usage.
+
+> [!IMPORTANT]
+> On touch devices, MESHRIK deliberately blocks browser-level pinch zoom to keep its app-like
+> mobile layout anchored; pinch gestures inside node and route maps still control the map camera.
+> This reduces a standard low-vision enlargement option and is not a complete accessibility
+> substitute. The Local settings include a relative font-size control from 25% to 400%, and the UI
+> remains designed for keyboard and screen-reader use. Operating-system magnification remains the
+> recommended fallback when application font scaling is insufficient.
 
 ## Requirements
 
@@ -185,6 +201,7 @@ Only one transport may be active at a time. If multiple are set, the server will
 | `MESHCORE_BLE_ADDRESS`         |                                 | BLE device address (mutually exclusive with serial/TCP)                                                                                                                                                                                  |
 | `MESHCORE_BLE_PIN`             |                                 | BLE PIN (required when BLE address is set)                                                                                                                                                                                               |
 | `MESHCORE_LOG_LEVEL`           | INFO                            | `DEBUG`, `INFO`, `WARNING`, `ERROR`                                                                                                                                                                                                      |
+| `MESHCORE_LOG_SENSITIVE_PAYLOADS` | `false`                      | Dangerous diagnostics opt-in: permit DEBUG logs to contain message and CLI payloads. Never enable for ordinary operation or shared support logs. |
 | `MESHCORE_DATABASE_PATH`       | `data/meshcore.db`              | SQLite database path                                                                                                                                                                                                                     |
 | `MESHCORE_DISABLE_BOTS`        | false                           | Disable bot system entirely (blocks execution and config; an intermediate security precaution, but not as good as basic auth)                                                                                                            |
 | `MESHCORE_BASIC_AUTH_USERNAME` |                                 | Optional app-wide HTTP Basic auth username; must be set together with `MESHCORE_BASIC_AUTH_PASSWORD`                                                                                                                                     |
@@ -226,6 +243,7 @@ If you enable Basic Auth, protect the app with HTTPS. HTTP Basic credentials are
 
 - Advanced setup, troubleshooting, HTTPS, systemd, remediation variables, and debug logging: [README_ADVANCED.md](README_ADVANCED.md)
 - Home Assistant-specific guidance and entity/sensor naming schemes: [README_HA.md](README_HA.md)
+- Virtual Companion setup, security, API, deployment, support matrix, and controlled stacked rollout: [docs/VIRTUAL_COMPANION.md](docs/VIRTUAL_COMPANION.md)
 - Contributing, tests, linting, E2E notes, and important AGENTS files: [CONTRIBUTING.md](CONTRIBUTING.md)
 - Live API docs after the backend is running: http://localhost:8000/docs
 
@@ -238,13 +256,14 @@ If extending, have your LLM read the three `AGENTS.md` files: `./AGENTS.md`, `./
 ## Hardware smoke testing
 
 Startup and reconnect now run as bounded, visible single-worker lifecycle jobs.
-`MESHCORE_STARTUP_POLICY=passive` performs a receive-only bootstrap; the default
-`sync` safely reads contacts/channels, while `full` requires individual opt-ins
-for any settings change, RF advertisement, drain or slot clearing. See
-[`RADIO_STARTUP_LIFECYCLE.md`](RADIO_STARTUP_LIFECYCLE.md) for the policy
-matrix, legacy flag compatibility, readiness and rollback.
+`full` is the only supported startup policy. Its default baseline reads device,
+contact and channel data without exporting keys, writing radio settings,
+draining messages, sending RF or clearing/offloading slots. Every sensitive or
+state-changing maintenance stage requires its own opt-in. See
+[`RADIO_STARTUP_LIFECYCLE.md`](RADIO_STARTUP_LIFECYCLE.md) for the stage matrix,
+configuration migration, readiness and rollback.
 
 For a first controlled Companion connection and non-destructive startup, follow
 [`HARDWARE_SMOKE_TEST.md`](HARDWARE_SMOKE_TEST.md). This includes the
-`MESHCORE_PASSIVE_STARTUP` safeguard, the clock-reboot opt-in and explicit
-limits on what may be tested without sending RF.
+non-destructive full baseline, the clock-reboot opt-in and explicit limits on
+what may be tested without sending RF.

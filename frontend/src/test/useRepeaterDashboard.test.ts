@@ -1,6 +1,6 @@
 import { StrictMode, createElement, type ReactNode } from 'react';
 import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { renderHook, act, waitFor } from '@testing-library/react';
 import {
   resetRepeaterDashboardCacheForTests,
   useRepeaterDashboard,
@@ -47,7 +47,42 @@ const repeaterConversation: Conversation = {
   name: 'TestRepeater',
 };
 
+const secondRepeaterConversation: Conversation = {
+  type: 'contact',
+  id: 'bb'.repeat(32),
+  name: 'SecondRepeater',
+};
+
 describe('useRepeaterDashboard', () => {
+  it('retains pending action identity across remounts and prevents duplicate commands', async () => {
+    let finish!: (value: unknown) => void;
+    mockApi.sendRepeaterCommand.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        })
+    );
+    const first = renderHook(() => useRepeaterDashboard(repeaterConversation));
+    let request!: Promise<void>;
+    act(() => {
+      request = first.result.current.sendFloodAdvert();
+    });
+    expect(first.result.current.pendingAction).toBe('flood-advert');
+    first.unmount();
+    const second = renderHook(() => useRepeaterDashboard(repeaterConversation));
+    expect(second.result.current.pendingAction).toBe('flood-advert');
+    await act(async () => {
+      await second.result.current.syncClock();
+    });
+    expect(mockApi.sendRepeaterCommand).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      finish({ response: 'OK' });
+      await request;
+    });
+    expect(second.result.current.pendingAction).toBeNull();
+    expect(second.result.current.consoleLoading).toBe(false);
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     resetRepeaterDashboardCacheForTests();
@@ -115,6 +150,85 @@ describe('useRepeaterDashboard', () => {
 
     expect(mockApi.repeaterLogin).toHaveBeenCalledWith(REPEATER_KEY, '');
     expect(result.current.loggedIn).toBe(true);
+  });
+
+  it('keeps one in-flight login across unmounts and restores its completion', async () => {
+    let resolveLogin!: (value: { status: 'ok'; authenticated: true; message: null }) => void;
+    mockApi.repeaterLogin.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveLogin = resolve;
+      })
+    );
+    const onStarted = vi.fn();
+    const onConfirmed = vi.fn();
+
+    const first = renderHook(() => useRepeaterDashboard(repeaterConversation));
+    let originalLogin!: Promise<boolean>;
+    act(() => {
+      originalLogin = first.result.current.login('original-password', {
+        onStarted,
+        onConfirmed,
+      });
+    });
+    expect(first.result.current.loginLoading).toBe(true);
+    first.unmount();
+
+    const second = renderHook(() => useRepeaterDashboard(repeaterConversation));
+    expect(second.result.current.loginLoading).toBe(true);
+    let duplicateLogin!: Promise<boolean>;
+    act(() => {
+      duplicateLogin = second.result.current.login('different-password');
+    });
+
+    expect(mockApi.repeaterLogin).toHaveBeenCalledTimes(1);
+    expect(mockApi.repeaterLogin).toHaveBeenCalledWith(REPEATER_KEY, 'original-password');
+    expect(onStarted).toHaveBeenCalledTimes(1);
+    second.unmount();
+
+    await act(async () => {
+      resolveLogin({ status: 'ok', authenticated: true, message: null });
+      await Promise.all([originalLogin, duplicateLogin]);
+    });
+
+    const restored = renderHook(() => useRepeaterDashboard(repeaterConversation));
+    expect(restored.result.current.loginLoading).toBe(false);
+    expect(restored.result.current.loggedIn).toBe(true);
+    expect(restored.result.current.lastLoginAttempt?.outcome).toBe('confirmed');
+    expect(onConfirmed).toHaveBeenCalledTimes(1);
+  });
+
+  it('isolates concurrent login state by repeater identity', async () => {
+    let resolveFirst!: (value: {
+      status: 'timeout';
+      authenticated: false;
+      message: string;
+    }) => void;
+    mockApi.repeaterLogin
+      .mockReturnValueOnce(new Promise((resolve) => (resolveFirst = resolve)))
+      .mockResolvedValueOnce({ status: 'ok', authenticated: true, message: null });
+
+    const first = renderHook(() => useRepeaterDashboard(repeaterConversation));
+    const second = renderHook(() => useRepeaterDashboard(secondRepeaterConversation));
+    let firstLogin!: Promise<boolean>;
+    act(() => {
+      firstLogin = first.result.current.login('first');
+    });
+    await act(async () => {
+      await second.result.current.login('second');
+    });
+
+    expect(first.result.current.loginLoading).toBe(true);
+    expect(first.result.current.loggedIn).toBe(false);
+    expect(second.result.current.loginLoading).toBe(false);
+    expect(second.result.current.loggedIn).toBe(true);
+
+    await act(async () => {
+      resolveFirst({ status: 'timeout', authenticated: false, message: 'No reply' });
+      await firstLogin;
+    });
+    await waitFor(() => expect(first.result.current.loginLoading).toBe(false));
+    expect(first.result.current.lastLoginAttempt?.outcome).toBe('not_confirmed');
+    expect(second.result.current.lastLoginAttempt?.outcome).toBe('confirmed');
   });
 
   it('login still opens dashboard when request rejects', async () => {

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useForm, useStore } from '@tanstack/react-form';
 
 import { Button } from './ui/button';
@@ -59,6 +59,7 @@ export function ChannelPathHashModeOverrideModal({
   const selected = useStore(form.store, (state) => state.values.selected);
   const serverError = useStore(form.store, (state) => state.values.serverError);
   const saving = useStore(form.store, (state) => state.isSubmitting);
+  const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
   useEffect(() => {
     if (open) {
@@ -106,7 +107,7 @@ export function ChannelPathHashModeOverrideModal({
 
         <div className="space-y-4">
           <div className="rounded-md border border-border bg-muted/20 p-3 text-sm">
-            <div className="wrap-break-word font-medium">{channelName}</div>
+            <div className="break-words font-medium">{channelName}</div>
             <div className="mt-1 text-muted-foreground">
               Current override:{' '}
               {currentOverride != null
@@ -118,14 +119,18 @@ export function ChannelPathHashModeOverrideModal({
           <div className="space-y-2">
             <Label>Hop width for this channel</Label>
             <div className="space-y-1.5" role="radiogroup" aria-label="Hop width for this channel">
-              {options.map((opt) => (
+              {options.map((opt, index) => (
                 <button
                   key={String(opt.value)}
                   type="button"
                   role="radio"
                   aria-checked={selected === opt.value}
+                  tabIndex={selected === opt.value ? 0 : -1}
+                  ref={(element) => {
+                    optionRefs.current[index] = element;
+                  }}
                   disabled={saving}
-                  className={`w-full rounded-md border px-3 py-2 text-left text-sm transition-colors ${
+                  className={`w-full rounded-md border px-3 py-2 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                     selected === opt.value
                       ? 'border-primary bg-primary/10 text-foreground'
                       : 'border-border hover:bg-accent'
@@ -133,6 +138,24 @@ export function ChannelPathHashModeOverrideModal({
                   onClick={() => {
                     form.setFieldValue('selected', opt.value);
                     form.setFieldValue('serverError', '');
+                  }}
+                  onKeyDown={(event) => {
+                    let nextIndex: number | null = null;
+                    if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
+                      nextIndex = (index + 1) % options.length;
+                    } else if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
+                      nextIndex = (index - 1 + options.length) % options.length;
+                    } else if (event.key === 'Home') {
+                      nextIndex = 0;
+                    } else if (event.key === 'End') {
+                      nextIndex = options.length - 1;
+                    }
+                    if (nextIndex == null) return;
+                    event.preventDefault();
+                    const next = options[nextIndex];
+                    form.setFieldValue('selected', next.value);
+                    form.setFieldValue('serverError', '');
+                    optionRefs.current[nextIndex]?.focus();
                   }}
                 >
                   <div className="font-medium">{opt.label}</div>

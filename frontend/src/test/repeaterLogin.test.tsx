@@ -88,6 +88,7 @@ describe('RepeaterLogin', () => {
 
     expect(screen.getByText('Logging in...')).toBeInTheDocument();
     expect(screen.queryByText('Login with Password')).not.toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Login request pending');
   });
 
   it('displays error message when present', () => {

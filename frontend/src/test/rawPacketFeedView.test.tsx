@@ -183,8 +183,54 @@ describe('RawPacketFeedView', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /show stats/i }));
     const stats = container.querySelector('aside');
-    expect(stats).toHaveClass('md:w-[42%]', 'xl:min-w-120');
-    expect(stats).not.toHaveClass('md:min-w-120');
+    expect(stats).toHaveClass('md:w-[42%]', 'xl:min-w-[30rem]');
+    expect(stats).not.toHaveClass('md:min-w-[30rem]');
+  });
+
+  it('preserves filters, stats, autoscroll, and packet selection across rapid resize toggles', () => {
+    renderView({
+      packets: [
+        {
+          id: 1,
+          observation_id: 10,
+          timestamp: 1_700_000_000,
+          data: GROUP_TEXT_PACKET_HEX,
+          decrypted: false,
+          payload_type: 'GroupText',
+          rssi: -72,
+          snr: 5.5,
+          decrypted_info: null,
+        },
+      ],
+      channels: [TEST_CHANNEL],
+    });
+
+    const filterToggle = screen.getByRole('button', { name: 'Show Filters' });
+    fireEvent.click(filterToggle);
+    fireEvent.change(screen.getAllByLabelText('Filter loaded packets by hex substring')[0], {
+      target: { value: '1500' },
+    });
+    fireEvent.click(screen.getAllByLabelText('Autoscroll')[0]);
+    fireEvent.click(screen.getByRole('button', { name: /show stats/i }));
+
+    for (const width of [1024, 375, 768, 320]) {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
+      window.dispatchEvent(new Event('resize'));
+      fireEvent.click(filterToggle);
+      fireEvent.click(filterToggle);
+    }
+
+    expect(filterToggle).toHaveAttribute('aria-expanded', 'true');
+    for (const input of screen.getAllByLabelText('Filter loaded packets by hex substring')) {
+      expect(input).toHaveValue('1500');
+    }
+    for (const checkbox of screen.getAllByLabelText('Autoscroll')) {
+      expect(checkbox).not.toBeChecked();
+    }
+    expect(screen.getByLabelText('Stats window')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /gt from flightless/i }));
+    expect(screen.getByText('Packet Details')).toBeInTheDocument();
   });
 
   it('analyzes a pasted raw packet without adding it to the live feed', () => {

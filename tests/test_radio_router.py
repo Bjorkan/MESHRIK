@@ -489,7 +489,7 @@ class TestDiscoverMesh:
         assert callbacks["event_type"] == EventType.DISCOVER_RESPONSE
         assert callbacks["subscription"].unsubscribe.called
         mc.stop_auto_message_fetching.assert_awaited_once()
-        mc.start_auto_message_fetching.assert_awaited_once()
+        mc.start_auto_message_fetching.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_persists_newly_discovered_nodes_and_broadcasts_contact_updates(self):
@@ -1187,7 +1187,7 @@ class TestDiscoverRegions:
         ]
         # One radio_operation held for the whole sweep -> auto-fetch toggled once.
         mc.stop_auto_message_fetching.assert_awaited_once()
-        mc.start_auto_message_fetching.assert_awaited_once()
+        mc.start_auto_message_fetching.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_unreachable_repeater_is_reported_and_excluded_from_union(self):

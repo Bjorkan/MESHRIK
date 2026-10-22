@@ -2,11 +2,12 @@
 
 import asyncio
 import logging
-from typing import Any
+from typing import Any, cast
 
 from fastapi import WebSocket
 
 from app.events import dump_ws_event
+from app.services.radio_jobs import RadioReadinessState
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +17,9 @@ SEND_TIMEOUT_SECONDS = 5.0
 
 
 MAX_WS_CLIENT_BACKLOG = 512
+# Raw observations are best-effort; reserve space for persisted chats, ACKs,
+# health and resync hints so an RF burst cannot evict their delivery.
+MAX_RAW_WS_CLIENT_BACKLOG = MAX_WS_CLIENT_BACKLOG - 64
 
 
 class WebSocketManager:
@@ -74,6 +78,11 @@ class WebSocketManager:
         """Synchronous enqueue preserves event call order before any await."""
         message = dump_ws_event(event_type, data)
         for conn, queue in list(self._outboxes.items()):
+            if event_type == "raw_packet" and queue.qsize() >= MAX_RAW_WS_CLIENT_BACKLOG:
+                # Dropping raw-only UI observations is preferable to closing
+                # a chat stream and losing committed message/ACK notifications.
+                self.overflows += 1
+                continue
             try:
                 queue.put_nowait(message)
                 self.enqueued += 1
@@ -120,6 +129,7 @@ def broadcast_event(event_type: str, data: dict, *, realtime: bool = True) -> No
         from app.fanout.manager import fanout_manager
 
         if event_type == "message":
+            fanout_manager.notify_virtual_companions(data)
             asyncio.create_task(fanout_manager.broadcast_message(data))
 
             from app.push.manager import push_manager
@@ -153,7 +163,17 @@ def broadcast_success(message: str, details: str | None = None) -> None:
     ws_manager.enqueue("success", data)
 
 
-_last_radio_activity_status: tuple[bool, str, int] | None = None
+_last_radio_activity_status: tuple[bool, RadioReadinessState, int] | None = None
+_RADIO_READINESS_STATES: set[str] = {
+    "ready",
+    "connected",
+    "degraded",
+    "failed",
+    "initializing",
+    "connecting",
+    "disconnected",
+    "paused",
+}
 
 
 def broadcast_health(radio_connected: bool, connection_info: str | None = None) -> None:
@@ -172,18 +192,29 @@ def broadcast_health(radio_connected: bool, connection_info: str | None = None) 
     from app.services.radio_runtime import radio_runtime
 
     global _last_radio_activity_status
-    snapshot = (
-        radio_connected,
-        str(
-            getattr(
-                radio_runtime, "readiness_state", "ready" if radio_connected else "disconnected"
-            )
-        ),
-        int(getattr(radio_runtime, "radio_generation", 0)),
+    raw_readiness = str(
+        getattr(radio_runtime, "readiness_state", "ready" if radio_connected else "disconnected")
     )
+    if not bool(getattr(radio_runtime, "connection_desired", True)):
+        readiness: RadioReadinessState = "paused"
+    elif not radio_connected:
+        readiness = "disconnected"
+    elif raw_readiness not in _RADIO_READINESS_STATES:
+        readiness = "connected" if radio_connected else "disconnected"
+    else:
+        readiness = cast(RadioReadinessState, raw_readiness)
+    snapshot = (radio_connected, readiness, int(getattr(radio_runtime, "radio_generation", 0)))
     if _last_radio_activity_status != snapshot:
         # Record the first observed state and each real transition; never
         # consume the bounded ring for identical periodic health broadcasts.
-        radio_job_scheduler.record_activity(RadioActivityKind.CONNECTION_CHANGED)
+        previous = _last_radio_activity_status
+        radio_job_scheduler.record_activity(
+            RadioActivityKind.CONNECTION_CHANGED,
+            previous_connected=previous[0] if previous else None,
+            connected=snapshot[0],
+            previous_readiness=previous[1] if previous else None,
+            readiness=snapshot[1],
+            radio_generation=snapshot[2],
+        )
         _last_radio_activity_status = snapshot
     asyncio.create_task(_broadcast())

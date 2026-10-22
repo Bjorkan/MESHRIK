@@ -28,11 +28,12 @@ This is a review worksheet, **not** a claim that all items are complete.
 ## Hardware smoke (explicit operator authorization required)
 
 Use `HARDWARE_SMOKE_TEST.md`. Start with
-`MESHCORE_PASSIVE_STARTUP=true` and `MESHCORE_DISABLE_BOTS=true`,
+the default full baseline, `MESHCORE_DISABLE_BOTS=true`, and every sensitive
+or state-changing `MESHCORE_STARTUP_*` opt-in disabled,
 **a separate test SQLite DB** and **one uvicorn worker**. Verify the antenna,
 frequency/region, radio identity and authorized endpoints before TX.
 
-- [ ] Authorized Companion TCP host/port passive connect / GET health and job
+- [ ] Authorized Companion TCP host/port baseline connect / GET health and job
       snapshots: no clock set, flood changes, advertisement or reboot.
 - [ ] One controlled test-channel message. Compare command admission,
       SQLite message/packet row, observed echo, WS activity and any repeat.

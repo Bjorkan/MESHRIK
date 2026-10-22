@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { RepeaterDashboard } from '../components/RepeaterDashboard';
+import { toast } from '../components/ui/sonner';
 import type { UseRepeaterDashboardResult } from '../hooks/useRepeaterDashboard';
 import type { Contact, Conversation } from '../types';
 
@@ -55,6 +56,7 @@ const mockHook: {
   },
   consoleHistory: [],
   consoleLoading: false,
+  pendingAction: null,
   login: vi.fn(),
   loginAsGuest: vi.fn(),
   refreshPane: vi.fn(),
@@ -86,6 +88,8 @@ vi.mock('../components/ui/sonner', () => ({
     warning: vi.fn(),
   },
 }));
+
+const mockedToast = vi.mocked(toast);
 
 // Mock MapLibre imports (not needed in test)
 vi.mock('react-map-gl/maplibre', () => ({
@@ -199,22 +203,41 @@ describe('RepeaterDashboard', () => {
     expect(screen.getByText('Log in to access repeater dashboard')).toBeInTheDocument();
   });
 
-  it('shows compact fetch controls instead of a wall of unfetched cards', () => {
+  it('reports missing clipboard access from the repeater-key control', async () => {
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: undefined });
+    render(<RepeaterDashboard {...defaultProps} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Copy repeater public key' }));
+
+    await waitFor(() =>
+      expect(mockedToast.error).toHaveBeenCalledWith('Copy failed', {
+        description: 'Clipboard access is unavailable or was denied',
+      })
+    );
+    expect(mockedToast.success).not.toHaveBeenCalledWith('Contact key copied!');
+  });
+
+  it('shows every unfetched information pane without starting radio work', () => {
     mockHook.loggedIn = true;
     render(<RepeaterDashboard {...defaultProps} />);
     for (const label of [
-      'Node info',
+      'Node Info',
       'Telemetry',
-      'Radio settings',
-      'LPP',
+      'Radio Settings',
+      'LPP Sensors',
       'Neighbors',
       'ACL',
       'Regions',
-      'Owner info',
+      'Owner Info',
     ]) {
-      expect(screen.getByRole('button', { name: `Fetch ${label}` })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: label, level: 3 })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: `Refresh ${label}` })).toBeInTheDocument();
     }
-    expect(screen.queryByText('<not fetched>')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Refresh Advert Intervals' })).toBeInTheDocument();
+    expect(screen.getAllByText('Not requested')).toHaveLength(9);
+    expect(screen.queryByLabelText('Fetch repeater sections')).not.toBeInTheDocument();
+    expect(mockHook.refreshPane).not.toHaveBeenCalled();
+    expect(mockHook.loadAll).not.toHaveBeenCalled();
     expect(screen.getByText('Advanced radio controls')).toBeInTheDocument();
     expect(screen.queryByText('No neighbors reported')).not.toBeInTheDocument();
   });
@@ -222,7 +245,7 @@ describe('RepeaterDashboard', () => {
   it('fetches only the requested section', () => {
     mockHook.loggedIn = true;
     render(<RepeaterDashboard {...defaultProps} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Fetch Node info' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh Node Info' }));
     expect(mockHook.refreshPane).toHaveBeenCalledWith('nodeInfo');
     expect(mockHook.refreshPane).toHaveBeenCalledTimes(1);
   });
@@ -295,7 +318,16 @@ describe('RepeaterDashboard', () => {
   it('only replaces a remembered repeater password after confirmed authentication', async () => {
     const storageKey = `meshrik-server-password:repeater:${REPEATER_KEY}`;
     localStorage.setItem(storageKey, JSON.stringify({ password: 'confirmed-password' }));
-    vi.mocked(mockHook.login).mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+    vi.mocked(mockHook.login)
+      .mockImplementationOnce(async (_password, lifecycle) => {
+        lifecycle?.onStarted?.();
+        return false;
+      })
+      .mockImplementationOnce(async (_password, lifecycle) => {
+        lifecycle?.onStarted?.();
+        lifecycle?.onConfirmed?.();
+        return true;
+      });
 
     const firstRender = render(<RepeaterDashboard {...defaultProps} />);
     fireEvent.change(screen.getByLabelText('Repeater password'), {
@@ -303,7 +335,9 @@ describe('RepeaterDashboard', () => {
     });
     fireEvent.click(screen.getByText('Login with Password'));
 
-    await waitFor(() => expect(mockHook.login).toHaveBeenCalledWith('failed-password'));
+    await waitFor(() =>
+      expect(mockHook.login).toHaveBeenCalledWith('failed-password', expect.any(Object))
+    );
     expect(localStorage.getItem(storageKey)).toBe(
       JSON.stringify({ password: 'confirmed-password' })
     );
@@ -795,10 +829,29 @@ describe('RepeaterDashboard', () => {
       });
     });
 
-    it('does not display an empty telemetry-history card before any data was loaded', () => {
+    it('distinguishes an empty saved-history response from loading', async () => {
       mockHook.loggedIn = true;
       render(<RepeaterDashboard {...defaultProps} />);
-      expect(screen.queryByText('Telemetry History')).not.toBeInTheDocument();
+      expect(screen.getByText('Telemetry History')).toBeInTheDocument();
+      expect(screen.getByRole('status')).toHaveTextContent('Loading saved telemetry');
+      expect(await screen.findByText(/No telemetry collected yet/)).toBeInTheDocument();
+    });
+
+    it('shows saved-history failures and retries without issuing radio work', async () => {
+      const { api } = await import('../api');
+      const historySpy = vi.mocked(api.repeaterTelemetryHistory);
+      historySpy.mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce([]);
+      mockHook.loggedIn = true;
+
+      render(<RepeaterDashboard {...defaultProps} />);
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('Could not load saved telemetry');
+      expect(mockHook.refreshPane).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByRole('button', { name: 'Retry saved telemetry' }));
+      await waitFor(() => expect(historySpy).toHaveBeenCalledTimes(2));
+      expect(await screen.findByText(/No telemetry collected yet/)).toBeInTheDocument();
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+      expect(mockHook.refreshPane).not.toHaveBeenCalled();
     });
 
     it('updates history from live status fetch', async () => {

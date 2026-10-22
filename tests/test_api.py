@@ -103,6 +103,14 @@ class TestHealthEndpoint:
             assert data["radio_connected"] is True
             assert data["connection_info"] == "Serial: /dev/ttyUSB0"
 
+    @pytest.mark.asyncio
+    async def test_response_includes_opaque_request_id(self, client):
+        response = await client.get("/api/health")
+
+        request_id = response.headers["x-request-id"]
+        assert len(request_id) == 32
+        assert all(character in "0123456789abcdef" for character in request_id)
+
     def test_health_disconnected_state(self):
         """Health endpoint reflects disconnected radio."""
         from fastapi.testclient import TestClient
@@ -203,8 +211,8 @@ class TestHealthEndpoint:
 class TestDebugEndpoint:
     """Test the debug support snapshot endpoint."""
 
-    def test_build_environment_exposes_env_settings(self):
-        """_build_environment should expose env config without secrets."""
+    def test_build_environment_reports_env_settings_without_internal_locations(self):
+        """_build_environment should retain useful config while redacting locations."""
         from app.config import Settings
         from app.routers.debug import _build_environment
 
@@ -220,9 +228,9 @@ class TestDebugEndpoint:
             env = _build_environment()
 
         assert env.connection_type == "serial"
-        assert env.serial_port == "/dev/ttyUSB0"
+        assert env.serial_port == "[configured]"
         assert env.log_level == "DEBUG"
-        assert env.database_path == "data/test.db"
+        assert env.database_path == "[configured]"
         assert not hasattr(env, "ble_pin")
         assert not hasattr(env, "basic_auth_password")
         assert not hasattr(env, "basic_auth_username")
@@ -234,16 +242,72 @@ class TestDebugEndpoint:
         sanitized = _sanitize_radio_probe_self_info(
             {
                 "name": "FlightlessTestNode",
+                "public_key": "ab" * 32,
                 "adv_lat": 47.786445,
                 "adv_lon": -122.344011,
                 "radio_freq": 910.525,
             }
         )
 
-        assert sanitized == {
-            "name": "FlightlessTestNode",
-            "radio_freq": 910.525,
-        }
+        assert sanitized == {"radio_freq": 910.525}
+
+    def test_support_snapshot_redacts_virtual_listener_identity_and_bind_address(self):
+        from app.routers.debug import _build_debug_health_summary
+
+        summary = _build_debug_health_summary(
+            {
+                "database_size_mb": 1.23,
+                "oldest_undecrypted_timestamp": None,
+                "fanout_statuses": {
+                    "virtual-id": {
+                        "name": "MeshCore App",
+                        "type": "virtual_companion_tcp",
+                        "status": "error",
+                        "last_error": "Listener unavailable (OS error 98)",
+                        "bind_host": "10.8.0.4",
+                        "port": 4001,
+                        "clients": 2,
+                        "client_sessions": [
+                            {
+                                "session_id": "session-1",
+                                "status": "connected",
+                                "connected_at": 1,
+                                "last_seen_at": 2,
+                            }
+                        ],
+                        "identity_status": "verified",
+                        "identity_public_key": "ab" * 32,
+                    }
+                },
+                "bots_disabled_source": None,
+                "basic_auth_enabled": False,
+            },
+            radio_state="connected",
+        )
+
+        status = summary.fanouts_with_errors["virtual-id"]
+        assert status.bind_host is None
+        assert status.identity_public_key is None
+        assert status.client_sessions is None
+        assert status.port == 4001
+        assert status.clients == 2
+        assert status.last_error == "Listener unavailable (OS error 98)"
+
+    def test_support_snapshot_redacts_internal_environment_locations(self):
+        from app.routers.debug import _build_environment
+
+        with (
+            patch("app.routers.debug.settings.serial_port", "/dev/serial/by-id/private"),
+            patch("app.routers.debug.settings.tcp_host", "10.8.0.4"),
+            patch("app.routers.debug.settings.ble_address", "AA:BB:CC:DD:EE:FF"),
+            patch("app.routers.debug.settings.database_path", "/srv/private/meshcore.db"),
+        ):
+            environment = _build_environment()
+
+        assert environment.serial_port == "[configured]"
+        assert environment.tcp_host == "[configured]"
+        assert environment.ble_address == "[configured]"
+        assert environment.database_path == "[configured]"
 
     def test_support_snapshot_only_keeps_erroring_fanouts_in_health_summary(self):
         """Debug health summary should only include fanouts with non-empty last_error."""

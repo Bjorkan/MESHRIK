@@ -457,6 +457,10 @@ def test_radio_stats_samples_have_distinct_low_priority_job_kind():
         ("repeater_node_info", RadioJobKind.SERVER_QUERY, 120),
         ("room_status", RadioJobKind.SERVER_QUERY, 45),
         ("debug_support_snapshot", RadioJobKind.RADIO_QUERY, 60),
+        ("companion_local_cli", RadioJobKind.COMPANION_LOCAL_CLI, 120),
+        ("remote_companion_cli", RadioJobKind.REMOTE_COMPANION_CLI, 120),
+        ("send_channel_datagram", RadioJobKind.CHANNEL_DATAGRAM, 120),
+        ("radio_advanced_diagnostics", RadioJobKind.RADIO_DIAGNOSTICS, 120),
     ],
 )
 def test_user_radio_operations_have_visible_kinds_and_bounded_deadlines(
@@ -467,3 +471,73 @@ def test_user_radio_operations_have_visible_kinds_and_bounded_deadlines(
         RadioJobPriority.NORMAL,
     )
     assert producers.command_timeout_for_operation(operation) == expected_timeout
+
+
+def test_production_literal_operations_do_not_silently_gain_generic_labels():
+    """Require review when a new static producer falls back to Radio query."""
+    import ast
+    from pathlib import Path
+
+    # Existing generic operations: local maintenance, signing and read probes.
+    # These are intentionally retained rather than changing their scheduling.
+    allowed = {
+        "inbound_backlog_catchup",
+        "community_jwt_sign",
+        "community_stats_device_info",
+        "reboot_radio",
+        "bulk_delete_contacts_from_radio",
+        "delete_contact_from_radio",
+        "debug_support_snapshot",
+    }
+    found = set()
+    root = Path(__file__).resolve().parents[1] / "app"
+    for path in root.rglob("*.py"):
+        for call in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+            if not isinstance(call, ast.Call):
+                continue
+            if isinstance(call.func, ast.Attribute) and call.func.attr == "run_radio_command":
+                name_arg = call.args[0] if call.args else None
+            elif isinstance(call.func, ast.Name) and call.func.id == "_run_radio_command":
+                name_arg = call.args[1] if len(call.args) > 1 else None
+            else:
+                continue
+            if (
+                isinstance(name_arg, ast.Constant)
+                and isinstance(name_arg.value, str)
+                and producers.classify_operation(name_arg.value)[0] == RadioJobKind.RADIO_QUERY
+            ):
+                found.add(name_arg.value)
+    assert found == allowed
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("operation", "kind"),
+    [
+        ("companion_local_cli", RadioJobKind.COMPANION_LOCAL_CLI),
+        ("remote_companion_cli", RadioJobKind.REMOTE_COMPANION_CLI),
+        ("send_channel_datagram", RadioJobKind.CHANNEL_DATAGRAM),
+        ("radio_advanced_diagnostics", RadioJobKind.RADIO_DIAGNOSTICS),
+    ],
+)
+async def test_companion_job_snapshots_keep_typed_kind_without_callback_payload(
+    monkeypatch, operation, kind
+):
+    rt = FakeRuntime()
+    scheduler = RadioJobScheduler()
+    worker = RadioJobWorker(scheduler, runtime=rt, poll_interval_seconds=0.005)
+    monkeypatch.setattr(producers, "radio_job_worker", worker)
+    monkeypatch.setattr(producers, "radio_job_scheduler", scheduler)
+    worker.start()
+    private_result = "synthetic-private-command-output"
+    command = AsyncMock(return_value=private_result)
+    try:
+        assert await producers.run_scheduled_radio_command(rt, operation, command) == private_result
+        command.assert_awaited_once()
+        [snapshot] = scheduler.list_jobs()
+        assert snapshot.kind == kind
+        assert snapshot.priority == RadioJobPriority.NORMAL
+        assert snapshot.state == RadioJobState.COMPLETED
+        assert private_result not in snapshot.model_dump_json()
+    finally:
+        await worker.stop()

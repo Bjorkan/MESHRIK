@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -5,6 +6,7 @@ import { RadioActivityPage } from './RadioActivityPage';
 import { useRadioJobFeed } from '../hooks/useRadioJobFeed';
 import { reconcileRadioJobs, partitionRadioJobs } from '../hooks/useRadioActivity';
 import type { components } from '../generated/api-schema';
+import type { HealthStatus } from '../types';
 
 const mocks = vi.hoisted(() => ({
   getRadioJobs: vi.fn(),
@@ -18,7 +20,7 @@ type Radio = components['schemas']['RadioStatusSnapshot'];
 type Activity = components['schemas']['RadioActivityRecord'];
 const radio: Radio = {
   radio_status: 'connected',
-  startup_policy: 'sync',
+  startup_policy: 'full',
   command_status: 'executing',
   radio_generation: 3,
   sequence: 12,
@@ -69,9 +71,47 @@ const activity: Activity = {
 };
 function Harness({ socket = 'live' }: { socket?: 'live' | 'offline' | 'connecting' }) {
   const feed = useRadioJobFeed();
+  const [health, setHealth] = useState<HealthStatus | null>(null);
   return (
     <>
-      <RadioActivityPage feed={feed} connection={socket} health={null} />
+      <RadioActivityPage feed={feed} connection={socket} health={health} />
+      <button
+        onClick={() =>
+          setHealth({
+            radio_connected: true,
+            radio_state: 'ready',
+          } as HealthStatus)
+        }
+      >
+        Simulate unchanged health
+      </button>
+      <button
+        onClick={() =>
+          setHealth({
+            radio_connected: false,
+            radio_state: 'disconnected',
+          } as HealthStatus)
+        }
+      >
+        Simulate disconnected health
+      </button>
+      <button
+        onClick={() =>
+          feed.onRadioActivity({
+            sequence: 200,
+            kind: 'connection_changed',
+            source: 'radio_lifecycle',
+            at: '2026-10-16T12:00:00Z',
+            radio_generation: 4,
+            previous_connected: true,
+            connected: false,
+            previous_readiness: 'ready',
+            readiness: 'disconnected',
+          })
+        }
+      >
+        Simulate transition event
+      </button>
       <button onClick={() => feed.onRadioActivity({ ...activity, sequence: 11 })}>
         Simulate inbound
       </button>
@@ -91,40 +131,66 @@ function createView(socket: 'live' | 'offline' | 'connecting' = 'live') {
   };
 }
 
-describe('Radio Activity', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mocks.getRadioJobs.mockImplementation(
-      async (params: { status?: Job['state']; cursor?: number }) => ({
-        items: jobs.filter(
-          (item) =>
-            (!params.status || item.state === params.status) &&
-            (params.cursor === undefined || item.sequence < params.cursor)
-        ),
-        radio,
-        snapshot_sequence: 20,
-        next_cursor: null,
-        has_more: false,
-      })
-    );
-    mocks.getRadioActivity.mockResolvedValue({
-      items: [activity],
-      gap: false,
-      has_more: false,
-      snapshot_sequence: 20,
-      next_cursor: 10,
+function setDefaultMocks() {
+  vi.clearAllMocks();
+  mocks.getRadioJobs.mockImplementation(
+    async (params: { status?: Job['state']; cursor?: number }) => ({
+      items: jobs.filter(
+        (item) =>
+          (!params.status || item.state === params.status) &&
+          (params.cursor === undefined || item.sequence < params.cursor)
+      ),
       radio,
+      snapshot_sequence: 20,
+      next_cursor: null,
+      has_more: false,
+    })
+  );
+  mocks.getRadioActivity.mockResolvedValue({
+    items: [activity],
+    gap: false,
+    has_more: false,
+    snapshot_sequence: 20,
+    next_cursor: 10,
+    radio,
+  });
+  mocks.cancelRadioJob.mockImplementation(async (id: string) => ({
+    action: 'cancelled_before_dispatch',
+    job: {
+      ...jobs.find((j) => j.id === id)!,
+      state: 'cancelled',
+      stage: 'cancelled',
+      version: 2,
+      sequence: 21,
+    },
+  }));
+}
+
+describe('Radio Activity', () => {
+  beforeEach(setDefaultMocks);
+
+  it('distinguishes Companion operations in both active jobs and history', async () => {
+    const kinds = [
+      ['companion_local_cli', 'Local Companion CLI (on device)'],
+      ['remote_companion_cli', 'Remote Companion CLI (RF request)'],
+      ['channel_datagram', 'Channel datagram (RF request)'],
+      ['radio_diagnostics', 'Radio diagnostics (read-only)'],
+    ] as const;
+    const items = kinds.flatMap(([kind], i) => [
+      job('executing', i + 10, { kind }),
+      job('completed', i + 20, { kind }),
+    ]);
+    mocks.getRadioJobs.mockResolvedValue({
+      items,
+      radio,
+      snapshot_sequence: 30,
+      next_cursor: null,
+      has_more: false,
     });
-    mocks.cancelRadioJob.mockImplementation(async (id: string) => ({
-      action: 'cancelled_before_dispatch',
-      job: {
-        ...jobs.find((j) => j.id === id)!,
-        state: 'cancelled',
-        stage: 'cancelled',
-        version: 2,
-        sequence: 21,
-      },
-    }));
+    createView();
+    for (const [, label] of kinds) {
+      await waitFor(() => expect(screen.getAllByText(label)).toHaveLength(2));
+    }
   });
 
   it('renders an executing command alongside two independent RF waits and a queued operation', async () => {
@@ -142,6 +208,88 @@ describe('Radio Activity', () => {
     expect(screen.getByText(/RF TX\/RX unmeasured/)).toBeInTheDocument();
     expect(screen.getByText('Packet received')).toBeInTheDocument();
     expect(screen.getByText('Outcome unknown')).toBeInTheDocument();
+  });
+
+  it('renders sanitized connection transition metadata', async () => {
+    mocks.getRadioActivity.mockResolvedValue({
+      items: [
+        {
+          sequence: 21,
+          kind: 'connection_changed',
+          source: 'radio_lifecycle',
+          radio_generation: 4,
+          at: '2026-10-10T20:01:00Z',
+          previous_connected: false,
+          connected: true,
+          previous_readiness: 'disconnected',
+          readiness: 'initializing',
+        },
+      ],
+      gap: false,
+      has_more: false,
+      snapshot_sequence: 21,
+      next_cursor: 21,
+      radio,
+    });
+
+    createView();
+
+    expect(await screen.findByText('Radio connection changed')).toBeInTheDocument();
+    expect(screen.getByText('disconnected → initializing · generation 4')).toBeInTheDocument();
+  });
+
+  it('labels unclassified RF observations as unknown or encrypted', async () => {
+    mocks.getRadioActivity.mockResolvedValue({
+      items: [{ ...activity, packet_type: 'other', rssi: -97, snr: 2.5 }],
+      gap: false,
+      has_more: false,
+      snapshot_sequence: 20,
+      next_cursor: 10,
+      radio,
+    });
+
+    createView();
+
+    expect(await screen.findByText('Unknown or encrypted packet')).toBeInTheDocument();
+    expect(screen.getByText('-97 dBm · SNR 2.5 dB')).toBeInTheDocument();
+  });
+
+  it('keeps the bounded activity buffer stable across repeated health UI updates', async () => {
+    const recent = Array.from({ length: 100 }, (_, index): Activity => ({
+      ...activity,
+      sequence: index + 1,
+    }));
+    mocks.getRadioActivity.mockResolvedValue({
+      items: recent,
+      gap: false,
+      has_more: false,
+      snapshot_sequence: 100,
+      next_cursor: 100,
+      radio,
+    });
+    createView();
+    const events = await screen.findByRole('region', {
+      name: 'Received events',
+    });
+    await waitFor(() => expect(within(events).getByText('100')).toBeInTheDocument());
+
+    for (let index = 0; index < 120; index += 1) {
+      fireEvent.click(screen.getByRole('button', { name: 'Simulate unchanged health' }));
+    }
+    expect(within(events).getByText('100')).toBeInTheDocument();
+    expect(within(events).queryByText('Radio connection changed')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Simulate disconnected health' }));
+    expect(within(events).getByText('100')).toBeInTheDocument();
+    // Health status is not itself a received activity event; only the
+    // authoritative radio_activity frame should add a transition.
+    fireEvent.click(screen.getByRole('button', { name: 'Simulate transition event' }));
+    await waitFor(() =>
+      expect(within(events).getByText('Radio connection changed')).toBeInTheDocument()
+    );
+    expect(within(events).getByText('100')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Simulate transition event' }));
+    expect(within(events).getAllByText('Radio connection changed')).toHaveLength(1);
   });
 
   it('guarantees queued cancellation is distinct from stopping an RF wait', async () => {
@@ -247,6 +395,8 @@ describe('Radio stats job classification', () => {
 });
 
 describe('Radio Activity presentation regressions', () => {
+  beforeEach(setDefaultMocks);
+
   it('freezes terminal duration at completed_at and reports queue wait for unstarted cancellations', async () => {
     const { jobDuration } = await import('./RadioActivityPage');
     const finished = job('completed', 39, {
@@ -262,14 +412,163 @@ describe('Radio Activity presentation regressions', () => {
     expect(jobDuration(finished, Date.parse('2028-01-01T00:00:00Z'))).toBe('9s');
     expect(jobDuration(cancelled, Date.parse('2028-01-01T00:00:00Z'))).toBe('3s');
   });
-  it('renders a bounded history and opt-in background records', async () => {
+  it('renders keyboard-scrollable balanced history columns at mobile and desktop breakpoints', async () => {
     createView();
     const history = await screen.findByRole('region', { name: 'History' });
-    expect(within(history).getByRole('group', { name: 'Job history list' })).toHaveClass(
-      'max-h-104'
+    const events = screen.getByRole('region', { name: 'Received events' });
+    const eventList = await within(events).findByRole('list', { name: 'Recent received events' });
+    const includeBackground = within(history).getByRole('checkbox', {
+      name: 'Include routine background jobs',
+    });
+    expect(includeBackground).not.toBeChecked();
+    fireEvent.click(includeBackground);
+    await waitFor(() =>
+      expect(within(history).getByRole('group', { name: 'Job history list' })).toHaveAttribute(
+        'tabindex',
+        '0'
+      )
     );
-    expect(
-      within(history).getByRole('checkbox', { name: 'Include routine background jobs' })
-    ).not.toBeChecked();
+    const jobList = within(history).getByRole('group', { name: 'Job history list' });
+    expect(jobList).toHaveClass('max-h-[26rem]', 'overflow-y-auto', 'min-w-0');
+    expect(eventList).toHaveClass('max-h-[26rem]', 'overflow-y-auto', 'min-w-0');
+    expect(eventList).toHaveAttribute('tabindex', '0');
+    expect(history.parentElement).toHaveClass('grid', 'lg:grid-cols-2', 'items-start');
+  });
+
+  it('renders compact empty states without adding inert scroll stops', async () => {
+    mocks.getRadioJobs.mockResolvedValue({
+      items: [],
+      radio,
+      snapshot_sequence: 20,
+      next_cursor: null,
+      has_more: false,
+    });
+    mocks.getRadioActivity.mockResolvedValue({
+      items: [],
+      gap: false,
+      has_more: false,
+      snapshot_sequence: 20,
+      next_cursor: null,
+      radio,
+    });
+
+    createView();
+
+    const history = await screen.findByRole('region', { name: 'History' });
+    expect(within(history).getByText(/No matching history/)).toBeInTheDocument();
+    expect(within(history).getByRole('group', { name: 'Job history list' })).not.toHaveAttribute(
+      'tabindex'
+    );
+    expect(screen.getByText('No retained incoming events.')).toBeInTheDocument();
+    expect(screen.queryByRole('list', { name: 'Recent received events' })).not.toBeInTheDocument();
+  });
+
+  it('keeps job and history API failures visible inside their sections', async () => {
+    mocks.getRadioJobs.mockRejectedValue(new Error('offline'));
+    mocks.getRadioActivity.mockRejectedValue(new Error('offline'));
+
+    createView();
+
+    expect(await screen.findByText('Could not load radio jobs. Try Refresh.')).toBeInTheDocument();
+    expect(screen.getByText('Failed to load job history.')).toBeInTheDocument();
+    expect(screen.getByText('Failed to load received activity.')).toBeInTheDocument();
+    expect(screen.queryByText(/No matching history/)).not.toBeInTheDocument();
+    expect(screen.queryByText('No retained incoming events.')).not.toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Retry' })).toHaveLength(2);
+  });
+
+  it('keeps both loading states visible while the initial requests are pending', () => {
+    mocks.getRadioJobs.mockImplementation(() => new Promise(() => undefined));
+    mocks.getRadioActivity.mockImplementation(() => new Promise(() => undefined));
+
+    createView();
+
+    expect(screen.getByText('Loading radio jobs…')).toBeInTheDocument();
+    expect(screen.getByText('Loading history…')).toBeInTheDocument();
+  });
+
+  it('runs one shared refresh at a time and reports its busy state', async () => {
+    createView();
+    await screen.findByText('Packet received');
+
+    let finishJobs!: () => void;
+    let finishHistory!: () => void;
+    let finishActivity!: () => void;
+    const jobsPending = new Promise<void>((resolve) => {
+      finishJobs = resolve;
+    });
+    const historyPending = new Promise<void>((resolve) => {
+      finishHistory = resolve;
+    });
+    const activityPending = new Promise<void>((resolve) => {
+      finishActivity = resolve;
+    });
+    mocks.getRadioJobs
+      .mockImplementationOnce(async () => {
+        await jobsPending;
+        return {
+          items: jobs,
+          radio,
+          snapshot_sequence: 20,
+          next_cursor: null,
+          has_more: false,
+        };
+      })
+      .mockImplementationOnce(async () => {
+        await historyPending;
+        return {
+          items: jobs,
+          radio,
+          snapshot_sequence: 20,
+          next_cursor: null,
+          has_more: false,
+        };
+      });
+    mocks.getRadioActivity.mockImplementationOnce(async () => {
+      await activityPending;
+      return {
+        items: [activity],
+        gap: false,
+        has_more: false,
+        snapshot_sequence: 20,
+        next_cursor: 10,
+        radio,
+      };
+    });
+
+    const refresh = screen.getByRole('button', { name: 'Refresh radio activity' });
+    const jobsCalls = mocks.getRadioJobs.mock.calls.length;
+    const activityCalls = mocks.getRadioActivity.mock.calls.length;
+    fireEvent.click(refresh);
+
+    expect(refresh).toBeDisabled();
+    expect(refresh).toHaveTextContent('Refreshing…');
+    expect(screen.getByLabelText('Radio Activity dashboard')).toHaveAttribute('aria-busy', 'true');
+    fireEvent.click(refresh);
+    expect(mocks.getRadioJobs).toHaveBeenCalledTimes(jobsCalls + 2);
+    expect(mocks.getRadioActivity).toHaveBeenCalledTimes(activityCalls + 1);
+
+    finishJobs();
+    finishHistory();
+    finishActivity();
+    await waitFor(() => expect(refresh).toBeEnabled());
+    expect(refresh).toHaveTextContent('Refresh');
+    expect(screen.getByLabelText('Radio Activity dashboard')).toHaveAttribute('aria-busy', 'false');
+  });
+
+  it('keeps retained activity visible and labels it stale after a partial refresh failure', async () => {
+    createView();
+    await screen.findByText('Packet received');
+    mocks.getRadioActivity.mockRejectedValueOnce(new Error('timeout'));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh radio activity' }));
+
+    expect(await screen.findByText('Failed to load received activity.')).toBeInTheDocument();
+    expect(screen.getByText('Showing retained stale events.')).toBeInTheDocument();
+    expect(screen.getByText('Packet received')).toBeInTheDocument();
+    expect(screen.queryByText('No retained incoming events.')).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Refresh radio activity' })).toBeEnabled()
+    );
   });
 });

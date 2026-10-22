@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider, notifyManager } from '@tanstack/react-query';
 import { fireEvent, render as testingRender, screen, act, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import type { ReactElement, ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Message } from '../types';
@@ -202,6 +203,8 @@ describe('SearchView', () => {
     vi.useRealTimers();
     expect(mockGetMessages).toHaveBeenCalledTimes(2);
     expect(screen.getByRole('status')).toHaveTextContent('Searching...');
+    expect(screen.getByRole('status')).toHaveAttribute('aria-busy', 'true');
+    expect(screen.getByRole('status').querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
 
     await act(async () => {
       first.reject(new DOMException('Aborted', 'AbortError'));
@@ -227,8 +230,8 @@ describe('SearchView', () => {
     await typeAndWaitForResults('hello');
 
     // Text is split by highlightMatch into segments, so use container text content
-    const buttons = screen.getAllByRole('button');
-    const texts = buttons.map((b) => b.textContent);
+    const links = screen.getAllByRole('link');
+    const texts = links.map((link) => link.textContent);
     expect(texts.some((t) => t?.includes('hello world') || t?.includes('world'))).toBe(true);
     expect(texts.some((t) => t?.includes('hello there') || t?.includes('there'))).toBe(true);
   });
@@ -276,10 +279,10 @@ describe('SearchView', () => {
 
     await typeAndWaitForResults('click');
 
-    const resultBtn = screen.getAllByRole('button').find((b) => b.textContent?.includes('me'));
-    expect(resultBtn).toBeDefined();
+    const resultLink = screen.getByRole('link', { name: /click me/i });
+    expect(resultLink).toHaveAttribute('href', '/channel/ABC123?message=42');
 
-    fireEvent.click(resultBtn!);
+    fireEvent.click(resultLink);
 
     expect(onNavigate).toHaveBeenCalledWith({
       id: 42,
@@ -289,17 +292,20 @@ describe('SearchView', () => {
     });
   });
 
-  it('navigates on Enter key', async () => {
+  it('uses native link keyboard and modifier semantics', async () => {
     mockGetMessages.mockResolvedValue([createSearchResult({ id: 10, text: 'keyboard nav' })]);
     const onNavigate = vi.fn();
     render(<SearchView {...defaultProps} onNavigateToMessage={onNavigate} />);
 
     await typeAndWaitForResults('keyboard');
 
-    const resultEl = screen.getByRole('button', { name: /keyboard nav/i });
-    fireEvent.keyDown(resultEl, { key: 'Enter' });
+    const resultEl = screen.getByRole('link', { name: /keyboard nav/i });
+    fireEvent.click(resultEl, { ctrlKey: true });
+    expect(onNavigate).not.toHaveBeenCalled();
+    resultEl.focus();
+    await userEvent.setup().keyboard('{Enter}');
 
-    expect(onNavigate).toHaveBeenCalled();
+    expect(onNavigate).toHaveBeenCalledTimes(1);
   });
 
   it('shows load more button when results fill a page', async () => {
@@ -322,8 +328,8 @@ describe('SearchView', () => {
 
     await typeAndWaitForResults('only');
 
-    const resultBtns = screen.getAllByRole('button');
-    expect(resultBtns.some((b) => b.textContent?.includes('one'))).toBe(true);
+    const resultLinks = screen.getAllByRole('link');
+    expect(resultLinks.some((link) => link.textContent?.includes('one'))).toBe(true);
     expect(screen.queryByText('Load more results')).not.toBeInTheDocument();
   });
 
@@ -342,7 +348,7 @@ describe('SearchView', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Your existing results are unchanged'
     );
-    expect(screen.getByRole('button', { name: /result 0/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /result 0/i })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Retry loading more' }));
     await act(async () => await Promise.resolve());
@@ -436,7 +442,7 @@ describe('SearchView', () => {
     await typeAndWaitForResults('visible');
     expect(mockGetMessages).toHaveBeenCalledTimes(1);
     expect(
-      screen.getAllByRole('button').some((button) => button.textContent?.includes('visible result'))
+      screen.getAllByRole('link').some((link) => link.textContent?.includes('visible result'))
     ).toBe(true);
 
     rerender(<SearchView {...defaultProps} visibilityVersion={1} />);

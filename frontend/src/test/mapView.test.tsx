@@ -31,9 +31,18 @@ vi.mock('react-map-gl/maplibre', () => {
     default: MapMock,
     Map: MapMock,
     Marker: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-    Popup: ({ children, closeOnClick }: { children: React.ReactNode; closeOnClick?: boolean }) => (
+    Popup: ({
+      children,
+      closeOnClick,
+      onClose,
+    }: {
+      children: React.ReactNode;
+      closeOnClick?: boolean;
+      onClose?: () => void;
+    }) => (
       <div data-testid="map-popup" data-close-on-click={String(closeOnClick)}>
         {children}
+        <button type="button" onClick={onClose} aria-label="Simulate map background click" />
       </div>
     ),
     Source: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -84,6 +93,26 @@ describe('MapView', () => {
     });
     expect(screen.getByTestId('maplibre-map')).toBe(originalMap);
     expect(container.querySelectorAll('[data-testid="maplibre-map"]')).toHaveLength(1);
+  });
+
+  it('keeps a saved manual basemap when the app theme changes', async () => {
+    render(<MapView contacts={[]} />);
+    fireEvent.change(screen.getByLabelText('Map style'), { target: { value: 'bright' } });
+    expect(screen.getByTestId('maplibre-map')).toHaveAttribute(
+      'data-map-style',
+      'https://tiles.openfreemap.org/styles/bright'
+    );
+    expect(localStorage.getItem('meshrik-map-layer')).toBe('bright');
+
+    localStorage.setItem('meshrik-theme', 'light');
+    window.dispatchEvent(new CustomEvent(THEME_CHANGE_EVENT, { detail: 'light' }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('maplibre-map')).toHaveAttribute(
+        'data-map-style',
+        'https://tiles.openfreemap.org/styles/bright'
+      )
+    );
   });
 
   it('renders a never-heard fallback for a focused contact without last_seen', () => {
@@ -180,6 +209,46 @@ describe('MapView', () => {
     expect(screen.queryByRole('button', { name: /open conversation with static/i })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Show Static on map' }));
     expect(screen.getByText('Static')).toBeInTheDocument();
+  });
+
+  it('switches markers, keeps popup content interactive, and clears state on background close', () => {
+    const first: Contact = {
+      public_key: '11'.repeat(32),
+      name: 'First Node',
+      type: 1,
+      flags: 0,
+      direct_path: null,
+      direct_path_len: -1,
+      direct_path_hash_mode: -1,
+      route_override_path: null,
+      route_override_len: null,
+      route_override_hash_mode: null,
+      last_advert: null,
+      lat: 40,
+      lon: -74,
+      last_seen: Math.floor(Date.now() / 1000),
+      on_radio: false,
+      favorite: false,
+      last_contacted: null,
+      last_read_at: null,
+      first_seen: null,
+    };
+    const second = { ...first, public_key: '22'.repeat(32), name: 'Second Node', lat: 41 };
+    const onSelectContact = vi.fn();
+    render(<MapView contacts={[first, second]} onSelectContact={onSelectContact} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show First Node on map' }));
+    fireEvent.click(screen.getByRole('button', { name: 'First Node' }));
+    expect(onSelectContact).toHaveBeenCalledWith(first);
+    expect(screen.getByTestId('map-popup')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show Second Node on map' }));
+    expect(screen.queryByText('First Node', { selector: '.text-sm *' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Second Node' })).toBeInTheDocument();
+    expect(screen.getByTestId('map-popup')).toHaveAttribute('data-close-on-click', 'true');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Simulate map background click' }));
+    expect(screen.queryByTestId('map-popup')).not.toBeInTheDocument();
   });
 
   it('keeps the relative cutoff stable across re-renders that do not advance the clock', () => {

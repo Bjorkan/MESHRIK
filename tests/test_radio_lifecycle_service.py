@@ -90,12 +90,22 @@ class TestReconnectAndPrepareRadio:
 
 class TestRunPostConnectSetup:
     @pytest.fixture(autouse=True)
-    def _passive_policy(self, monkeypatch):
+    def _full_policy(self, monkeypatch):
         from app.config import StartupPolicy, settings
 
-        monkeypatch.setattr(settings, "startup_policy", StartupPolicy.PASSIVE)
-        monkeypatch.setattr(settings, "passive_startup", False)
-        monkeypatch.setattr(settings, "skip_post_connect_sync", False)
+        monkeypatch.setattr(settings, "startup_policy", StartupPolicy.FULL)
+        for name in (
+            "startup_export_private_key",
+            "startup_sync_clock",
+            "startup_apply_flood_scope",
+            "startup_send_advertisement",
+            "startup_drain_messages",
+            "startup_reconcile_contacts",
+            "startup_clear_channel_slots",
+            "startup_allow_periodic_offload",
+            "startup_enable_telemetry_collection",
+        ):
+            monkeypatch.setattr(settings, name, False)
 
     @pytest.mark.asyncio
     async def test_uses_current_meshcore_after_waiting_for_operation_lock(self):

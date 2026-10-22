@@ -126,6 +126,7 @@ frontend/src/
 │   ├── useFaviconBadge.ts          # Browser tab unread badge state
 │   ├── useEntranceSettled.ts       # Defers entrance animation work until layout settles
 │   ├── useAppHotkeys.ts             # TanStack Hotkeys registration, scopes, and dispatch
+│   ├── usePagePinchZoomGuard.ts      # Mobile page-pinch policy with MapLibre gesture exemption
 │   └── useRememberedServerPassword.ts # Browser-local repeater/room password persistence
 ├── components/
 │   ├── AppShell.tsx            # App-shell layout: status, sidebar, search/settings panes, cracker, modals, security warning
@@ -641,6 +642,20 @@ Web Push allows notifications even when the browser tab is closed. Requires HTTP
 
 UI styling is mostly utility-class driven (Tailwind-style classes in JSX) plus shared globals in `index.css` and `styles.css`.
 Do not rely on old class-only layout assumptions.
+
+### Mobile page zoom policy
+
+The mobile app shell deliberately prevents browser-level pinch zoom so headers, dialogs and the
+message composer cannot be shifted outside the usable visual viewport. `usePagePinchZoomGuard`
+owns the WebKit gesture handling and multi-touch fallback; the viewport meta is supplementary
+because modern iOS WebKit may ignore its zoom limits. One-finger gestures are never cancelled.
+MapLibre surfaces are exempt through `.maplibregl-map`; any future custom multi-touch surface must
+opt in with `data-page-pinch-zoom="allow"` and verify that it prevents page zoom itself.
+
+This product choice reduces low-vision accessibility and is not a replacement for browser zoom.
+Preserve rem-based sizing, keyboard/screen-reader access and the Local settings font scale, which
+supports 25–400%. Changes to the guard require real touch-browser verification because jsdom can
+only test event selection and cleanup, not native viewport scaling.
 
 ### Canonical style reference
 

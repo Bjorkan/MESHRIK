@@ -62,6 +62,7 @@ from app.radio_sync import (
     stop_periodic_sync,
     stop_telemetry_collect,
 )
+from app.request_context import RequestContextMiddleware, get_request_id
 from app.routers import (
     channels,
     contacts,
@@ -117,6 +118,13 @@ async def lifespan(app: FastAPI):
         await db.connect()
         database_open = True
         logger.info("Database connected")
+        # A crash can occur after the Companion accepted a send but before the
+        # status write. Never retry or present such an intent as unsent/confirmed.
+        from app.repository.messages import MessageRepository
+
+        interrupted = await MessageRepository.recover_interrupted_outgoing_sends()
+        if interrupted:
+            logger.warning("Marked %d interrupted outgoing sends as unknown", interrupted)
         radio_job_worker.start()
         from app.websocket import broadcast_event
 
@@ -306,13 +314,31 @@ async def log_server_errors(request: Request, call_next):
     catches them and logs via ``logger.exception()`` so the full traceback
     is preserved in the ring buffer for the ``GET /api/debug`` snapshot.
     """
+    request_id = get_request_id()
     try:
         response = await call_next(request)
     except Exception:
-        logger.exception("Unhandled exception on %s %s", request.method, request.url.path)
+        # A route template is safe to log; the concrete path may contain a
+        # full contact public key. Before routing, use a fixed placeholder.
+        route = request.scope.get("route")
+        route_template = getattr(route, "path", "<unmatched>")
+        logger.exception(
+            "Unhandled exception request_id=%s method=%s route=%s",
+            request_id,
+            request.method,
+            route_template,
+        )
         raise
     if response.status_code >= 500:
-        logger.error("HTTP %d on %s %s", response.status_code, request.method, request.url.path)
+        route = request.scope.get("route")
+        route_template = getattr(route, "path", "<unmatched>")
+        logger.error(
+            "HTTP error request_id=%s status=%d method=%s route=%s",
+            request_id,
+            response.status_code,
+            request.method,
+            route_template,
+        )
     elif response.status_code == 405:
         request_path = _request_route_path(request.scope)
         allowed_methods: set[str] = set()
@@ -322,6 +348,9 @@ async def log_server_errors(request: Request, call_next):
         if allowed_methods:
             response.headers["Allow"] = ", ".join(sorted(allowed_methods))
     return response
+
+
+app.add_middleware(RequestContextMiddleware)
 
 
 # API routes - all prefixed with /api for production compatibility

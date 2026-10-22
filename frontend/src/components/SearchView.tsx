@@ -3,6 +3,7 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import { useDebouncer } from '@tanstack/react-pacer';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { api } from '../api';
+import { LoadingIndicator } from './ui/loading-indicator';
 import { queryKeys } from '../queryClient';
 import type { Contact, Channel } from '../types';
 import { formatTime } from '../utils/messageParser';
@@ -266,12 +267,20 @@ export function SearchView({
           className="h-9 text-sm"
           aria-label="Search messages"
         />
+        <div className="min-h-6 pt-1 text-sm text-muted-foreground">
+          {loading && !searchResultsQuery.isFetchingNextPage && (
+            <LoadingIndicator label="Searching..." />
+          )}
+          {loading && results.length > 0 && !searchResultsQuery.isFetchingNextPage && (
+            <span className="ml-2">Showing previous results while refreshing.</span>
+          )}
+        </div>
       </div>
 
       {/* Results */}
       <div
         ref={resultsRef}
-        className="flex-1 overflow-y-auto contain-[layout_paint]"
+        className="flex-1 overflow-y-auto [contain:layout_paint]"
         onScroll={(event) => {
           if (visible) retainedScrollOffsetRef.current = event.currentTarget.scrollTop;
         }}
@@ -330,20 +339,25 @@ export function SearchView({
                   className="absolute left-0 top-0 w-full"
                   style={{ transform: `translateY(${virtualRow.start}px)` }}
                 >
-                  <div
-                    className="px-4 py-3 border-b border-border/50 cursor-pointer hover:bg-accent/50 transition-colors"
-                    role="button"
-                    tabIndex={0}
+                  <a
+                    href={`${result.type === 'CHAN' ? '/channel' : '/contact'}/${encodeURIComponent(result.conversation_key)}?message=${result.id}`}
+                    className="block px-4 py-3 border-b border-border/50 cursor-pointer hover:bg-accent/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                     data-message-id={result.id}
                     onFocus={() => {
                       focusedResultIdRef.current = result.id;
                     }}
-                    onClick={() => handleResultClick(result)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        handleResultClick(result);
+                    onClick={(event) => {
+                      if (
+                        event.button !== 0 ||
+                        event.metaKey ||
+                        event.ctrlKey ||
+                        event.shiftKey ||
+                        event.altKey
+                      ) {
+                        return;
                       }
+                      event.preventDefault();
+                      handleResultClick(result);
                     }}
                   >
                     <div className="flex items-center gap-2 mb-1">
@@ -360,11 +374,11 @@ export function SearchView({
                       <span className="text-xs font-medium text-foreground truncate">
                         {convName}
                       </span>
-                      <span className="text-[0.6875rem] text-muted-foreground ml-auto shrink-0">
+                      <span className="text-[0.6875rem] text-muted-foreground ml-auto flex-shrink-0">
                         {formatTime(result.received_at)}
                       </span>
                     </div>
-                    <div className="text-[0.8125rem] text-foreground/80 line-clamp-2 wrap-break-word">
+                    <div className="text-[0.8125rem] text-foreground/80 line-clamp-2 break-words">
                       {result.sender_name && !result.outgoing && (
                         <span className="text-muted-foreground">{result.sender_name}: </span>
                       )}
@@ -376,16 +390,16 @@ export function SearchView({
                         highlightQuery
                       )}
                     </div>
-                  </div>
+                  </a>
                 </div>
               );
             })}
           </div>
         )}
 
-        {loading && !paginationError && (
-          <div className="p-4 text-center text-muted-foreground text-sm" role="status">
-            {searchResultsQuery.isFetchingNextPage ? 'Loading more...' : 'Searching...'}
+        {searchResultsQuery.isFetchingNextPage && !paginationError && (
+          <div className="p-4 text-center text-muted-foreground text-sm">
+            <LoadingIndicator label="Loading more..." />
           </div>
         )}
 

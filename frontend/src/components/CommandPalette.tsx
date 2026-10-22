@@ -363,7 +363,7 @@ export function CommandPalette({
             </span>
             <button
               type="button"
-              className="rounded px-2 py-1 hover:bg-accent hover:text-accent-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+              className="rounded px-2 py-1 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               onClick={() => select(onOpenShortcutHelp)}
             >
               Keyboard shortcuts{' '}

@@ -134,6 +134,23 @@ def test_sanitized_packet_activity_exposes_type_and_signal_but_not_payload(isola
     assert login.rssi is None
 
 
+def test_activity_burst_stays_bounded_and_retains_recent_meaningful_events():
+    queue = RadioJobScheduler(event_limit=64)
+
+    for index in range(1_000):
+        queue.record_activity(RadioActivityKind.PACKET_RECEIVED, packet_type="direct")
+        if index % 250 == 249:
+            queue.record_activity(RadioActivityKind.ACK_OBSERVED)
+    queue.record_activity(RadioActivityKind.PATH_UPDATE)
+
+    retained, gap = queue.activities_since(0)
+    assert gap is True
+    assert len(retained) == 64
+    assert retained == sorted(retained, key=lambda event: event.sequence)
+    assert any(event.kind == RadioActivityKind.ACK_OBSERVED for event in retained)
+    assert retained[-1].kind == RadioActivityKind.PATH_UPDATE
+
+
 def test_ws_contract_deltas_are_typed_and_fail_closed_for_private_fields(isolated_api):
     job = isolated_api.submit(RadioJobKind.REPEATER_LOGIN)
     activity = isolated_api.record_activity(RadioActivityKind.LOGIN_RESPONSE, job_id=job.id)

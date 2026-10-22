@@ -90,4 +90,27 @@ describe('wsEvents', () => {
       'Invalid WebSocket event envelope'
     );
   });
+
+  it('rejects invalid JSON', () => {
+    expect(() => parseWsEvent('{not-json')).toThrow();
+  });
+
+  it.each([
+    ['health', { radio_connected: 'yes' }],
+    ['message', { id: 1, type: 'CHAN', conversation_key: 'aa', text: 'missing state' }],
+    ['contact', { public_key: 7, type: 1, flags: 0 }],
+    ['channel', { key: 'aa' }],
+    ['contact_resolved', { previous_public_key: 'aa', contact: null }],
+    ['contact_deleted', { public_key: 7 }],
+    ['raw_packet', { id: 1, data: 'aabb' }],
+    ['message_acked', { message_id: 1, ack_count: 1, paths: [{ path: 7 }] }],
+    ['radio_job', { id: 'job', kind: 'sync' }],
+    ['radio_activity', { kind: 'connected', at: 7, radio_generation: 1 }],
+    ['error', { message: 7 }],
+    ['pong', { unexpected: true }],
+  ])('rejects malformed %s event data', (type, data) => {
+    expect(() => parseWsEvent(JSON.stringify({ type, data }))).toThrow(
+      `Invalid WebSocket event data for ${type}`
+    );
+  });
 });

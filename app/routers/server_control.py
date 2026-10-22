@@ -20,6 +20,7 @@ from app.radio_sync import (
     _store_pending_direct_message,
     drain_pending_messages,
 )
+from app.request_context import get_request_id
 from app.routers.contacts import _ensure_on_radio
 from app.services.radio_runtime import radio_runtime as radio_manager
 
@@ -34,6 +35,41 @@ SERVER_LOGIN_RESPONSE_TIMEOUT_SECONDS = settings.login_response_timeout_seconds
 def _monotonic() -> float:
     """Wrapper around time.monotonic() for testability."""
     return time.monotonic()
+
+
+def _diagnostic_monotonic() -> float:
+    """Independent clock so protocol-deadline tests remain deterministic."""
+    return time.monotonic()
+
+
+def _log_operation_stage(
+    operation: str,
+    contact: Contact,
+    stage: str,
+    outcome: str,
+    started: float,
+    *,
+    request_id: str | None = None,
+    job_id: object = "-",
+    generation: int | str = "-",
+    level: int = logging.INFO,
+    error_category: str = "-",
+) -> None:
+    """Log bounded radio timing without commands, replies, keys, or credentials."""
+    logger.log(
+        level,
+        "Server control request_id=%s job_id=%s generation=%s operation=%s "
+        "contact=%s stage=%s outcome=%s elapsed_ms=%d error_category=%s",
+        request_id or get_request_id(),
+        job_id,
+        generation,
+        operation,
+        contact.public_key[:12],
+        stage,
+        outcome,
+        max(0, round((_diagnostic_monotonic() - started) * 1000)),
+        error_category,
+    )
 
 
 def get_server_contact_label(contact: Contact) -> str:
@@ -185,7 +221,7 @@ async def fetch_contact_cli_response(
                 continue
 
             if result.type == EventType.ERROR:
-                logger.debug("get_msg() error: %s", result.payload)
+                logger.debug("get_msg() returned a radio error")
                 await asyncio.sleep(1.0)
                 continue
 
@@ -352,17 +388,52 @@ async def prepare_authenticated_contact_connection(
     retry and keeps a single bad login from discarding a route that may be fine.
     """
     contact_label = label or get_server_contact_label(contact)
+    operation = f"{contact_label.replace(' ', '_')}_login"
+    request_id = get_request_id()
+    operation_started = _diagnostic_monotonic()
 
     try:
-        logger.info("Adding %s %s to radio", contact_label, contact.public_key[:12])
-        await _ensure_on_radio(mc, contact)
+        stage_started = _diagnostic_monotonic()
+        try:
+            await _ensure_on_radio(mc, contact)
+        except BaseException as exc:
+            _log_operation_stage(
+                operation,
+                contact,
+                "add_contact",
+                "cancelled" if isinstance(exc, asyncio.CancelledError) else "error",
+                stage_started,
+                request_id=request_id,
+                level=logging.WARNING,
+                error_category=type(exc).__name__,
+            )
+            raise
+        _log_operation_stage(
+            operation,
+            contact,
+            "add_contact",
+            "success",
+            stage_started,
+            request_id=request_id,
+        )
 
+        stage_started = _diagnostic_monotonic()
         response = await _attempt_server_login(
             mc,
             contact,
             password,
             contact_label=contact_label,
             response_timeout=response_timeout,
+        )
+        _log_operation_stage(
+            operation,
+            contact,
+            "login_and_response_wait",
+            response.status,
+            stage_started,
+            request_id=request_id,
+            level=logging.WARNING if response.status != "ok" else logging.INFO,
+            error_category="response_timeout" if response.status == "timeout" else "-",
         )
         if response.status != "timeout":
             return response
@@ -381,20 +452,48 @@ async def prepare_authenticated_contact_connection(
             contact.public_key[:12],
             contact.effective_route_source,
         )
+        stage_started = _diagnostic_monotonic()
         reset_result = await mc.commands.reset_path(contact.public_key)
         if reset_result is None:
+            _log_operation_stage(
+                operation,
+                contact,
+                "reset_path",
+                "timeout",
+                stage_started,
+                request_id=request_id,
+                level=logging.WARNING,
+                error_category="transport_timeout",
+            )
             logger.warning(
                 "No response from radio for reset_path to %s before flood login retry",
                 contact.public_key[:12],
             )
             return response
         if reset_result.type == EventType.ERROR:
+            _log_operation_stage(
+                operation,
+                contact,
+                "reset_path",
+                "error",
+                stage_started,
+                request_id=request_id,
+                level=logging.WARNING,
+                error_category="radio_error",
+            )
             logger.warning(
-                "Failed to reset path before flood login retry to %s: %s",
+                "Failed to reset path before flood login retry to %s",
                 contact.public_key[:12],
-                reset_result.payload,
             )
             return response
+        _log_operation_stage(
+            operation,
+            contact,
+            "reset_path",
+            "success",
+            stage_started,
+            request_id=request_id,
+        )
 
         # Deliberately no _ensure_on_radio here — re-adding the contact would
         # restore the very route we just cleared, and the retry would go direct.
@@ -423,6 +522,15 @@ async def prepare_authenticated_contact_connection(
             status="error",
             authenticated=False,
             message=f"{_login_send_failed_message(contact_label)} ({exc.detail})",
+        )
+    finally:
+        _log_operation_stage(
+            operation,
+            contact,
+            "total",
+            "finished",
+            operation_started,
+            request_id=request_id,
         )
 
 
@@ -455,7 +563,7 @@ async def batch_cli_fetch(
 
             send_result = await mc.commands.send_cmd(contact.public_key, cmd)
             if send_result.type == EventType.ERROR:
-                logger.debug("Command '%s' send error: %s", cmd, send_result.payload)
+                logger.debug("CLI send error for field %s", field)
                 return None
 
             response_event = await fetch_contact_cli_response(
@@ -463,7 +571,7 @@ async def batch_cli_fetch(
             )
             if response_event is not None:
                 return extract_response_text(response_event)
-            logger.warning("No response for command '%s' (%s)", cmd, field)
+            logger.warning("No CLI response for field %s", field)
             return None
 
         results[field] = await radio_manager.run_radio_command(
@@ -544,12 +652,12 @@ async def fetch_repeater_owner_info_binary(
             min_timeout=min_timeout,
         )
         if send_result.type == EventType.ERROR:
-            logger.debug("owner-info binary req send error: %s", send_result.payload)
+            logger.debug("owner-info binary request returned a radio error")
             return None
 
         expected_ack = send_result.payload.get("expected_ack")
         if expected_ack is None:
-            logger.debug("owner-info binary req missing expected_ack: %s", send_result.payload)
+            logger.debug("owner-info binary request missing expected_ack")
             return None
         exp_tag = expected_ack.hex()
 
@@ -588,33 +696,78 @@ async def send_contact_cli_command(
     operation_name: str,
 ) -> CommandResponse:
     """Send a CLI command to a server-capable contact and return the text response."""
-    label = get_server_contact_label(contact)
+    request_id = get_request_id()
+    operation_started = _diagnostic_monotonic()
 
     async def send_command(mc) -> CommandResponse:
-        logger.info("Adding %s %s to radio", label, contact.public_key[:12])
-        await _ensure_on_radio(mc, contact)
+        stage_started = _diagnostic_monotonic()
+        try:
+            await _ensure_on_radio(mc, contact)
+        except BaseException as exc:
+            _log_operation_stage(
+                operation_name,
+                contact,
+                "add_contact",
+                "cancelled" if isinstance(exc, asyncio.CancelledError) else "error",
+                stage_started,
+                request_id=request_id,
+                level=logging.WARNING,
+                error_category=type(exc).__name__,
+            )
+            raise
+        _log_operation_stage(
+            operation_name,
+            contact,
+            "add_contact",
+            "success",
+            stage_started,
+            request_id=request_id,
+        )
         await asyncio.sleep(1.0)
 
         # Clear any stale buffered CLI response from a prior command so it
         # cannot be pulled and mis-attributed to this one.
         await _flush_pending_messages(mc)
 
-        logger.info("Sending command to %s %s: %s", label, contact.public_key[:12], command)
+        stage_started = _diagnostic_monotonic()
         send_result = await mc.commands.send_cmd(contact.public_key, command)
 
         if send_result.type == EventType.ERROR:
+            _log_operation_stage(
+                operation_name,
+                contact,
+                "cli_send",
+                "error",
+                stage_started,
+                request_id=request_id,
+                level=logging.WARNING,
+                error_category="radio_error",
+            )
             raise HTTPException(
                 status_code=422, detail=f"Failed to send command: {send_result.payload}"
             )
+        _log_operation_stage(
+            operation_name,
+            contact,
+            "cli_send",
+            "success",
+            stage_started,
+            request_id=request_id,
+        )
 
+        stage_started = _diagnostic_monotonic()
         response_event = await fetch_contact_cli_response(mc, contact.public_key[:12])
 
         if response_event is None:
-            logger.warning(
-                "No response from %s %s for command: %s",
-                label,
-                contact.public_key[:12],
-                command,
+            _log_operation_stage(
+                operation_name,
+                contact,
+                "response_wait",
+                "timeout",
+                stage_started,
+                request_id=request_id,
+                level=logging.WARNING,
+                error_category="response_timeout",
             )
             return CommandResponse(
                 command=command,
@@ -626,11 +779,13 @@ async def send_contact_cli_command(
             "sender_timestamp",
             response_event.payload.get("timestamp"),
         )
-        logger.info(
-            "Received response from %s %s: %s",
-            label,
-            contact.public_key[:12],
-            response_text,
+        _log_operation_stage(
+            operation_name,
+            contact,
+            "response_wait",
+            "success",
+            stage_started,
+            request_id=request_id,
         )
 
         return CommandResponse(
@@ -639,12 +794,36 @@ async def send_contact_cli_command(
             sender_timestamp=sender_timestamp,
         )
 
-    return await radio_manager.run_radio_command(
-        operation_name,
-        send_command,
-        pause_polling=True,
-        suspend_auto_fetch=True,
-    )
+    try:
+        return await radio_manager.run_radio_command(
+            operation_name,
+            send_command,
+            pause_polling=True,
+            suspend_auto_fetch=True,
+        )
+    except BaseException as exc:
+        _log_operation_stage(
+            operation_name,
+            contact,
+            "total",
+            "cancelled" if isinstance(exc, asyncio.CancelledError) else "error",
+            operation_started,
+            request_id=request_id,
+            level=logging.WARNING,
+            error_category=type(exc).__name__,
+        )
+        raise
+    finally:
+        # Errors have a specific record above; this terminal duration remains
+        # useful for successful and failed requests alike.
+        _log_operation_stage(
+            operation_name,
+            contact,
+            "total",
+            "finished",
+            operation_started,
+            request_id=request_id,
+        )
 
 
 async def scheduled_authenticated_contact_login(
@@ -694,13 +873,61 @@ async def scheduled_authenticated_contact_login(
         if kind == RadioJobKind.REPEATER_LOGIN
         else ResponseKind.ROOM_LOGIN
     )
+    request_id = get_request_id()
+    operation = f"{label.replace(' ', '_')}_login"
+    operation_started = _diagnostic_monotonic()
     loop = asyncio.get_running_loop()
     sent: asyncio.Future[Any] = loop.create_future()
     first_job_id = None
 
     async def initial_command(mc):
-        await _ensure_on_radio(mc, contact)
+        stage_started = _diagnostic_monotonic()
+        try:
+            await _ensure_on_radio(mc, contact)
+        except BaseException as exc:
+            _log_operation_stage(
+                operation,
+                contact,
+                "add_contact",
+                "cancelled" if isinstance(exc, asyncio.CancelledError) else "error",
+                stage_started,
+                request_id=request_id,
+                job_id=job.id,
+                generation=job.radio_generation,
+                level=logging.WARNING,
+                error_category=type(exc).__name__,
+            )
+            raise
+        _log_operation_stage(
+            operation,
+            contact,
+            "add_contact",
+            "success",
+            stage_started,
+            request_id=request_id,
+            job_id=job.id,
+            generation=job.radio_generation,
+        )
+        stage_started = _diagnostic_monotonic()
         result = await mc.commands.send_login(contact.public_key, password)
+        _log_operation_stage(
+            operation,
+            contact,
+            "login_send",
+            "error" if result is None or result.type == EventType.ERROR else "success",
+            stage_started,
+            request_id=request_id,
+            job_id=job.id,
+            generation=job.radio_generation,
+            level=(
+                logging.WARNING
+                if result is None or result.type == EventType.ERROR
+                else logging.INFO
+            ),
+            error_category=(
+                "radio_error" if result is not None and result.type == EventType.ERROR else "-"
+            ),
+        )
         if not sent.done():
             sent.set_result(result)
         return RadioCommandOutcome.AWAITING_RESPONSE
@@ -721,6 +948,15 @@ async def scheduled_authenticated_contact_login(
             kind=response_kind,
             target=contact.public_key[:12].lower(),
             meshcore=radio_manager.meshcore,
+        )
+        logger.info(
+            "Server control request_id=%s job_id=%s generation=%d operation=%s "
+            "contact=%s stage=queue outcome=admitted elapsed_ms=0 error_category=-",
+            request_id,
+            job.id,
+            job.radio_generation,
+            operation,
+            contact.public_key[:12],
         )
     except (RadioAdmissionError, ResponseReservationConflict) as exc:
         if first_job_id is not None:
@@ -755,6 +991,18 @@ async def scheduled_authenticated_contact_login(
         else:
             reason = "radio_busy"
             message = "Another operation is using the radio. Wait for it to finish, then retry."
+        _log_operation_stage(
+            operation,
+            contact,
+            "queue",
+            "not_admitted",
+            operation_started,
+            request_id=request_id,
+            job_id=first_job_id or "-",
+            generation=getattr(radio_manager, "radio_generation", "-"),
+            level=logging.WARNING,
+            error_category=reason,
+        )
         return RepeaterLoginResponse(
             status="error",
             authenticated=False,
@@ -804,10 +1052,23 @@ async def scheduled_authenticated_contact_login(
                 message=_login_send_failed_message(label),
             )
 
+        response_wait_started = _diagnostic_monotonic()
         try:
             outcome = await asyncio.wait_for(asyncio.shield(pending.future), response_timeout)
         except TimeoutError:
             outcome = None
+        _log_operation_stage(
+            operation,
+            contact,
+            "response_wait",
+            "timeout" if outcome is None else outcome.value,
+            response_wait_started,
+            request_id=request_id,
+            job_id=job.id,
+            generation=job.radio_generation,
+            level=logging.WARNING if outcome is None else logging.INFO,
+            error_category="response_timeout" if outcome is None else "-",
+        )
 
         if outcome is None and pending.future.done():
             outcome = pending.future.result()
@@ -826,7 +1087,35 @@ async def scheduled_authenticated_contact_login(
                 nonlocal retry_dispatched
                 if pending.future.done():
                     return RadioCommandOutcome.FINISHED
+                assert retry_job is not None
+                reset_started = _diagnostic_monotonic()
                 reset_result = await mc.commands.reset_path(contact.public_key)
+                _log_operation_stage(
+                    operation,
+                    contact,
+                    "reset_path",
+                    (
+                        "error"
+                        if reset_result is None or reset_result.type == EventType.ERROR
+                        else "success"
+                    ),
+                    reset_started,
+                    request_id=request_id,
+                    job_id=retry_job.id,
+                    generation=retry_job.radio_generation,
+                    level=(
+                        logging.WARNING
+                        if reset_result is None or reset_result.type == EventType.ERROR
+                        else logging.INFO
+                    ),
+                    error_category=(
+                        "transport_timeout"
+                        if reset_result is None
+                        else "radio_error"
+                        if reset_result.type == EventType.ERROR
+                        else "-"
+                    ),
+                )
                 if reset_result is None or reset_result.type == EventType.ERROR:
                     return RadioCommandOutcome.UNCERTAIN
                 # A direct-route answer may arrive during reset_path. It
@@ -834,7 +1123,34 @@ async def scheduled_authenticated_contact_login(
                 if pending.future.done():
                     return RadioCommandOutcome.FINISHED
                 retry_dispatched = True
+                send_started = _diagnostic_monotonic()
                 second_result = await mc.commands.send_login(contact.public_key, password)
+                _log_operation_stage(
+                    operation,
+                    contact,
+                    "flood_login_send",
+                    (
+                        "error"
+                        if second_result is None or second_result.type == EventType.ERROR
+                        else "success"
+                    ),
+                    send_started,
+                    request_id=request_id,
+                    job_id=retry_job.id,
+                    generation=retry_job.radio_generation,
+                    level=(
+                        logging.WARNING
+                        if second_result is None or second_result.type == EventType.ERROR
+                        else logging.INFO
+                    ),
+                    error_category=(
+                        "transport_timeout"
+                        if second_result is None
+                        else "radio_error"
+                        if second_result.type == EventType.ERROR
+                        else "-"
+                    ),
+                )
                 if second_result is None or second_result.type == EventType.ERROR:
                     return RadioCommandOutcome.UNCERTAIN
                 return RadioCommandOutcome.UNCERTAIN  # local send != authenticated
@@ -921,3 +1237,13 @@ async def scheduled_authenticated_contact_login(
             retry_unlisten()
         unlisten()
         pending.unsubscribe()
+        _log_operation_stage(
+            operation,
+            contact,
+            "total",
+            "finished",
+            operation_started,
+            request_id=request_id,
+            job_id=job.id,
+            generation=job.radio_generation,
+        )

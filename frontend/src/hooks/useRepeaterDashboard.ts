@@ -1,4 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { Store } from '@tanstack/store';
+import { useStore } from '@tanstack/react-store';
 import { api } from '../api';
 import { toast } from '../components/ui/sonner';
 import type {
@@ -16,15 +18,21 @@ import type {
   RepeaterRegionsResponse,
   CommandResponse,
 } from '../types';
+import type { ServerLoginAttemptState } from '../utils/serverLoginState';
 import {
-  buildServerLoginAttemptFromError,
-  buildServerLoginAttemptFromResponse,
-  type ServerLoginAttemptState,
-} from '../utils/serverLoginState';
+  resetServerLoginStoreForTests,
+  startServerLogin,
+  useServerLogin,
+} from '../stores/serverLoginStore';
 
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 2000;
 const MAX_CACHED_REPEATERS = 20;
+
+export type RepeaterPendingAction =
+  'zero-hop-advert' | 'flood-advert' | 'clock' | 'reboot' | 'console';
+// Only in-flight identities, never commands/replies. Shared across dashboard remounts.
+const pendingCommands = new Store<Record<string, RepeaterPendingAction>>({});
 
 interface ConsoleEntry {
   command: string;
@@ -147,6 +155,8 @@ function cacheState(publicKey: string, entry: RepeaterDashboardCacheEntry) {
 
 export function resetRepeaterDashboardCacheForTests() {
   repeaterDashboardCache.clear();
+  pendingCommands.setState(() => ({}));
+  resetServerLoginStoreForTests('repeater');
 }
 
 // Maps pane name to the API call
@@ -182,7 +192,8 @@ export interface UseRepeaterDashboardResult {
   paneStates: Record<PaneName, PaneState>;
   consoleHistory: ConsoleEntry[];
   consoleLoading: boolean;
-  login: (password: string) => Promise<boolean>;
+  pendingAction: RepeaterPendingAction | null;
+  login: (password: string, lifecycle?: LoginLifecycle) => Promise<boolean>;
   loginAsGuest: () => Promise<boolean>;
   refreshPane: (pane: PaneName) => Promise<void>;
   loadAll: () => Promise<void>;
@@ -191,6 +202,11 @@ export interface UseRepeaterDashboardResult {
   sendFloodAdvert: () => Promise<void>;
   rebootRepeater: () => Promise<void>;
   syncClock: () => Promise<void>;
+}
+
+interface LoginLifecycle {
+  onStarted?: () => void;
+  onConfirmed?: () => void;
 }
 
 interface UseRepeaterDashboardOptions {
@@ -204,13 +220,14 @@ export function useRepeaterDashboard(
   const conversationId =
     activeConversation && activeConversation.type === 'contact' ? activeConversation.id : null;
   const cachedState = getCachedState(conversationId);
+  const loginRecord = useServerLogin('repeater', conversationId);
 
-  const [loggedIn, setLoggedIn] = useState(cachedState?.loggedIn ?? false);
-  const [loginLoading, setLoginLoading] = useState(false);
-  const [loginError, setLoginError] = useState<string | null>(cachedState?.loginError ?? null);
-  const [lastLoginAttempt, setLastLoginAttempt] = useState<ServerLoginAttemptState | null>(
-    cachedState?.lastLoginAttempt ?? null
-  );
+  const loggedIn = loginRecord?.accessGranted ?? cachedState?.loggedIn ?? false;
+  const loginLoading = loginRecord?.phase === 'pending';
+  const loginError = loginRecord ? loginRecord.error : (cachedState?.loginError ?? null);
+  const lastLoginAttempt = loginRecord
+    ? loginRecord.attempt
+    : (cachedState?.lastLoginAttempt ?? null);
 
   const [paneData, setPaneData] = useState<PaneData>(
     cachedState?.paneData ?? createInitialPaneData
@@ -226,7 +243,10 @@ export function useRepeaterDashboard(
   const [consoleHistory, setConsoleHistory] = useState<ConsoleEntry[]>(
     cachedState?.consoleHistory ?? []
   );
-  const [consoleLoading, setConsoleLoading] = useState(false);
+  const pendingAction = useStore(pendingCommands, (state) =>
+    conversationId ? (state[conversationId] ?? null) : null
+  );
+  const consoleLoading = pendingAction !== null;
 
   // Track which conversation we're operating on to avoid stale updates after
   // unmount. Initialised from activeConversation because the parent renders
@@ -280,39 +300,18 @@ export function useRepeaterDashboard(
   }, [activeConversation]);
 
   const login = useCallback(
-    async (password: string) => {
+    (password: string, lifecycle: LoginLifecycle = {}) => {
       const publicKey = getPublicKey();
-      if (!publicKey) return false;
-      const conversationId = publicKey;
+      if (!publicKey) return Promise.resolve(false);
       const method = password.length > 0 ? 'password' : 'blank';
-
-      setLoginLoading(true);
-      setLoginError(null);
-      try {
-        const result = await api.repeaterLogin(publicKey, password);
-        if (activeIdRef.current !== conversationId) return false;
-        setLastLoginAttempt(buildServerLoginAttemptFromResponse(method, result, 'repeater'));
-        setLoggedIn(true);
-        if (!result.authenticated) {
-          const msg = result.message ?? 'Repeater login was not confirmed';
-          setLoginError(msg);
-          // The inline login banner remains visible with a recovery action;
-          // don't duplicate the same failure as an unrelated toast.
-        }
-        return result.authenticated;
-      } catch (err) {
-        if (activeIdRef.current !== conversationId) return false;
-        const msg = err instanceof Error ? err.message : 'Login failed';
-        setLastLoginAttempt(buildServerLoginAttemptFromError(method, msg, 'repeater'));
-        setLoggedIn(true);
-        setLoginError(msg);
-        // The retry banner is the single source of visible login failure feedback.
-        return false;
-      } finally {
-        if (activeIdRef.current === conversationId) {
-          setLoginLoading(false);
-        }
-      }
+      return startServerLogin({
+        kind: 'repeater',
+        targetKey: publicKey,
+        password,
+        method,
+        onStarted: lifecycle.onStarted,
+        onConfirmed: lifecycle.onConfirmed,
+      }).promise;
     },
     [getPublicKey]
   );
@@ -433,10 +432,16 @@ export function useRepeaterDashboard(
   }, [refreshPane]);
 
   const sendConsoleCommand = useCallback(
-    async (command: string) => {
+    async (command: string, action: RepeaterPendingAction = 'console') => {
       const publicKey = getPublicKey();
       if (!publicKey) return;
       const conversationId = publicKey;
+      if (pendingCommands.state[publicKey]) return;
+      if (Object.keys(pendingCommands.state).length >= MAX_CACHED_REPEATERS) {
+        toast.error('Too many pending repeater commands. Wait for a command to finish.');
+        return;
+      }
+      pendingCommands.setState((state) => ({ ...state, [publicKey]: action }));
 
       const now = Math.floor(Date.now() / 1000);
 
@@ -446,10 +451,9 @@ export function useRepeaterDashboard(
         { command, response: '', timestamp: now, outgoing: true },
       ]);
 
-      setConsoleLoading(true);
       try {
         const result: CommandResponse = await api.sendRepeaterCommand(publicKey, command);
-        if (activeIdRef.current !== conversationId) return;
+        if (!mountedRef.current || activeIdRef.current !== conversationId) return;
 
         setConsoleHistory((prev) => [
           ...prev,
@@ -461,36 +465,38 @@ export function useRepeaterDashboard(
           },
         ]);
       } catch (err) {
-        if (activeIdRef.current !== conversationId) return;
+        if (!mountedRef.current || activeIdRef.current !== conversationId) return;
         const msg = err instanceof Error ? err.message : 'Command failed';
         setConsoleHistory((prev) => [
           ...prev,
           { command, response: `Error: ${msg}`, timestamp: now, outgoing: false },
         ]);
       } finally {
-        if (activeIdRef.current === conversationId) {
-          setConsoleLoading(false);
-        }
+        pendingCommands.setState((state) => {
+          const remaining = { ...state };
+          delete remaining[publicKey];
+          return remaining;
+        });
       }
     },
     [getPublicKey]
   );
 
   const sendZeroHopAdvert = useCallback(async () => {
-    await sendConsoleCommand('advert.zerohop');
+    await sendConsoleCommand('advert.zerohop', 'zero-hop-advert');
   }, [sendConsoleCommand]);
 
   const sendFloodAdvert = useCallback(async () => {
-    await sendConsoleCommand('advert');
+    await sendConsoleCommand('advert', 'flood-advert');
   }, [sendConsoleCommand]);
 
   const rebootRepeater = useCallback(async () => {
-    await sendConsoleCommand('reboot');
+    await sendConsoleCommand('reboot', 'reboot');
   }, [sendConsoleCommand]);
 
   const syncClock = useCallback(async () => {
     const epochSeconds = Math.floor(Date.now() / 1000);
-    await sendConsoleCommand(`time ${epochSeconds}`);
+    await sendConsoleCommand(`time ${epochSeconds}`, 'clock');
   }, [sendConsoleCommand]);
 
   return {
@@ -502,6 +508,7 @@ export function useRepeaterDashboard(
     paneStates,
     consoleHistory,
     consoleLoading,
+    pendingAction,
     login,
     loginAsGuest,
     refreshPane,

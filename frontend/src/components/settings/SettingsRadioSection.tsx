@@ -5,6 +5,7 @@ import { ChevronDown, Download, MapPinned, Upload } from 'lucide-react';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Button } from '../ui/button';
+import { LoadingIndicator } from '../ui/loading-indicator';
 import { Separator } from '../ui/separator';
 import { toast } from '../ui/sonner';
 import { Checkbox } from '../ui/checkbox';
@@ -869,15 +870,24 @@ export function SettingsRadioSection({
   const radioReady = transportConnected && (radioState === 'ready' || radioState === 'connected');
   const radioDegraded = transportConnected && radioState === 'degraded';
   const radioSetupFailed = transportConnected && radioState === 'failed';
-  const connectionActionLabel =
-    radioState === 'paused' ? 'Reconnect' : transportConnected ? 'Disconnect' : 'Stop Trying';
+  const setupNeedsRetry = radioDegraded || radioSetupFailed;
+  const workerQuarantined = health?.radio_scheduler?.quarantined === true;
+  const connectionActionLabel = workerQuarantined
+    ? 'Restart required'
+    : setupNeedsRetry
+      ? 'Retry setup'
+      : radioState === 'paused'
+        ? 'Reconnect'
+        : transportConnected
+          ? 'Disconnect'
+          : 'Stop Trying';
 
   const connectionStatusLabel = radioReady
     ? health?.connection_info || 'Connected'
     : radioDegraded
-      ? `Connected (degraded${health?.startup_error_stage ? ` at ${health.startup_error_stage}` : ''})`
+      ? `Transport connected — setup degraded${health?.startup_error_stage ? ` at ${health.startup_error_stage}` : ''}`
       : radioSetupFailed
-        ? `Connected — setup failed${health?.startup_error_stage ? ` at ${health.startup_error_stage}` : ''}`
+        ? `Transport connected — setup failed${health?.startup_error_stage ? ` at ${health.startup_error_stage}` : ''}`
         : radioState === 'initializing'
           ? `Initializing ${health?.connection_info || 'radio'}`
           : radioState === 'connecting'
@@ -916,11 +926,12 @@ export function SettingsRadioSection({
   }, [health?.radio_device_info]);
 
   const handleConnectionAction = async () => {
+    if (workerQuarantined) return;
     setConnectionBusy(true);
     try {
-      if (radioState === 'paused') {
+      if (radioState === 'paused' || setupNeedsRetry) {
         await onReconnect();
-        toast.success('Reconnect requested');
+        toast.success(setupNeedsRetry ? 'Radio setup ready' : 'Radio reconnected');
       } else {
         await onDisconnect();
         toast.success('Radio connection paused');
@@ -961,19 +972,55 @@ export function SettingsRadioSection({
         </div>
         {deviceInfoLabel && <p className="text-sm text-muted-foreground">{deviceInfoLabel}</p>}
 
+        {(setupNeedsRetry || workerQuarantined) && (
+          <div
+            className="space-y-1 rounded-md border border-warning/40 bg-warning/10 p-3 text-xs"
+            role={radioSetupFailed || workerQuarantined ? 'alert' : 'status'}
+          >
+            {workerQuarantined ? (
+              <p>
+                Radio command worker is quarantined
+                {health?.radio_scheduler?.last_job_kind
+                  ? ` after ${health.radio_scheduler.last_job_kind}`
+                  : ''}
+                . Restart MESHRIK before sending more radio commands.
+              </p>
+            ) : (
+              <p>
+                {radioSetupFailed
+                  ? 'The transport is connected, but radio setup failed.'
+                  : 'The transport is connected and usable, but radio setup is degraded.'}
+              </p>
+            )}
+            {health?.startup_stage && <p>Current setup stage: {health.startup_stage}</p>}
+            {health?.startup_error_stage && <p>Last failed stage: {health.startup_error_stage}</p>}
+            {(health?.startup_skipped_stages?.length ?? 0) > 0 && (
+              <p>Skipped stages: {health?.startup_skipped_stages?.join(', ')}</p>
+            )}
+          </div>
+        )}
+
         {health?.radio_stats && <RadioDetailsCollapsible stats={health.radio_stats} />}
 
         <Button
           type="button"
           variant="outline"
           onClick={handleConnectionAction}
-          disabled={connectionBusy}
+          disabled={connectionBusy || workerQuarantined}
           className="w-full"
         >
           {connectionBusy ? `${connectionActionLabel}...` : connectionActionLabel}
         </Button>
         <p className="text-[0.8125rem] text-muted-foreground">
-          Disconnect pauses automatic reconnect attempts so another device can use the radio.
+          {workerQuarantined
+            ? 'A normal setup retry cannot safely recover an ambiguous or timed-out radio command.'
+            : setupNeedsRetry
+              ? 'Retries setup on the current transport without disconnecting or enabling destructive maintenance.'
+              : radioState === 'paused'
+                ? 'Reconnects the configured radio transport and resumes automatic reconnect attempts.'
+                : !transportConnected
+                  ? 'Stops automatic reconnect attempts and leaves the radio connection paused.'
+                  : 'Disconnect pauses automatic reconnect attempts so another device can use the radio.'}
         </p>
       </div>
 
@@ -1041,7 +1088,7 @@ export function SettingsRadioSection({
           id="preset"
           value={currentPreset}
           onChange={(e) => handlePresetChange(e.target.value)}
-          className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2"
+          className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
         >
           <option value="custom">Custom</option>
           {allRadioPresets.map((preset) => (
@@ -1156,7 +1203,7 @@ export function SettingsRadioSection({
             id="path-hash-mode"
             value={pathHashMode}
             onChange={(e) => radioForm.setFieldValue('pathHashMode', e.target.value)}
-            className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
           >
             <option value="0">1 byte — up to 63 hops (default)</option>
             <option value="1">2 bytes — up to 32 hops</option>
@@ -1234,7 +1281,7 @@ export function SettingsRadioSection({
             onChange={(e) =>
               radioForm.setFieldValue('advertLocationSource', e.target.value as 'off' | 'current')
             }
-            className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
           >
             <option value="off">Off</option>
             <option value="current">Include Node Location</option>
@@ -1269,7 +1316,7 @@ export function SettingsRadioSection({
               id="telemetry-mode-base"
               value={telemetryModeBase}
               onChange={(e) => radioForm.setFieldValue('telemetryModeBase', Number(e.target.value))}
-              className="w-full h-9 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              className="w-full h-9 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
             >
               <option value={0}>Deny</option>
               <option value={1}>Per-Contact</option>
@@ -1284,7 +1331,7 @@ export function SettingsRadioSection({
               id="telemetry-mode-loc"
               value={telemetryModeLoc}
               onChange={(e) => radioForm.setFieldValue('telemetryModeLoc', Number(e.target.value))}
-              className="w-full h-9 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              className="w-full h-9 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
             >
               <option value={0}>Deny</option>
               <option value={1}>Per-Contact</option>
@@ -1299,7 +1346,7 @@ export function SettingsRadioSection({
               id="telemetry-mode-env"
               value={telemetryModeEnv}
               onChange={(e) => radioForm.setFieldValue('telemetryModeEnv', Number(e.target.value))}
-              className="w-full h-9 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              className="w-full h-9 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
             >
               <option value={0}>Deny</option>
               <option value={1}>Per-Contact</option>
@@ -1437,7 +1484,7 @@ export function SettingsRadioSection({
           rows={4}
           placeholder={'nl-gr\nde-by\nMyRegion'}
           spellCheck={false}
-          className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono ring-offset-background placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
         />
         <p className="text-[0.8125rem] text-muted-foreground">
           One region name per line. Incoming region-scoped (TransportFlood/TransportDirect) packets
@@ -1457,8 +1504,13 @@ export function SettingsRadioSection({
               size="sm"
               onClick={handleDiscoverRegions}
               disabled={regionDiscoveryLoading || !health?.radio_connected}
+              className="h-auto min-h-9 max-w-full whitespace-normal"
             >
-              {regionDiscoveryLoading ? 'Asking repeaters...' : 'Discover Regions'}
+              {regionDiscoveryLoading ? (
+                <LoadingIndicator label="Asking repeaters..." />
+              ) : (
+                'Discover Regions'
+              )}
             </Button>
           </div>
           <p className="text-[0.8125rem] text-muted-foreground">
@@ -1472,6 +1524,9 @@ export function SettingsRadioSection({
           )}
           {regionDiscovery && (
             <div className="space-y-2">
+              {regionDiscoveryLoading && (
+                <p className="text-sm text-muted-foreground">Previous region discovery results</p>
+              )}
               <p className="text-sm font-medium">
                 {regionDiscovery.repeaters_answered}/{regionDiscovery.repeaters_queried} repeater
                 {regionDiscovery.repeaters_queried === 1 ? '' : 's'} answered
@@ -1644,9 +1699,13 @@ export function SettingsRadioSection({
                 variant="outline"
                 onClick={() => handleDiscover(target as RadioDiscoveryTarget)}
                 disabled={meshDiscoveryLoadingTarget !== null || !health?.radio_connected}
-                className="w-full"
+                className="h-auto min-h-9 w-full min-w-0 whitespace-normal"
               >
-                {meshDiscoveryLoadingTarget === target ? 'Listening...' : label}
+                {meshDiscoveryLoadingTarget === target ? (
+                  <LoadingIndicator label="Waiting for discovery replies..." />
+                ) : (
+                  label
+                )}
               </Button>
             ))}
           </div>
@@ -1660,6 +1719,9 @@ export function SettingsRadioSection({
           )}
           {meshDiscovery && (
             <div className="space-y-2 rounded-md border border-input bg-muted/20 p-3">
+              {meshDiscoveryLoadingTarget !== null && (
+                <p className="text-sm text-muted-foreground">Previous mesh discovery results</p>
+              )}
               <div className="flex items-center justify-between gap-4">
                 <p className="text-sm font-medium">
                   Last sweep: {meshDiscovery.results.length} node

@@ -306,8 +306,8 @@ async def sync_channels_from_radio(
 ) -> dict:
     """Copy channel slots into the DB, optionally clearing physical slots.
 
-    The default is deliberately non-destructive and is used by the ``sync``
-    startup policy. Slot clearing is a separately authorized full-policy stage.
+    The default is deliberately non-destructive and is used by the full
+    startup baseline. Slot clearing is a separately authorized stage.
     """
     synced = 0
     cleared = 0
@@ -392,6 +392,8 @@ def _split_channel_sender_and_text(text: str) -> tuple[str | None, str]:
 async def _resolve_channel_for_pending_message(
     mc: MeshCore,
     channel_idx: int,
+    *,
+    expected_channel_key: str | None = None,
 ) -> tuple[str | None, str | None]:
     """Resolve a pending channel message's slot to a channel key and name."""
     try:
@@ -400,8 +402,16 @@ async def _resolve_channel_for_pending_message(
         logger.debug("Failed to fetch channel slot %s for pending message: %s", channel_idx, exc)
     else:
         if result.type == EventType.CHANNEL_INFO:
-            # Resolving an incoming message queried an actual radio slot;
-            # it must not downgrade the residency snapshot from startup sync.
+            # This lookup is the *current* slot, not evidence of historical
+            # queue ownership. In particular it must not upsert/remember B
+            # while trying to resolve a queued packet proven to belong to A.
+            secret = result.payload.get("channel_secret")
+            if expected_channel_key is not None:
+                if not isinstance(secret, bytes) or len(secret) != 16:
+                    return None, None
+                if secret.hex().upper() != expected_channel_key.upper():
+                    return None, None
+            # A verified match may refresh the connected radio's residency.
             key_hex = await upsert_channel_from_radio_slot(result.payload, on_radio=True)
             if key_hex is not None:
                 radio_manager.remember_pending_message_channel_slot(key_hex, channel_idx)
@@ -419,11 +429,33 @@ async def _resolve_channel_for_pending_message(
 
 
 async def _store_pending_direct_message(event, *, journal_id: int | None = None) -> bool:
-    """Stage before processing; failures remain recoverable after radio dequeue."""
+    """Stage before processing; never report malformed queued DMs as saved."""
     from app.services import pending_radio_ingress as journal
 
-    entry_id = journal_id if journal_id is not None else await journal.stage("PRIV", event.payload)
+    # CLI commands/replies must not be journaled as decrypted chat text.
+    if event.payload.get("txt_type", 0) in (1, 3):
+        return False
     try:
+        entry_id = (
+            journal_id if journal_id is not None else await journal.stage("PRIV", event.payload)
+        )
+    except Exception:
+        broadcast_error(
+            "Radio inbound storage unavailable",
+            "A dequeued private message could not be journaled; inspect storage health before draining further.",
+        )
+        raise
+    try:
+        prefix = event.payload.get("public_key") or event.payload.get("pubkey_prefix")
+        text = event.payload.get("text")
+        if not isinstance(prefix, str) or len(prefix) < 12:
+            raise ValueError("Invalid queued sender identity")
+        try:
+            bytes.fromhex(prefix)
+        except ValueError as exc:
+            raise ValueError("Invalid queued sender hex") from exc
+        if not isinstance(text, str):
+            raise ValueError("Invalid queued text payload")
         await on_contact_message(event)
     except Exception as exc:
         await journal.settle(entry_id, stored=False, reason=type(exc).__name__)
@@ -439,7 +471,14 @@ async def _store_pending_channel_message(
     """Stage original event, then resolve its slot and persist chat idempotently."""
     from app.services import pending_radio_ingress as journal
 
-    entry_id = journal_id if journal_id is not None else await journal.stage("CHAN", payload)
+    try:
+        entry_id = journal_id if journal_id is not None else await journal.stage("CHAN", payload)
+    except Exception:
+        broadcast_error(
+            "Radio inbound storage unavailable",
+            "A dequeued channel message could not be journaled; inspect storage health before draining further.",
+        )
+        raise
     try:
         channel_idx = payload.get("channel_idx")
         if isinstance(channel_idx, bool) or channel_idx is None:
@@ -459,7 +498,7 @@ async def _store_pending_channel_message(
         except ValueError as exc:
             raise ValueError("Invalid verified channel identity") from exc
         channel_key, channel_name = await _resolve_channel_for_pending_message(
-            mc, normalized_channel_idx
+            mc, normalized_channel_idx, expected_channel_key=verified_key
         )
         if channel_key is None or channel_key.upper() != verified_key.upper():
             raise ValueError("Channel slot differs from verified RX provenance")
@@ -579,6 +618,9 @@ async def sync_and_offload_all(mc: MeshCore) -> dict:
 # Exactly one application-owned task submits pending pulls through radio worker.
 # The SDK's start_auto_message_fetching() must never be started by MESHRIK.
 _inbound_catchup_task: asyncio.Task | None = None
+# A waiting push received while the worker is draining must trigger one more
+# pass. Otherwise a late queue write can be left behind until the next audit.
+_inbound_catchup_retrigger_generation: int | None = None
 _owned_get_msg = 0
 MAX_PENDING_PULL_BATCH = 100
 
@@ -615,22 +657,41 @@ async def _run_inbound_catchup(expected_generation: int) -> None:
         logger.info("Pending inbound catch-up deferred until next authorized poll")
 
 
+def _inbound_catchup_finished(task: asyncio.Task) -> None:
+    """Re-arm one bounded pass if a waiting push raced the previous drain."""
+    global _inbound_catchup_task, _inbound_catchup_retrigger_generation
+    if _inbound_catchup_task is not task:
+        return
+    _inbound_catchup_task = None
+    requested = _inbound_catchup_retrigger_generation
+    _inbound_catchup_retrigger_generation = None
+    if (
+        requested is not None
+        and radio_manager.is_connected
+        and requested == radio_manager.radio_generation
+    ):
+        request_inbound_catchup()
+
+
 def request_inbound_catchup() -> None:
-    """Coalesce waiting notifications without opening a second radio command owner."""
-    global _inbound_catchup_task
+    """Coalesce wakeups; never open two concurrent pending-message workers."""
+    global _inbound_catchup_task, _inbound_catchup_retrigger_generation
     if not radio_manager.is_connected:
         return
-    if _inbound_catchup_task is not None and not _inbound_catchup_task.done():
-        return
     generation = radio_manager.radio_generation
+    if _inbound_catchup_task is not None and not _inbound_catchup_task.done():
+        _inbound_catchup_retrigger_generation = generation
+        return
     _inbound_catchup_task = asyncio.create_task(
         _run_inbound_catchup(generation), name="inbound-backlog-catchup"
     )
+    _inbound_catchup_task.add_done_callback(_inbound_catchup_finished)
 
 
 async def stop_inbound_catchup() -> None:
-    global _inbound_catchup_task
+    global _inbound_catchup_task, _inbound_catchup_retrigger_generation
     task, _inbound_catchup_task = _inbound_catchup_task, None
+    _inbound_catchup_retrigger_generation = None
     if task is not None and not task.done():
         task.cancel()
         try:
@@ -1184,8 +1245,6 @@ async def _periodic_sync_loop():
             await asyncio.sleep(SYNC_INTERVAL)
             cleanup_expired_acks()
             if not radio_manager.is_connected:
-                continue
-            if settings.effective_startup_policy.value != "full":
                 continue
 
             async def run_periodic_sync(mc) -> None:

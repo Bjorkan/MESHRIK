@@ -1,5 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Button } from '../ui/button';
+import { LoadingIndicator } from '../ui/loading-indicator';
+import type { RepeaterPendingAction } from '../../hooks/useRepeaterDashboard';
 
 export function ActionsPane({
   onSendZeroHopAdvert,
@@ -7,12 +9,14 @@ export function ActionsPane({
   onSyncClock,
   onReboot,
   consoleLoading,
+  pendingAction,
 }: {
   onSendZeroHopAdvert: () => void;
   onSendFloodAdvert: () => void;
   onSyncClock: () => void;
   onReboot: () => void;
   consoleLoading: boolean;
+  pendingAction?: RepeaterPendingAction | null;
 }) {
   const [confirmReboot, setConfirmReboot] = useState(false);
 
@@ -37,9 +41,13 @@ export function ActionsPane({
       <div className="px-3 py-2 bg-muted/50 border-b border-border">
         <h3 className="text-sm font-medium">Actions</h3>
       </div>
-      <div className="p-3 flex flex-wrap gap-2">
+      <div className="p-3 flex flex-wrap gap-2 [&>button]:h-auto [&>button]:min-h-8 [&>button]:max-w-full [&>button]:whitespace-normal">
         <Button variant="outline" size="sm" onClick={onSendZeroHopAdvert} disabled={consoleLoading}>
-          Zero Hop Advert
+          {pendingAction === 'zero-hop-advert' ? (
+            <LoadingIndicator label="Requesting zero-hop advert..." />
+          ) : (
+            'Zero Hop Advert'
+          )}
         </Button>
         <Button
           variant="destructive"
@@ -47,10 +55,18 @@ export function ActionsPane({
           onClick={onSendFloodAdvert}
           disabled={consoleLoading}
         >
-          Flood Advert
+          {pendingAction === 'flood-advert' ? (
+            <LoadingIndicator label="Requesting flood advert..." />
+          ) : (
+            'Flood Advert'
+          )}
         </Button>
         <Button variant="outline" size="sm" onClick={onSyncClock} disabled={consoleLoading}>
-          Sync Clock
+          {pendingAction === 'clock' ? (
+            <LoadingIndicator label="Requesting clock sync..." />
+          ) : (
+            'Sync Clock'
+          )}
         </Button>
         <Button
           variant={confirmReboot ? 'destructive' : 'outline'}
@@ -58,9 +74,24 @@ export function ActionsPane({
           onClick={handleReboot}
           disabled={consoleLoading}
         >
-          {confirmReboot ? 'Confirm Reboot' : 'Reboot'}
+          {pendingAction === 'reboot' ? (
+            <LoadingIndicator label="Requesting reboot..." />
+          ) : confirmReboot ? (
+            'Confirm Reboot'
+          ) : (
+            'Reboot'
+          )}
         </Button>
       </div>
+      {consoleLoading && (
+        <p className="px-3 pb-3 text-sm text-muted-foreground">
+          {pendingAction === 'console' || !pendingAction ? (
+            <LoadingIndicator label="Waiting for console command..." />
+          ) : (
+            'Other actions are unavailable while this command is pending.'
+          )}
+        </p>
+      )}
     </div>
   );
 }
