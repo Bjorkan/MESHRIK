@@ -1,6 +1,6 @@
+import { getLocale } from '@/i18n';
 // Locale-deterministic integer formatting for UI statistics. Using an explicit
-// 'en-US' locale keeps rendered numbers (e.g. "391,757") stable across
-// environments regardless of the OS/system locale.
+// the selected UI locale keeps formatting aligned with the active catalog.
 export function formatLocaleNumber(value: number): string {
-  return value.toLocaleString('en-US');
+  return value.toLocaleString(getLocale());
 }

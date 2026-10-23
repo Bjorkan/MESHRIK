@@ -1,3 +1,7 @@
+import { Trans } from '@lingui/react/macro';
+import { plural, t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
+import { getLocale } from '@/i18n';
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import type { LppSensor, PaneState } from '../../types';
@@ -5,6 +9,8 @@ import type { LppSensor, PaneState } from '../../types';
 // --- Shared Icons ---
 
 export function RefreshIcon({ className }: { className?: string }) {
+  useLingui();
+
   return (
     <svg
       className={className}
@@ -94,19 +100,25 @@ export function formatAdvertInterval(
 function formatFetchedRelative(fetchedAt: number): string {
   const elapsedSeconds = Math.max(0, Math.floor((Date.now() - fetchedAt) / 1000));
 
-  if (elapsedSeconds < 60) return 'Just now';
+  if (elapsedSeconds < 60) return t`Just now`;
 
   const elapsedMinutes = Math.floor(elapsedSeconds / 60);
   if (elapsedMinutes < 60) {
-    return `${elapsedMinutes} minute${elapsedMinutes === 1 ? '' : 's'} ago`;
+    return plural(elapsedMinutes, {
+      one: '# minute ago',
+      other: '# minutes ago',
+    });
   }
 
   const elapsedHours = Math.floor(elapsedMinutes / 60);
-  return `${elapsedHours} hour${elapsedHours === 1 ? '' : 's'} ago`;
+  return plural(elapsedHours, {
+    one: '# hour ago',
+    other: '# hours ago',
+  });
 }
 
 function formatFetchedTime(fetchedAt: number): string {
-  return new Date(fetchedAt).toLocaleTimeString([], {
+  return new Date(fetchedAt).toLocaleTimeString(getLocale(), {
     hour: 'numeric',
     minute: '2-digit',
     second: '2-digit',
@@ -134,6 +146,8 @@ export function RepeaterPane({
   className?: string;
   contentClassName?: string;
 }) {
+  useLingui();
+
   const fetchedAt = state.fetched_at ?? null;
 
   return (
@@ -145,9 +159,11 @@ export function RepeaterPane({
           {fetchedAt && (
             <p
               className="text-[0.6875rem] text-muted-foreground"
-              title={new Date(fetchedAt).toLocaleString()}
+              title={new Date(fetchedAt).toLocaleString(getLocale())}
             >
-              Fetched {formatFetchedTime(fetchedAt)} ({formatFetchedRelative(fetchedAt)})
+              <Trans>
+                Fetched {formatFetchedTime(fetchedAt)} ({formatFetchedRelative(fetchedAt)})
+              </Trans>
             </p>
           )}
         </div>
@@ -162,8 +178,8 @@ export function RepeaterPane({
                 ? 'text-muted-foreground'
                 : 'text-success hover:bg-accent hover:text-success'
             )}
-            title="Refresh"
-            aria-label={`Refresh ${title}`}
+            title={t`Refresh`}
+            aria-label={t`Refresh ${title}`}
           >
             <RefreshIcon
               className={cn(
@@ -182,7 +198,7 @@ export function RepeaterPane({
       <div className={cn('p-3', contentClassName)}>
         {state.loading ? (
           <p className="text-sm text-muted-foreground italic">
-            Fetching{state.attempt > 1 ? ` (attempt ${state.attempt}/${3})` : ''}...
+            <Trans>Fetching{state.attempt > 1 ? ` (attempt ${state.attempt}/${3})` : ''}...</Trans>
           </p>
         ) : (
           children
@@ -193,10 +209,18 @@ export function RepeaterPane({
 }
 
 export function NotFetched() {
-  return <p className="text-sm text-muted-foreground">Not requested</p>;
+  useLingui();
+
+  return (
+    <p className="text-sm text-muted-foreground">
+      <Trans>Not requested</Trans>
+    </p>
+  );
 }
 
 export function KvRow({ label, value }: { label: string; value: ReactNode }) {
+  useLingui();
+
   return (
     <div className="flex justify-between items-center text-sm py-0.5">
       <span className="text-muted-foreground">{label}</span>
@@ -254,6 +278,8 @@ export function LppSensorRow({
   unitPref?: string;
   label?: string;
 }) {
+  useLingui();
+
   const label = labelOverride ?? formatLppLabel(sensor.type_name);
 
   if (typeof sensor.value === 'object' && sensor.value !== null) {

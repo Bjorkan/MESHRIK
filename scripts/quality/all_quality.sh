@@ -32,6 +32,8 @@ echo -e "${GREEN}Passed!${NC}"
 echo -ne "${BLUE}[frontend lint]${NC} "
 cd "$REPO_ROOT/frontend"
 npm run api:generate --silent
+npm run i18n:update --silent
+npm run i18n:compile --silent
 npx --quiet eslint src/ --fix --cache --quiet
 npx --quiet prettier --write --list-different src/ --log-level warn
 echo -e "${GREEN}Passed!${NC}"

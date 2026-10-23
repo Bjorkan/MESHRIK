@@ -1,3 +1,6 @@
+import { Trans } from '@lingui/react/macro';
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
 import { useEffect, useMemo } from 'react';
 import { useForm, useStore } from '@tanstack/react-form';
 
@@ -35,17 +38,19 @@ export function ContactRoutingOverrideModal({
   onSaved,
   onError,
 }: ContactRoutingOverrideModalProps) {
+  useLingui();
+
   const form = useForm({
     defaultValues: { route: '', serverError: null as string | null },
     onSubmit: async ({ value }) => {
       try {
         await api.setContactRoutingOverride(contact.public_key, value.route);
         onSaved(
-          value.route.trim() === '' ? 'Routing override cleared' : 'Routing override updated'
+          value.route.trim() === '' ? t`Routing override cleared` : t`Routing override updated`
         );
         onClose();
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to update routing override';
+        const message = err instanceof Error ? err.message : t`Failed to update routing override`;
         form.setFieldValue('serverError', message);
         onError(message);
       }
@@ -75,10 +80,14 @@ export function ContactRoutingOverrideModal({
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <DialogContent className="sm:max-w-[560px]">
         <DialogHeader>
-          <DialogTitle>Routing Override</DialogTitle>
+          <DialogTitle>
+            <Trans>Routing Override</Trans>
+          </DialogTitle>
           <DialogDescription>
-            Set a forced route for this contact. Leave the field blank to clear the override and
-            fall back to the learned route or flood until a new path is heard.
+            <Trans>
+              Set a forced route for this contact. Leave the field blank to clear the override and
+              fall back to the learned route or flood until a new path is heard.
+            </Trans>
           </DialogDescription>
         </DialogHeader>
 
@@ -92,32 +101,38 @@ export function ContactRoutingOverrideModal({
           <div className="rounded-md border border-border bg-muted/20 p-3 text-sm">
             <div className="font-medium">{contact.name || contact.public_key.slice(0, 12)}</div>
             <div className="mt-1 text-muted-foreground">
-              Current learned route: {learnedRouteSummary}
+              <Trans>Current learned route: {learnedRouteSummary}</Trans>
             </div>
             {forcedRouteSummary && (
               <div className="mt-1 text-destructive">
-                Current forced route: {forcedRouteSummary}
+                <Trans>Current forced route: {forcedRouteSummary}</Trans>
               </div>
             )}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="routing-override-input">Forced route</Label>
+            <Label htmlFor="routing-override-input">
+              <Trans>Forced route</Trans>
+            </Label>
             <Input
               id="routing-override-input"
               value={route}
               onChange={(event) => form.setFieldValue('route', event.target.value)}
-              placeholder='Examples: "ae,f1" or "ae92,f13e"'
+              placeholder={t`Examples: "ae,f1" or "ae92,f13e"`}
               autoFocus
               disabled={saving}
               aria-invalid={error ? true : undefined}
-              aria-describedby={error ? 'routing-override-error' : undefined}
+              aria-describedby={error ? `routing-override-error` : undefined}
             />
             <div className="space-y-1 text-xs text-muted-foreground">
-              <p>Use comma-separated 1, 2, or 3 byte hop IDs for an explicit path.</p>
               <p>
-                Note: direct messages that do not see an ACK retry up to 3 times. The final retry is
-                sent as flood, even when forced routing is configured.
+                <Trans>Use comma-separated 1, 2, or 3 byte hop IDs for an explicit path.</Trans>
+              </p>
+              <p>
+                <Trans>
+                  Note: direct messages that do not see an ACK retry up to 3 times. The final retry
+                  is sent as flood, even when forced routing is configured.
+                </Trans>
               </p>
             </div>
           </div>
@@ -131,7 +146,7 @@ export function ContactRoutingOverrideModal({
                 onClick={() => saveRoute('-1')}
                 disabled={saving}
               >
-                Force Flood
+                <Trans>Force Flood</Trans>
               </Button>
               <Button
                 type="button"
@@ -140,13 +155,13 @@ export function ContactRoutingOverrideModal({
                 onClick={() => saveRoute('0')}
                 disabled={saving}
               >
-                Force Direct
+                <Trans>Force Direct</Trans>
               </Button>
             </div>
             <Button type="submit" className="w-full" disabled={saving || route.trim().length === 0}>
               {saving
-                ? 'Saving...'
-                : `Force ${route.trim() === '' ? 'custom' : route.trim()} routing`}
+                ? t`Saving...`
+                : t`Force ${route.trim() === '' ? 'custom' : route.trim()} routing`}
             </Button>
           </div>
 
@@ -162,10 +177,10 @@ export function ContactRoutingOverrideModal({
 
           <DialogFooter className="gap-2 sm:justify-between">
             <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>
-              Cancel
+              <Trans>Cancel</Trans>
             </Button>
             <Button type="button" variant="outline" onClick={() => saveRoute('')} disabled={saving}>
-              Clear override
+              <Trans>Clear override</Trans>
             </Button>
           </DialogFooter>
         </form>

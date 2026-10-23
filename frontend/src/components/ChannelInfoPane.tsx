@@ -1,3 +1,7 @@
+import { Trans } from '@lingui/react/macro';
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
+import { getLocale } from '@/i18n';
 import { useEffect, useMemo, useState } from 'react';
 import { Star } from 'lucide-react';
 import { api } from '../api';
@@ -22,6 +26,8 @@ export function ChannelInfoPane({
   channels,
   onToggleFavorite,
 }: ChannelInfoPaneProps) {
+  useLingui();
+
   const [detail, setDetail] = useState<ChannelDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [showKey, setShowKey] = useState(false);
@@ -50,7 +56,7 @@ export function ChannelInfoPane({
       .catch((err) => {
         if (!cancelled) {
           console.error('Failed to fetch channel detail:', err);
-          toast.error('Failed to load channel info');
+          toast.error(t`Failed to load channel info`);
         }
       })
       .finally(() => {
@@ -76,13 +82,17 @@ export function ChannelInfoPane({
     <Sheet open={channelKey !== null} onOpenChange={(open) => !open && onClose()}>
       <SheetContent side="right" className="w-full sm:max-w-[400px] p-0 flex flex-col">
         <SheetHeader className="sr-only">
-          <SheetTitle>Channel Info</SheetTitle>
-          <SheetDescription>Channel details and statistics</SheetDescription>
+          <SheetTitle>
+            <Trans>Channel Info</Trans>
+          </SheetTitle>
+          <SheetDescription>
+            <Trans>Channel details and statistics</Trans>
+          </SheetDescription>
         </SheetHeader>
 
         {loading && !detail ? (
           <div className="flex-1 flex items-center justify-center text-muted-foreground">
-            Loading...
+            <Trans>Loading...</Trans>
           </div>
         ) : channel ? (
           <div className="flex-1 overflow-y-auto">
@@ -90,43 +100,43 @@ export function ChannelInfoPane({
             <div className="px-5 pt-5 pb-4 border-b border-border">
               <h2 className="text-lg font-semibold truncate">
                 {channel.is_hashtag && !channel.name.startsWith('#')
-                  ? `#${channel.name}`
+                  ? t`#${channel.name}`
                   : channel.name}
               </h2>
               {!channel.is_hashtag && !showKey ? (
                 <button
                   className="text-xs font-mono text-muted-foreground hover:text-primary transition-colors"
                   onClick={() => setShowKey(true)}
-                  title="Reveal channel key"
+                  title={t`Reveal channel key`}
                 >
-                  Show Key
+                  <Trans>Show Key</Trans>
                 </button>
               ) : (
                 <button
                   type="button"
                   className="text-xs font-mono text-muted-foreground cursor-pointer hover:text-primary transition-colors block truncate"
-                  onClick={() => void copyTextWithFeedback(channel.key, 'Channel key copied!')}
-                  title="Click to copy"
+                  onClick={() => void copyTextWithFeedback(channel.key, t`Channel key copied!`)}
+                  title={t`Click to copy`}
                 >
                   {channel.key.toLowerCase()}
                 </button>
               )}
               <div className="flex items-center gap-2 mt-1.5">
                 <span className="text-[0.625rem] uppercase tracking-wider px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">
-                  {channel.is_hashtag ? 'Hashtag' : 'Private Key'}
+                  {channel.is_hashtag ? t`Hashtag` : t`Private Key`}
                 </span>
                 <span
                   className={
                     radioResidency === 'confirmed'
-                      ? 'text-[0.625rem] uppercase tracking-wider px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium'
-                      : 'text-[0.625rem] uppercase tracking-wider px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium'
+                      ? `text-[0.625rem] uppercase tracking-wider px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium`
+                      : `text-[0.625rem] uppercase tracking-wider px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium`
                   }
                   title={
                     radioResidency === 'confirmed'
-                      ? 'This channel slot was verified during the current radio connection.'
+                      ? t`This channel slot was verified during the current radio connection.`
                       : radioResidency === 'stale'
-                        ? 'The channel was previously reported on the radio but has not been verified during the current connection.'
-                        : 'Creating a channel saves it locally. It is written to a radio slot only when needed for sending.'
+                        ? t`The channel was previously reported on the radio but has not been verified during the current connection.`
+                        : t`Creating a channel saves it locally. It is written to a radio slot only when needed for sending.`
                   }
                 >
                   {radioResidencyLabel}
@@ -144,12 +154,16 @@ export function ChannelInfoPane({
                 {channel.favorite ? (
                   <>
                     <Star className="h-4.5 w-4.5 fill-current text-favorite" aria-hidden="true" />
-                    <span>Remove from favorites</span>
+                    <span>
+                      <Trans>Remove from favorites</Trans>
+                    </span>
                   </>
                 ) : (
                   <>
                     <Star className="h-4.5 w-4.5 text-muted-foreground" aria-hidden="true" />
-                    <span>Add to favorites</span>
+                    <span>
+                      <Trans>Add to favorites</Trans>
+                    </span>
                   </>
                 )}
               </button>
@@ -158,31 +172,33 @@ export function ChannelInfoPane({
             {/* Message Activity */}
             {detail && detail.message_counts.all_time > 0 && (
               <div className="px-5 py-3 border-b border-border">
-                <SectionLabel>Message Activity</SectionLabel>
+                <SectionLabel>
+                  <Trans>Message Activity</Trans>
+                </SectionLabel>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
                   <InfoItem
-                    label="Last Hour"
-                    value={detail.message_counts.last_1h.toLocaleString()}
+                    label={t`Last Hour`}
+                    value={detail.message_counts.last_1h.toLocaleString(getLocale())}
                   />
                   <InfoItem
-                    label="Last 24h"
-                    value={detail.message_counts.last_24h.toLocaleString()}
+                    label={t`Last 24h`}
+                    value={detail.message_counts.last_24h.toLocaleString(getLocale())}
                   />
                   <InfoItem
-                    label="Last 48h"
-                    value={detail.message_counts.last_48h.toLocaleString()}
+                    label={t`Last 48h`}
+                    value={detail.message_counts.last_48h.toLocaleString(getLocale())}
                   />
                   <InfoItem
-                    label="Last 7d"
-                    value={detail.message_counts.last_7d.toLocaleString()}
+                    label={t`Last 7d`}
+                    value={detail.message_counts.last_7d.toLocaleString(getLocale())}
                   />
                   <InfoItem
-                    label="All Time"
-                    value={detail.message_counts.all_time.toLocaleString()}
+                    label={t`All Time`}
+                    value={detail.message_counts.all_time.toLocaleString(getLocale())}
                   />
                   <InfoItem
-                    label="Unique Senders"
-                    value={detail.unique_sender_count.toLocaleString()}
+                    label={t`Unique Senders`}
+                    value={detail.unique_sender_count.toLocaleString(getLocale())}
                   />
                 </div>
               </div>
@@ -191,7 +207,9 @@ export function ChannelInfoPane({
             {/* First Message */}
             {detail && detail.first_message_at && (
               <div className="px-5 py-3 border-b border-border">
-                <SectionLabel>First Message</SectionLabel>
+                <SectionLabel>
+                  <Trans>First Message</Trans>
+                </SectionLabel>
                 <p className="text-sm font-medium">{formatTime(detail.first_message_at)}</p>
               </div>
             )}
@@ -199,7 +217,9 @@ export function ChannelInfoPane({
             {/* Hop Byte Widths (24h) */}
             {detail && detail.path_hash_width_24h.total_packets > 0 && (
               <div className="px-5 py-3 border-b border-border">
-                <SectionLabel>Hop Byte Widths (24h)</SectionLabel>
+                <SectionLabel>
+                  <Trans>Hop Byte Widths (24h)</Trans>
+                </SectionLabel>
                 <HopWidthChart stats={detail.path_hash_width_24h} ready={chartReady} />
               </div>
             )}
@@ -207,7 +227,9 @@ export function ChannelInfoPane({
             {/* Top Senders 24h */}
             {detail && detail.top_senders_24h.length > 0 && (
               <div className="px-5 py-3">
-                <SectionLabel>Top Senders (24h)</SectionLabel>
+                <SectionLabel>
+                  <Trans>Top Senders (24h)</Trans>
+                </SectionLabel>
                 <div className="space-y-1">
                   {detail.top_senders_24h.map((sender, idx) => (
                     <div
@@ -216,8 +238,10 @@ export function ChannelInfoPane({
                     >
                       <span className="truncate">{sender.sender_name}</span>
                       <span className="text-xs text-muted-foreground flex-shrink-0 ml-2">
-                        {sender.message_count.toLocaleString()} msg
-                        {sender.message_count !== 1 ? 's' : ''}
+                        <Trans>
+                          {sender.message_count.toLocaleString(getLocale())} msg
+                          {sender.message_count !== 1 ? 's' : ''}
+                        </Trans>
                       </span>
                     </div>
                   ))}
@@ -227,7 +251,7 @@ export function ChannelInfoPane({
           </div>
         ) : (
           <div className="flex-1 flex items-center justify-center text-muted-foreground">
-            Channel not found
+            <Trans>Channel not found</Trans>
           </div>
         )}
       </SheetContent>
@@ -236,6 +260,8 @@ export function ChannelInfoPane({
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
+  useLingui();
+
   return (
     <h3 className="text-[0.625rem] uppercase tracking-wider text-muted-foreground font-medium mb-1.5">
       {children}
@@ -244,6 +270,8 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 function InfoItem({ label, value }: { label: string; value: string }) {
+  useLingui();
+
   return (
     <div>
       <span className="text-muted-foreground text-xs">{label}</span>
@@ -253,12 +281,32 @@ function InfoItem({ label, value }: { label: string; value: string }) {
 }
 
 const HOP_WIDTH_SEGMENTS = [
-  { key: 'single_byte', label: '1-byte', color: '#22c55e' },
-  { key: 'double_byte', label: '2-byte', color: '#0ea5e9' },
-  { key: 'triple_byte', label: '3-byte', color: '#8b5cf6' },
+  {
+    key: 'single_byte',
+    get label() {
+      return t`1-byte`;
+    },
+    color: '#22c55e',
+  },
+  {
+    key: 'double_byte',
+    get label() {
+      return t`2-byte`;
+    },
+    color: '#0ea5e9',
+  },
+  {
+    key: 'triple_byte',
+    get label() {
+      return t`3-byte`;
+    },
+    color: '#8b5cf6',
+  },
 ] as const;
 
 function HopWidthChart({ stats, ready }: { stats: PathHashWidthStats; ready: boolean }) {
+  useLingui();
+
   const data = useMemo(
     () =>
       HOP_WIDTH_SEGMENTS.map(({ key, label, color }) => ({
@@ -287,12 +335,12 @@ function HopWidthChart({ stats, ready }: { stats: PathHashWidthStats; ready: boo
             />
             <span className="text-[0.6875rem] text-muted-foreground flex-1">{d.name}</span>
             <span className="text-[0.6875rem] font-medium tabular-nums">
-              {d.value.toLocaleString()}
+              {d.value.toLocaleString(getLocale())}
             </span>
           </div>
         ))}
         <p className="text-[0.625rem] text-muted-foreground pt-0.5">
-          {stats.total_packets.toLocaleString()} total
+          <Trans>{stats.total_packets.toLocaleString(getLocale())} total</Trans>
         </p>
       </div>
     </div>

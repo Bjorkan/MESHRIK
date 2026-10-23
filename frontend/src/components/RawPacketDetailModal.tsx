@@ -1,3 +1,7 @@
+import { Trans } from '@lingui/react/macro';
+import { plural, t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
+import { getLocale } from '@/i18n';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ChannelCrypto, PayloadType } from '@michaelhart/meshcore-decoder';
 
@@ -125,7 +129,7 @@ const FIELD_PALETTE: FieldPaletteEntry[] = [
 ];
 
 function formatTimestamp(timestamp: number): string {
-  return new Date(timestamp * 1000).toLocaleString([], {
+  return new Date(timestamp * 1000).toLocaleString(getLocale(), {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -147,26 +151,26 @@ function formatSignal(
   const isOverride =
     signalOverride != null && (signalOverride.rssi != null || signalOverride.snr != null);
   return {
-    lines: lines.length > 0 ? lines : ['No signal sample'],
-    label: isOverride ? 'Last Hop Signal' : 'Signal',
+    lines: lines.length > 0 ? lines : [t`No signal sample`],
+    label: isOverride ? t`Last Hop Signal` : t`Signal`,
   };
 }
 
 function formatByteRange(field: PacketByteField): string {
   if (field.absoluteStartByte === field.absoluteEndByte) {
-    return `Byte ${field.absoluteStartByte}`;
+    return t`Byte ${field.absoluteStartByte}`;
   }
-  return `Bytes ${field.absoluteStartByte}-${field.absoluteEndByte}`;
+  return t`Bytes ${field.absoluteStartByte}-${field.absoluteEndByte}`;
 }
 
 function formatPathMode(hashSize: number | undefined, hopCount: number): string {
   if (hopCount === 0) {
-    return 'No path hops';
+    return t`No path hops`;
   }
   if (!hashSize) {
-    return `${hopCount} hop${hopCount === 1 ? '' : 's'}`;
+    return plural(hopCount, { one: '# hop', other: '# hops' });
   }
-  return `${hopCount} hop${hopCount === 1 ? '' : 's'} · ${hashSize} byte hash${hashSize === 1 ? '' : 'es'}`;
+  return t`${plural(hopCount, { one: '# hop', other: '# hops' })} · ${plural(hashSize, { one: '# byte hash', other: '# byte hashes' })}`;
 }
 
 function formatTransportCodes(codes: [number, number]): string {
@@ -238,9 +242,9 @@ function getPacketContext(
       return null;
     }
     return {
-      title: fallbackChannel ? 'Channel' : 'Context',
-      primary: fallbackChannel ?? 'Sender metadata available',
-      secondary: fallbackSender ? `Sender: ${fallbackSender}` : null,
+      title: fallbackChannel ? t`Channel` : t`Context`,
+      primary: fallbackChannel ?? t`Sender metadata available`,
+      secondary: fallbackSender ? t`Sender: ${fallbackSender}` : null,
     };
   }
 
@@ -254,20 +258,24 @@ function getPacketContext(
     const channelName =
       fallbackChannel ?? resolveGroupTextChannelName(payload, groupTextCandidates);
     return {
-      title: 'Channel',
+      get title() {
+        return t`Channel`;
+      },
       primary:
-        channelName ?? (payload.channelHash ? `Channel hash ${payload.channelHash}` : 'GroupText'),
+        channelName ?? (payload.channelHash ? t`Channel hash ${payload.channelHash}` : 'GroupText'),
       secondary: payload.decrypted?.sender
-        ? `Sender: ${payload.decrypted.sender}`
+        ? t`Sender: ${payload.decrypted.sender}`
         : fallbackSender
-          ? `Sender: ${fallbackSender}`
+          ? t`Sender: ${fallbackSender}`
           : null,
     };
   }
 
   if (fallbackSender) {
     return {
-      title: 'Context',
+      get title() {
+        return t`Context`;
+      },
       primary: fallbackSender,
       secondary: null,
     };
@@ -330,6 +338,8 @@ function CompactMetaCard({
   primary: string;
   secondary?: string | null;
 }) {
+  useLingui();
+
   return (
     <div className="rounded-lg border border-border/70 bg-card/70 p-2.5">
       <div className="text-[0.625rem] uppercase tracking-wider text-muted-foreground">{label}</div>
@@ -354,6 +364,8 @@ function FullPacketHex({
   hoveredFieldId: string | null;
   onHoverField: (fieldId: string | null) => void;
 }) {
+  useLingui();
+
   const normalized = packetHex.toUpperCase();
   const bytes = useMemo(() => normalized.match(/.{1,2}/g) ?? [], [normalized]);
   const byteOwners = useMemo(() => buildByteOwners(bytes.length, fields), [bytes.length, fields]);
@@ -405,7 +417,7 @@ function renderFieldValue(field: PacketByteField) {
         const isLast = index === parts.length - 1;
         return (
           <span key={`${field.id}-${part}-${index}`} className="whitespace-nowrap">
-            {isLast ? part : `${part} →`}
+            {isLast ? part : t`${part} →`}
           </span>
         );
       })}
@@ -454,6 +466,8 @@ function FieldBox({
   active: boolean;
   onHoverField: (fieldId: string | null) => void;
 }) {
+  useLingui();
+
   return (
     <div
       onMouseEnter={() => onHoverField(field.id)}
@@ -487,7 +501,7 @@ function FieldBox({
       {field.decryptedMessage ? (
         <div className="mt-2 rounded border border-border/50 bg-background/40 p-2">
           <div className="text-[0.625rem] uppercase tracking-wider text-muted-foreground">
-            {field.name === 'Ciphertext' ? 'Plaintext' : 'Decoded value'}
+            {field.name === 'Ciphertext' ? t`Plaintext` : t`Decoded value`}
           </div>
           <PlaintextContent text={field.decryptedMessage} />
         </div>
@@ -509,7 +523,7 @@ function FieldBox({
                     {part.field}
                   </div>
                   <div className="mt-0.5 text-[0.6875rem] text-muted-foreground">
-                    Bits {part.bits}
+                    <Trans>Bits {part.bits}</Trans>
                   </div>
                 </div>
                 <div className="text-right">
@@ -526,6 +540,8 @@ function FieldBox({
 }
 
 function PlaintextContent({ text }: { text: string }) {
+  useLingui();
+
   const lines = text.split('\n');
 
   return (
@@ -567,11 +583,15 @@ function FieldSection({
   hoveredFieldId: string | null;
   onHoverField: (fieldId: string | null) => void;
 }) {
+  useLingui();
+
   return (
     <section className="rounded-lg border border-border/70 bg-card/70 p-3">
       <div className="mb-2 text-sm font-semibold text-foreground">{title}</div>
       {fields.length === 0 ? (
-        <div className="text-sm text-muted-foreground">No decoded fields available.</div>
+        <div className="text-sm text-muted-foreground">
+          <Trans>No decoded fields available.</Trans>
+        </div>
       ) : (
         <div className="grid gap-2">
           {fields.map((field) => (
@@ -594,6 +614,8 @@ export function RawPacketInspectionPanel({
   channels,
   signalOverride,
 }: RawPacketInspectionPanelProps) {
+  useLingui();
+
   const decoderOptions = useMemo(() => createDecoderOptions(channels), [channels]);
   const groupTextCandidates = useMemo(
     () => buildGroupTextResolutionCandidates(channels),
@@ -627,7 +649,7 @@ export function RawPacketInspectionPanel({
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div className="min-w-0">
               <div className="text-[0.625rem] uppercase tracking-wider text-muted-foreground">
-                Summary
+                <Trans>Summary</Trans>
               </div>
               <div className="mt-1 text-base font-semibold leading-tight text-foreground">
                 {inspection.summary.summary}
@@ -663,19 +685,19 @@ export function RawPacketInspectionPanel({
           )}
         >
           <CompactMetaCard
-            label="Packet"
-            primary={`${packet.data.length / 2} bytes · ${packetIsDecrypted ? 'Decrypted' : 'Encrypted'}`}
-            secondary={`Storage #${packet.id}${packet.observation_id !== undefined ? ` · Observation #${packet.observation_id}` : ''}`}
+            label={t`Packet`}
+            primary={t`${packet.data.length / 2} bytes · ${packetIsDecrypted ? t`Decrypted` : t`Encrypted`}`}
+            secondary={t`Storage #${packet.id}${packet.observation_id !== undefined ? t` · Observation #${packet.observation_id}` : ''}`}
           />
           <CompactMetaCard
-            label="Transport"
+            label={t`Transport`}
             primary={`${inspection.routeTypeName} · ${inspection.payloadTypeName}`}
             secondary={`${inspection.payloadVersionName} · ${formatPathMode(inspection.decoded?.pathHashSize, inspection.pathTokens.length)}`}
           />
           {inspection.decoded?.transportCodes ? (
             <CompactMetaCard
-              label="Scope"
-              primary={packet.region ? packet.region : 'Regional'}
+              label={t`Scope`}
+              primary={packet.region ? packet.region : `Regional`}
               secondary={
                 packet.region
                   ? formatTransportCodes(inspection.decoded.transportCodes)
@@ -706,7 +728,9 @@ export function RawPacketInspectionPanel({
 
       {inspection.validationErrors.length > 0 ? (
         <div className="mt-3 rounded-lg border border-warning/40 bg-warning/10 p-2.5">
-          <div className="text-sm font-semibold text-foreground">Validation notes</div>
+          <div className="text-sm font-semibold text-foreground">
+            <Trans>Validation notes</Trans>
+          </div>
           <div className="mt-1.5 space-y-1 text-sm text-foreground">
             {inspection.validationErrors.map((error) => (
               <div key={error}>{error}</div>
@@ -717,14 +741,16 @@ export function RawPacketInspectionPanel({
 
       <div className="mt-3 rounded-lg border border-border/70 bg-card/70 p-3">
         <div className="flex items-center justify-between gap-3">
-          <div className="text-xl font-semibold text-foreground">Full packet hex</div>
+          <div className="text-xl font-semibold text-foreground">
+            <Trans>Full packet hex</Trans>
+          </div>
           <Button
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => void copyTextWithFeedback(packet.data, 'Packet hex copied!')}
+            onClick={() => void copyTextWithFeedback(packet.data, t`Packet hex copied!`)}
           >
-            Copy
+            <Trans>Copy</Trans>
           </Button>
         </div>
         <div className="mt-2.5">
@@ -740,7 +766,7 @@ export function RawPacketInspectionPanel({
 
       <div className="mt-3 grid gap-3 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
         <FieldSection
-          title="Packet fields"
+          title={t`Packet fields`}
           fields={packetDisplayFields}
           colorMap={colorMap}
           hoveredFieldId={hoveredFieldId}
@@ -748,7 +774,7 @@ export function RawPacketInspectionPanel({
         />
 
         <FieldSection
-          title="Payload fields"
+          title={t`Payload fields`}
           fields={inspection.payloadFields}
           colorMap={colorMap}
           hoveredFieldId={hoveredFieldId}
@@ -770,6 +796,8 @@ export function RawPacketInspectorDialog({
   signalOverride,
   container,
 }: RawPacketInspectorDialogProps) {
+  useLingui();
+
   const [packetInput, setPacketInput] = useState('');
 
   useEffect(() => {
@@ -806,13 +834,13 @@ export function RawPacketInspectorDialog({
         <div className="border-b border-border px-4 py-3 pr-14">
           <div className="flex flex-col gap-3">
             <label className="text-sm font-medium text-foreground" htmlFor="raw-packet-input">
-              Packet Hex
+              <Trans>Packet Hex</Trans>
             </label>
             <textarea
               id="raw-packet-input"
               value={packetInput}
               onChange={(event) => setPacketInput(event.target.value)}
-              placeholder="Paste raw packet hex here..."
+              placeholder={t`Paste raw packet hex here...`}
               className="min-h-14 w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-sm text-foreground outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring"
               spellCheck={false}
             />
@@ -825,7 +853,7 @@ export function RawPacketInspectorDialog({
           <RawPacketInspectionPanel packet={analyzedPacket} channels={channels} />
         ) : (
           <div className="flex flex-1 items-center justify-center p-6 text-sm text-muted-foreground">
-            Paste a packet above to inspect it.
+            <Trans>Paste a packet above to inspect it.</Trans>
           </div>
         )}
       </>
@@ -870,6 +898,8 @@ export function RawPacketInspectorDialog({
 }
 
 export function RawPacketDetailModal({ packet, channels, onClose }: RawPacketDetailModalProps) {
+  useLingui();
+
   if (!packet) {
     return null;
   }
@@ -880,8 +910,8 @@ export function RawPacketDetailModal({ packet, channels, onClose }: RawPacketDet
       onOpenChange={(isOpen) => !isOpen && onClose()}
       channels={channels}
       source={{ kind: 'packet', packet }}
-      title="Packet Details"
-      description="Detailed byte and field breakdown for the selected raw packet."
+      title={t`Packet Details`}
+      description={t`Detailed byte and field breakdown for the selected raw packet.`}
     />
   );
 }

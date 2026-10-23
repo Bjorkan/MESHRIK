@@ -1,3 +1,5 @@
+import { t } from '@lingui/core/macro';
+import { getLocale } from '@/i18n';
 import {
   MeshCoreDecoder,
   PayloadType,
@@ -91,7 +93,7 @@ function getPathTokens(decoded: DecodedPacket): string[] {
 }
 
 function formatUnixTimestamp(timestamp: number): string {
-  return `${timestamp} (${new Date(timestamp * 1000).toLocaleString()})`;
+  return `${timestamp} (${new Date(timestamp * 1000).toLocaleString(getLocale())})`;
 }
 
 function createPacketField(
@@ -312,8 +314,9 @@ export function inspectRawPacketWithOptions(
             ? [
                 {
                   name: 'Payload Bytes',
-                  description:
-                    'Field-level payload breakdown is not available for this packet type.',
+                  get description() {
+                    return t`Field-level payload breakdown is not available for this packet type.`;
+                  },
                   startByte: 0,
                   endByte: Math.max(0, structure.payload.hex.length / 2 - 1),
                   value: structure.payload.hex,

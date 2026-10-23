@@ -598,7 +598,7 @@ class TestBroadcastEventRealtime:
             patch("app.websocket.ws_manager") as mock_ws,
             patch("app.fanout.manager.fanout_manager") as mock_fm,
         ):
-            mock_ws.enqueue = AsyncMock()
+            mock_ws.enqueue = MagicMock()
 
             broadcast_event("message", {"type": "PRIV"}, realtime=False)
 
@@ -621,7 +621,7 @@ class TestBroadcastEventRealtime:
             patch("app.websocket.ws_manager") as mock_ws,
             patch("app.fanout.manager.fanout_manager") as mock_fm,
         ):
-            mock_ws.enqueue = AsyncMock()
+            mock_ws.enqueue = MagicMock()
             mock_fm.broadcast_message = AsyncMock()
 
             broadcast_event("message", {"type": "PRIV"}, realtime=True)
@@ -642,7 +642,7 @@ class TestBroadcastEventRealtime:
             patch("app.websocket.ws_manager") as mock_ws,
             patch("app.fanout.manager.fanout_manager") as mock_fm,
         ):
-            mock_ws.enqueue = AsyncMock()
+            mock_ws.enqueue = MagicMock()
             mock_fm.broadcast_contact = AsyncMock()
 
             broadcast_event("contact", {"public_key": "aabb"}, realtime=True)
@@ -663,7 +663,7 @@ class TestBroadcastEventRealtime:
             patch("app.websocket.ws_manager") as mock_ws,
             patch("app.fanout.manager.fanout_manager") as mock_fm,
         ):
-            mock_ws.enqueue = AsyncMock()
+            mock_ws.enqueue = MagicMock()
 
             broadcast_event("contact", {"public_key": "aabb"}, realtime=False)
 

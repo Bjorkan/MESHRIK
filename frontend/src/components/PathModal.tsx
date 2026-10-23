@@ -1,3 +1,6 @@
+import { Trans } from '@lingui/react/macro';
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
 import { useState, lazy, Suspense } from 'react';
 import { Link } from '@tanstack/react-router';
 import type { Contact, RadioConfig, MessagePath } from '../types';
@@ -50,6 +53,8 @@ export function PathModal({
   onResend,
   onAnalyzePacket,
 }: PathModalProps) {
+  useLingui();
+
   const { distanceUnit } = useDistanceUnit();
   const [mapModalIndex, setMapModalIndex] = useState<number | null>(null);
   const hasResendActions = isOutgoingChan && messageId !== undefined && onResend;
@@ -72,23 +77,38 @@ export function PathModal({
         <DialogHeader>
           <DialogTitle>
             {hasPaths
-              ? `Message Path${!hasSinglePath ? `s (${paths.length})` : ''}`
-              : 'Message Status'}
+              ? t`Message Path${!hasSinglePath ? `s (${paths.length})` : ''}`
+              : t`Message Status`}
           </DialogTitle>
           <DialogDescription>
             {!hasPaths ? (
-              <>No echoes heard yet. Echoes appear when repeaters re-broadcast your message.</>
+              <>
+                <Trans>
+                  No echoes heard yet. Echoes appear when repeaters re-broadcast your message.
+                </Trans>
+              </>
             ) : hasSinglePath ? (
               <>
-                This shows <em>one route</em> that this message traveled through the mesh network.
-                Repeater identities are inferred from locally known advert and path data, so some
-                hops may be missing or misidentified when that data is incomplete.
+                <Trans>This shows </Trans>
+                <em>
+                  <Trans>one route</Trans>
+                </em>{' '}
+                <Trans>
+                  that this message traveled through the mesh network. Repeater identities are
+                  inferred from locally known advert and path data, so some hops may be missing or
+                  misidentified when that data is incomplete.
+                </Trans>
               </>
             ) : (
               <>
-                This message was received via <strong>{paths.length} different routes</strong>.
-                Repeater identities are inferred from locally known advert and path data, so some
-                hops may be missing or misidentified when that data is incomplete.
+                <Trans>This message was received via </Trans>
+                <strong>
+                  <Trans>{paths.length} different routes</Trans>
+                </strong>
+                <Trans>
+                  . Repeater identities are inferred from locally known advert and path data, so
+                  some hops may be missing or misidentified when that data is incomplete.
+                </Trans>
               </>
             )}
           </DialogDescription>
@@ -98,7 +118,7 @@ export function PathModal({
           <div className="flex-1 overflow-y-auto py-2 space-y-4">
             {showAnalyzePacket ? (
               <Button type="button" variant="outline" className="w-full" onClick={onAnalyzePacket}>
-                Analyze Packet
+                <Trans>Analyze Packet</Trans>
               </Button>
             ) : null}
 
@@ -111,15 +131,25 @@ export function PathModal({
                 return (
                   <div key={index}>
                     <div>
-                      <span className="text-foreground/70 font-semibold">Path {index + 1}:</span>{' '}
+                      <span className="text-foreground/70 font-semibold">
+                        <Trans>Path {index + 1}:</Trans>
+                      </span>{' '}
                       <span className="font-mono text-muted-foreground">{rawPath}</span>
                     </div>
                     {hasSignal && (
                       <div className="text-[0.6875rem] text-muted-foreground ml-4">
-                        Last hop (as heard by you):{' '}
-                        {p.rssi != null && <span>{p.rssi} dBm RSSI</span>}
+                        <Trans>Last hop (as heard by you):</Trans>{' '}
+                        {p.rssi != null && (
+                          <span>
+                            <Trans>{p.rssi} dBm RSSI</Trans>
+                          </span>
+                        )}
                         {p.rssi != null && p.snr != null && <span> · </span>}
-                        {p.snr != null && <span>{p.snr.toFixed(1)} dB SNR</span>}
+                        {p.snr != null && (
+                          <span>
+                            <Trans>{p.snr.toFixed(1)} dB SNR</Trans>
+                          </span>
+                        )}
                       </div>
                     )}
                   </div>
@@ -138,7 +168,9 @@ export function PathModal({
                 resolvedPaths[0].resolved.receiver.lon
               ) && (
                 <div className="text-sm pb-2 border-b border-border">
-                  <span className="text-muted-foreground">Straight-line distance: </span>
+                  <span className="text-muted-foreground">
+                    <Trans>Straight-line distance: </Trans>
+                  </span>
                   <span className="font-medium">
                     {formatDistance(
                       calculateDistance(
@@ -158,10 +190,12 @@ export function PathModal({
                 <div className="flex items-center justify-between mb-2 pb-1 border-b border-border">
                   {!hasSinglePath ? (
                     <div className="text-sm text-foreground/70 font-semibold">
-                      Path {index + 1}{' '}
-                      <span className="font-normal text-muted-foreground">
-                        — received {formatTime(pathData.received_at)}
-                      </span>
+                      <Trans>
+                        Path {index + 1}{' '}
+                        <span className="font-normal text-muted-foreground">
+                          — received {formatTime(pathData.received_at)}
+                        </span>
+                      </Trans>
                     </div>
                   ) : (
                     <div />
@@ -170,7 +204,7 @@ export function PathModal({
                     onClick={() => setMapModalIndex(index)}
                     className="text-xs text-primary hover:underline cursor-pointer shrink-0 ml-2"
                   >
-                    Map route
+                    <Trans>Map route</Trans>
                   </button>
                 </div>
                 <PathVisualization
@@ -190,11 +224,11 @@ export function PathModal({
                 <DialogHeader>
                   <DialogTitle>
                     {mapModalIndex !== null && !hasSinglePath
-                      ? `Path ${mapModalIndex + 1} Route Map`
-                      : 'Route Map'}
+                      ? t`Path ${mapModalIndex + 1} Route Map`
+                      : t`Route Map`}
                   </DialogTitle>
                   <DialogDescription>
-                    Map of known node locations along this message route.
+                    <Trans>Map of known node locations along this message route.</Trans>
                   </DialogDescription>
                 </DialogHeader>
                 {mapModalIndex !== null && (
@@ -231,9 +265,11 @@ export function PathModal({
                   }}
                 >
                   <span className="flex min-w-0 w-full flex-col items-center gap-1 leading-tight">
-                    <span>↻ Resend</span>
+                    <span>
+                      <Trans>↻ Resend</Trans>
+                    </span>
                     <span className="w-full text-xs font-normal opacity-80">
-                      Only repeated by new repeaters
+                      <Trans>Only repeated by new repeaters</Trans>
                     </span>
                   </span>
                 </Button>
@@ -247,16 +283,18 @@ export function PathModal({
                 }}
               >
                 <span className="flex min-w-0 w-full flex-col items-center gap-1 leading-tight">
-                  <span>↻ Resend as new</span>
+                  <span>
+                    <Trans>↻ Resend as new</Trans>
+                  </span>
                   <span className="w-full text-xs font-normal opacity-80">
-                    Will appear as duplicate to receivers
+                    <Trans>Will appear as duplicate to receivers</Trans>
                   </span>
                 </span>
               </Button>
             </div>
           )}
           <Button variant="secondary" className="h-auto py-2" onClick={onClose}>
-            Close
+            <Trans>Close</Trans>
           </Button>
         </div>
       </DialogContent>
@@ -271,6 +309,8 @@ interface PathVisualizationProps {
 }
 
 function PathVisualization({ resolved, senderInfo, distanceUnit }: PathVisualizationProps) {
+  useLingui();
+
   // Track previous location for each hop to calculate distances
   // Returns null if previous hop was ambiguous or has invalid location
   const getPrevLocation = (hopIndex: number): { lat: number | null; lon: number | null } | null => {
@@ -301,7 +341,7 @@ function PathVisualization({ resolved, senderInfo, distanceUnit }: PathVisualiza
     <div className="space-y-0">
       {/* Sender */}
       <PathNode
-        label="Sender"
+        label={t`Sender`}
         name={resolved.sender.name}
         prefix={resolved.sender.prefix}
         distance={null}
@@ -325,7 +365,7 @@ function PathVisualization({ resolved, senderInfo, distanceUnit }: PathVisualiza
 
       {/* Receiver */}
       <PathNode
-        label="Receiver (me)"
+        label={t`Receiver (me)`}
         name={resolved.receiver.name}
         prefix={resolved.receiver.prefix}
         distance={calculateReceiverDistance(resolved)}
@@ -340,7 +380,7 @@ function PathVisualization({ resolved, senderInfo, distanceUnit }: PathVisualiza
       {resolved.totalDistances && resolved.totalDistances.length > 0 && (
         <div className="pt-3 mt-3 border-t border-border">
           <span className="text-sm text-muted-foreground">
-            Presumed unambiguous distance covered:{' '}
+            <Trans>Presumed unambiguous distance covered: </Trans>
           </span>
           <span className="text-sm font-medium">
             {resolved.hasGaps ? '>' : ''}
@@ -379,6 +419,8 @@ function PathNode({
   lon,
   publicKey,
 }: PathNodeProps) {
+  useLingui();
+
   const hasLocation = isValidLocation(lat ?? null, lon ?? null) && publicKey;
 
   return (
@@ -420,6 +462,8 @@ interface HopNodeProps {
 const AMBIGUOUS_MATCH_PREVIEW_LIMIT = 3;
 
 function HopNode({ hop, hopNumber, prevLocation, distanceUnit }: HopNodeProps) {
+  useLingui();
+
   const isAmbiguous = hop.matches.length > 1;
   const isUnknown = hop.matches.length === 0;
   const [expanded, setExpanded] = useState(false);
@@ -452,13 +496,21 @@ function HopNode({ hop, hopNumber, prevLocation, distanceUnit }: HopNodeProps) {
       {/* Content */}
       <div className="pb-3 flex-1 min-w-0">
         <div className="text-sm font-semibold">
-          <span className="text-foreground/80">Hop {hopNumber}:</span>{' '}
+          <span className="text-foreground/80">
+            <Trans>Hop {hopNumber}:</Trans>
+          </span>{' '}
           <span className="text-primary font-mono">{hop.prefix}</span>
-          {isAmbiguous && <span className="text-warning ml-1 font-normal">(ambiguous)</span>}
+          {isAmbiguous && (
+            <span className="text-warning ml-1 font-normal">
+              <Trans>(ambiguous)</Trans>
+            </span>
+          )}
         </div>
 
         {isUnknown ? (
-          <div className="font-medium text-muted-foreground">&lt;UNKNOWN&gt;</div>
+          <div className="font-medium text-muted-foreground">
+            <Trans>&lt;UNKNOWN&gt;</Trans>
+          </div>
         ) : isAmbiguous ? (
           <div>
             {(expanded ? hop.matches : hop.matches.slice(0, AMBIGUOUS_MATCH_PREVIEW_LIMIT)).map(
@@ -490,7 +542,7 @@ function HopNode({ hop, hopNumber, prevLocation, distanceUnit }: HopNodeProps) {
                 className="text-xs text-primary hover:underline cursor-pointer"
                 onClick={() => setExpanded(true)}
               >
-                (and {hop.matches.length - AMBIGUOUS_MATCH_PREVIEW_LIMIT} more)
+                <Trans>(and {hop.matches.length - AMBIGUOUS_MATCH_PREVIEW_LIMIT} more)</Trans>
               </button>
             )}
           </div>
@@ -520,6 +572,8 @@ function HopNode({ hop, hopNumber, prevLocation, distanceUnit }: HopNodeProps) {
  * Render clickable coordinates that open the map focused on the contact
  */
 function CoordinateLink({ lat, lon, publicKey }: { lat: number; lon: number; publicKey: string }) {
+  useLingui();
+
   return (
     <Link
       to="/map"
@@ -528,7 +582,7 @@ function CoordinateLink({ lat, lon, publicKey }: { lat: number; lon: number; pub
       rel="noopener noreferrer"
       className="text-xs text-muted-foreground font-mono cursor-pointer hover:text-primary hover:underline ml-1"
       onClick={(event) => event.stopPropagation()}
-      title="View on map"
+      title={t`View on map`}
     >
       ({lat.toFixed(4)}, {lon.toFixed(4)})
     </Link>

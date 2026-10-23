@@ -1,3 +1,7 @@
+import { Trans } from '@lingui/react/macro';
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
+import { getLocale } from '@/i18n';
 /** Radio Activity is an observer of the *one* process-owned radio, not a radio controller. */
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
@@ -29,76 +33,76 @@ type Props = {
   health: HealthStatus | null;
 };
 
-const JOB_NAMES: Record<Job['kind'], string> = {
-  direct_message: 'Direct message',
-  channel_message: 'Channel message',
-  repeater_login: 'Repeater login',
-  room_login: 'Room login',
-  radio_settings: 'Radio settings',
-  advertisement: 'Advertisement',
-  discovery: 'Discovery',
-  trace: 'Route trace',
-  server_query: 'Repeater / room query',
-  contact_query: 'Contact query',
-  radio_query: 'Radio query',
-  companion_local_cli: 'Local Companion CLI (on device)',
-  remote_companion_cli: 'Remote Companion CLI (RF request)',
-  channel_datagram: 'Channel datagram (RF request)',
-  radio_diagnostics: 'Radio diagnostics (read-only)',
-  periodic_sync: 'Periodic sync',
-  radio_stats_sample: 'Radio stats sample',
-  periodic_advertisement: 'Periodic advertisement',
-  lifecycle_device_info: 'Startup device info',
-  lifecycle_key_export: 'Startup key export',
-  lifecycle_clock_sync: 'Startup clock sync',
-  lifecycle_flood_scope: 'Startup flood scope',
-  lifecycle_contact_sync: 'Startup contact sync',
-  lifecycle_channel_sync: 'Startup channel sync',
-  lifecycle_channel_clear: 'Startup channel clear',
-  lifecycle_advertisement: 'Startup advertisement',
-  lifecycle_message_drain: 'Startup message drain',
-  lifecycle_auto_fetch: 'Startup receive service',
+const JOB_NAMES: Record<Job['kind'], () => string> = {
+  direct_message: () => t`Direct message`,
+  channel_message: () => t`Channel message`,
+  repeater_login: () => t`Repeater login`,
+  room_login: () => t`Room login`,
+  radio_settings: () => t`Radio settings`,
+  advertisement: () => t`Advertisement`,
+  discovery: () => t`Discovery`,
+  trace: () => t`Route trace`,
+  server_query: () => t`Repeater / room query`,
+  contact_query: () => t`Contact query`,
+  radio_query: () => t`Radio query`,
+  companion_local_cli: () => t`Local Companion CLI (on device)`,
+  remote_companion_cli: () => t`Remote Companion CLI (RF request)`,
+  channel_datagram: () => t`Channel datagram (RF request)`,
+  radio_diagnostics: () => t`Radio diagnostics (read-only)`,
+  periodic_sync: () => t`Periodic sync`,
+  radio_stats_sample: () => t`Radio stats sample`,
+  periodic_advertisement: () => t`Periodic advertisement`,
+  lifecycle_device_info: () => t`Startup device info`,
+  lifecycle_key_export: () => t`Startup key export`,
+  lifecycle_clock_sync: () => t`Startup clock sync`,
+  lifecycle_flood_scope: () => t`Startup flood scope`,
+  lifecycle_contact_sync: () => t`Startup contact sync`,
+  lifecycle_channel_sync: () => t`Startup channel sync`,
+  lifecycle_channel_clear: () => t`Startup channel clear`,
+  lifecycle_advertisement: () => t`Startup advertisement`,
+  lifecycle_message_drain: () => t`Startup message drain`,
+  lifecycle_auto_fetch: () => t`Startup receive service`,
 };
-const STATES: Record<Job['state'], string> = {
-  queued: 'Queued',
-  executing: 'Executing command',
-  awaiting_response: 'Waiting for response',
-  awaiting_ack: 'Waiting for ACK',
-  retrying: 'Retry pending',
-  completed: 'Completed',
-  failed: 'Failed',
-  cancelled: 'Cancelled',
-  unknown: 'Outcome unknown',
+const STATES: Record<Job['state'], () => string> = {
+  queued: () => t`Queued`,
+  executing: () => t`Executing command`,
+  awaiting_response: () => t`Waiting for response`,
+  awaiting_ack: () => t`Waiting for ACK`,
+  retrying: () => t`Retry pending`,
+  completed: () => t`Completed`,
+  failed: () => t`Failed`,
+  cancelled: () => t`Cancelled`,
+  unknown: () => t`Outcome unknown`,
 };
-const STAGES: Record<Job['stage'], string> = {
-  waiting_turn: 'Waiting for command turn',
-  transport_command: 'Sending command to radio',
-  waiting_for_response: 'Waiting for RF reply',
-  waiting_for_ack: 'Awaiting RF acknowledgment',
-  retry_pending: 'Retry pending',
-  finished: 'Command or response confirmed',
-  failed: 'Operation failed',
-  cancelled: 'Operation cancelled',
-  uncertain: 'Transmission outcome uncertain',
+const STAGES: Record<Job['stage'], () => string> = {
+  waiting_turn: () => t`Waiting for command turn`,
+  transport_command: () => t`Sending command to radio`,
+  waiting_for_response: () => t`Waiting for RF reply`,
+  waiting_for_ack: () => t`Awaiting RF acknowledgment`,
+  retry_pending: () => t`Retry pending`,
+  finished: () => t`Command or response confirmed`,
+  failed: () => t`Operation failed`,
+  cancelled: () => t`Operation cancelled`,
+  uncertain: () => t`Transmission outcome uncertain`,
 };
-const ACTIVITY_LABELS: Record<ActivityRecord['kind'], string> = {
-  packet_received: 'Packet received',
-  ack_observed: 'ACK observed',
-  contact_message_observed: 'Contact message observed',
-  path_update: 'Path update observed',
-  contact_observed: 'Contact observed',
-  login_response: 'Login response observed',
-  cli_response: 'CLI response observed',
-  connection_changed: 'Radio connection changed',
+const ACTIVITY_LABELS: Record<ActivityRecord['kind'], () => string> = {
+  packet_received: () => t`Packet received`,
+  ack_observed: () => t`ACK observed`,
+  contact_message_observed: () => t`Contact message observed`,
+  path_update: () => t`Path update observed`,
+  contact_observed: () => t`Contact observed`,
+  login_response: () => t`Login response observed`,
+  cli_response: () => t`CLI response observed`,
+  connection_changed: () => t`Radio connection changed`,
 };
-const PACKET_TYPES: Record<NonNullable<ActivityRecord['packet_type']>, string> = {
-  channel: 'Channel message',
-  direct: 'Direct message',
-  advertisement: 'Advertisement',
-  ack: 'Acknowledgment',
-  path: 'Path / route',
-  control: 'Control packet',
-  other: 'Unknown or encrypted packet',
+const PACKET_TYPES: Record<NonNullable<ActivityRecord['packet_type']>, () => string> = {
+  channel: () => t`Channel message`,
+  direct: () => t`Direct message`,
+  advertisement: () => t`Advertisement`,
+  ack: () => t`Acknowledgment`,
+  path: () => t`Path / route`,
+  control: () => t`Control packet`,
+  other: () => t`Unknown or encrypted packet`,
 };
 const BACKGROUND_JOBS = new Set<Job['kind']>([
   'periodic_sync',
@@ -106,17 +110,42 @@ const BACKGROUND_JOBS = new Set<Job['kind']>([
   'radio_stats_sample',
 ]);
 const TERMINAL = new Set<Job['state']>(['completed', 'failed', 'cancelled', 'unknown']);
-const ACTIVITY_SOURCES: Record<ActivityRecord['source'], string> = {
-  raw_rf_log: 'Packet log',
-  meshcore_event: 'Radio event',
-  radio_lifecycle: 'Connection',
+const ACTIVITY_SOURCES: Record<ActivityRecord['source'], () => string> = {
+  raw_rf_log: () => t`Packet log`,
+  meshcore_event: () => t`Radio event`,
+  radio_lifecycle: () => t`Connection`,
 };
 const FILTERS: { value: HistoryFilter; label: string }[] = [
-  { value: 'all', label: 'All outcomes' },
-  { value: 'completed', label: 'Completed' },
-  { value: 'failed', label: 'Failed' },
-  { value: 'cancelled', label: 'Cancelled' },
-  { value: 'unknown', label: 'Unknown' },
+  {
+    value: 'all',
+    get label() {
+      return t`All outcomes`;
+    },
+  },
+  {
+    value: 'completed',
+    get label() {
+      return t`Completed`;
+    },
+  },
+  {
+    value: 'failed',
+    get label() {
+      return t`Failed`;
+    },
+  },
+  {
+    value: 'cancelled',
+    get label() {
+      return t`Cancelled`;
+    },
+  },
+  {
+    value: 'unknown',
+    get label() {
+      return t`Unknown`;
+    },
+  },
 ];
 
 export function elapsed(start: string, now: number): string {
@@ -136,7 +165,7 @@ export function jobDuration(job: Job, now: number): string {
 
 function clockTime(date: string): string {
   const parsed = new Date(date);
-  return Number.isNaN(parsed.valueOf()) ? '—' : parsed.toLocaleTimeString();
+  return Number.isNaN(parsed.valueOf()) ? '—' : parsed.toLocaleTimeString(getLocale());
 }
 
 function stateClass(state: Job['state']) {
@@ -157,6 +186,8 @@ function Section({
   compact?: boolean;
   children: React.ReactNode;
 }) {
+  useLingui();
+
   return (
     <section
       className={cn('min-w-0', compact ? 'py-2' : 'rounded-lg border border-border bg-card')}
@@ -175,7 +206,7 @@ function Section({
           </span>
         )}
       </h3>
-      <div className={compact ? 'px-1' : 'p-3 sm:p-4'}>{children}</div>
+      <div className={compact ? `px-1` : `p-3 sm:p-4`}>{children}</div>
     </section>
   );
 }
@@ -197,6 +228,8 @@ function JobRow({
   dataIndex?: number;
   style?: CSSProperties;
 }) {
+  useLingui();
+
   const awaiting = job.state === 'awaiting_ack' || job.state === 'awaiting_response';
   const cancellable =
     awaiting || job.state === 'queued' || job.state === 'retrying' || job.state === 'executing';
@@ -218,26 +251,26 @@ function JobRow({
     >
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <p className="font-medium text-sm">{JOB_NAMES[job.kind]}</p>
-          <p className={cn('text-xs mt-0.5', stateClass(job.state))}>{STATES[job.state]}</p>
+          <p className="font-medium text-sm">{JOB_NAMES[job.kind]()}</p>
+          <p className={cn('text-xs mt-0.5', stateClass(job.state))}>{STATES[job.state]()}</p>
           {(job.state === 'executing' || awaiting || job.state === 'retrying') && (
-            <p className="text-sm text-muted-foreground mt-1">{STAGES[job.stage]}</p>
+            <p className="text-sm text-muted-foreground mt-1">{STAGES[job.stage]()}</p>
           )}
           <p className="text-xs text-muted-foreground mt-1 tabular-nums">
-            {job.state === 'queued' || !job.started_at ? 'Queue wait' : 'Duration'}:{' '}
+            {job.state === 'queued' || !job.started_at ? t`Queue wait` : t`Duration`}:{' '}
             {jobDuration(job, now)}
             {!TERMINAL.has(job.state) &&
-              ` · ${job.priority === 0 ? 'High' : job.priority === 10 ? 'Normal' : 'Low'} priority`}
-            {job.attempt > 1 ? ` · Attempt ${job.attempt}` : ''}
+              t` · ${job.priority === 0 ? t`High` : job.priority === 10 ? t`Normal` : t`Low`} priority`}
+            {job.attempt > 1 ? t` · Attempt ${job.attempt}` : ''}
           </p>
           {deadline && !TERMINAL.has(job.state) && (
             <p className="text-xs text-muted-foreground tabular-nums">
-              Deadline: {clockTime(deadline)}
+              <Trans>Deadline: {clockTime(deadline)}</Trans>
             </p>
           )}
           {job.state === 'executing' && (
             <p className="text-xs text-muted-foreground">
-              Cancellation is best-effort; an in-flight command may still execute.
+              <Trans>Cancellation is best-effort; an in-flight command may still execute.</Trans>
             </p>
           )}
           {job.result && job.state !== 'completed' && (
@@ -250,17 +283,17 @@ function JobRow({
             size="sm"
             disabled={pending || job.cancellation_requested}
             onClick={() => onCancel(job)}
-            aria-label={`${awaiting ? 'Stop waiting for' : job.state === 'executing' ? 'Request cancellation of' : 'Cancel'} ${JOB_NAMES[job.kind]}`}
+            aria-label={t`${awaiting ? t`Stop waiting for` : job.state === 'executing' ? t`Request cancellation of` : t`Cancel`} ${JOB_NAMES[job.kind]()}`}
           >
             {pending
-              ? 'Working…'
+              ? t`Working…`
               : job.cancellation_requested
-                ? 'Requested'
+                ? t`Requested`
                 : awaiting
-                  ? 'Stop waiting'
+                  ? t`Stop waiting`
                   : job.state === 'executing'
-                    ? 'Request cancellation'
-                    : 'Cancel job'}
+                    ? t`Request cancellation`
+                    : t`Cancel job`}
           </Button>
         )}
       </div>
@@ -281,6 +314,8 @@ function VirtualJobHistory({
   onCancel: (job: Job) => void;
   pendingJobId: string | null;
 }) {
+  useLingui();
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const virtualizer = useVirtualizer({
     count: jobs.length,
@@ -297,7 +332,7 @@ function VirtualJobHistory({
       ref={scrollRef}
       className="max-h-[26rem] min-w-0 overflow-y-auto overscroll-y-auto rounded-sm [contain:layout_paint] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       role="group"
-      aria-label="Job history list"
+      aria-label={t`Job history list`}
       tabIndex={jobs.length > 0 ? 0 : undefined}
     >
       {jobs.length === 0 ? (
@@ -327,6 +362,8 @@ function VirtualJobHistory({
 }
 
 function VirtualActivityList({ events }: { events: ActivityRecord[] }) {
+  useLingui();
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const virtualizer = useVirtualizer({
     count: events.length,
@@ -343,7 +380,7 @@ function VirtualActivityList({ events }: { events: ActivityRecord[] }) {
       ref={scrollRef}
       className="min-w-0 max-h-[26rem] overflow-y-auto overscroll-y-auto rounded-sm [contain:layout_paint] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       role="list"
-      aria-label="Recent received events"
+      aria-label={t`Recent received events`}
       tabIndex={events.length > 0 ? 0 : undefined}
     >
       <div className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>
@@ -362,8 +399,8 @@ function VirtualActivityList({ events }: { events: ActivityRecord[] }) {
               <span className="min-w-0">
                 <span className="font-medium">
                   {event.kind === 'packet_received' && event.packet_type
-                    ? PACKET_TYPES[event.packet_type]
-                    : ACTIVITY_LABELS[event.kind]}
+                    ? PACKET_TYPES[event.packet_type]()
+                    : ACTIVITY_LABELS[event.kind]()}
                 </span>
                 <span className="block text-muted-foreground text-xs">
                   {event.kind === 'packet_received'
@@ -373,10 +410,10 @@ function VirtualActivityList({ events }: { events: ActivityRecord[] }) {
                         event.snr != null ? `SNR ${event.snr} dB` : null,
                       ]
                         .filter(Boolean)
-                        .join(' · ') || 'Sender unavailable'
+                        .join(' · ') || t`Sender unavailable`
                     : event.kind === 'connection_changed' && event.readiness
-                      ? `${event.previous_readiness ?? 'unknown'} → ${event.readiness} · generation ${event.radio_generation}`
-                      : ACTIVITY_SOURCES[event.source]}
+                      ? t`${event.previous_readiness ?? 'unknown'} → ${event.readiness} · generation ${event.radio_generation}`
+                      : ACTIVITY_SOURCES[event.source]()}
                 </span>
               </span>
               <time className="text-muted-foreground shrink-0 tabular-nums" dateTime={event.at}>
@@ -391,6 +428,8 @@ function VirtualActivityList({ events }: { events: ActivityRecord[] }) {
 }
 
 export function RadioActivityPage({ feed, connection, health }: Props) {
+  useLingui();
+
   const [filter, setFilter] = useState<HistoryFilter>('all');
   const [showBackground, setShowBackground] = useState(false);
   const [now, setNow] = useState(() => Date.now());
@@ -418,30 +457,30 @@ export function RadioActivityPage({ feed, connection, health }: Props) {
       : radio?.radio_status;
   const disconnected = radioConnection === 'disconnected';
   const commandLabel = disconnected
-    ? 'Disconnected'
+    ? t`Disconnected`
     : radioConnection === 'connecting' || radioConnection === 'initializing'
-      ? 'Connecting'
+      ? t`Connecting`
       : radioConnection === 'failed'
-        ? 'Recovery required'
+        ? t`Recovery required`
         : !radio
-          ? 'Loading status…'
+          ? t`Loading status…`
           : executing
-            ? `Executing ${JOB_NAMES[executing.kind]} command`
+            ? t`Executing ${JOB_NAMES[executing.kind]()} command`
             : radio.command_status === 'legacy_busy'
-              ? 'Legacy command in progress'
-              : 'Idle';
+              ? t`Legacy command in progress`
+              : t`Idle`;
   const status =
     radioConnection === 'ready' || radioConnection === 'connected'
-      ? 'Ready'
+      ? t`Ready`
       : radioConnection === 'degraded'
-        ? 'Degraded'
+        ? t`Degraded`
         : radioConnection === 'failed'
-          ? 'Failed'
+          ? t`Failed`
           : radioConnection === 'connecting' || radioConnection === 'initializing'
-            ? 'Initializing'
+            ? t`Initializing`
             : radioConnection === 'paused'
-              ? 'Paused'
-              : 'Disconnected';
+              ? t`Paused`
+              : t`Disconnected`;
 
   async function submitCancel(job: Job) {
     setStopJob(null);
@@ -449,7 +488,7 @@ export function RadioActivityPage({ feed, connection, health }: Props) {
     try {
       await cancel.mutateAsync(job.id);
     } catch {
-      setCancelError('Could not update the job. Refresh the snapshot to check its current state.');
+      setCancelError(t`Could not update the job. Refresh the snapshot to check its current state.`);
     }
   }
 
@@ -495,7 +534,7 @@ export function RadioActivityPage({ feed, connection, health }: Props) {
   return (
     <div
       className="flex-1 min-h-0 overflow-y-auto overscroll-contain"
-      aria-label="Radio Activity dashboard"
+      aria-label={t`Radio Activity dashboard`}
       aria-busy={refreshing}
     >
       <div className="mx-auto w-full max-w-6xl space-y-4 p-3 sm:p-5 pb-10">
@@ -503,7 +542,7 @@ export function RadioActivityPage({ feed, connection, health }: Props) {
           <div>
             <h2 className="text-xl font-semibold tracking-tight flex items-center gap-2">
               <RadioTower className="h-5 w-5 text-primary" aria-hidden="true" />
-              Radio Activity
+              <Trans>Radio Activity</Trans>
             </h2>
           </div>
           <Button
@@ -511,30 +550,30 @@ export function RadioActivityPage({ feed, connection, health }: Props) {
             size="sm"
             onClick={() => void refreshAll()}
             disabled={refreshing}
-            aria-label="Refresh radio activity"
+            aria-label={t`Refresh radio activity`}
           >
             <RefreshCw
               className={cn('h-4 w-4 mr-2', refreshing && 'animate-spin')}
               aria-hidden="true"
             />
-            {refreshing ? 'Refreshing…' : 'Refresh'}
+            {refreshing ? t`Refreshing…` : t`Refresh`}
           </Button>
         </div>
         {connection !== 'live' && (
           <p aria-live="polite" role="status" className="text-sm text-warning">
             {connection === 'connecting'
-              ? 'Connecting to live updates…'
-              : 'Offline — snapshots may be stale. Reconnecting…'}
+              ? t`Connecting to live updates…`
+              : t`Offline — snapshots may be stale. Reconnecting…`}
           </p>
         )}
         {feed.jobs.isLoading && (
           <p role="status" className="text-sm">
-            Loading radio jobs…
+            <Trans>Loading radio jobs…</Trans>
           </p>
         )}
         {feed.jobs.isError && (
           <p role="alert" className="text-sm text-destructive">
-            Could not load radio jobs. Try Refresh.
+            <Trans>Could not load radio jobs. Try Refresh.</Trans>
           </p>
         )}
         {cancelError && (
@@ -543,77 +582,93 @@ export function RadioActivityPage({ feed, connection, health }: Props) {
           </p>
         )}
 
-        <section aria-label="Radio now" className="rounded-lg border border-border p-3 sm:p-4">
+        <section aria-label={t`Radio now`} className="rounded-lg border border-border p-3 sm:p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
               <div>
-                <span className="text-sm text-muted-foreground mr-2">Radio</span>
-                <strong className="text-sm">{radioConnection ? status : 'Checking…'}</strong>
+                <span className="text-sm text-muted-foreground mr-2">
+                  <Trans>Radio</Trans>
+                </span>
+                <strong className="text-sm">{radioConnection ? status : t`Checking…`}</strong>
               </div>
               <div aria-live="polite">
-                <span className="text-sm text-muted-foreground mr-2">Command</span>
+                <span className="text-sm text-muted-foreground mr-2">
+                  <Trans>Command</Trans>
+                </span>
                 <strong className="text-sm font-medium">{commandLabel}</strong>
               </div>
             </div>
             <span className="text-xs text-muted-foreground">
-              RF TX/RX unmeasured · {health?.startup_policy ?? radio?.startup_policy ?? 'full'}{' '}
-              startup
+              <Trans>
+                RF TX/RX unmeasured · {health?.startup_policy ?? radio?.startup_policy ?? 'full'}{' '}
+                startup
+              </Trans>
             </span>
           </div>
           {(disconnected || !live) && (
             <p className="text-sm text-warning mt-2">
               {!live
-                ? 'Connection to the server is not live; displayed states may be outdated.'
-                : 'Radio disconnected. Pending operations may have unknown outcomes.'}
+                ? t`Connection to the server is not live; displayed states may be outdated.`
+                : t`Radio disconnected. Pending operations may have unknown outcomes.`}
             </p>
           )}
         </section>
 
         <div className="grid lg:grid-cols-2 gap-4 items-start">
-          <Section title="Ongoing operations" count={active.length} compact={active.length === 0}>
+          <Section
+            title={t`Ongoing operations`}
+            count={active.length}
+            compact={active.length === 0}
+          >
             {renderJobs(active, 'No ongoing operations')}
           </Section>
-          <Section title="Queued" count={queued.length} compact={queued.length === 0}>
+          <Section title={t`Queued`} count={queued.length} compact={queued.length === 0}>
             {renderJobs(queued, 'No queued commands')}
           </Section>
         </div>
 
         <div className="grid lg:grid-cols-2 gap-4 items-start">
-          <Section title="Received events" count={feed.activity.data?.items.length ?? 0}>
+          <Section title={t`Received events`} count={feed.activity.data?.items.length ?? 0}>
             {feed.activity.data?.gap && (
               <p className="text-xs text-warning mb-3" role="status">
-                Event history contains a gap. Older observations are no longer available.
+                <Trans>
+                  Event history contains a gap. Older observations are no longer available.
+                </Trans>
               </p>
             )}
             {feed.activity.isError && (
               <div role="alert" className="mb-3 flex flex-wrap items-center gap-2 text-sm">
-                <span className="text-destructive">Failed to load received activity.</span>
+                <span className="text-destructive">
+                  <Trans>Failed to load received activity.</Trans>
+                </span>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => void feed.activity.refetch()}
                   disabled={feed.activity.isFetching}
                 >
-                  {feed.activity.isFetching ? 'Retrying…' : 'Retry'}
+                  {feed.activity.isFetching ? t`Retrying…` : t`Retry`}
                 </Button>
                 {(feed.activity.data?.items.length ?? 0) > 0 && (
                   <span className="w-full text-xs text-warning">
-                    Showing retained stale events.
+                    <Trans>Showing retained stale events.</Trans>
                   </span>
                 )}
               </div>
             )}
             {!feed.activity.isError && (feed.activity.data?.items.length ?? 0) === 0 ? (
-              <p className="text-[0.8125rem] text-muted-foreground">No retained incoming events.</p>
+              <p className="text-[0.8125rem] text-muted-foreground">
+                <Trans>No retained incoming events.</Trans>
+              </p>
             ) : (feed.activity.data?.items.length ?? 0) > 0 ? (
               <VirtualActivityList events={[...(feed.activity.data?.items ?? [])].reverse()} />
             ) : null}
           </Section>
-          <Section title="History">
+          <Section title={t`History`}>
             <label className="flex items-center justify-between gap-2 text-sm text-muted-foreground mb-3">
-              Filter outcomes
+              <Trans>Filter outcomes</Trans>
               <select
-                aria-label="Filter job history"
+                aria-label={t`Filter job history`}
                 className="rounded border border-input bg-background text-foreground px-2 py-1.5 text-sm"
                 value={filter}
                 onChange={(event) => setFilter(event.target.value as HistoryFilter)}
@@ -627,22 +682,26 @@ export function RadioActivityPage({ feed, connection, health }: Props) {
             </label>
             {historyQuery.isLoading && (
               <p role="status" className="text-xs text-muted-foreground">
-                Loading history…
+                <Trans>Loading history…</Trans>
               </p>
             )}
             {historyQuery.isError && (
               <div role="alert" className="mb-3 flex flex-wrap items-center gap-2 text-sm">
-                <span className="text-destructive">Failed to load job history.</span>
+                <span className="text-destructive">
+                  <Trans>Failed to load job history.</Trans>
+                </span>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => void historyQuery.refetch()}
                   disabled={historyQuery.isFetching}
                 >
-                  {historyQuery.isFetching ? 'Retrying…' : 'Retry'}
+                  {historyQuery.isFetching ? t`Retrying…` : t`Retry`}
                 </Button>
                 {visibleHistory.length > 0 && (
-                  <span className="w-full text-xs text-warning">Showing retained stale jobs.</span>
+                  <span className="w-full text-xs text-warning">
+                    <Trans>Showing retained stale jobs.</Trans>
+                  </span>
                 )}
               </div>
             )}
@@ -652,13 +711,13 @@ export function RadioActivityPage({ feed, connection, health }: Props) {
                 checked={showBackground}
                 onChange={(event) => setShowBackground(event.target.checked)}
               />
-              Include routine background jobs
+              <Trans>Include routine background jobs</Trans>
             </label>
             {(!historyQuery.isError || visibleHistory.length > 0) && (
               <VirtualJobHistory
                 key={`${filter}:${showBackground}`}
                 jobs={visibleHistory}
-                emptyText="No matching history. Enable background jobs to see routine samples."
+                emptyText={t`No matching history. Enable background jobs to see routine samples.`}
                 now={now}
                 onCancel={handleCancel}
                 pendingJobId={cancel.isPending ? (cancel.variables ?? null) : null}
@@ -673,7 +732,7 @@ export function RadioActivityPage({ feed, connection, health }: Props) {
                 onClick={() => void historyQuery.fetchNextPage()}
               >
                 <ArrowDown className="h-4 w-4 mr-2" aria-hidden="true" />
-                {historyQuery.isFetchingNextPage ? 'Loading…' : 'Load older history'}
+                {historyQuery.isFetchingNextPage ? t`Loading…` : t`Load older history`}
               </Button>
             )}
           </Section>
@@ -684,16 +743,18 @@ export function RadioActivityPage({ feed, connection, health }: Props) {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Clock3 className="h-5 w-5" aria-hidden="true" />
-              Stop waiting for RF response?
+              <Trans>Stop waiting for RF response?</Trans>
             </DialogTitle>
             <DialogDescription>
-              This stops tracking the response only. It cannot retract a command already sent over
-              radio. The actual outcome may remain unknown.
+              <Trans>
+                This stops tracking the response only. It cannot retract a command already sent over
+                radio. The actual outcome may remain unknown.
+              </Trans>
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setStopJob(null)}>
-              Keep waiting
+              <Trans>Keep waiting</Trans>
             </Button>
             <Button
               variant="outline"
@@ -702,7 +763,7 @@ export function RadioActivityPage({ feed, connection, health }: Props) {
               onClick={() => stopJob && void submitCancel(stopJob)}
             >
               <XCircle className="h-4 w-4 mr-2" aria-hidden="true" />
-              Stop waiting
+              <Trans>Stop waiting</Trans>
             </Button>
           </DialogFooter>
         </DialogContent>

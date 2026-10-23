@@ -1,3 +1,6 @@
+import { Trans } from '@lingui/react/macro';
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
 import { useMemo, lazy, Suspense } from 'react';
 import {
   createSortedRowModel,
@@ -74,6 +77,8 @@ export function NeighborsPane({
   nodeInfoState: PaneState;
   repeaterName: string | null;
 }) {
+  useLingui();
+
   const { distanceUnit } = useDistanceUnit();
   const advertLat = repeaterContact?.lat ?? null;
   const advertLon = repeaterContact?.lon ?? null;
@@ -167,22 +172,24 @@ export function NeighborsPane({
     <RepeaterPane
       title={
         !data
-          ? 'Neighbors'
+          ? t`Neighbors`
           : data.reported_count != null && data.reported_count !== data.neighbors.length
-            ? `Neighbors (${data.neighbors.length} of ${data.reported_count})`
-            : `Neighbors (${data.reported_count ?? data.neighbors.length})`
+            ? t`Neighbors (${data.neighbors.length} of ${data.reported_count})`
+            : t`Neighbors (${data.reported_count ?? data.neighbors.length})`
       }
       headerNote={headerNote}
       state={state}
       onRefresh={onRefresh}
       disabled={disabled}
-      className={rows.length > 0 ? 'flex min-h-0 flex-col' : undefined}
-      contentClassName={rows.length > 0 ? 'flex min-h-0 flex-col' : undefined}
+      className={rows.length > 0 ? `flex min-h-0 flex-col` : undefined}
+      contentClassName={rows.length > 0 ? `flex min-h-0 flex-col` : undefined}
     >
       {!data ? (
         <NotFetched />
       ) : rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No neighbors reported</p>
+        <p className="text-sm text-muted-foreground">
+          <Trans>No neighbors reported</Trans>
+        </p>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col gap-2">
           <div className="shrink-0 overflow-x-auto">
@@ -199,7 +206,7 @@ export function NeighborsPane({
                             key={header.id}
                             className={cn('pb-1 font-medium', header.id !== 'name' && 'text-right')}
                             aria-sort={
-                              sorted ? (sorted === 'asc' ? 'ascending' : 'descending') : 'none'
+                              sorted ? (sorted === 'asc' ? `ascending` : `descending`) : `none`
                             }
                           >
                             <button
@@ -233,14 +240,16 @@ export function NeighborsPane({
                           </span>
                         )}
                       </td>
-                      <td className={cn('py-1 text-right font-mono', snrColor)}>{snrStr} dB</td>
+                      <td className={cn('py-1 text-right font-mono', snrColor)}>
+                        <Trans>{snrStr} dB</Trans>
+                      </td>
                       {hasDistances && (
                         <td className="py-1 text-right text-muted-foreground font-mono">
                           {dist ?? '—'}
                         </td>
                       )}
                       <td className="py-1 text-right text-muted-foreground">
-                        {formatDuration(n.last_heard_seconds)} ago
+                        <Trans>{formatDuration(n.last_heard_seconds)} ago</Trans>
                       </td>
                     </tr>
                   );
@@ -252,7 +261,7 @@ export function NeighborsPane({
             <Suspense
               fallback={
                 <div className="flex min-h-48 flex-1 items-center justify-center text-xs text-muted-foreground">
-                  Loading map...
+                  <Trans>Loading map...</Trans>
                 </div>
               }
             >
@@ -266,8 +275,10 @@ export function NeighborsPane({
             </Suspense>
           ) : (
             <div className="rounded border border-border/70 bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
-              Map and distance data are unavailable until this repeater has a valid position from
-              either its advert or a Node Info fetch.
+              <Trans>
+                Map and distance data are unavailable until this repeater has a valid position from
+                either its advert or a Node Info fetch.
+              </Trans>
             </div>
           )}
         </div>

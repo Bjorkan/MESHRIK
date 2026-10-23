@@ -1,3 +1,5 @@
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
 import { useCallback, type RefObject } from 'react';
 import { api } from '../api';
 import { toast } from '../components/ui/sonner';
@@ -36,6 +38,8 @@ export function useConversationActions({
   observeMessage,
   messageInputRef,
 }: UseConversationActionsArgs): UseConversationActionsResult {
+  useLingui();
+
   const mergeChannelIntoList = useCallback(
     (updated: Channel) => {
       setChannels((prev) => {
@@ -73,10 +77,10 @@ export function useConversationActions({
         if (newTimestamp && resentMessage) {
           observeMessage(resentMessage);
         }
-        toast.success(newTimestamp ? 'Message resent with new timestamp' : 'Message resent');
+        toast.success(newTimestamp ? t`Message resent with new timestamp` : t`Message resent`);
       } catch (err) {
-        toast.error('Failed to resend', {
-          description: err instanceof Error ? err.message : 'Unknown error',
+        toast.error(t`Failed to resend`, {
+          description: err instanceof Error ? err.message : t`Unknown error`,
         });
       }
     },
@@ -88,7 +92,7 @@ export function useConversationActions({
       const updated = await api.setChannelFloodScopeOverride(channelKey, floodScopeOverride);
       mergeChannelIntoList(updated);
       toast.success(
-        updated.flood_scope_override ? 'Regional override saved' : 'Regional override cleared'
+        updated.flood_scope_override ? t`Regional override saved` : t`Regional override cleared`
       );
     },
     [mergeChannelIntoList]
@@ -100,8 +104,8 @@ export function useConversationActions({
       mergeChannelIntoList(updated);
       toast.success(
         updated.path_hash_mode_override != null
-          ? 'Path hop width override saved'
-          : 'Path hop width override cleared'
+          ? t`Path hop width override saved`
+          : t`Path hop width override cleared`
       );
     },
     [mergeChannelIntoList]
@@ -116,17 +120,17 @@ export function useConversationActions({
 
   const handleTrace = useCallback(async () => {
     if (!activeConversation || activeConversation.type !== 'contact') return;
-    toast('Trace started...');
+    toast(t`Trace started...`);
     try {
       const result = await api.requestTrace(activeConversation.id);
       const parts: string[] = [];
       if (result.remote_snr !== null) parts.push(`Remote SNR: ${result.remote_snr.toFixed(1)} dB`);
       if (result.local_snr !== null) parts.push(`Local SNR: ${result.local_snr.toFixed(1)} dB`);
       const detail = parts.join(', ');
-      toast.success(detail ? `Trace complete! ${detail}` : 'Trace complete!');
+      toast.success(detail ? t`Trace complete! ${detail}` : t`Trace complete!`);
     } catch (err) {
-      toast.error('Trace failed', {
-        description: err instanceof Error ? err.message : 'Unknown error',
+      toast.error(t`Trace failed`, {
+        description: err instanceof Error ? err.message : t`Unknown error`,
       });
     }
   }, [activeConversation]);

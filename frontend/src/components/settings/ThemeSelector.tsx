@@ -1,8 +1,12 @@
+import { Trans } from '@lingui/react/macro';
+import { useLingui } from '@lingui/react';
 import { useSyncExternalStore } from 'react';
 import { THEMES, getSavedTheme, applyTheme, subscribeThemePreference } from '../../utils/theme';
 
 /** 3x2 grid of colored dots previewing a theme's palette. */
 function ThemeSwatch({ colors }: { colors: readonly string[] }) {
+  useLingui();
+
   return (
     <div className="grid grid-cols-3 gap-[3px]" aria-hidden="true">
       {colors.map((c, i) => (
@@ -17,6 +21,8 @@ function ThemeSwatch({ colors }: { colors: readonly string[] }) {
 }
 
 export function ThemeSelector() {
+  useLingui();
+
   const current = useSyncExternalStore(subscribeThemePreference, getSavedTheme, () => 'original');
 
   const handleChange = (themeId: string) => {
@@ -25,7 +31,9 @@ export function ThemeSelector() {
 
   return (
     <fieldset className="flex flex-wrap gap-2 md:grid md:grid-cols-4">
-      <legend className="sr-only">Color theme</legend>
+      <legend className="sr-only">
+        <Trans>Color theme</Trans>
+      </legend>
       {THEMES.map((theme) => (
         <label
           key={theme.id}

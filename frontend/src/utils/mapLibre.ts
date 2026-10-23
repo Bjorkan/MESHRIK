@@ -1,3 +1,4 @@
+import { t } from '@lingui/core/macro';
 import { setWorkerUrl } from 'maplibre-gl';
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -20,19 +21,25 @@ export const LEGACY_DARK_MAP_STORAGE_KEY = 'meshrik-dark-map';
 export const MAP_STYLES: readonly MapStylePreset[] = [
   {
     id: 'liberty',
-    label: 'Liberty',
+    get label() {
+      return t`Liberty`;
+    },
     url: 'https://tiles.openfreemap.org/styles/liberty',
     background: '#dbeafe',
   },
   {
     id: 'bright',
-    label: 'Bright',
+    get label() {
+      return t`Bright`;
+    },
     url: 'https://tiles.openfreemap.org/styles/bright',
     background: '#eef2f7',
   },
   {
     id: 'dark',
-    label: 'Dark',
+    get label() {
+      return t`Dark`;
+    },
     url: 'https://tiles.openfreemap.org/styles/dark',
     background: '#111827',
   },

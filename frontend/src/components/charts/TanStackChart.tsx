@@ -1,3 +1,6 @@
+import { Trans } from '@lingui/react/macro';
+import { useLingui } from '@lingui/react';
+import { getLocale } from '@/i18n';
 import { useEffect, useMemo, useState } from 'react';
 import { areaY, barX, barY, defineChart, lineY, stack } from '@tanstack/charts';
 import { controlledSignal } from '@tanstack/charts/interaction/signal';
@@ -40,6 +43,8 @@ export interface ChartViewport {
 }
 
 function useVisibleSeries(series: ChartSeries[]) {
+  useLingui();
+
   const seriesKeys = useMemo(() => series.map((descriptor) => descriptor.key), [series]);
   const [visibleSeries, setVisibleSeries] = useState<readonly string[]>(seriesKeys);
 
@@ -85,6 +90,8 @@ export function TanStackTimeSeriesChart({
   fullExtent?: readonly [number, number];
   onViewportChange?: (viewport: ChartViewport, reason: ZoomXChange<number>) => void;
 }) {
+  useLingui();
+
   const { visibleSeries, setVisibleSeries } = useVisibleSeries(series);
   const zoomable = Boolean(
     viewport && fullExtent && fullExtent[0] !== fullExtent[1] && onViewportChange
@@ -205,7 +212,7 @@ export function TanStackTimeSeriesChart({
         use: tooltip,
         format: (point) => {
           const datum = point.datum as LongDatum;
-          return `${datum.label}: ${datum.detail ?? valueFormatter?.(datum.value) ?? datum.value.toLocaleString()}`;
+          return `${datum.label}: ${datum.detail ?? valueFormatter?.(datum.value) ?? datum.value.toLocaleString(getLocale())}`;
         },
         formatGroup: (points) => {
           const first = points[0]?.datum as LongDatum | undefined;
@@ -218,7 +225,7 @@ export function TanStackTimeSeriesChart({
             heading,
             ...points.map((point) => {
               const datum = point.datum as LongDatum;
-              return `${datum.label}: ${datum.detail ?? valueFormatter?.(datum.value) ?? datum.value.toLocaleString()}`;
+              return `${datum.label}: ${datum.detail ?? valueFormatter?.(datum.value) ?? datum.value.toLocaleString(getLocale())}`;
             }),
           ].join('\n');
         },
@@ -241,7 +248,7 @@ export function TanStackTimeSeriesChart({
   if (data.length === 0 || series.length === 0) {
     return (
       <div role="img" aria-label={ariaLabel} className="text-sm text-muted-foreground">
-        No chart data available.
+        <Trans>No chart data available.</Trans>
       </div>
     );
   }
@@ -271,6 +278,8 @@ export function TanStackBarChart({
   horizontal?: boolean;
   stacked?: boolean;
 }) {
+  useLingui();
+
   const { visibleSeries, setVisibleSeries } = useVisibleSeries(series);
   const definition = useMemo(() => {
     const points: LongDatum[] = data.flatMap((datum, index) =>
@@ -347,13 +356,13 @@ export function TanStackBarChart({
         use: tooltip,
         format: (point) => {
           const datum = point.datum as LongDatum;
-          return `${datum.label}: ${datum.detail ?? datum.value.toLocaleString()}`;
+          return `${datum.label}: ${datum.detail ?? datum.value.toLocaleString(getLocale())}`;
         },
         formatGroup: (group) =>
           group
             .map((point) => {
               const datum = point.datum as LongDatum;
-              return `${datum.label}: ${datum.detail ?? datum.value.toLocaleString()}`;
+              return `${datum.label}: ${datum.detail ?? datum.value.toLocaleString(getLocale())}`;
             })
             .join('\n'),
       },
@@ -363,7 +372,7 @@ export function TanStackBarChart({
   if (data.length === 0 || series.length === 0) {
     return (
       <div role="img" aria-label={ariaLabel} className="text-sm text-muted-foreground">
-        No chart data available.
+        <Trans>No chart data available.</Trans>
       </div>
     );
   }
@@ -387,6 +396,8 @@ export function TanStackDonutChart({
   height: number;
   ariaLabel: string;
 }) {
+  useLingui();
+
   const definition = useMemo(() => {
     const slices = pie(data, { value: 'value' });
     return defineChart({
@@ -417,7 +428,7 @@ export function TanStackDonutChart({
         use: tooltip,
         format: (point) => {
           const datum = point.datum as { name: string; value: number };
-          return `${datum.name}: ${datum.value.toLocaleString()}`;
+          return `${datum.name}: ${datum.value.toLocaleString(getLocale())}`;
         },
       },
     });
@@ -426,7 +437,7 @@ export function TanStackDonutChart({
   if (data.length === 0) {
     return (
       <div role="img" aria-label={ariaLabel} className="text-sm text-muted-foreground">
-        No chart data available.
+        <Trans>No chart data available.</Trans>
       </div>
     );
   }

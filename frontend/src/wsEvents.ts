@@ -1,3 +1,4 @@
+import { t } from '@lingui/core/macro';
 import type { Channel, Contact, HealthStatus, Message, MessagePath, RawPacket } from './types';
 import type { components } from './generated/api-schema';
 
@@ -174,13 +175,13 @@ function isRadioActivity(value: unknown): value is RadioActivityDelta {
 }
 
 function invalidData(type: string): never {
-  throw new Error(`Invalid WebSocket event data for ${type}`);
+  throw new Error(t`Invalid WebSocket event data for ${type}`);
 }
 
 export function parseWsEvent(raw: string): ParsedWsEvent {
   const parsed: RawWsEnvelope = JSON.parse(raw);
   if (!parsed || typeof parsed !== 'object' || typeof parsed.type !== 'string') {
-    throw new Error('Invalid WebSocket event envelope');
+    throw new Error(t`Invalid WebSocket event envelope`);
   }
 
   switch (parsed.type) {

@@ -1,3 +1,5 @@
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useInfiniteQuery, useQueryClient, type InfiniteData } from '@tanstack/react-query';
 import { toast } from '../components/ui/sonner';
@@ -309,6 +311,8 @@ export function useConversationMessages(
   activeConversation: Conversation | null,
   targetMessageId?: number | null
 ): UseConversationMessagesResult {
+  useLingui();
+
   const queryClient = useQueryClient();
   const pendingAcksRef = useRef<Map<number, PendingAckUpdate>>(new Map());
   const latestRequestRef = useRef<LatestRequestState | null>(null);
@@ -487,8 +491,8 @@ export function useConversationMessages(
   useEffect(() => {
     if (!query.error || isAbortError(query.error)) return;
     console.error('Failed to fetch messages:', query.error);
-    toast.error('Failed to load messages', {
-      description: query.error instanceof Error ? query.error.message : 'Check your connection',
+    toast.error(t`Failed to load messages`, {
+      description: query.error instanceof Error ? query.error.message : t`Check your connection`,
     });
   }, [query.error]);
 
@@ -512,7 +516,7 @@ export function useConversationMessages(
       await query.fetchNextPage({ cancelRefetch: false });
     } catch (error) {
       if (!isAbortError(error)) {
-        toast.error('Failed to load older messages');
+        toast.error(t`Failed to load older messages`);
       }
     }
   }, [conversation, query]);
@@ -527,7 +531,7 @@ export function useConversationMessages(
       }
     } catch (error) {
       if (!isAbortError(error)) {
-        toast.error('Failed to load newer messages');
+        toast.error(t`Failed to load newer messages`);
       }
     }
   }, [conversation, query, queryClient, queryKey]);

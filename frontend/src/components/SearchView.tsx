@@ -1,3 +1,6 @@
+import { Trans } from '@lingui/react/macro';
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
 import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useDebouncer } from '@tanstack/react-pacer';
@@ -102,6 +105,8 @@ export function SearchView({
   searchQuery,
   onSearchQueryChange,
 }: SearchViewProps) {
+  useLingui();
+
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -250,7 +255,7 @@ export function SearchView({
     <div className="flex flex-col h-full">
       {/* Header */}
       <h2 className="flex justify-between items-center px-4 py-2.5 border-b border-border font-semibold text-base">
-        Message Search
+        <Trans>Message Search</Trans>
       </h2>
 
       {/* Search input */}
@@ -258,21 +263,23 @@ export function SearchView({
         <Input
           ref={inputRef}
           type="text"
-          placeholder="Search all messages..."
+          placeholder={t`Search all messages...`}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => {
             focusedResultIdRef.current = null;
           }}
           className="h-9 text-sm"
-          aria-label="Search messages"
+          aria-label={t`Search messages`}
         />
         <div className="min-h-6 pt-1 text-sm text-muted-foreground">
           {loading && !searchResultsQuery.isFetchingNextPage && (
-            <LoadingIndicator label="Searching..." />
+            <LoadingIndicator label={t`Searching...`} />
           )}
           {loading && results.length > 0 && !searchResultsQuery.isFetchingNextPage && (
-            <span className="ml-2">Showing previous results while refreshing.</span>
+            <span className="ml-2">
+              <Trans>Showing previous results while refreshing.</Trans>
+            </span>
           )}
         </div>
       </div>
@@ -287,32 +294,38 @@ export function SearchView({
       >
         {!committedQuery && (
           <div className="p-8 text-center text-muted-foreground text-sm">
-            <p>Type to search across all messages</p>
-            <p className="mt-2 text-xs">
-              Tip: use <code>user:</code> or <code>channel:</code> for keys or names, and wrap names
-              with spaces in them in quotes.
+            <p>
+              <Trans>Type to search across all messages</Trans>
             </p>
             <p className="mt-2 text-xs">
-              Warning: User-key linkage for group messages is best-effort and based on correlation
-              at advertise time. It does not account for multiple users with the same name, and
-              should be considered unreliable.
+              <Trans>
+                Tip: use <code>user:</code> or <code>channel:</code> for keys or names, and wrap
+                names with spaces in them in quotes.
+              </Trans>
+            </p>
+            <p className="mt-2 text-xs">
+              <Trans>
+                Warning: User-key linkage for group messages is best-effort and based on correlation
+                at advertise time. It does not account for multiple users with the same name, and
+                should be considered unreliable.
+              </Trans>
             </p>
           </div>
         )}
 
         {committedQuery && results.length === 0 && !loading && !initialError && (
           <div className="p-8 text-center text-muted-foreground text-sm">
-            No messages found for &ldquo;{committedQuery}&rdquo;
+            <Trans>No messages found for &ldquo;{committedQuery}&rdquo;</Trans>
           </div>
         )}
 
         {initialError && (
           <div className="space-y-3 p-8 text-center" role="alert">
             <p className="text-sm text-destructive">
-              Search failed. Check your connection and retry.
+              <Trans>Search failed. Check your connection and retry.</Trans>
             </p>
             <Button variant="outline" size="sm" onClick={() => void searchResultsQuery.refetch()}>
-              Retry search
+              <Trans>Retry search</Trans>
             </Button>
           </div>
         )}
@@ -321,14 +334,14 @@ export function SearchView({
           <div
             className="relative w-full"
             style={{ height: virtualizer.getTotalSize() }}
-            aria-label="Message search results"
+            aria-label={t`Message search results`}
             data-virtual-viewport="search-results"
           >
             {virtualizer.getVirtualItems().map((virtualRow) => {
               const result = results[virtualRow.index];
               if (!result) return null;
               const convName = getConversationName(result);
-              const typeBadge = result.type === 'CHAN' ? 'Channel' : 'DM';
+              const typeBadge = result.type === 'CHAN' ? t`Channel` : t`DM`;
 
               return (
                 <div
@@ -382,7 +395,11 @@ export function SearchView({
                       {result.sender_name && !result.outgoing && (
                         <span className="text-muted-foreground">{result.sender_name}: </span>
                       )}
-                      {result.outgoing && <span className="text-muted-foreground">You: </span>}
+                      {result.outgoing && (
+                        <span className="text-muted-foreground">
+                          <Trans>You: </Trans>
+                        </span>
+                      )}
                       {highlightMatch(
                         result.sender_name && result.text.startsWith(`${result.sender_name}: `)
                           ? result.text.slice(result.sender_name.length + 2)
@@ -399,21 +416,21 @@ export function SearchView({
 
         {searchResultsQuery.isFetchingNextPage && !paginationError && (
           <div className="p-4 text-center text-muted-foreground text-sm">
-            <LoadingIndicator label="Loading more..." />
+            <LoadingIndicator label={t`Loading more...`} />
           </div>
         )}
 
         {paginationError && (
           <div className="space-y-2 p-4 text-center" role="alert">
             <p className="text-sm text-destructive">
-              More results could not be loaded. Your existing results are unchanged.
+              <Trans>More results could not be loaded. Your existing results are unchanged.</Trans>
             </p>
             <Button
               variant="outline"
               size="sm"
               onClick={() => void searchResultsQuery.fetchNextPage()}
             >
-              Retry loading more
+              <Trans>Retry loading more</Trans>
             </Button>
           </div>
         )}
@@ -425,7 +442,7 @@ export function SearchView({
               size="sm"
               onClick={() => void searchResultsQuery.fetchNextPage()}
             >
-              Load more results
+              <Trans>Load more results</Trans>
             </Button>
           </div>
         )}

@@ -1,3 +1,6 @@
+import { Trans } from '@lingui/react/macro';
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
 import { useCallback, useEffect, type FormEvent } from 'react';
 import { useForm, useStore } from '@tanstack/react-form';
 import { Input } from './ui/input';
@@ -32,6 +35,8 @@ export function RepeaterLogin({
   loginLabel = 'Login with Password',
   guestLabel = 'Login as Guest / ACLs',
 }: RepeaterLoginProps) {
+  useLingui();
+
   const form = useForm({
     defaultValues: {
       password: initialPassword,
@@ -80,7 +85,7 @@ export function RepeaterLogin({
             value={password}
             onChange={(e) => form.setFieldValue('password', e.target.value)}
             placeholder={passwordPlaceholder}
-            aria-label="Repeater password"
+            aria-label={t`Repeater password`}
             disabled={loading}
             autoFocus={shouldAutoFocusInput()}
           />
@@ -97,14 +102,18 @@ export function RepeaterLogin({
                 form.setFieldValue('rememberPassword', checked === true)
               }
             />
-            <span>Remember password</span>
+            <span>
+              <Trans>Remember password</Trans>
+            </span>
           </label>
 
           {rememberPassword && (
             <p className="text-xs text-muted-foreground">
-              Passwords are stored unencrypted in local browser storage for this domain. It is
-              highly recommended to login via ACLs after your first successful login; saving the
-              password is not recommended.
+              <Trans>
+                Passwords are stored unencrypted in local browser storage for this domain. It is
+                highly recommended to login via ACLs after your first successful login; saving the
+                password is not recommended.
+              </Trans>
             </p>
           )}
 
@@ -120,13 +129,15 @@ export function RepeaterLogin({
               role="status"
               aria-live="polite"
             >
-              Login request pending. You can leave this view without starting another attempt.
+              <Trans>
+                Login request pending. You can leave this view without starting another attempt.
+              </Trans>
             </p>
           )}
 
           <div className="flex flex-col gap-2">
             <Button type="submit" disabled={loading} className="w-full">
-              {loading ? 'Logging in...' : loginLabel}
+              {loading ? t`Logging in...` : loginLabel}
             </Button>
             <Button
               type="button"

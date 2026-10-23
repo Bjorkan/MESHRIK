@@ -1,4 +1,6 @@
 'use client';
+import { Trans } from '@lingui/react/macro';
+import { useLingui } from '@lingui/react';
 
 import * as React from 'react';
 import { Command as CommandPrimitive } from 'cmdk';
@@ -23,12 +25,16 @@ const Command = React.forwardRef<
 Command.displayName = CommandPrimitive.displayName;
 
 function CommandDialog({ children, ...props }: React.ComponentProps<typeof Dialog>) {
+  useLingui();
+
   return (
     <Dialog {...props}>
       <DialogContent className="overflow-hidden p-0 shadow-lg" hideCloseButton>
-        <DialogTitle className="sr-only">Command palette</DialogTitle>
+        <DialogTitle className="sr-only">
+          <Trans>Command palette</Trans>
+        </DialogTitle>
         <DialogDescription className="sr-only">
-          Search for conversations, settings, and tools
+          <Trans>Search for conversations, settings, and tools</Trans>
         </DialogDescription>
         <Command className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-group]]:px-2 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3">
           {children}
@@ -119,6 +125,8 @@ const CommandItem = React.forwardRef<
 CommandItem.displayName = CommandPrimitive.Item.displayName;
 
 function CommandShortcut({ className, ...props }: React.HTMLAttributes<HTMLSpanElement>) {
+  useLingui();
+
   return (
     <span
       className={cn('ml-auto text-xs tracking-widest text-muted-foreground', className)}

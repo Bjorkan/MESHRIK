@@ -1,3 +1,7 @@
+import { Trans } from '@lingui/react/macro';
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
+import { getLocale } from '@/i18n';
 import { useState, useMemo, useEffect } from 'react';
 import { Link } from '@tanstack/react-router';
 import { Download } from 'lucide-react';
@@ -21,11 +25,41 @@ interface MetricConfig {
 }
 
 const BUILTIN_METRIC_CONFIG: Record<BuiltinMetric, MetricConfig> = {
-  battery_volts: { label: 'Voltage', unit: 'V', color: '#22c55e' },
-  noise_floor_dbm: { label: 'Noise Floor', unit: 'dBm', color: '#8b5cf6' },
-  packets: { label: 'Packets', unit: '', color: '#0ea5e9' },
-  recv_errors: { label: 'RX Errors', unit: '', color: '#ef4444' },
-  uptime_seconds: { label: 'Uptime', unit: 's', color: '#f59e0b' },
+  battery_volts: {
+    get label() {
+      return t`Voltage`;
+    },
+    unit: 'V',
+    color: '#22c55e',
+  },
+  noise_floor_dbm: {
+    get label() {
+      return t`Noise Floor`;
+    },
+    unit: 'dBm',
+    color: '#8b5cf6',
+  },
+  packets: {
+    get label() {
+      return t`Packets`;
+    },
+    unit: '',
+    color: '#0ea5e9',
+  },
+  recv_errors: {
+    get label() {
+      return t`RX Errors`;
+    },
+    unit: '',
+    color: '#ef4444',
+  },
+  uptime_seconds: {
+    get label() {
+      return t`Uptime`;
+    },
+    unit: 's',
+    color: '#f59e0b',
+  },
 };
 
 const BUILTIN_METRICS: BuiltinMetric[] = Object.keys(BUILTIN_METRIC_CONFIG) as BuiltinMetric[];
@@ -48,7 +82,7 @@ function assignLppKeys(
 }
 
 function formatTime(ts: number): string {
-  return new Date(ts * 1000).toLocaleString([], {
+  return new Date(ts * 1000).toLocaleString(getLocale(), {
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
@@ -193,6 +227,8 @@ export function TelemetryHistoryPane({
   trackedTelemetryRepeaters,
   onToggleTrackedTelemetry,
 }: TelemetryHistoryPaneProps) {
+  useLingui();
+
   const { distanceUnit } = useDistanceUnit();
   const [metric, setMetric] = useState<string>('battery_volts');
   const [toggling, setToggling] = useState(false);
@@ -316,28 +352,36 @@ export function TelemetryHistoryPane({
           color: '#0ea5e9',
           axis: 'left' as const,
           line: false,
-          label: 'Received',
+          get label() {
+            return t`Received`;
+          },
         },
         {
           key: 'packets_sent',
           color: '#f43f5e',
           axis: 'left' as const,
           line: false,
-          label: 'Sent',
+          get label() {
+            return t`Sent`;
+          },
         },
         {
           key: 'packets_received_delta',
           color: '#14b8a6',
           axis: 'right' as const,
           line: true,
-          label: 'Received Δ',
+          get label() {
+            return t`Received Δ`;
+          },
         },
         {
           key: 'packets_sent_delta',
           color: '#f59e0b',
           axis: 'right' as const,
           line: true,
-          label: 'Sent Δ',
+          get label() {
+            return t`Sent Δ`;
+          },
         },
       ];
     }
@@ -348,14 +392,18 @@ export function TelemetryHistoryPane({
           color: '#ef4444',
           axis: 'left' as const,
           line: false,
-          label: 'RX Errors',
+          get label() {
+            return t`RX Errors`;
+          },
         },
         {
           key: 'recv_error_pct',
           color: '#f59e0b',
           axis: 'right' as const,
           line: false,
-          label: 'Error Rate',
+          get label() {
+            return t`Error Rate`;
+          },
         },
       ];
     }
@@ -460,9 +508,13 @@ export function TelemetryHistoryPane({
     <div className="border border-border rounded-lg overflow-hidden">
       <div className="flex items-center justify-between px-3 py-2 bg-muted/50 border-b border-border">
         <div className="flex items-center gap-2">
-          <h3 className="text-sm font-medium">Telemetry History</h3>
+          <h3 className="text-sm font-medium">
+            <Trans>Telemetry History</Trans>
+          </h3>
           {entries.length > 0 && (
-            <span className="text-[0.625rem] text-muted-foreground">{entries.length} samples</span>
+            <span className="text-[0.625rem] text-muted-foreground">
+              <Trans>{entries.length} samples</Trans>
+            </span>
           )}
         </div>
         {entries.length > 0 && (
@@ -470,17 +522,17 @@ export function TelemetryHistoryPane({
             variant="outline"
             size="sm"
             onClick={handleDownloadCsv}
-            title="Download all telemetry history as CSV"
+            title={t`Download all telemetry history as CSV`}
           >
             <Download className="h-3.5 w-3.5 mr-1.5" aria-hidden="true" />
-            Download CSV
+            <Trans>Download CSV</Trans>
           </Button>
         )}
       </div>
       <div className="p-3">
         {loading && entries.length === 0 && (
           <p role="status" className="mb-3 text-sm text-muted-foreground">
-            Loading saved telemetry…
+            <Trans>Loading saved telemetry…</Trans>
           </p>
         )}
         {loadError && (
@@ -491,7 +543,7 @@ export function TelemetryHistoryPane({
             <span className="text-sm text-destructive">{loadError}</span>
             {onRetry && (
               <Button variant="outline" size="sm" onClick={onRetry} disabled={loading}>
-                Retry saved telemetry
+                <Trans>Retry saved telemetry</Trans>
               </Button>
             )}
           </div>
@@ -499,21 +551,32 @@ export function TelemetryHistoryPane({
         {/* Explanation + tracking toggle */}
         <div className="mb-3 space-y-3">
           <p className="text-xs text-muted-foreground leading-relaxed">
-            Any time repeater telemetry is fetched, the metrics are stored for 30 days (or 1,000
-            samples, whichever comes first). This telemetry is stored on normal interactive fetches
-            via the repeater pane, API calls to the endpoint (
-            <code className="text-[0.6875rem]">POST /api/contacts/&lt;key&gt;/repeater/status</code>
-            ), or when the repeater is opted into interval telemetry polling, in which case the
-            repeater will be polled for metrics automatically. Fetch frequency can be configured in{' '}
+            <Trans>
+              Any time repeater telemetry is fetched, the metrics are stored for 30 days (or 1,000
+              samples, whichever comes first). This telemetry is stored on normal interactive
+              fetches via the repeater pane, API calls to the endpoint (
+            </Trans>
+            <code className="text-[0.6875rem]">
+              <Trans>POST /api/contacts/&lt;key&gt;/repeater/status</Trans>
+            </code>
+            <Trans>
+              ), or when the repeater is opted into interval telemetry polling, in which case the
+              repeater will be polled for metrics automatically. Fetch frequency can be configured
+              in
+            </Trans>{' '}
             <Link
               to="/settings/radio-app"
               className="underline text-primary hover:text-primary/80 transition-colors"
             >
-              Settings &rarr; Radio-App Management
+              <Trans>Settings &rarr; Radio-App Management</Trans>
             </Link>
-            , where you can also see which repeaters are currently opted in. A maximum of{' '}
-            {MAX_TRACKED} repeaters may be opted into this for the sake of keeping mesh congestion
-            reasonable.
+            <Trans>
+              , where you can also see which repeaters are currently opted in. A maximum of
+            </Trans>{' '}
+            {MAX_TRACKED}{' '}
+            <Trans>
+              repeaters may be opted into this for the sake of keeping mesh congestion reasonable.
+            </Trans>
           </p>
 
           {isTracked ? (
@@ -523,16 +586,20 @@ export function TelemetryHistoryPane({
               disabled={toggling}
               className="border-destructive/50 text-destructive hover:bg-destructive/10"
             >
-              {toggling ? 'Updating...' : 'Remove Repeater from Interval Metrics Tracking'}
+              {toggling ? t`Updating...` : t`Remove Repeater from Interval Metrics Tracking`}
             </Button>
           ) : slotsFull ? (
             <div className="space-y-2">
               <Button variant="outline" disabled>
-                Tracking Full ({trackedTelemetryRepeaters.length}/{MAX_TRACKED} slots used)
+                <Trans>
+                  Tracking Full ({trackedTelemetryRepeaters.length}/{MAX_TRACKED} slots used)
+                </Trans>
               </Button>
               <p className="text-xs text-muted-foreground">
-                Disable tracking on another repeater to free a slot:{' '}
-                {trackedNames.map((t) => t.name).join(', ')}
+                <Trans>
+                  Disable tracking on another repeater to free a slot:{' '}
+                  {trackedNames.map((t) => t.name).join(', ')}
+                </Trans>
               </p>
             </div>
           ) : (
@@ -542,7 +609,7 @@ export function TelemetryHistoryPane({
               disabled={toggling}
               className="border-green-600/50 text-green-600 hover:bg-green-600/10"
             >
-              {toggling ? 'Updating...' : 'Opt Repeater into Interval Metrics Tracking'}
+              {toggling ? t`Updating...` : t`Opt Repeater into Interval Metrics Tracking`}
             </Button>
           )}
         </div>
@@ -585,7 +652,7 @@ export function TelemetryHistoryPane({
 
         {entries.length === 0 && !loading && !loadError ? (
           <p className="text-sm text-muted-foreground italic">
-            No telemetry collected yet. Fetch status above to record data points.
+            <Trans>No telemetry collected yet. Fetch status above to record data points.</Trans>
           </p>
         ) : entries.length > 0 ? (
           <div>
@@ -605,17 +672,20 @@ export function TelemetryHistoryPane({
               onViewportChange={handleChartViewportChange}
             />
             {chartData.length > 2 && (
-              <div className="mt-1" aria-label="Telemetry chart range">
+              <div className="mt-1" aria-label={t`Telemetry chart range`}>
                 <p
                   role="status"
                   aria-live="polite"
                   className="mb-1 text-[0.625rem] text-muted-foreground"
                 >
-                  Visible range: {formatTime(chartViewport.start)} – {formatTime(chartViewport.end)}
+                  <Trans>
+                    Visible range: {formatTime(chartViewport.start)} –{' '}
+                    {formatTime(chartViewport.end)}
+                  </Trans>
                 </p>
                 <div className="grid grid-cols-2 gap-3">
                   <label className="text-[0.625rem] text-muted-foreground">
-                    From
+                    <Trans>From</Trans>
                     <input
                       className="block w-full accent-primary"
                       type="range"
@@ -631,7 +701,7 @@ export function TelemetryHistoryPane({
                     />
                   </label>
                   <label className="text-[0.625rem] text-muted-foreground">
-                    To
+                    <Trans>To</Trans>
                     <input
                       className="block w-full accent-primary"
                       type="range"

@@ -1,3 +1,6 @@
+import { Trans } from '@lingui/react/macro';
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
 import { useMemo } from 'react';
 import { RepeaterPane, NotFetched, LppSensorRow, formatLppLabel } from './repeaterPaneShared';
 import { useDistanceUnit } from '../../contexts/DistanceUnitContext';
@@ -14,6 +17,8 @@ export function LppTelemetryPane({
   onRefresh: () => void;
   disabled?: boolean;
 }) {
+  useLingui();
+
   const { distanceUnit } = useDistanceUnit();
 
   // Build disambiguated labels matching the telemetry history chart names
@@ -29,11 +34,13 @@ export function LppTelemetryPane({
   }, [data]);
 
   return (
-    <RepeaterPane title="LPP Sensors" state={state} onRefresh={onRefresh} disabled={disabled}>
+    <RepeaterPane title={t`LPP Sensors`} state={state} onRefresh={onRefresh} disabled={disabled}>
       {!data ? (
         <NotFetched />
       ) : data.sensors.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No sensor data available</p>
+        <p className="text-sm text-muted-foreground">
+          <Trans>No sensor data available</Trans>
+        </p>
       ) : (
         <div className="space-y-0.5">
           {data.sensors.map((sensor, i) => (

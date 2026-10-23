@@ -1,3 +1,6 @@
+import { Trans } from '@lingui/react/macro';
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
 import { Button } from './ui/button';
 import type { ServerLoginAttemptState } from '../utils/serverLoginState';
 import { getServerLoginAttemptTone } from '../utils/serverLoginState';
@@ -24,6 +27,8 @@ export function ServerLoginStatusBanner({
   blankRetryLabel = 'Retry Existing-Access Login',
   showRetryActions = true,
 }: ServerLoginStatusBannerProps) {
+  useLingui();
+
   if ((!attempt && !loading) || attempt?.outcome === 'confirmed') {
     return null;
   }
@@ -50,12 +55,15 @@ export function ServerLoginStatusBanner({
         <div className="min-w-0 space-y-1">
           <p className="text-sm font-medium">
             {loading
-              ? 'Login request is still pending.'
-              : (attempt?.summary ?? 'No server login attempt has been recorded in this view yet.')}
+              ? t`Login request is still pending.`
+              : (attempt?.summary ??
+                t`No server login attempt has been recorded in this view yet.`)}
           </p>
           {loading ? (
             <p className="text-xs opacity-90">
-              Waiting for the server response. Navigation will not cancel or resend this attempt.
+              <Trans>
+                Waiting for the server response. Navigation will not cancel or resend this attempt.
+              </Trans>
             </p>
           ) : (
             attempt?.details && <p className="text-xs opacity-90">{attempt.details}</p>

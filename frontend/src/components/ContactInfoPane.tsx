@@ -1,3 +1,7 @@
+import { Trans } from '@lingui/react/macro';
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
+import { getLocale } from '@/i18n';
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { Activity, Ban, ChevronDown, ChevronRight, Search, Star } from 'lucide-react';
@@ -94,6 +98,8 @@ export function ContactInfoPane({
   trackedTelemetryContacts = [],
   onToggleTrackedTelemetryContact,
 }: ContactInfoPaneProps) {
+  useLingui();
+
   const { distanceUnit } = useDistanceUnit();
   const isNameOnly = contactKey?.startsWith('name:') ?? false;
   const nameOnlyValue = isNameOnly && contactKey ? contactKey.slice(5) : null;
@@ -132,7 +138,7 @@ export function ContactInfoPane({
       .catch((err) => {
         if (!isAbortError(err)) {
           console.error('Failed to fetch contact analytics:', err);
-          toast.error('Failed to load contact info');
+          toast.error(t`Failed to load contact info`);
         }
       })
       .finally(() => {
@@ -171,7 +177,7 @@ export function ContactInfoPane({
       setTelemetryHistory(result.telemetry_history);
     } catch (err) {
       if (!isAbortError(err)) {
-        toast.error(err instanceof Error ? err.message : 'Failed to fetch telemetry');
+        toast.error(err instanceof Error ? err.message : t`Failed to fetch telemetry`);
       }
     } finally {
       setTelemetryLoading(false);
@@ -206,8 +212,12 @@ export function ContactInfoPane({
     <Sheet open={contactKey !== null} onOpenChange={(open) => !open && onClose()}>
       <SheetContent side="right" className="w-full sm:max-w-[400px] p-0 flex flex-col">
         <SheetHeader className="sr-only">
-          <SheetTitle>Contact Info</SheetTitle>
-          <SheetDescription>Contact details and actions</SheetDescription>
+          <SheetTitle>
+            <Trans>Contact Info</Trans>
+          </SheetTitle>
+          <SheetDescription>
+            <Trans>Contact details and actions</Trans>
+          </SheetDescription>
         </SheetHeader>
 
         {isNameOnly && nameOnlyValue ? (
@@ -225,8 +235,10 @@ export function ContactInfoPane({
                     {analytics?.name ?? nameOnlyValue}
                   </h2>
                   <p className="text-xs text-muted-foreground mt-1">
-                    We have not heard an advertisement associated with this name, so we cannot
-                    identify their key.
+                    <Trans>
+                      We have not heard an advertisement associated with this name, so we cannot
+                      identify their key.
+                    </Trans>
                   </p>
                 </div>
               </div>
@@ -243,12 +255,16 @@ export function ContactInfoPane({
                   {blockedNames.includes(nameOnlyValue) ? (
                     <>
                       <Ban className="h-4.5 w-4.5 text-destructive" aria-hidden="true" />
-                      <span>Unblock this name</span>
+                      <span>
+                        <Trans>Unblock this name</Trans>
+                      </span>
                     </>
                   ) : (
                     <>
                       <Ban className="h-4.5 w-4.5 text-muted-foreground" aria-hidden="true" />
-                      <span>Block this name</span>
+                      <span>
+                        <Trans>Block this name</Trans>
+                      </span>
                     </>
                   )}
                 </button>
@@ -263,7 +279,9 @@ export function ContactInfoPane({
                   onClick={() => onSearchMessagesByName(nameOnlyValue)}
                 >
                   <Search className="h-4.5 w-4.5 text-muted-foreground" aria-hidden="true" />
-                  <span>Search user&apos;s messages by name</span>
+                  <span>
+                    <Trans>Search user&apos;s messages by name</Trans>
+                  </span>
                 </button>
               </div>
             )}
@@ -286,7 +304,7 @@ export function ContactInfoPane({
               <div className="px-5 py-3 border-b border-border">
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
                   <InfoItem
-                    label="Name First In Use"
+                    label={t`Name First In Use`}
                     value={formatTime(analytics.name_first_seen_at)}
                   />
                 </div>
@@ -302,7 +320,7 @@ export function ContactInfoPane({
           </div>
         ) : loading && !analytics && !contact ? (
           <div className="flex-1 flex items-center justify-center text-muted-foreground">
-            Loading...
+            <Trans>Loading...</Trans>
           </div>
         ) : contact ? (
           <div className="flex-1 overflow-y-auto">
@@ -323,15 +341,15 @@ export function ContactInfoPane({
                     type="button"
                     className="text-xs font-mono text-muted-foreground cursor-pointer hover:text-primary transition-colors block truncate"
                     onClick={() =>
-                      void copyTextWithFeedback(contact.public_key, 'Public key copied!')
+                      void copyTextWithFeedback(contact.public_key, t`Public key copied!`)
                     }
-                    title="Click to copy"
+                    title={t`Click to copy`}
                   >
                     {contact.public_key}
                   </button>
                   <div className="flex items-center gap-2 mt-1.5">
                     <span className="text-[0.625rem] uppercase tracking-wider px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">
-                      {CONTACT_TYPE_LABELS[contact.type] ?? 'Unknown'}
+                      {CONTACT_TYPE_LABELS[contact.type] ?? t`Unknown`}
                     </span>
                   </div>
                 </div>
@@ -340,16 +358,20 @@ export function ContactInfoPane({
 
             {isPrefixOnlyResolvedContact && (
               <div className="mx-5 mt-4 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                We&apos;ve received a message from this sender but don&apos;t have their full
-                identity yet. This contact stays read-only until their identity is confirmed &mdash;
-                this usually happens automatically when they next advertise.
+                <Trans>
+                  We&apos;ve received a message from this sender but don&apos;t have their full
+                  identity yet. This contact stays read-only until their identity is confirmed
+                  &mdash; this usually happens automatically when they next advertise.
+                </Trans>
               </div>
             )}
 
             {isUnknownFullKeyResolvedContact && (
               <div className="mx-5 mt-4 rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">
-                This sender&apos;s profile details (name, location) haven&apos;t arrived yet. They
-                will fill in automatically when the sender&apos;s next advertisement is heard.
+                <Trans>
+                  This sender&apos;s profile details (name, location) haven&apos;t arrived yet. They
+                  will fill in automatically when the sender&apos;s next advertisement is heard.
+                </Trans>
               </div>
             )}
 
@@ -357,25 +379,27 @@ export function ContactInfoPane({
             <div className="px-5 py-3 border-b border-border">
               <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                 {contact.last_seen && (
-                  <InfoItem label="Last Seen" value={formatTime(contact.last_seen)} />
+                  <InfoItem label={t`Last Seen`} value={formatTime(contact.last_seen)} />
                 )}
                 {contact.first_seen && (
-                  <InfoItem label="First Heard" value={formatTime(contact.first_seen)} />
+                  <InfoItem label={t`First Heard`} value={formatTime(contact.first_seen)} />
                 )}
                 {contact.last_contacted && (
-                  <InfoItem label="Last Contacted" value={formatTime(contact.last_contacted)} />
+                  <InfoItem label={t`Last Contacted`} value={formatTime(contact.last_contacted)} />
                 )}
                 {distFromUs !== null && (
-                  <InfoItem label="Distance" value={formatDistance(distFromUs, distanceUnit)} />
+                  <InfoItem label={t`Distance`} value={formatDistance(distFromUs, distanceUnit)} />
                 )}
                 {effectiveRoute && (
                   <InfoItem
-                    label="Routing"
+                    label={t`Routing`}
                     value={
                       effectiveRoute.forced ? (
                         <span>
                           {formatRouteLabel(effectiveRoute.pathLen, true)}{' '}
-                          <span className="text-destructive">(forced)</span>
+                          <span className="text-destructive">
+                            <Trans>(forced)</Trans>
+                          </span>
                         </span>
                       ) : (
                         formatRouteLabel(effectiveRoute.pathLen, true)
@@ -384,23 +408,25 @@ export function ContactInfoPane({
                   />
                 )}
                 {hasRoutingOverride(contact) && learnedRouteLabel && (
-                  <InfoItem label="Learned Route" value={learnedRouteLabel} />
+                  <InfoItem label={t`Learned Route`} value={learnedRouteLabel} />
                 )}
-                {pathHashModeLabel && <InfoItem label="Hop Width" value={pathHashModeLabel} />}
+                {pathHashModeLabel && <InfoItem label={t`Hop Width`} value={pathHashModeLabel} />}
               </div>
             </div>
 
             {/* GPS */}
             {isValidLocation(contact.lat, contact.lon) && (
               <div className="px-5 py-3 border-b border-border">
-                <SectionLabel>Location</SectionLabel>
+                <SectionLabel>
+                  <Trans>Location</Trans>
+                </SectionLabel>
                 <Link
                   to="/map"
                   search={{ focus: contact.public_key }}
                   className="text-sm font-mono cursor-pointer hover:text-primary hover:underline transition-colors"
                   onClick={onClose}
-                  aria-label={`View ${getContactDisplayName(contact.name, contact.public_key, contact.last_advert)} on map`}
-                  title="View on map"
+                  aria-label={t`View ${getContactDisplayName(contact.name, contact.public_key, contact.last_advert)} on map`}
+                  title={t`View on map`}
                 >
                   {contact.lat!.toFixed(5)}, {contact.lon!.toFixed(5)}
                 </Link>
@@ -423,17 +449,21 @@ export function ContactInfoPane({
                 type="button"
                 className="text-sm flex items-center gap-2 hover:text-primary transition-colors"
                 onClick={() => onToggleFavorite('contact', contact.public_key)}
-                title="Favorite contacts stay loaded on the radio for ACK support"
+                title={t`Favorite contacts stay loaded on the radio for ACK support`}
               >
                 {contact.favorite ? (
                   <>
                     <Star className="h-4.5 w-4.5 fill-current text-favorite" aria-hidden="true" />
-                    <span>Remove from favorites</span>
+                    <span>
+                      <Trans>Remove from favorites</Trans>
+                    </span>
                   </>
                 ) : (
                   <>
                     <Star className="h-4.5 w-4.5 text-muted-foreground" aria-hidden="true" />
-                    <span>Add to favorites</span>
+                    <span>
+                      <Trans>Add to favorites</Trans>
+                    </span>
                   </>
                 )}
               </button>
@@ -451,12 +481,16 @@ export function ContactInfoPane({
                     {blockedKeys.includes(contact.public_key.toLowerCase()) ? (
                       <>
                         <Ban className="h-4.5 w-4.5 text-destructive" aria-hidden="true" />
-                        <span>Unblock this key</span>
+                        <span>
+                          <Trans>Unblock this key</Trans>
+                        </span>
                       </>
                     ) : (
                       <>
                         <Ban className="h-4.5 w-4.5 text-muted-foreground" aria-hidden="true" />
-                        <span>Block this key</span>
+                        <span>
+                          <Trans>Block this key</Trans>
+                        </span>
                       </>
                     )}
                   </button>
@@ -470,12 +504,16 @@ export function ContactInfoPane({
                     {blockedNames.includes(contact.name) ? (
                       <>
                         <Ban className="h-4.5 w-4.5 text-destructive" aria-hidden="true" />
-                        <span>Unblock name &ldquo;{contact.name}&rdquo;</span>
+                        <span>
+                          <Trans>Unblock name &ldquo;{contact.name}&rdquo;</Trans>
+                        </span>
                       </>
                     ) : (
                       <>
                         <Ban className="h-4.5 w-4.5 text-muted-foreground" aria-hidden="true" />
-                        <span>Block name &ldquo;{contact.name}&rdquo;</span>
+                        <span>
+                          <Trans>Block name &ldquo;{contact.name}&rdquo;</Trans>
+                        </span>
                       </>
                     )}
                   </button>
@@ -491,7 +529,9 @@ export function ContactInfoPane({
                   onClick={() => onSearchMessagesByKey(contact.public_key)}
                 >
                   <Search className="h-4.5 w-4.5 text-muted-foreground" aria-hidden="true" />
-                  <span>Search user&apos;s messages by key</span>
+                  <span>
+                    <Trans>Search user&apos;s messages by key</Trans>
+                  </span>
                 </button>
               </div>
             )}
@@ -506,7 +546,9 @@ export function ContactInfoPane({
                 if (recent.length === 0) return null;
                 return (
                   <div className="px-5 py-3 border-b border-border">
-                    <SectionLabel>Nearest Repeaters — Hops (last 7 days)</SectionLabel>
+                    <SectionLabel>
+                      <Trans>Nearest Repeaters — Hops (last 7 days)</Trans>
+                    </SectionLabel>
                     <div className="space-y-1">
                       {recent.map((r) => (
                         <div
@@ -515,10 +557,12 @@ export function ContactInfoPane({
                         >
                           <span className="truncate">{r.name || r.public_key.slice(0, 12)}</span>
                           <span className="text-xs text-muted-foreground flex-shrink-0 ml-2">
-                            {r.path_len === 0
-                              ? 'direct'
-                              : `${r.path_len} hop${r.path_len > 1 ? 's' : ''}`}{' '}
-                            · {r.heard_count}x
+                            <Trans>
+                              {r.path_len === 0
+                                ? 'direct'
+                                : `${r.path_len} hop${r.path_len > 1 ? 's' : ''}`}{' '}
+                              · {r.heard_count}x
+                            </Trans>
                           </span>
                         </div>
                       ))}
@@ -539,7 +583,9 @@ export function ContactInfoPane({
             {/* Advert Paths */}
             {analytics && analytics.advert_paths.length > 0 && (
               <div className="px-5 py-3 border-b border-border">
-                <SectionLabel>Recent Advert Paths</SectionLabel>
+                <SectionLabel>
+                  <Trans>Recent Advert Paths</Trans>
+                </SectionLabel>
                 <div className="space-y-1.5">
                   {analytics.advert_paths.map((p) => (
                     <div
@@ -547,10 +593,12 @@ export function ContactInfoPane({
                       className="flex justify-between items-start gap-2 text-sm"
                     >
                       <span className="font-mono text-xs break-all">
-                        {p.path ? parsePathHops(p.path, p.path_len).join(' → ') : '(direct)'}
+                        {p.path ? parsePathHops(p.path, p.path_len).join(' → ') : t`(direct)`}
                       </span>
                       <span className="text-xs text-muted-foreground flex-shrink-0">
-                        {p.heard_count}x · {formatTime(p.last_seen)}
+                        <Trans>
+                          {p.heard_count}x · {formatTime(p.last_seen)}
+                        </Trans>
                       </span>
                     </div>
                   ))}
@@ -567,13 +615,17 @@ export function ContactInfoPane({
             {/* AKA (Name History) - only show if more than one name */}
             {analytics && analytics.name_history.length > 1 && (
               <div className="px-5 py-3 border-b border-border">
-                <SectionLabel>Also Known As</SectionLabel>
+                <SectionLabel>
+                  <Trans>Also Known As</Trans>
+                </SectionLabel>
                 <div className="space-y-1">
                   {analytics.name_history.map((h) => (
                     <div key={h.name} className="flex justify-between items-center text-sm">
                       <span className="font-medium truncate">{h.name}</span>
                       <span className="text-xs text-muted-foreground flex-shrink-0 ml-2">
-                        {formatTime(h.first_seen)} &ndash; {formatTime(h.last_seen)}
+                        <Trans>
+                          {formatTime(h.first_seen)} &ndash; {formatTime(h.last_seen)}
+                        </Trans>
                       </span>
                     </div>
                   ))}
@@ -599,7 +651,7 @@ export function ContactInfoPane({
           </div>
         ) : (
           <div className="flex-1 flex items-center justify-center text-muted-foreground">
-            Contact not found
+            <Trans>Contact not found</Trans>
           </div>
         )}
       </SheetContent>
@@ -608,6 +660,8 @@ export function ContactInfoPane({
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
+  useLingui();
+
   return (
     <h3 className="text-[0.625rem] uppercase tracking-wider text-muted-foreground font-medium mb-1.5">
       {children}
@@ -624,14 +678,18 @@ function ChannelAttributionWarning({
   nameOnly?: boolean;
   className?: string;
 }) {
+  useLingui();
+
   return (
     <div className={className}>
       <p className="text-xs text-warning">
-        Channel sender identity is based on best-effort name matching. Different nodes using the
-        same name will be attributed to the same {nameOnly ? 'sender name' : 'contact'}. Stats below
-        may be inaccurate.
-        {includeAliasNote &&
-          ' Historical counts below may include messages previously attributed under names shown in Also Known As.'}
+        <Trans>
+          Channel sender identity is based on best-effort name matching. Different nodes using the
+          same name will be attributed to the same {nameOnly ? 'sender name' : 'contact'}. Stats
+          below may be inaccurate.
+          {includeAliasNote &&
+            ' Historical counts below may include messages previously attributed under names shown in Also Known As.'}
+        </Trans>
       </p>
     </div>
   );
@@ -646,19 +704,26 @@ function MessageStatsSection({
   channelMessageCount: number;
   showDirectMessages?: boolean;
 }) {
+  useLingui();
+
   if ((showDirectMessages ? dmMessageCount : 0) <= 0 && channelMessageCount <= 0) {
     return null;
   }
 
   return (
     <div className="px-5 py-3 border-b border-border">
-      <SectionLabel>Messages</SectionLabel>
+      <SectionLabel>
+        <Trans>Messages</Trans>
+      </SectionLabel>
       <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
         {showDirectMessages && dmMessageCount > 0 && (
-          <InfoItem label="Direct Messages" value={dmMessageCount.toLocaleString()} />
+          <InfoItem label={t`Direct Messages`} value={dmMessageCount.toLocaleString(getLocale())} />
         )}
         {channelMessageCount > 0 && (
-          <InfoItem label="Channel Messages" value={channelMessageCount.toLocaleString()} />
+          <InfoItem
+            label={t`Channel Messages`}
+            value={channelMessageCount.toLocaleString(getLocale())}
+          />
         )}
       </div>
     </div>
@@ -672,34 +737,40 @@ function MostActiveChannelsSection({
   channels: ContactActiveRoom[];
   onNavigateToChannel?: (channelKey: string) => void;
 }) {
+  useLingui();
+
   if (channels.length === 0) {
     return null;
   }
 
   return (
     <div className="px-5 py-3 border-b border-border">
-      <SectionLabel>Most Active Channels</SectionLabel>
+      <SectionLabel>
+        <Trans>Most Active Channels</Trans>
+      </SectionLabel>
       <div className="space-y-1">
         {channels.map((channel) => (
           <div key={channel.channel_key} className="flex justify-between items-center text-sm">
             <span
               className={
                 onNavigateToChannel
-                  ? 'cursor-pointer hover:text-primary transition-colors truncate'
-                  : 'truncate'
+                  ? `cursor-pointer hover:text-primary transition-colors truncate`
+                  : `truncate`
               }
-              role={onNavigateToChannel ? 'button' : undefined}
+              role={onNavigateToChannel ? `button` : undefined}
               tabIndex={onNavigateToChannel ? 0 : undefined}
               onKeyDown={onNavigateToChannel ? handleKeyboardActivate : undefined}
               onClick={() => onNavigateToChannel?.(channel.channel_key)}
             >
               {channel.channel_name.startsWith('#') || isPublicChannelKey(channel.channel_key)
                 ? channel.channel_name
-                : `#${channel.channel_name}`}
+                : t`#${channel.channel_name}`}
             </span>
             <span className="text-xs text-muted-foreground flex-shrink-0 ml-2">
-              {channel.message_count.toLocaleString()} msg
-              {channel.message_count !== 1 ? 's' : ''}
+              <Trans>
+                {channel.message_count.toLocaleString(getLocale())} msg
+                {channel.message_count !== 1 ? 's' : ''}
+              </Trans>
             </span>
           </div>
         ))}
@@ -715,6 +786,8 @@ function ActivityChartsSection({
   analytics: ContactAnalytics | null;
   ready: boolean;
 }) {
+  useLingui();
+
   if (!analytics) {
     return null;
   }
@@ -732,24 +805,59 @@ function ActivityChartsSection({
     <div className="px-5 py-3 border-b border-border space-y-4">
       {hasHourlyActivity && (
         <div>
-          <SectionLabel>Messages Per Hour</SectionLabel>
+          <SectionLabel>
+            <Trans>Messages Per Hour</Trans>
+          </SectionLabel>
           <ActivityLineChart
             ready={ready}
             ariaLabel="Messages per hour"
             points={analytics.hourly_activity}
             series={[
-              { key: 'last_24h_count', color: '#2563eb', label: 'Last 24h' },
-              { key: 'last_week_average', color: '#ea580c', label: '7-day avg' },
-              { key: 'all_time_average', color: '#64748b', label: 'All-time avg' },
+              {
+                key: 'last_24h_count',
+                color: '#2563eb',
+                get label() {
+                  return t`Last 24h`;
+                },
+              },
+              {
+                key: 'last_week_average',
+                color: '#ea580c',
+                get label() {
+                  return t`7-day avg`;
+                },
+              },
+              {
+                key: 'all_time_average',
+                color: '#64748b',
+                get label() {
+                  return t`All-time avg`;
+                },
+              },
             ]}
             legendItems={[
-              { label: 'Last 24h', color: '#2563eb' },
-              { label: '7-day avg', color: '#ea580c' },
-              { label: 'All-time avg', color: '#64748b' },
+              {
+                get label() {
+                  return t`Last 24h`;
+                },
+                color: '#2563eb',
+              },
+              {
+                get label() {
+                  return t`7-day avg`;
+                },
+                color: '#ea580c',
+              },
+              {
+                get label() {
+                  return t`All-time avg`;
+                },
+                color: '#64748b',
+              },
             ]}
             valueFormatter={(value) => value.toFixed(value % 1 === 0 ? 0 : 1)}
             tickFormatter={(bucket) =>
-              new Date(bucket.bucket_start * 1000).toLocaleTimeString([], {
+              new Date(bucket.bucket_start * 1000).toLocaleTimeString(getLocale(), {
                 hour: '2-digit',
                 minute: '2-digit',
                 hour12: false,
@@ -761,15 +869,25 @@ function ActivityChartsSection({
 
       {hasWeeklyActivity && (
         <div>
-          <SectionLabel>Messages Per Week</SectionLabel>
+          <SectionLabel>
+            <Trans>Messages Per Week</Trans>
+          </SectionLabel>
           <ActivityLineChart
             ready={ready}
             ariaLabel="Messages per week"
             points={analytics.weekly_activity}
-            series={[{ key: 'message_count', color: '#16a34a', label: 'Messages' }]}
+            series={[
+              {
+                key: 'message_count',
+                color: '#16a34a',
+                get label() {
+                  return t`Messages`;
+                },
+              },
+            ]}
             valueFormatter={(value) => value.toFixed(0)}
             tickFormatter={(bucket) =>
-              new Date(bucket.bucket_start * 1000).toLocaleDateString([], {
+              new Date(bucket.bucket_start * 1000).toLocaleDateString(getLocale(), {
                 month: 'short',
                 day: 'numeric',
               })
@@ -779,10 +897,12 @@ function ActivityChartsSection({
       )}
 
       <p className="text-[0.6875rem] text-muted-foreground">
-        Hourly lines compare the last 24 hours against 7-day and all-time averages for the same hour
-        slots.
-        {!analytics.includes_direct_messages &&
-          ' Name-only analytics include channel messages only.'}
+        <Trans>
+          Hourly lines compare the last 24 hours against 7-day and all-time averages for the same
+          hour slots.
+          {!analytics.includes_direct_messages &&
+            ' Name-only analytics include channel messages only.'}
+        </Trans>
       </p>
     </div>
   );
@@ -807,6 +927,8 @@ function ActivityLineChart<T extends ContactAnalyticsHourlyBucket | ContactAnaly
   tickFormatter: (point: T) => string;
   valueFormatter: (value: number) => string;
 }) {
+  useLingui();
+
   // Reserve the chart's height while the pane animates in (see #317).
   if (!ready) {
     return <div role="img" aria-label={ariaLabel} style={{ height: ACTIVITY_CHART_HEIGHT }} />;
@@ -860,6 +982,8 @@ function NearbyRepeatersSection({
   contacts: Contact[];
   distanceUnit: import('../utils/distanceUnits').DistanceUnit;
 }) {
+  useLingui();
+
   const nearby = useMemo(() => {
     const sevenDaysAgo = Math.floor(Date.now() / 1000) - 7 * 86400;
     const results: Array<{ name: string; publicKey: string; distance: number }> = [];
@@ -890,7 +1014,9 @@ function NearbyRepeatersSection({
 
   return (
     <div className="px-5 py-3 border-b border-border">
-      <SectionLabel>Nearest Repeaters — Geo (last 7 days)</SectionLabel>
+      <SectionLabel>
+        <Trans>Nearest Repeaters — Geo (last 7 days)</Trans>
+      </SectionLabel>
       <div className="space-y-1">
         {nearby.map((r) => (
           <div key={r.publicKey} className="flex justify-between items-center text-sm">
@@ -906,6 +1032,8 @@ function NearbyRepeatersSection({
 }
 
 function InfoItem({ label, value }: { label: string; value: ReactNode }) {
+  useLingui();
+
   return (
     <div>
       <span className="text-muted-foreground text-xs">{label}</span>
@@ -932,6 +1060,8 @@ function ContactTelemetrySection({
   isTracked: boolean;
   onToggleTracked?: (publicKey: string) => Promise<void>;
 }) {
+  useLingui();
+
   const { mapStyle } = useMapStyle();
   const { distanceUnit } = useDistanceUnit();
   const [expanded, setExpanded] = useState(true);
@@ -1029,7 +1159,7 @@ function ContactTelemetrySection({
           onClick={() => setExpanded(!expanded)}
         >
           {expanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-          Telemetry
+          <Trans>Telemetry</Trans>
         </button>
         <button
           type="button"
@@ -1038,7 +1168,7 @@ function ContactTelemetrySection({
           className="text-xs px-2 py-0.5 rounded border border-border hover:bg-accent disabled:opacity-50 transition-colors flex items-center gap-1"
         >
           <Activity className="h-3 w-3" />
-          {loading ? 'Fetching...' : 'Request'}
+          {loading ? t`Fetching...` : t`Request`}
         </button>
       </div>
 
@@ -1046,7 +1176,7 @@ function ContactTelemetrySection({
         <div className="mt-2">
           {sensors.length === 0 ? (
             <p className="text-sm text-muted-foreground italic">
-              {fetchedAt ? 'No sensor data in last response' : 'Not yet fetched'}
+              {fetchedAt ? t`No sensor data in last response` : t`Not yet fetched`}
             </p>
           ) : (
             <>
@@ -1073,7 +1203,8 @@ function ContactTelemetrySection({
                     ) : (
                       <ChevronRight className="h-3 w-3" />
                     )}
-                    GPS: {gpsValue!.latitude.toFixed(5)}, {gpsValue!.longitude.toFixed(5)}
+                    <Trans>GPS: </Trans>
+                    {gpsValue!.latitude.toFixed(5)}, {gpsValue!.longitude.toFixed(5)}
                   </button>
                   {mapExpanded && (
                     <div className="mt-1 h-48 rounded border border-border overflow-hidden">
@@ -1101,7 +1232,7 @@ function ContactTelemetrySection({
                             type="button"
                             className="h-3.5 w-3.5 rounded-full border-2 border-blue-700 bg-blue-500"
                             onClick={() => setMapPopupOpen(true)}
-                            aria-label={`Show ${contact.name ?? contact.public_key.slice(0, 12)} on map`}
+                            aria-label={t`Show ${contact.name ?? contact.public_key.slice(0, 12)} on map`}
                           />
                         </Marker>
                         {mapPopupOpen && (
@@ -1126,7 +1257,7 @@ function ContactTelemetrySection({
 
               {fetchedAt && (
                 <p className="text-[0.6875rem] text-muted-foreground mt-1.5">
-                  Fetched {formatTime(fetchedAt)}
+                  <Trans>Fetched {formatTime(fetchedAt)}</Trans>
                 </p>
               )}
             </>
@@ -1145,7 +1276,8 @@ function ContactTelemetrySection({
                 ) : (
                   <ChevronRight className="h-3 w-3" />
                 )}
-                History ({telemetryHistory.length} samples)
+                <Trans>History (</Trans>
+                {telemetryHistory.length} <Trans>samples)</Trans>
               </button>
               {chartExpanded && (
                 <div className="mt-1">
@@ -1168,7 +1300,7 @@ function ContactTelemetrySection({
                   {chartData.length > 1 && activeSeries && (
                     <TanStackTimeSeriesChart
                       data={chartData.map((point) => ({
-                        category: new Date(point.time * 1000).toLocaleString(),
+                        category: new Date(point.time * 1000).toLocaleString(getLocale()),
                         values: { value: point.value },
                       }))}
                       series={[
@@ -1209,10 +1341,10 @@ function ContactTelemetrySection({
                 } disabled:opacity-50`}
               >
                 {toggling
-                  ? 'Updating...'
+                  ? t`Updating...`
                   : isTracked
-                    ? 'Stop Tracking Telemetry'
-                    : 'Track Telemetry on Interval'}
+                    ? t`Stop Tracking Telemetry`
+                    : t`Track Telemetry on Interval`}
               </button>
             </div>
           )}

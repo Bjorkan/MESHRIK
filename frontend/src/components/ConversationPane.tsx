@@ -1,3 +1,6 @@
+import { Trans } from '@lingui/react/macro';
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
 import { lazy, Suspense, useEffect, useMemo, useState, type Ref } from 'react';
 import { Link } from '@tanstack/react-router';
 import { LoadingIndicator } from './ui/loading-indicator';
@@ -111,6 +114,8 @@ interface ConversationPaneProps {
 }
 
 function LoadingPane({ label }: { label: string }) {
+  useLingui();
+
   return (
     <div className="flex-1 flex items-center justify-center text-muted-foreground">
       <LoadingIndicator label={label} />
@@ -119,20 +124,26 @@ function LoadingPane({ label }: { label: string }) {
 }
 
 function ContactResolutionBanner({ variant }: { variant: 'unknown-full-key' | 'prefix-only' }) {
+  useLingui();
+
   if (variant === 'prefix-only') {
     return (
       <div className="mx-4 mt-3 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-        We&apos;ve received a message from this sender but don&apos;t have their full identity yet.
-        Sending is disabled until their identity is confirmed &mdash; this usually happens
-        automatically when they next advertise.
+        <Trans>
+          We&apos;ve received a message from this sender but don&apos;t have their full identity
+          yet. Sending is disabled until their identity is confirmed &mdash; this usually happens
+          automatically when they next advertise.
+        </Trans>
       </div>
     );
   }
 
   return (
     <div className="mx-4 mt-3 rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">
-      This sender&apos;s profile details (name, location) haven&apos;t arrived yet. They will fill
-      in automatically when the sender&apos;s next advert is heard.
+      <Trans>
+        This sender&apos;s profile details (name, location) haven&apos;t arrived yet. They will fill
+        in automatically when the sender&apos;s next advert is heard.
+      </Trans>
     </div>
   );
 }
@@ -194,6 +205,8 @@ export function ConversationPane({
   blockedKeys,
   blockedNames,
 }: ConversationPaneProps) {
+  useLingui();
+
   const [roomAuthenticated, setRoomAuthenticated] = useState(false);
   const activeContactIsRepeater = useMemo(() => {
     if (!activeConversation || activeConversation.type !== 'contact') return false;
@@ -218,13 +231,13 @@ export function ConversationPane({
 
   if (!activeConversation) {
     if (routeResourceState?.status === 'loading') {
-      return <LoadingPane label={`Loading ${routeResourceState.resource.toLowerCase()}...`} />;
+      return <LoadingPane label={t`Loading ${routeResourceState.resource.toLowerCase()}...`} />;
     }
     if (routeResourceState?.status === 'error') {
       return (
         <div className="flex-1 flex flex-col items-center justify-center gap-3 p-6 text-center">
           <p className="text-destructive">
-            Failed to load {routeResourceState.resource.toLowerCase()} data.
+            <Trans>Failed to load {routeResourceState.resource.toLowerCase()} data.</Trans>
           </p>
           {routeResourceState.onRetry && (
             <button
@@ -232,7 +245,7 @@ export function ConversationPane({
               className="text-sm text-primary hover:underline"
               onClick={routeResourceState.onRetry}
             >
-              Retry
+              <Trans>Retry</Trans>
             </button>
           )}
         </div>
@@ -242,7 +255,7 @@ export function ConversationPane({
       return (
         <div className="flex-1 flex flex-col items-center justify-center gap-3 p-6 text-center">
           <p className="text-muted-foreground">
-            {routeResourceState.resource} data is unavailable while offline.
+            <Trans>{routeResourceState.resource} data is unavailable while offline.</Trans>
           </p>
           {routeResourceState.onRetry && (
             <button
@@ -250,7 +263,7 @@ export function ConversationPane({
               className="text-sm text-primary hover:underline"
               onClick={routeResourceState.onRetry}
             >
-              Retry when online
+              <Trans>Retry when online</Trans>
             </button>
           )}
         </div>
@@ -259,16 +272,18 @@ export function ConversationPane({
     if (routeResourceState?.status === 'not-found') {
       return (
         <div className="flex-1 flex flex-col items-center justify-center gap-3 p-6 text-center">
-          <p className="text-muted-foreground">{routeResourceState.resource} not found</p>
+          <p className="text-muted-foreground">
+            <Trans>{routeResourceState.resource} not found</Trans>
+          </p>
           <Link to="/" className="text-sm text-primary hover:underline">
-            Return to MESHRIK
+            <Trans>Return to MESHRIK</Trans>
           </Link>
         </div>
       );
     }
     return (
       <div className="flex-1 flex items-center justify-center text-muted-foreground">
-        Select a conversation or start a new one
+        <Trans>Select a conversation or start a new one</Trans>
       </div>
     );
   }
@@ -277,10 +292,10 @@ export function ConversationPane({
     return (
       <>
         <h2 className="flex justify-between items-center px-4 py-2.5 border-b border-border font-semibold text-base">
-          Node Map
+          <Trans>Node Map</Trans>
         </h2>
         <div className="flex-1 overflow-hidden">
-          <Suspense fallback={<LoadingPane label="Loading map..." />}>
+          <Suspense fallback={<LoadingPane label={t`Loading map...`} />}>
             <MapView
               contacts={contacts}
               focusedKey={activeConversation.mapFocusKey}
@@ -307,7 +322,7 @@ export function ConversationPane({
 
   if (activeConversation.type === 'visualizer') {
     return (
-      <Suspense fallback={<LoadingPane label="Loading visualizer..." />}>
+      <Suspense fallback={<LoadingPane label={t`Loading visualizer...`} />}>
         <VisualizerView contacts={contacts} channels={channels} config={config} />
       </Suspense>
     );
@@ -315,7 +330,7 @@ export function ConversationPane({
 
   if (activeConversation.type === 'raw') {
     return (
-      <Suspense fallback={<LoadingPane label="Loading packet feed..." />}>
+      <Suspense fallback={<LoadingPane label={t`Loading packet feed...`} />}>
         <RawPacketFeedView contacts={contacts} channels={channels} />
       </Suspense>
     );
@@ -327,7 +342,7 @@ export function ConversationPane({
 
   if (activeConversation.type === 'radio-activity') {
     return (
-      <Suspense fallback={<LoadingPane label="Loading Radio Activity..." />}>
+      <Suspense fallback={<LoadingPane label={t`Loading Radio Activity...`} />}>
         <RadioActivityPage feed={radioJobFeed} connection={radioSocketConnection} health={health} />
       </Suspense>
     );
@@ -339,7 +354,7 @@ export function ConversationPane({
 
   if (activeContactIsRepeater) {
     return (
-      <Suspense fallback={<LoadingPane label="Loading dashboard..." />}>
+      <Suspense fallback={<LoadingPane label={t`Loading dashboard...`} />}>
         <RepeaterDashboard
           key={activeConversation.id}
           conversation={activeConversation}
@@ -450,8 +465,8 @@ export function ConversationPane({
           senderName={config?.name}
           placeholder={
             !health?.radio_connected
-              ? 'Radio not connected'
-              : `Message ${activeConversation.name}...`
+              ? t`Radio not connected`
+              : t`Message ${activeConversation.name}...`
           }
         />
       ) : null}

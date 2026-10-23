@@ -1,3 +1,5 @@
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useDebouncer } from '@tanstack/react-pacer';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -78,6 +80,8 @@ export function useUnreadCounts(
   contacts: Contact[],
   activeConversation: Conversation | null
 ): UseUnreadCountsResult {
+  useLingui();
+
   const queryClient = useQueryClient();
   const mutationVersionRef = useRef(0);
   const pendingMarkAllCountRef = useRef(0);
@@ -298,8 +302,8 @@ export function useUnreadCounts(
         // a newer mark-all is still in flight can resurrect stale badges.
         markAllNeedsReconcileRef.current = true;
       }
-      toast.error('Failed to mark all messages as read', {
-        description: error instanceof Error ? error.message : 'Check your connection and retry',
+      toast.error(t`Failed to mark all messages as read`, {
+        description: error instanceof Error ? error.message : t`Check your connection and retry`,
       });
     },
     onSettled: () => {

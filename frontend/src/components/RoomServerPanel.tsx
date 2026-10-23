@@ -1,3 +1,6 @@
+import { Trans } from '@lingui/react/macro';
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { api } from '../api';
@@ -124,6 +127,8 @@ export function resetRoomCacheForTests() {
 }
 
 export function RoomServerPanel({ contact, onAuthenticatedChange }: RoomServerPanelProps) {
+  useLingui();
+
   const { password, rememberPassword, recordLoginAttempt, persistConfirmedPassword } =
     useRememberedServerPassword('room', contact.public_key);
 
@@ -221,16 +226,18 @@ export function RoomServerPanel({ contact, onAuthenticatedChange }: RoomServerPa
         onConfirmed: lifecycle.onConfirmed,
         onSettled: (record) => {
           if (record.authenticated) {
-            toast.success('Login confirmed by the room server.');
+            toast.success(t`Login confirmed by the room server.`);
           } else if (record.attempt?.outcome === 'not_confirmed') {
-            toast.warning("Couldn't confirm room login", {
+            toast.warning(t`Couldn't confirm room login`, {
               description:
                 record.error ??
                 'No confirmation came back from the room server. You can still open tools and try again.',
             });
           } else {
-            toast.error('Room login request failed', {
-              description: `${record.error ?? 'Unknown error'}. You can still open tools and retry the login from here.`,
+            toast.error(t`Room login request failed`, {
+              get description() {
+                return t`${record.error ?? 'Unknown error'}. You can still open tools and retry the login from here.`;
+              },
             });
           }
         },
@@ -299,16 +306,18 @@ export function RoomServerPanel({ contact, onAuthenticatedChange }: RoomServerPa
       <div className="flex-1 overflow-y-auto p-4">
         <div className="mx-auto flex w-full max-w-sm flex-col gap-4">
           <div className="rounded-md border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning">
-            Room server access is experimental and in public alpha. Please report any issues on{' '}
-            <a
-              href="https://github.com/Bjorkan/MESHRIK/issues"
-              target="_blank"
-              rel="noreferrer"
-              className="font-medium underline underline-offset-2 hover:text-warning/80"
-            >
-              GitHub
-            </a>
-            .
+            <Trans>
+              Room server access is experimental and in public alpha. Please report any issues on{' '}
+              <a
+                href="https://github.com/Bjorkan/MESHRIK/issues"
+                target="_blank"
+                rel="noreferrer"
+                className="font-medium underline underline-offset-2 hover:text-warning/80"
+              >
+                GitHub
+              </a>
+              .
+            </Trans>
           </div>
           <RepeaterLogin
             repeaterName={panelTitle}
@@ -318,7 +327,7 @@ export function RoomServerPanel({ contact, onAuthenticatedChange }: RoomServerPa
             initialRememberPassword={rememberPassword}
             onLogin={handleLogin}
             onLoginAsGuest={handleLoginAsGuest}
-            description="Log in with the room password or use ACL/guest access to enter this room server"
+            description={t`Log in with the room password or use ACL/guest access to enter this room server`}
             passwordPlaceholder="Room server password..."
             guestLabel="Login with Existing Access / Guest"
           />
@@ -351,7 +360,7 @@ export function RoomServerPanel({ contact, onAuthenticatedChange }: RoomServerPa
                 onClick={() => void handleLogin(password)}
                 disabled={loginLoading || password.length === 0}
               >
-                Retry Password Login
+                <Trans>Retry Password Login</Trans>
               </Button>
               <Button
                 type="button"
@@ -360,7 +369,7 @@ export function RoomServerPanel({ contact, onAuthenticatedChange }: RoomServerPa
                 onClick={handleLoginAsGuest}
                 disabled={loginLoading}
               >
-                Retry Existing-Access Login
+                <Trans>Retry Existing-Access Login</Trans>
               </Button>
             </div>
           ) : (
@@ -372,22 +381,26 @@ export function RoomServerPanel({ contact, onAuthenticatedChange }: RoomServerPa
             size="sm"
             onClick={() => setAdvancedOpen((prev) => !prev)}
           >
-            {advancedOpen ? 'Hide Tools' : 'Show Tools'}
+            {advancedOpen ? t`Hide Tools` : t`Show Tools`}
           </Button>
         </div>
       </div>
       <Sheet open={advancedOpen} onOpenChange={setAdvancedOpen}>
         <SheetContent side="right" className="w-full sm:max-w-4xl p-0 flex flex-col">
           <SheetHeader className="sr-only">
-            <SheetTitle>Room Server Tools</SheetTitle>
+            <SheetTitle>
+              <Trans>Room Server Tools</Trans>
+            </SheetTitle>
             <SheetDescription>
-              Room server telemetry, ACL tools, sensor data, and CLI console
+              <Trans>Room server telemetry, ACL tools, sensor data, and CLI console</Trans>
             </SheetDescription>
           </SheetHeader>
           <div className="border-b border-border px-4 py-3 pr-14">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
-                <h2 className="truncate text-base font-semibold">Room Server Tools</h2>
+                <h2 className="truncate text-base font-semibold">
+                  <Trans>Room Server Tools</Trans>
+                </h2>
                 <p className="text-sm text-muted-foreground">{panelTitle}</p>
               </div>
             </div>

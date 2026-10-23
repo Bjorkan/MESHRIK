@@ -1,7 +1,11 @@
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
 import { RepeaterPane, NotFetched, KvRow } from './repeaterPaneShared';
 import type { RepeaterOwnerInfoResponse, PaneState } from '../../types';
 
 function LabeledBlock({ label, value }: { label: string; value: string }) {
+  useLingui();
+
   return (
     <div className="py-0.5">
       <span className="text-sm text-muted-foreground whitespace-nowrap">{label}</span>
@@ -21,16 +25,18 @@ export function OwnerInfoPane({
   onRefresh: () => void;
   disabled?: boolean;
 }) {
+  useLingui();
+
   return (
-    <RepeaterPane title="Owner Info" state={state} onRefresh={onRefresh} disabled={disabled}>
+    <RepeaterPane title={t`Owner Info`} state={state} onRefresh={onRefresh} disabled={disabled}>
       {!data ? (
         <NotFetched />
       ) : (
         <div className="space-y-1">
-          <LabeledBlock label="Owner Info" value={data.owner_info ?? '—'} />
-          <KvRow label="Firmware" value={data.firmware_version ?? '—'} />
-          {data.name && <KvRow label="Name" value={data.name} />}
-          <KvRow label="Guest Password" value={data.guest_password ?? '—'} />
+          <LabeledBlock label={t`Owner Info`} value={data.owner_info ?? '—'} />
+          <KvRow label={t`Firmware`} value={data.firmware_version ?? '—'} />
+          {data.name && <KvRow label={t`Name`} value={data.name} />}
+          <KvRow label={t`Guest Password`} value={data.guest_password ?? '—'} />
         </div>
       )}
     </RepeaterPane>

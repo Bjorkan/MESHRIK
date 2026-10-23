@@ -1,3 +1,5 @@
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
 import { useMemo, useState } from 'react';
 import MapLibreMap, {
   AttributionControl,
@@ -36,6 +38,8 @@ interface MiniMapPoint {
 }
 
 export function NeighborsMiniMap({ neighbors, radioLat, radioLon, radioName }: Props) {
+  useLingui();
+
   const { mapStyle } = useMapStyle();
   const [openPointId, setOpenPointId] = useState<string | null>(null);
   const valid = neighbors.filter(
@@ -74,7 +78,7 @@ export function NeighborsMiniMap({ neighbors, radioLat, radioLon, radioName }: P
             id: 'radio',
             lat: radioLat!,
             lon: radioLon!,
-            label: radioName || 'Our Radio',
+            label: radioName || t`Our Radio`,
             color: '#3b82f6',
             size: 16,
             borderColor: '#1d4ed8',
@@ -97,7 +101,7 @@ export function NeighborsMiniMap({ neighbors, radioLat, radioLon, radioName }: P
     <div
       className="min-h-48 flex-1 rounded border border-border overflow-hidden"
       role="img"
-      aria-label="Map showing repeater neighbor locations"
+      aria-label={t`Map showing repeater neighbor locations`}
     >
       <MapLibreMap
         initialViewState={{ longitude: center[0], latitude: center[1], zoom: 10 }}
@@ -128,7 +132,7 @@ export function NeighborsMiniMap({ neighbors, radioLat, radioLon, radioName }: P
                 border: `2px solid ${point.borderColor}`,
               }}
               onClick={() => setOpenPointId(point.id)}
-              aria-label={`Show ${point.label} on map`}
+              aria-label={t`Show ${point.label} on map`}
             />
           </Marker>
         ))}

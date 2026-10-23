@@ -1,3 +1,6 @@
+import { Trans } from '@lingui/react/macro';
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
 import { useEffect } from 'react';
 import { useForm, useStore } from '@tanstack/react-form';
 
@@ -33,6 +36,8 @@ export function ChannelFloodScopeOverrideModal({
   currentOverride,
   onSetOverride,
 }: ChannelFloodScopeOverrideModalProps) {
+  useLingui();
+
   const form = useForm({
     defaultValues: { region: '', pendingOverride: null as string | null, serverError: '' },
     onSubmit: async ({ value }) => {
@@ -83,12 +88,16 @@ export function ChannelFloodScopeOverrideModal({
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && !saving && onClose()}>
       <DialogContent className="sm:max-w-[520px]">
         <DialogHeader>
-          <DialogTitle>Regional Override</DialogTitle>
+          <DialogTitle>
+            <Trans>Regional Override</Trans>
+          </DialogTitle>
           <DialogDescription>
-            Channel-level regional routing temporarily changes the radio flood scope before send and
-            restores it after. This can noticeably slow channel sends. Choose one of three modes
-            below: scope to a region, force unscoped (plain flood, ignoring your global region), or
-            inherit the global setting.
+            <Trans>
+              Channel-level regional routing temporarily changes the radio flood scope before send
+              and restores it after. This can noticeably slow channel sends. Choose one of three
+              modes below: scope to a region, force unscoped (plain flood, ignoring your global
+              region), or inherit the global setting.
+            </Trans>
           </DialogDescription>
         </DialogHeader>
 
@@ -96,12 +105,14 @@ export function ChannelFloodScopeOverrideModal({
           <div className="rounded-md border border-border bg-muted/20 p-3 text-sm">
             <div className="break-words font-medium">{roomName}</div>
             <div className="mt-1 text-muted-foreground">
-              Current setting: {currentOverrideLabel}
+              <Trans>Current setting: {currentOverrideLabel}</Trans>
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="channel-region-input">Region</Label>
+            <Label htmlFor="channel-region-input">
+              <Trans>Region</Trans>
+            </Label>
             <Input
               id="channel-region-input"
               value={region}
@@ -109,7 +120,7 @@ export function ChannelFloodScopeOverrideModal({
                 form.setFieldValue('region', event.target.value);
                 form.setFieldValue('serverError', '');
               }}
-              placeholder="Esperance"
+              placeholder={t`Esperance`}
               autoFocus
             />
           </div>
@@ -129,7 +140,7 @@ export function ChannelFloodScopeOverrideModal({
               disabled={trimmedRegion.length === 0 || saving}
               onClick={() => submitOverride(trimmedRegion)}
             >
-              {saving ? 'Saving...' : 'Save regional scope'}
+              {saving ? t`Saving...` : t`Save regional scope`}
             </Button>
             <Button
               type="button"
@@ -138,7 +149,7 @@ export function ChannelFloodScopeOverrideModal({
               disabled={saving}
               onClick={() => submitOverride(UNSCOPED_OVERRIDE_MARKER)}
             >
-              Always send unscoped
+              <Trans>Always send unscoped</Trans>
             </Button>
             <Button
               type="button"
@@ -147,7 +158,7 @@ export function ChannelFloodScopeOverrideModal({
               disabled={saving}
               onClick={() => submitOverride('')}
             >
-              Use global region setting
+              <Trans>Use global region setting</Trans>
             </Button>
             <Button
               type="button"
@@ -156,7 +167,7 @@ export function ChannelFloodScopeOverrideModal({
               disabled={saving}
               onClick={onClose}
             >
-              Cancel
+              <Trans>Cancel</Trans>
             </Button>
           </div>
         </DialogFooter>
