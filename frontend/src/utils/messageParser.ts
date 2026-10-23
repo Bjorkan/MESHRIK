@@ -1,3 +1,4 @@
+import { getLocale } from '@/i18n';
 /**
  * Parse sender from channel message text.
  * Channel messages have format "sender: message".
@@ -54,14 +55,18 @@ export function formatTime(timestamp: number): string {
   const now = new Date();
   const isToday = date.toDateString() === now.toDateString();
 
-  const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+  const time = date.toLocaleTimeString(getLocale(), {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
 
   if (isToday) {
     return time;
   }
 
   // Show short date for older messages
-  const dateStr = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  const dateStr = date.toLocaleDateString(getLocale(), { month: 'short', day: 'numeric' });
   return `${dateStr} ${time}`;
 }
 

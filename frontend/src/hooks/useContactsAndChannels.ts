@@ -1,3 +1,5 @@
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
 import {
   useCallback,
   useEffect,
@@ -58,6 +60,8 @@ export function useContactsAndChannels({
   hasSetDefaultConversation,
   removeConversationMessages,
 }: UseContactsAndChannelsArgs) {
+  useLingui();
+
   const queryClient = useQueryClient();
   const isOnline = useSyncExternalStore(
     (onStoreChange) => onlineManager.subscribe(onStoreChange),
@@ -147,7 +151,7 @@ export function useContactsAndChannels({
       await refreshContacts();
 
       if (created.historical_decrypt && created.historical_decrypt.status !== 'started') {
-        toast.info('Historical DM decryption unavailable', {
+        toast.info(t`Historical DM decryption unavailable`, {
           description: created.historical_decrypt.message,
         });
       }
@@ -226,7 +230,7 @@ export function useContactsAndChannels({
 
   const handleDeleteChannel = useCallback(
     async (key: string) => {
-      if (!confirm('Delete this channel? Message history will be preserved.')) return;
+      if (!confirm(t`Delete this channel? Message history will be preserved.`)) return;
       try {
         pendingDeleteFallbackRef.current = true;
         await api.deleteChannel(key);
@@ -242,10 +246,10 @@ export function useContactsAndChannels({
           id: publicChannel?.key || PUBLIC_CHANNEL_KEY,
           name: publicChannel?.name || PUBLIC_CHANNEL_NAME,
         });
-        toast.success('Channel deleted');
+        toast.success(t`Channel deleted`);
       } catch (err) {
         console.error('Failed to delete channel:', err);
-        toast.error('Failed to delete channel', {
+        toast.error(t`Failed to delete channel`, {
           description: err instanceof Error ? err.message : undefined,
         });
       }
@@ -261,7 +265,7 @@ export function useContactsAndChannels({
 
   const handleDeleteContact = useCallback(
     async (publicKey: string) => {
-      if (!confirm('Delete this contact? Message history will be preserved.')) return;
+      if (!confirm(t`Delete this contact? Message history will be preserved.`)) return;
       try {
         pendingDeleteFallbackRef.current = true;
         const deleteResult = await api.deleteContact(publicKey);
@@ -279,15 +283,15 @@ export function useContactsAndChannels({
           name: publicChannel?.name || PUBLIC_CHANNEL_NAME,
         });
         if (deleteResult.status === 'partial') {
-          toast.warning('Contact deleted from MESHRIK, but not from the radio', {
+          toast.warning(t`Contact deleted from MESHRIK, but not from the radio`, {
             description: deleteResult.radio_error ?? undefined,
           });
         } else {
-          toast.success('Contact deleted');
+          toast.success(t`Contact deleted`);
         }
       } catch (err) {
         console.error('Failed to delete contact:', err);
-        toast.error('Failed to delete contact', {
+        toast.error(t`Failed to delete contact`, {
           description: err instanceof Error ? err.message : undefined,
         });
       }

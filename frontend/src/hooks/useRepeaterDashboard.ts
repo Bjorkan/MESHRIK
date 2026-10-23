@@ -1,3 +1,5 @@
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { Store } from '@tanstack/store';
 import { useStore } from '@tanstack/react-store';
@@ -217,6 +219,8 @@ export function useRepeaterDashboard(
   activeConversation: Conversation | null,
   options: UseRepeaterDashboardOptions = {}
 ): UseRepeaterDashboardResult {
+  useLingui();
+
   const conversationId =
     activeConversation && activeConversation.type === 'contact' ? activeConversation.id : null;
   const cachedState = getCachedState(conversationId);
@@ -402,7 +406,7 @@ export function useRepeaterDashboard(
               ...prev,
               [pane]: errorState,
             }));
-            toast.error(`Failed to fetch ${pane}`, { description: msg });
+            toast.error(t`Failed to fetch ${pane}`, { description: msg });
           } else {
             // Wait before retrying
             await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
@@ -438,7 +442,7 @@ export function useRepeaterDashboard(
       const conversationId = publicKey;
       if (pendingCommands.state[publicKey]) return;
       if (Object.keys(pendingCommands.state).length >= MAX_CACHED_REPEATERS) {
-        toast.error('Too many pending repeater commands. Wait for a command to finish.');
+        toast.error(t`Too many pending repeater commands. Wait for a command to finish.`);
         return;
       }
       pendingCommands.setState((state) => ({ ...state, [publicKey]: action }));

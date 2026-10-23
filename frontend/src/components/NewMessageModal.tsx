@@ -1,3 +1,7 @@
+import { getLocale } from '@/i18n';
+import { Trans } from '@lingui/react/macro';
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
 import { useCallback, useEffect, useRef } from 'react';
 import { useForm, useStore } from '@tanstack/react-form';
 import { Dice5 } from 'lucide-react';
@@ -105,6 +109,8 @@ export function NewMessageModal({
   onCreateHashtagChannel,
   onBulkAddHashtagChannels,
 }: NewMessageModalProps) {
+  useLingui();
+
   const hashtagInputRef = useRef<HTMLInputElement>(null);
   const bulkTextareaRef = useRef<HTMLTextAreaElement>(null);
   const form = useForm({
@@ -125,7 +131,7 @@ export function NewMessageModal({
       try {
         if (value.tab === 'new-contact') {
           if (!value.name.trim() || !value.contactKey.trim()) {
-            form.setFieldValue('serverError', 'Name and public key are required');
+            form.setFieldValue('serverError', t`Name and public key are required`);
             return;
           }
           await onCreateContact(
@@ -136,7 +142,7 @@ export function NewMessageModal({
           );
         } else if (value.tab === 'new-channel') {
           if (!value.name.trim() || !value.channelKey.trim()) {
-            form.setFieldValue('serverError', 'Channel name and key are required');
+            form.setFieldValue('serverError', t`Channel name and key are required`);
             return;
           }
           await onCreateChannel(value.name.trim(), value.channelKey.trim(), value.tryHistorical);
@@ -155,11 +161,11 @@ export function NewMessageModal({
             value.permitExtended
           );
           if (channelNames.length === 0) {
-            form.setFieldValue('serverError', 'Enter at least one valid channel name');
+            form.setFieldValue('serverError', t`Enter at least one valid channel name`);
             return;
           }
           if (invalidNames.length > 0) {
-            form.setFieldValue('serverError', `Invalid channel names: ${invalidNames.join(', ')}`);
+            form.setFieldValue('serverError', t`Invalid channel names: ${invalidNames.join(', ')}`);
             return;
           }
           await onBulkAddHashtagChannels(channelNames, value.tryHistorical);
@@ -175,7 +181,7 @@ export function NewMessageModal({
         form.reset();
         onClose();
       } catch (err) {
-        form.setFieldValue('serverError', err instanceof Error ? err.message : 'Failed to create');
+        form.setFieldValue('serverError', err instanceof Error ? err.message : t`Failed to create`);
       }
     },
   });
@@ -251,12 +257,20 @@ export function NewMessageModal({
     >
       <DialogContent className="sm:max-w-[560px]">
         <DialogHeader>
-          <DialogTitle>New Conversation</DialogTitle>
+          <DialogTitle>
+            <Trans>New Conversation</Trans>
+          </DialogTitle>
           <DialogDescription className="sr-only">
-            {tab === 'new-contact' && 'Add a new contact by entering their name and public key'}
-            {tab === 'new-channel' && 'Create a private channel with a shared encryption key'}
-            {tab === 'hashtag' && 'Join a public hashtag channel'}
-            {tab === 'bulk-hashtag' && 'Paste multiple hashtag channels to add them in one batch'}
+            {tab === 'new-contact' && (
+              <Trans>Add a new contact by entering their name and public key</Trans>
+            )}
+            {tab === 'new-channel' && (
+              <Trans>Create a private channel with a shared encryption key</Trans>
+            )}
+            {tab === 'hashtag' && <Trans>Join a public hashtag channel</Trans>}
+            {tab === 'bulk-hashtag' && (
+              <Trans>Paste multiple hashtag channels to add them in one batch</Trans>
+            )}
           </DialogDescription>
         </DialogHeader>
 
@@ -270,90 +284,106 @@ export function NewMessageModal({
           <TabsList
             className={
               showBulkAddChannelTab
-                ? 'grid h-auto min-h-10 w-full grid-cols-2 sm:grid-cols-4'
-                : 'grid h-auto min-h-10 w-full grid-cols-2 sm:grid-cols-3'
+                ? `grid h-auto min-h-10 w-full grid-cols-2 sm:grid-cols-4`
+                : `grid h-auto min-h-10 w-full grid-cols-2 sm:grid-cols-3`
             }
           >
             <TabsTrigger
               value="new-contact"
               className="min-h-10 whitespace-normal py-2 text-center leading-tight"
             >
-              Contact
+              <Trans>Contact</Trans>
             </TabsTrigger>
             <TabsTrigger
               value="new-channel"
               className="min-h-10 whitespace-normal py-2 text-center leading-tight"
             >
-              Private Channel
+              <Trans>Private Channel</Trans>
             </TabsTrigger>
             <TabsTrigger
               value="hashtag"
               className="min-h-10 whitespace-normal py-2 text-center leading-tight"
             >
-              Hashtag Channel
+              <Trans>Hashtag Channel</Trans>
             </TabsTrigger>
             {showBulkAddChannelTab && (
               <TabsTrigger
                 value="bulk-hashtag"
                 className="min-h-10 whitespace-normal py-2 text-center leading-tight"
               >
-                Bulk Add Channel
+                <Trans>Bulk Add Channel</Trans>
               </TabsTrigger>
             )}
           </TabsList>
 
           <TabsContent value="new-contact" className="mt-4 space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="contact-name">Name</Label>
+              <Label htmlFor="contact-name">
+                <Trans>Name</Trans>
+              </Label>
               <Input
                 id="contact-name"
                 value={name}
                 onChange={(e) => form.setFieldValue('name', e.target.value)}
-                placeholder="Contact name"
+                placeholder={t`Contact name`}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="contact-key">Public Key</Label>
+              <Label htmlFor="contact-key">
+                <Trans>Public Key</Trans>
+              </Label>
               <Input
                 id="contact-key"
                 value={contactKey}
                 onChange={(e) => form.setFieldValue('contactKey', e.target.value)}
-                placeholder="64-character hex public key"
+                placeholder={t`64-character hex public key`}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="contact-type">Type</Label>
+              <Label htmlFor="contact-type">
+                <Trans>Type</Trans>
+              </Label>
               <select
                 id="contact-type"
                 value={contactType}
                 onChange={(e) => form.setFieldValue('contactType', Number(e.target.value))}
                 className="block h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm"
               >
-                <option value={1}>Client</option>
-                <option value={2}>Repeater</option>
-                <option value={3}>Room Server</option>
+                <option value={1}>
+                  <Trans>Client</Trans>
+                </option>
+                <option value={2}>
+                  <Trans>Repeater</Trans>
+                </option>
+                <option value={3}>
+                  <Trans>Room Server</Trans>
+                </option>
               </select>
             </div>
           </TabsContent>
 
           <TabsContent value="new-channel" className="mt-4 space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="channel-name">Channel Name</Label>
+              <Label htmlFor="channel-name">
+                <Trans>Channel Name</Trans>
+              </Label>
               <Input
                 id="channel-name"
                 value={name}
                 onChange={(e) => form.setFieldValue('name', e.target.value)}
-                placeholder="Channel name"
+                placeholder={t`Channel name`}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="channel-key">Channel Key</Label>
+              <Label htmlFor="channel-key">
+                <Trans>Channel Key</Trans>
+              </Label>
               <div className="flex gap-2">
                 <Input
                   id="channel-key"
                   value={channelKey}
                   onChange={(e) => form.setFieldValue('channelKey', e.target.value)}
-                  placeholder="Pre-shared key (hex)"
+                  placeholder={t`Pre-shared key (hex)`}
                   className="flex-1"
                 />
                 <Button
@@ -368,8 +398,8 @@ export function NewMessageModal({
                       .join('');
                     form.setFieldValue('channelKey', hex);
                   }}
-                  title="Generate random key"
-                  aria-label="Generate random key"
+                  title={t`Generate random key`}
+                  aria-label={t`Generate random key`}
                 >
                   <Dice5 className="h-4 w-4" aria-hidden="true" />
                 </Button>
@@ -379,7 +409,9 @@ export function NewMessageModal({
 
           <TabsContent value="hashtag" className="mt-4">
             <div className="space-y-2">
-              <Label htmlFor="hashtag-name">Hashtag Channel</Label>
+              <Label htmlFor="hashtag-name">
+                <Trans>Hashtag Channel</Trans>
+              </Label>
               <div className="flex items-center gap-1">
                 <span className="text-sm text-muted-foreground">#</span>
                 <Input
@@ -387,7 +419,7 @@ export function NewMessageModal({
                   id="hashtag-name"
                   value={name}
                   onChange={(e) => form.setFieldValue('name', e.target.value)}
-                  placeholder="channel-name"
+                  placeholder={t`channel-name`}
                   className="flex-1"
                 />
               </div>
@@ -401,13 +433,15 @@ export function NewMessageModal({
                   className="h-4 w-4 rounded border-input accent-primary"
                 />
                 <span className="text-sm">
-                  Permit capitals, whitespace, and extended characters
+                  <Trans>Permit capitals, whitespace, and extended characters</Trans>
                 </span>
               </label>
               <p className="pl-7 text-xs text-muted-foreground">
-                Off normalizes to lowercase letters, numbers, and dashes. On hashes the name exactly
-                as typed — matches other MeshCore clients and lets you join channels with capitals,
-                spaces, or symbols like &amp;.
+                <Trans>
+                  Off normalizes to lowercase letters, numbers, and dashes. On hashes the name
+                  exactly as typed — matches other MeshCore clients and lets you join channels with
+                  capitals, spaces, or symbols like &amp;.
+                </Trans>
               </p>
             </div>
           </TabsContent>
@@ -415,20 +449,22 @@ export function NewMessageModal({
           {showBulkAddChannelTab && (
             <TabsContent value="bulk-hashtag" className="mt-4 space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="bulk-hashtag-names">Bulk Add Channel</Label>
+                <Label htmlFor="bulk-hashtag-names">
+                  <Trans>Bulk Add Channel</Trans>
+                </Label>
                 <textarea
                   ref={bulkTextareaRef}
                   id="bulk-hashtag-names"
-                  aria-label="Bulk channel names"
+                  aria-label={t`Bulk channel names`}
                   value={bulkChannelText}
                   onChange={(e) => form.setFieldValue('bulkChannelText', e.target.value)}
-                  placeholder={'#ops\nmesh-chat\nanother-channel'}
+                  placeholder={t`#ops\nmesh-chat\nanother-channel`}
                   className="min-h-48 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
                 />
                 <p className="text-xs text-muted-foreground">
                   {permitExtended
-                    ? 'One channel name per line (or comma-separated); spaces are kept as part of the name. Leading # marks are stripped automatically.'
-                    : 'Paste channel names separated by lines, spaces, or commas. Leading # marks are stripped automatically.'}
+                    ? t`One channel name per line (or comma-separated); spaces are kept as part of the name. Leading # marks are stripped automatically.`
+                    : t`Paste channel names separated by lines, spaces, or commas. Leading # marks are stripped automatically.`}
                 </p>
               </div>
               <div className="space-y-1">
@@ -440,13 +476,15 @@ export function NewMessageModal({
                     className="h-4 w-4 rounded border-input accent-primary"
                   />
                   <span className="text-sm">
-                    Permit capitals, whitespace, and extended characters
+                    <Trans>Permit capitals, whitespace, and extended characters</Trans>
                   </span>
                 </label>
                 <p className="pl-7 text-xs text-muted-foreground">
-                  Off normalizes to lowercase letters, numbers, and dashes. On hashes each name
-                  exactly as typed — matches other MeshCore clients and lets you join channels with
-                  capitals, spaces, or symbols like &amp;.
+                  <Trans>
+                    Off normalizes to lowercase letters, numbers, and dashes. On hashes each name
+                    exactly as typed — matches other MeshCore clients and lets you join channels
+                    with capitals, spaces, or symbols like &amp;.
+                  </Trans>
                 </p>
               </div>
             </TabsContent>
@@ -455,8 +493,10 @@ export function NewMessageModal({
 
         {tab !== 'new-contact' && (
           <p className="text-xs text-muted-foreground" role="note">
-            Creating a channel saves it to the app database only. It is written to a radio slot when
-            needed for sending; creation itself does not change the radio.
+            <Trans>
+              Creating a channel saves it to the app database only. It is written to a radio slot
+              when needed for sending; creation itself does not change the radio.
+            </Trans>
           </p>
         )}
 
@@ -467,8 +507,10 @@ export function NewMessageModal({
                 htmlFor="try-historical"
                 className="cursor-pointer text-sm text-muted-foreground"
               >
-                Try decrypting {undecryptedCount.toLocaleString()} stored packet
-                {undecryptedCount !== 1 ? 's' : ''}
+                <Trans>
+                  Try decrypting {undecryptedCount.toLocaleString(getLocale())} stored packet
+                  {undecryptedCount !== 1 ? 's' : ''}
+                </Trans>
               </Label>
               <Checkbox
                 id="try-historical"
@@ -478,7 +520,7 @@ export function NewMessageModal({
             </div>
             {tryHistorical && (
               <p className="text-right text-xs text-muted-foreground">
-                Messages will stream in as they decrypt in the background
+                <Trans>Messages will stream in as they decrypt in the background</Trans>
               </p>
             )}
           </div>
@@ -492,7 +534,9 @@ export function NewMessageModal({
 
         {loading && (
           <p className="text-sm text-muted-foreground" role="status">
-            Creation is in progress. This dialog will stay open until the request finishes.
+            <Trans>
+              Creation is in progress. This dialog will stay open until the request finishes.
+            </Trans>
           </p>
         )}
 
@@ -505,21 +549,21 @@ export function NewMessageModal({
               onClose();
             }}
           >
-            Cancel
+            <Trans>Cancel</Trans>
           </Button>
           {tab === 'hashtag' && (
             <Button variant="secondary" onClick={handleCreateAndAddAnother} disabled={loading}>
-              {loading ? 'Creating...' : 'Create & Add Another'}
+              {loading ? t`Creating...` : t`Create & Add Another`}
             </Button>
           )}
           <Button onClick={handleCreate} disabled={loading}>
             {loading
               ? tab === 'bulk-hashtag'
-                ? 'Adding...'
-                : 'Creating...'
+                ? t`Adding...`
+                : t`Creating...`
               : tab === 'bulk-hashtag'
-                ? 'Add Channels'
-                : 'Create'}
+                ? t`Add Channels`
+                : t`Create`}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -1,3 +1,7 @@
+import { Trans } from '@lingui/react/macro';
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
+import { getLocale } from '@/i18n';
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { tableFeatures, useTable, type ColumnDef } from '@tanstack/react-table';
@@ -33,6 +37,8 @@ function formatPercent(value: number): string {
  * size that "2.6%" hides.
  */
 function RegionScopeStatsPanel({ stats }: { stats: RegionScopeStats }) {
+  useLingui();
+
   // Corrupt RF captures land in the packet table with random headers, some of
   // which claim to be region-scoped. At or below the measured floor there is
   // nothing to report but noise, so withhold the percentage and say so.
@@ -45,17 +51,23 @@ function RegionScopeStatsPanel({ stats }: { stats: RegionScopeStats }) {
 
   return (
     <div>
-      <h3 className="text-base font-semibold tracking-tight mb-2">Region Scope (24h)</h3>
+      <h3 className="text-base font-semibold tracking-tight mb-2">
+        <Trans>Region Scope (24h)</Trans>
+      </h3>
       <p className="text-[0.8125rem] text-muted-foreground mb-3">
-        How much local traffic uses regional flood scoping. Traffic covers all channel messages
-        heard, including channels you have no key for; senders only counts channels you can decrypt,
-        so the two use different denominators and will not match.
+        <Trans>
+          How much local traffic uses regional flood scoping. Traffic covers all channel messages
+          heard, including channels you have no key for; senders only counts channels you can
+          decrypt, so the two use different denominators and will not match.
+        </Trans>
       </p>
       <div className="space-y-2">
         <div className="flex justify-between items-center gap-4">
-          <span className="text-sm text-muted-foreground">Scoped messages</span>
+          <span className="text-sm text-muted-foreground">
+            <Trans>Scoped messages</Trans>
+          </span>
           <span className="font-medium text-right">
-            {formatLocaleNumber(stats.scoped_messages)} of{' '}
+            {formatLocaleNumber(stats.scoped_messages)} <Trans>of</Trans>{' '}
             {formatLocaleNumber(stats.total_messages)}
             {showTrafficPct && (
               <span className="text-muted-foreground"> ({formatPercent(stats.scoped_pct)})</span>
@@ -63,9 +75,12 @@ function RegionScopeStatsPanel({ stats }: { stats: RegionScopeStats }) {
           </span>
         </div>
         <div className="flex justify-between items-center gap-4">
-          <span className="text-sm text-muted-foreground">Senders using regions</span>
+          <span className="text-sm text-muted-foreground">
+            <Trans>Senders using regions</Trans>
+          </span>
           <span className="font-medium text-right">
-            {formatLocaleNumber(stats.scoped_senders)} of {formatLocaleNumber(stats.total_senders)}
+            {formatLocaleNumber(stats.scoped_senders)} <Trans>of </Trans>
+            {formatLocaleNumber(stats.total_senders)}
             {stats.total_senders > 0 && (
               <span className="text-muted-foreground">
                 {' '}
@@ -77,15 +92,17 @@ function RegionScopeStatsPanel({ stats }: { stats: RegionScopeStats }) {
       </div>
       {floor > 0 && stats.scoped_messages > 0 && (
         <p className="text-[0.8125rem] text-muted-foreground mt-2">
-          {withinNoise
-            ? `Scoped message count is at or below the estimated false-positive floor (${floor.toFixed(0)}) from corrupt packet captures, so it is not evidence of regional adoption.`
-            : `Includes an estimated ${floor.toFixed(0)} false positives from corrupt packet captures.`}{' '}
-          The sender count is unaffected — it requires successful decryption.
+          <Trans>
+            {withinNoise
+              ? `Scoped message count is at or below the estimated false-positive floor (${floor.toFixed(0)}) from corrupt packet captures, so it is not evidence of regional adoption.`
+              : `Includes an estimated ${floor.toFixed(0)} false positives from corrupt packet captures.`}{' '}
+            The sender count is unaffected — it requires successful decryption.
+          </Trans>
         </p>
       )}
       {stats.total_messages === 0 && (
         <p className="text-sm text-muted-foreground mt-2">
-          No channel messages heard in the last 24 hours.
+          <Trans>No channel messages heard in the last 24 hours.</Trans>
         </p>
       )}
     </div>
@@ -95,7 +112,7 @@ function RegionScopeStatsPanel({ stats }: { stats: RegionScopeStats }) {
 const CHANNEL_BAR_COLORS = ['#0ea5e9', '#10b981', '#f59e0b', '#f43f5e', '#8b5cf6'];
 
 function formatTime(ts: number): string {
-  return new Date(ts * 1000).toLocaleTimeString([], {
+  return new Date(ts * 1000).toLocaleTimeString(getLocale(), {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
@@ -106,13 +123,15 @@ function formatTime(ts: number): string {
 function formatDateTime(ts: number): string {
   const d = new Date(ts * 1000);
   return (
-    d.toLocaleDateString([], { month: 'short', day: 'numeric' }) +
+    d.toLocaleDateString(getLocale(), { month: 'short', day: 'numeric' }) +
     ' ' +
-    d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
+    d.toLocaleTimeString(getLocale(), { hour: '2-digit', minute: '2-digit', hour12: false })
   );
 }
 
 function PacketsPerHourChart({ buckets }: { buckets: { timestamp: number; count: number }[] }) {
+  useLingui();
+
   // Fill gaps so hours with zero packets still appear on the chart
   const filled: { timestamp: number; count: number }[] = [];
   if (buckets.length > 0) {
@@ -132,7 +151,15 @@ function PacketsPerHourChart({ buckets }: { buckets: { timestamp: number; count:
   return (
     <TanStackTimeSeriesChart
       data={data}
-      series={[{ key: 'count', label: 'Count', color: '#0ea5e9' }]}
+      series={[
+        {
+          key: 'count',
+          get label() {
+            return t`Count`;
+          },
+          color: '#0ea5e9',
+        },
+      ]}
       height={140}
       ariaLabel="Packets per hour over 72 hours"
       variant="area"
@@ -146,6 +173,8 @@ function NoiseFloorChart({
 }: {
   samples: { timestamp: number; noise_floor_dbm: number }[];
 }) {
+  useLingui();
+
   const data = samples.map((sample) => ({
     category: formatTime(sample.timestamp),
     values: { noise_floor: sample.noise_floor_dbm },
@@ -154,7 +183,15 @@ function NoiseFloorChart({
   return (
     <TanStackTimeSeriesChart
       data={data}
-      series={[{ key: 'noise_floor', label: 'Noise Floor', color: '#8b5cf6' }]}
+      series={[
+        {
+          key: 'noise_floor',
+          get label() {
+            return t`Noise Floor`;
+          },
+          color: '#8b5cf6',
+        },
+      ]}
       height={120}
       ariaLabel="Noise floor over 24 hours"
       variant="area"
@@ -164,6 +201,8 @@ function NoiseFloorChart({
 }
 
 export function SettingsStatisticsSection({ className }: { className?: string }) {
+  useLingui();
+
   const {
     data: stats = null,
     dataUpdatedAt,
@@ -191,19 +230,25 @@ export function SettingsStatisticsSection({ className }: { className?: string })
       stats
         ? [
             {
-              label: 'Contacts heard',
+              get label() {
+                return t`Contacts heard`;
+              },
               lastHour: stats.contacts_heard.last_hour,
               last24Hours: stats.contacts_heard.last_24_hours,
               lastWeek: stats.contacts_heard.last_week,
             },
             {
-              label: 'Repeaters heard',
+              get label() {
+                return t`Repeaters heard`;
+              },
               lastHour: stats.repeaters_heard.last_hour,
               last24Hours: stats.repeaters_heard.last_24_hours,
               lastWeek: stats.repeaters_heard.last_week,
             },
             {
-              label: 'Known-channels active',
+              get label() {
+                return t`Known-channels active`;
+              },
               lastHour: stats.known_channels_active.last_hour,
               last24Hours: stats.known_channels_active.last_24_hours,
               lastWeek: stats.known_channels_active.last_week,
@@ -223,10 +268,12 @@ export function SettingsStatisticsSection({ className }: { className?: string })
     <div className={className} aria-busy={isFetching}>
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold">Statistics</h2>
+          <h2 className="text-lg font-semibold">
+            <Trans>Statistics</Trans>
+          </h2>
           {dataUpdatedAt > 0 && (
             <p className="text-xs text-muted-foreground" role="status">
-              Last updated {new Date(dataUpdatedAt).toLocaleString()}
+              <Trans>Last updated {new Date(dataUpdatedAt).toLocaleString(getLocale())}</Trans>
             </p>
           )}
         </div>
@@ -237,22 +284,26 @@ export function SettingsStatisticsSection({ className }: { className?: string })
           disabled={isFetching}
           onClick={() => void refetch()}
         >
-          {isFetching && stats ? 'Refreshing…' : 'Refresh'}
+          {isFetching && stats ? t`Refreshing…` : t`Refresh`}
         </Button>
       </div>
 
       {isPending && !stats ? (
         <div className="py-8 text-center text-muted-foreground">
-          Loading statistics... this can take a while if you have a lot of stored packets.
+          <Trans>
+            Loading statistics... this can take a while if you have a lot of stored packets.
+          </Trans>
         </div>
       ) : isError && !stats ? (
         <div className="space-y-3 py-8 text-center" role="alert">
           <p className="text-destructive">
-            Failed to load statistics
-            {error instanceof Error && error.message ? `: ${error.message}` : '.'}
+            <Trans>
+              Failed to load statistics
+              {error instanceof Error && error.message ? `: ${error.message}` : '.'}
+            </Trans>
           </p>
           <Button type="button" variant="outline" onClick={() => void refetch()}>
-            Retry
+            <Trans>Retry</Trans>
           </Button>
         </div>
       ) : stats ? (
@@ -260,7 +311,7 @@ export function SettingsStatisticsSection({ className }: { className?: string })
           {isError && (
             <div className="rounded-md border border-warning/50 bg-warning/10 p-3" role="alert">
               <p className="text-sm text-warning">
-                Refresh failed. Showing statistics from the last successful update.
+                <Trans>Refresh failed. Showing statistics from the last successful update.</Trans>
               </p>
               <Button
                 type="button"
@@ -270,31 +321,41 @@ export function SettingsStatisticsSection({ className }: { className?: string })
                 disabled={isFetching}
                 onClick={() => void refetch()}
               >
-                Retry refresh
+                <Trans>Retry refresh</Trans>
               </Button>
             </div>
           )}
           {!hasStoredActivity && (
             <div className="rounded-md border border-border bg-muted/30 p-3 text-sm text-muted-foreground">
-              No stored mesh activity yet. Statistics will appear after packets or messages are
-              recorded.
+              <Trans>
+                No stored mesh activity yet. Statistics will appear after packets or messages are
+                recorded.
+              </Trans>
             </div>
           )}
           {/* Network */}
           <div>
-            <h3 className="text-base font-semibold tracking-tight mb-2">Network</h3>
+            <h3 className="text-base font-semibold tracking-tight mb-2">
+              <Trans>Network</Trans>
+            </h3>
             <div className="grid grid-cols-3 gap-3">
               <div className="text-center p-3 bg-muted/50 rounded-md">
                 <div className="text-2xl font-bold">{stats.contact_count}</div>
-                <div className="text-xs text-muted-foreground">Contacts</div>
+                <div className="text-xs text-muted-foreground">
+                  <Trans>Contacts</Trans>
+                </div>
               </div>
               <div className="text-center p-3 bg-muted/50 rounded-md">
                 <div className="text-2xl font-bold">{stats.repeater_count}</div>
-                <div className="text-xs text-muted-foreground">Repeaters</div>
+                <div className="text-xs text-muted-foreground">
+                  <Trans>Repeaters</Trans>
+                </div>
               </div>
               <div className="text-center p-3 bg-muted/50 rounded-md">
                 <div className="text-2xl font-bold">{stats.channel_count}</div>
-                <div className="text-xs text-muted-foreground">Channels</div>
+                <div className="text-xs text-muted-foreground">
+                  <Trans>Channels</Trans>
+                </div>
               </div>
             </div>
           </div>
@@ -303,19 +364,27 @@ export function SettingsStatisticsSection({ className }: { className?: string })
 
           {/* Messages */}
           <div>
-            <h3 className="text-base font-semibold tracking-tight mb-2">Messages</h3>
+            <h3 className="text-base font-semibold tracking-tight mb-2">
+              <Trans>Messages</Trans>
+            </h3>
             <div className="grid grid-cols-3 gap-3">
               <div className="text-center p-3 bg-muted/50 rounded-md">
                 <div className="text-2xl font-bold">{stats.total_dms}</div>
-                <div className="text-xs text-muted-foreground">Direct Messages</div>
+                <div className="text-xs text-muted-foreground">
+                  <Trans>Direct Messages</Trans>
+                </div>
               </div>
               <div className="text-center p-3 bg-muted/50 rounded-md">
                 <div className="text-2xl font-bold">{stats.total_channel_messages}</div>
-                <div className="text-xs text-muted-foreground">Channel Messages</div>
+                <div className="text-xs text-muted-foreground">
+                  <Trans>Channel Messages</Trans>
+                </div>
               </div>
               <div className="text-center p-3 bg-muted/50 rounded-md">
                 <div className="text-2xl font-bold">{stats.total_outgoing}</div>
-                <div className="text-xs text-muted-foreground">Sent (Outgoing)</div>
+                <div className="text-xs text-muted-foreground">
+                  <Trans>Sent (Outgoing)</Trans>
+                </div>
               </div>
             </div>
           </div>
@@ -324,7 +393,9 @@ export function SettingsStatisticsSection({ className }: { className?: string })
 
           {/* Activity */}
           <div>
-            <h3 className="text-base font-semibold tracking-tight mb-2">Activity</h3>
+            <h3 className="text-base font-semibold tracking-tight mb-2">
+              <Trans>Activity</Trans>
+            </h3>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -363,18 +434,26 @@ export function SettingsStatisticsSection({ className }: { className?: string })
 
           {/* Packets */}
           <div>
-            <h3 className="text-base font-semibold tracking-tight mb-2">Packets</h3>
+            <h3 className="text-base font-semibold tracking-tight mb-2">
+              <Trans>Packets</Trans>
+            </h3>
             <div className="space-y-2">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Total stored</span>
+                <span className="text-sm text-muted-foreground">
+                  <Trans>Total stored</Trans>
+                </span>
                 <span className="font-medium">{stats.total_packets}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-success">Decrypted</span>
+                <span className="text-sm text-success">
+                  <Trans>Decrypted</Trans>
+                </span>
                 <span className="font-medium text-success">{stats.decrypted_packets}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-warning">Undecrypted</span>
+                <span className="text-sm text-warning">
+                  <Trans>Undecrypted</Trans>
+                </span>
                 <span className="font-medium text-warning">{stats.undecrypted_packets}</span>
               </div>
             </div>
@@ -386,7 +465,7 @@ export function SettingsStatisticsSection({ className }: { className?: string })
               <Separator />
               <div>
                 <h3 className="text-base font-semibold tracking-tight mb-2">
-                  Packets per Hour (72h)
+                  <Trans>Packets per Hour (72h)</Trans>
                 </h3>
                 <PacketsPerHourChart buckets={stats.packets_per_hour_72h} />
               </div>
@@ -397,10 +476,14 @@ export function SettingsStatisticsSection({ className }: { className?: string })
 
           {/* Path Hash Width */}
           <div>
-            <h3 className="text-base font-semibold tracking-tight mb-2">Path Hash Width (24h)</h3>
+            <h3 className="text-base font-semibold tracking-tight mb-2">
+              <Trans>Path Hash Width (24h)</Trans>
+            </h3>
             <div className="mb-2 text-xs text-muted-foreground">
-              Parsed stored raw packets from the last 24 hours:{' '}
-              {stats.path_hash_width_24h.total_packets}
+              <Trans>
+                Parsed stored raw packets from the last 24 hours:{' '}
+                {stats.path_hash_width_24h.total_packets}
+              </Trans>
             </div>
             {stats.path_hash_width_24h.total_packets > 0 ? (
               <TanStackBarChart
@@ -421,12 +504,22 @@ export function SettingsStatisticsSection({ className }: { className?: string })
                     color: '#f59e0b',
                   },
                 ]}
-                series={[{ key: 'count', label: 'Packets', color: '#0ea5e9' }]}
+                series={[
+                  {
+                    key: 'count',
+                    get label() {
+                      return t`Packets`;
+                    },
+                    color: '#0ea5e9',
+                  },
+                ]}
                 height={120}
                 ariaLabel="Path hash width packet counts"
               />
             ) : (
-              <p className="text-sm text-muted-foreground">No path data in the last 24 hours.</p>
+              <p className="text-sm text-muted-foreground">
+                <Trans>No path data in the last 24 hours.</Trans>
+              </p>
             )}
           </div>
 
@@ -441,7 +534,7 @@ export function SettingsStatisticsSection({ className }: { className?: string })
               <Separator />
               <div>
                 <h3 className="text-base font-semibold tracking-tight mb-2">
-                  Busiest Channels (24h)
+                  <Trans>Busiest Channels (24h)</Trans>
                 </h3>
                 <TanStackBarChart
                   data={stats.busiest_channels_24h.map((channel, index) => ({
@@ -449,7 +542,15 @@ export function SettingsStatisticsSection({ className }: { className?: string })
                     values: { messages: channel.message_count },
                     color: CHANNEL_BAR_COLORS[index % CHANNEL_BAR_COLORS.length],
                   }))}
-                  series={[{ key: 'messages', label: 'Messages', color: CHANNEL_BAR_COLORS[0] }]}
+                  series={[
+                    {
+                      key: 'messages',
+                      get label() {
+                        return t`Messages`;
+                      },
+                      color: CHANNEL_BAR_COLORS[0],
+                    },
+                  ]}
                   height={stats.busiest_channels_24h.length * 28 + 8}
                   ariaLabel="Busiest channels over 24 hours"
                   horizontal
@@ -463,31 +564,39 @@ export function SettingsStatisticsSection({ className }: { className?: string })
             <>
               <Separator />
               <div>
-                <h3 className="text-base font-semibold tracking-tight mb-2">Noise Floor (24h)</h3>
+                <h3 className="text-base font-semibold tracking-tight mb-2">
+                  <Trans>Noise Floor (24h)</Trans>
+                </h3>
                 {stats.noise_floor_24h.latest_noise_floor_dbm != null && (
                   <div className="mb-2 text-xs text-muted-foreground">
-                    Latest reading: {stats.noise_floor_24h.latest_noise_floor_dbm} dBm
-                    {stats.noise_floor_24h.latest_timestamp != null &&
-                      ` at ${new Date(
-                        stats.noise_floor_24h.latest_timestamp * 1000
-                      ).toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}`}
+                    <Trans>
+                      Latest reading: {stats.noise_floor_24h.latest_noise_floor_dbm} dBm
+                      {stats.noise_floor_24h.latest_timestamp != null &&
+                        ` at ${new Date(
+                          stats.noise_floor_24h.latest_timestamp * 1000
+                        ).toLocaleTimeString(getLocale(), {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}`}
+                    </Trans>
                   </div>
                 )}
                 {stats.noise_floor_24h.samples.length > 1 ? (
                   <NoiseFloorChart samples={stats.noise_floor_24h.samples} />
                 ) : stats.noise_floor_24h.samples.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
-                    No noise floor samples collected yet. Samples are collected every minute and
-                    retained until server restart.
+                    <Trans>
+                      No noise floor samples collected yet. Samples are collected every minute and
+                      retained until server restart.
+                    </Trans>
                   </p>
                 ) : (
                   <p className="text-sm text-muted-foreground">
-                    Only one sample so far ({stats.noise_floor_24h.samples[0].noise_floor_dbm} dBm).
-                    More data needed for a chart. Samples are collected every minute and retained
-                    until server restart.
+                    <Trans>
+                      Only one sample so far ({stats.noise_floor_24h.samples[0].noise_floor_dbm}{' '}
+                      dBm). More data needed for a chart. Samples are collected every minute and
+                      retained until server restart.
+                    </Trans>
                   </p>
                 )}
               </div>

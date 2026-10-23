@@ -1,3 +1,6 @@
+import { Trans } from '@lingui/react/macro';
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import {
@@ -198,6 +201,8 @@ export function Sidebar({
   blockedKeys = [],
   blockedNames = [],
 }: SidebarProps) {
+  useLingui();
+
   const isContactBlocked = useCallback(
     (c: Contact) =>
       blockedKeys.includes(c.public_key.toLowerCase()) ||
@@ -646,7 +651,7 @@ export function Sidebar({
           isActive(row.type, row.id) && 'bg-accent border-l-primary',
           row.unreadCount > 0 && '[&_.name]:font-semibold [&_.name]:text-foreground'
         )}
-        aria-current={isActive(row.type, row.id) ? 'page' : undefined}
+        aria-current={isActive(row.type, row.id) ? `page` : undefined}
         onClick={(event) => {
           if (
             event.button !== 0 ||
@@ -676,13 +681,13 @@ export function Sidebar({
         <span className="name flex-1 truncate text-[0.8125rem]">{row.name}</span>
         <span className="ml-auto flex items-center gap-1">
           {row.muted ? (
-            <span aria-label="Channel muted" title="Channel muted">
+            <span aria-label={t`Channel muted`} title={t`Channel muted`}>
               <BellOff className="h-3.5 w-3.5 text-muted-foreground" />
             </span>
           ) : (
             <>
               {row.notificationsEnabled && (
-                <span aria-label="Notifications enabled" title="Notifications enabled">
+                <span aria-label={t`Notifications enabled`} title={t`Notifications enabled`}>
                   <Bell className="h-3.5 w-3.5 text-muted-foreground" />
                 </span>
               )}
@@ -694,7 +699,7 @@ export function Sidebar({
                       ? 'bg-badge-mention text-badge-mention-foreground'
                       : 'bg-badge-unread/90 text-badge-unread-foreground'
                   )}
-                  aria-label={`${row.unreadCount} unread message${row.unreadCount !== 1 ? 's' : ''}`}
+                  aria-label={t`${row.unreadCount} unread message${row.unreadCount !== 1 ? 's' : ''}`}
                 >
                   {row.unreadCount}
                 </span>
@@ -722,12 +727,12 @@ export function Sidebar({
     <button
       type="button"
       key={key}
-      data-active={active ? 'true' : undefined}
+      data-active={active ? `true` : undefined}
       className={cn(
         'sidebar-action-row w-full px-3 py-2 cursor-pointer flex items-center gap-2 border-l-2 border-transparent bg-transparent text-left hover:bg-accent transition-colors text-[0.8125rem] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         active && 'bg-accent border-l-primary'
       )}
-      aria-current={active ? 'page' : undefined}
+      aria-current={active ? `page` : undefined}
       onClick={onClick}
     >
       <span className="sidebar-tool-icon" aria-hidden="true">
@@ -765,7 +770,9 @@ export function Sidebar({
           key: 'tool-raw',
           active: isActive('raw', 'raw'),
           icon: <Logs className="h-4 w-4" />,
-          label: 'Packet Feed',
+          get label() {
+            return t`Packet Feed`;
+          },
           onClick: () =>
             handleSelectConversation({
               type: 'raw',
@@ -777,7 +784,9 @@ export function Sidebar({
           key: 'tool-map',
           active: isActive('map', 'map'),
           icon: <Map className="h-4 w-4" />,
-          label: 'Node Map',
+          get label() {
+            return t`Node Map`;
+          },
           onClick: () =>
             handleSelectConversation({
               type: 'map',
@@ -789,7 +798,9 @@ export function Sidebar({
           key: 'tool-visualizer',
           active: isActive('visualizer', 'visualizer'),
           icon: <ChartNetwork className="h-4 w-4" />,
-          label: 'Mesh Visualizer',
+          get label() {
+            return t`Mesh Visualizer`;
+          },
           onClick: () =>
             handleSelectConversation({
               type: 'visualizer',
@@ -801,7 +812,9 @@ export function Sidebar({
           key: 'tool-radio-activity',
           active: isActive('radio-activity', 'radio-activity'),
           icon: <RadioTower className="h-4 w-4" />,
-          label: 'Radio Activity',
+          get label() {
+            return t`Radio Activity`;
+          },
           onClick: () =>
             handleSelectConversation({
               type: 'radio-activity',
@@ -813,7 +826,9 @@ export function Sidebar({
           key: 'tool-trace',
           active: isActive('trace', 'trace'),
           icon: <Cable className="h-4 w-4" />,
-          label: 'Trace',
+          get label() {
+            return t`Trace`;
+          },
           onClick: () =>
             handleSelectConversation({
               type: 'trace',
@@ -825,7 +840,9 @@ export function Sidebar({
           key: 'tool-search',
           active: isActive('search', 'search'),
           icon: <SearchIcon className="h-4 w-4" />,
-          label: 'Message Search',
+          get label() {
+            return t`Message Search`;
+          },
           onClick: () =>
             handleSelectConversation({
               type: 'search',
@@ -839,14 +856,14 @@ export function Sidebar({
           icon: <LockOpen className="h-4 w-4" />,
           label: (
             <>
-              {showCracker ? 'Hide' : 'Show'} Channel Finder
+              {showCracker ? t`Hide` : t`Show`} <Trans>Channel Finder</Trans>
               <span
                 className={cn(
                   'ml-1 text-[0.6875rem]',
                   crackerRunning ? 'text-primary' : 'text-muted-foreground'
                 )}
               >
-                ({crackerRunning ? 'running' : 'idle'})
+                ({crackerRunning ? t`running` : t`idle`})
               </span>
             </>
           ),
@@ -877,7 +894,7 @@ export function Sidebar({
           onClick={() => {
             if (!isSearching) onToggle();
           }}
-          title={effectiveCollapsed ? `Expand ${title}` : `Collapse ${title}`}
+          title={effectiveCollapsed ? t`Expand ${title}` : t`Collapse ${title}`}
         >
           {effectiveCollapsed ? (
             <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
@@ -892,10 +909,10 @@ export function Sidebar({
               <button
                 className="bg-transparent text-muted-foreground/60 px-1 py-0.5 text-[0.625rem] rounded hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring whitespace-nowrap"
                 onClick={() => handleSortToggle(sortSection)}
-                aria-label={`Sort ${title} ${sortOrderDescription(
+                aria-label={t`Sort ${title} ${sortOrderDescription(
                   nextSortOrder(sortSection, sectionSortOrder)
                 )}`}
-                title={`Currently sorted ${sortOrderDescription(
+                title={t`Currently sorted ${sortOrderDescription(
                   sectionSortOrder
                 )}. Click to sort ${sortOrderDescription(
                   nextSortOrder(sortSection, sectionSortOrder)
@@ -912,7 +929,7 @@ export function Sidebar({
                     ? 'bg-badge-mention text-badge-mention-foreground'
                     : 'bg-secondary text-muted-foreground'
                 )}
-                aria-label={`${unreadCount} unread`}
+                aria-label={t`${unreadCount} unread`}
               >
                 {unreadCount}
               </span>
@@ -963,7 +980,9 @@ export function Sidebar({
           onClick={onMarkAllRead}
         >
           <CheckCheck className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-          <span className="flex-1 truncate text-muted-foreground">Mark all as read</span>
+          <span className="flex-1 truncate text-muted-foreground">
+            <Trans>Mark all as read</Trans>
+          </span>
         </button>
       ),
     });
@@ -1055,7 +1074,7 @@ export function Sidebar({
       estimate: 64,
       node: (
         <div className="p-5 text-center text-muted-foreground">
-          {query ? 'No matches found' : 'No conversations yet'}
+          {query ? t`No matches found` : t`No conversations yet`}
         </div>
       ),
     });
@@ -1077,7 +1096,7 @@ export function Sidebar({
   return (
     <nav
       className="sidebar w-60 h-full min-h-0 overflow-hidden bg-card border-r border-border flex flex-col"
-      aria-label="Conversations"
+      aria-label={t`Conversations`}
     >
       {/* Header */}
       <div className="px-3 py-2 border-b border-border">
@@ -1085,12 +1104,14 @@ export function Sidebar({
           variant="outline"
           size="sm"
           onClick={onNewMessage}
-          title="Add channel or contact"
-          aria-label="Add channel or contact"
+          title={t`Add channel or contact`}
+          aria-label={t`Add channel or contact`}
           className="h-8 w-full justify-start gap-2 border-primary/20 bg-primary/5 px-3 text-[0.8125rem] text-primary hover:bg-primary/10 hover:text-primary"
         >
           <SquarePen className="h-4 w-4" />
-          <span>Add Channel/Contact</span>
+          <span>
+            <Trans>Add Channel/Contact</Trans>
+          </span>
         </Button>
       </div>
 
@@ -1098,8 +1119,8 @@ export function Sidebar({
         <div className="relative min-w-0">
           <Input
             type="text"
-            placeholder="Search channels/contacts..."
-            aria-label="Search conversations"
+            placeholder={t`Search channels/contacts...`}
+            aria-label={t`Search conversations`}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className={cn('h-7 text-[0.8125rem] bg-background/50', searchQuery ? 'pr-8' : 'pr-3')}
@@ -1108,8 +1129,8 @@ export function Sidebar({
             <button
               className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-lg leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
               onClick={() => setSearchQuery('')}
-              title="Clear search"
-              aria-label="Clear search"
+              title={t`Clear search`}
+              aria-label={t`Clear search`}
             >
               <X className="h-4 w-4" />
             </button>

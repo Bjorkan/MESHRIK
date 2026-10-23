@@ -1,3 +1,6 @@
+import { Trans } from '@lingui/react/macro';
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
 import { useState, type ReactNode } from 'react';
 import { Link } from '@tanstack/react-router';
 import { toast } from './ui/sonner';
@@ -25,6 +28,8 @@ interface ContactStatusInfoProps {
  * shared between ChatHeader and RepeaterDashboard.
  */
 export function ContactStatusInfo({ contact, ourLat, ourLon }: ContactStatusInfoProps) {
+  useLingui();
+
   const { distanceUnit } = useDistanceUnit();
   const [routingModalOpen, setRoutingModalOpen] = useState(false);
   const parts: ReactNode[] = [];
@@ -45,10 +50,14 @@ export function ContactStatusInfo({ contact, ourLat, ourLon }: ContactStatusInfo
         e.stopPropagation();
         setRoutingModalOpen(true);
       }}
-      title="Click to edit routing override"
+      title={t`Click to edit routing override`}
     >
       {formatRouteLabel(effectiveRoute.pathLen)}
-      {effectiveRoute.forced && <span className="text-destructive"> (forced)</span>}
+      {effectiveRoute.forced && (
+        <span className="text-destructive">
+          <Trans> (forced)</Trans>
+        </span>
+      )}
     </span>
   );
 
@@ -66,7 +75,7 @@ export function ContactStatusInfo({ contact, ourLat, ourLon }: ContactStatusInfo
           rel="noopener noreferrer"
           className="font-mono cursor-pointer hover:text-primary hover:underline"
           onClick={(event) => event.stopPropagation()}
-          title="View on map"
+          title={t`View on map`}
         >
           {contact.lat!.toFixed(3)}, {contact.lon!.toFixed(3)}
         </Link>

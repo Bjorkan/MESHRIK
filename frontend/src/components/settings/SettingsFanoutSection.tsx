@@ -1,3 +1,7 @@
+import { Trans } from '@lingui/react/macro';
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
+import { getLocale } from '@/i18n';
 import {
   useState,
   useEffect,
@@ -38,15 +42,33 @@ const BotCodeEditor = lazy(() =>
 const FANOUT_CONFIGS_QUERY_KEY = ['fanout', 'configs'] as const;
 
 const TYPE_LABELS: Record<string, string> = {
-  virtual_companion_tcp: 'MeshCore App (Virtual TCP Companion)',
-  mqtt_private: 'Private MQTT',
-  mqtt_community: 'Community Sharing',
-  mqtt_ha: 'Home Assistant',
-  bot: 'Python Bot',
-  webhook: 'Webhook',
-  apprise: 'Apprise',
-  sqs: 'Amazon SQS',
-  map_upload: 'Map Upload',
+  get virtual_companion_tcp() {
+    return t`MeshCore App (Virtual TCP Companion)`;
+  },
+  get mqtt_private() {
+    return t`Private MQTT`;
+  },
+  get mqtt_community() {
+    return t`Community Sharing`;
+  },
+  get mqtt_ha() {
+    return t`Home Assistant`;
+  },
+  get bot() {
+    return t`Python Bot`;
+  },
+  get webhook() {
+    return t`Webhook`;
+  },
+  get apprise() {
+    return t`Apprise`;
+  },
+  get sqs() {
+    return t`Amazon SQS`;
+  },
+  get map_upload() {
+    return t`Map Upload`;
+  },
 };
 
 const DEFAULT_COMMUNITY_PACKET_TOPIC_TEMPLATE = 'meshcore/{IATA}/{PUBLIC_KEY}/packets';
@@ -172,10 +194,15 @@ const CREATE_INTEGRATION_DEFINITIONS: readonly CreateIntegrationDefinition[] = [
   {
     value: 'virtual_companion_tcp',
     savedType: 'virtual_companion_tcp',
-    label: 'MeshCore App (Virtual TCP Companion)',
-    section: 'MeshCore Apps',
-    description:
-      "Let the official MeshCore app use MESHRIK's shared node and DB through a separate virtual TCP listener. This is not the physical radio's TCP endpoint and does not provide full firmware administration.",
+    get label() {
+      return t`MeshCore App (Virtual TCP Companion)`;
+    },
+    get section() {
+      return t`MeshCore Apps`;
+    },
+    get description() {
+      return t`Let the official MeshCore app use MESHRIK's shared node and DB through a separate virtual TCP listener. This is not the physical radio's TCP endpoint and does not provide full firmware administration.`;
+    },
     defaultName: 'MeshCore App',
     nameMode: 'fixed',
     defaultEnabled: false,
@@ -194,10 +221,15 @@ const CREATE_INTEGRATION_DEFINITIONS: readonly CreateIntegrationDefinition[] = [
   {
     value: 'mqtt_private',
     savedType: 'mqtt_private',
-    label: 'Private MQTT',
-    section: 'Private Forwarding',
-    description:
-      'Customizable-scope forwarding of all or some messages to an MQTT broker of your choosing, in raw and/or decrypted form.',
+    get label() {
+      return t`Private MQTT`;
+    },
+    get section() {
+      return t`Private Forwarding`;
+    },
+    get description() {
+      return t`Customizable-scope forwarding of all or some messages to an MQTT broker of your choosing, in raw and/or decrypted form.`;
+    },
     defaultName: 'Private MQTT',
     nameMode: 'counted',
     defaults: {
@@ -216,10 +248,15 @@ const CREATE_INTEGRATION_DEFINITIONS: readonly CreateIntegrationDefinition[] = [
   {
     value: 'mqtt_ha',
     savedType: 'mqtt_ha',
-    label: 'Home Assistant MQTT Discovery',
-    section: 'Private Forwarding',
-    description:
-      "Publishes MQTT Discovery payloads so mesh devices appear natively in Home Assistant. Requires HA's built-in MQTT integration connected to the same broker. Select specific contacts for GPS tracking and repeaters for telemetry sensors.",
+    get label() {
+      return t`Home Assistant MQTT Discovery`;
+    },
+    get section() {
+      return t`Private Forwarding`;
+    },
+    get description() {
+      return t`Publishes MQTT Discovery payloads so mesh devices appear natively in Home Assistant. Requires HA's built-in MQTT integration connected to the same broker. Select specific contacts for GPS tracking and repeaters for telemetry sensors.`;
+    },
     defaultName: 'Home Assistant',
     nameMode: 'fixed',
     defaults: {
@@ -240,10 +277,15 @@ const CREATE_INTEGRATION_DEFINITIONS: readonly CreateIntegrationDefinition[] = [
   {
     value: 'mqtt_community',
     savedType: 'mqtt_community',
-    label: 'Community MQTT/meshcoretomqtt',
-    section: 'Community Sharing',
-    description:
-      'MeshcoreToMQTT-compatible raw-packet feed publishing, compatible with community aggregators (in other words, make your companion radio also serve as an observer node). Superset of other Community MQTT presets.',
+    get label() {
+      return t`Community MQTT/meshcoretomqtt`;
+    },
+    get section() {
+      return t`Community Sharing`;
+    },
+    get description() {
+      return t`MeshcoreToMQTT-compatible raw-packet feed publishing, compatible with community aggregators (in other words, make your companion radio also serve as an observer node). Superset of other Community MQTT presets.`;
+    },
     defaultName: 'Community MQTT',
     nameMode: 'counted',
     defaults: {
@@ -254,10 +296,15 @@ const CREATE_INTEGRATION_DEFINITIONS: readonly CreateIntegrationDefinition[] = [
   {
     value: 'mqtt_community_meshrank',
     savedType: 'mqtt_community',
-    label: 'MeshRank',
-    section: 'Community Sharing',
-    description:
-      'A community MQTT config preconfigured for MeshRank, requiring only your MeshRank uplink token. A subset of the primary Community MQTT/meshcoretomqtt configuration; you are free to edit all configuration after creation.',
+    get label() {
+      return t`MeshRank`;
+    },
+    get section() {
+      return t`Community Sharing`;
+    },
+    get description() {
+      return t`A community MQTT config preconfigured for MeshRank, requiring only your MeshRank uplink token. A subset of the primary Community MQTT/meshcoretomqtt configuration; you are free to edit all configuration after creation.`;
+    },
     defaultName: 'MeshRank',
     nameMode: 'fixed',
     defaults: {
@@ -279,10 +326,15 @@ const CREATE_INTEGRATION_DEFINITIONS: readonly CreateIntegrationDefinition[] = [
   {
     value: 'mqtt_community_letsmesh_us',
     savedType: 'mqtt_community',
-    label: 'LetsMesh (US)',
-    section: 'Community Sharing',
-    description:
-      'A community MQTT config preconfigured for the LetsMesh US-ingest endpoint, requiring only your email and IATA region code. Good to use with an additional EU configuration for redundancy. A subset of the primary Community MQTT/meshcoretomqtt configuration; you are free to edit all configuration after creation.',
+    get label() {
+      return t`LetsMesh (US)`;
+    },
+    get section() {
+      return t`Community Sharing`;
+    },
+    get description() {
+      return t`A community MQTT config preconfigured for the LetsMesh US-ingest endpoint, requiring only your email and IATA region code. Good to use with an additional EU configuration for redundancy. A subset of the primary Community MQTT/meshcoretomqtt configuration; you are free to edit all configuration after creation.`;
+    },
     defaultName: 'LetsMesh (US)',
     nameMode: 'fixed',
     defaults: {
@@ -296,10 +348,15 @@ const CREATE_INTEGRATION_DEFINITIONS: readonly CreateIntegrationDefinition[] = [
   {
     value: 'mqtt_community_letsmesh_eu',
     savedType: 'mqtt_community',
-    label: 'LetsMesh (EU)',
-    section: 'Community Sharing',
-    description:
-      'A community MQTT config preconfigured for the LetsMesh EU-ingest endpoint, requiring only your email and IATA region code. Good to use with an additional US configuration for redundancy. A subset of the primary Community MQTT/meshcoretomqtt configuration; you are free to edit all configuration after creation.',
+    get label() {
+      return t`LetsMesh (EU)`;
+    },
+    get section() {
+      return t`Community Sharing`;
+    },
+    get description() {
+      return t`A community MQTT config preconfigured for the LetsMesh EU-ingest endpoint, requiring only your email and IATA region code. Good to use with an additional US configuration for redundancy. A subset of the primary Community MQTT/meshcoretomqtt configuration; you are free to edit all configuration after creation.`;
+    },
     defaultName: 'LetsMesh (EU)',
     nameMode: 'fixed',
     defaults: {
@@ -313,10 +370,15 @@ const CREATE_INTEGRATION_DEFINITIONS: readonly CreateIntegrationDefinition[] = [
   {
     value: 'webhook',
     savedType: 'webhook',
-    label: 'Webhook',
-    section: 'Automation',
-    description:
-      'Generic webhook for decrypted channel/DM messages with customizable verb, method, and optional HMAC signature.',
+    get label() {
+      return t`Webhook`;
+    },
+    get section() {
+      return t`Automation`;
+    },
+    get description() {
+      return t`Generic webhook for decrypted channel/DM messages with customizable verb, method, and optional HMAC signature.`;
+    },
     defaultName: 'Webhook',
     nameMode: 'counted',
     defaults: {
@@ -333,10 +395,15 @@ const CREATE_INTEGRATION_DEFINITIONS: readonly CreateIntegrationDefinition[] = [
   {
     value: 'apprise',
     savedType: 'apprise',
-    label: 'Apprise',
-    section: 'Automation',
-    description:
-      'A wide-ranging generic fanout, capable of forwarding decrypted channel/DM messages to Discord, Telegram, email, SMS, and many others.',
+    get label() {
+      return t`Apprise`;
+    },
+    get section() {
+      return t`Automation`;
+    },
+    get description() {
+      return t`A wide-ranging generic fanout, capable of forwarding decrypted channel/DM messages to Discord, Telegram, email, SMS, and many others.`;
+    },
     defaultName: 'Apprise',
     nameMode: 'counted',
     defaults: {
@@ -355,9 +422,15 @@ const CREATE_INTEGRATION_DEFINITIONS: readonly CreateIntegrationDefinition[] = [
   {
     value: 'sqs',
     savedType: 'sqs',
-    label: 'Amazon SQS',
-    section: 'Private Forwarding',
-    description: 'Send full or scope-customized raw or decrypted packets to an SQS',
+    get label() {
+      return t`Amazon SQS`;
+    },
+    get section() {
+      return t`Private Forwarding`;
+    },
+    get description() {
+      return t`Send full or scope-customized raw or decrypted packets to an SQS`;
+    },
     defaultName: 'Amazon SQS',
     nameMode: 'counted',
     defaults: {
@@ -375,10 +448,15 @@ const CREATE_INTEGRATION_DEFINITIONS: readonly CreateIntegrationDefinition[] = [
   {
     value: 'bot',
     savedType: 'bot',
-    label: 'Python Bot',
-    section: 'Automation',
-    description:
-      'A simple, Python-based interface for basic bots that can respond to DM and channel messages.',
+    get label() {
+      return t`Python Bot`;
+    },
+    get section() {
+      return t`Automation`;
+    },
+    get description() {
+      return t`A simple, Python-based interface for basic bots that can respond to DM and channel messages.`;
+    },
     defaultName: 'Bot',
     nameMode: 'counted',
     defaults: {
@@ -391,10 +469,15 @@ const CREATE_INTEGRATION_DEFINITIONS: readonly CreateIntegrationDefinition[] = [
   {
     value: 'map_upload',
     savedType: 'map_upload',
-    label: 'Map Upload',
-    section: 'Community Sharing',
-    description:
-      'Upload repeaters and room servers to map.meshcore.io or a compatible map API endpoint.',
+    get label() {
+      return t`Map Upload`;
+    },
+    get section() {
+      return t`Community Sharing`;
+    },
+    get description() {
+      return t`Upload repeaters and room servers to map.meshcore.io or a compatible map API endpoint.`;
+    },
     defaultName: 'Map Upload',
     nameMode: 'counted',
     defaults: {
@@ -497,19 +580,19 @@ function normalizeIntegrationConfigForSave(
       .toLowerCase();
     const secureAccess = String(normalized.secure_access ?? '');
     if (!bindHost && secureAccess) {
-      throw new Error('A protected literal bind address is required for remote access');
+      throw new Error(t`A protected literal bind address is required for remote access`);
     }
     normalized.bind_host = bindHost === 'localhost' ? '127.0.0.1' : bindHost || '0.0.0.0';
     const trustedLan = normalized.bind_host === '0.0.0.0' && !secureAccess;
     if (!trustedLan && !isVirtualLoopbackHost(String(normalized.bind_host))) {
       if (!isLiteralIpAddress(String(normalized.bind_host))) {
-        throw new Error('Remote bind address must be a literal IPv4 or IPv6 address');
+        throw new Error(t`Remote bind address must be a literal IPv4 or IPv6 address`);
       }
       if (
         normalized.unsafe_network_acknowledged !== true ||
         !['vpn', 'mtls_proxy'].includes(secureAccess)
       ) {
-        throw new Error('Confirm a protected VPN or mTLS proxy before enabling remote access');
+        throw new Error(t`Confirm a protected VPN or mTLS proxy before enabling remote access`);
       }
     } else {
       normalized.unsafe_network_acknowledged = false;
@@ -518,7 +601,7 @@ function normalizeIntegrationConfigForSave(
     const port = normalized.port;
     const parsedPort = typeof port === 'string' ? Number(port) : port;
     if (!Number.isInteger(parsedPort) || Number(parsedPort) < 1 || Number(parsedPort) > 65535) {
-      throw new Error('Virtual TCP port must be an integer between 1 and 65535');
+      throw new Error(t`Virtual TCP port must be an integer between 1 and 65535`);
     }
     normalized.port = parsedPort;
     const capacity = normalized.virtual_channel_capacity;
@@ -528,12 +611,12 @@ function normalizeIntegrationConfigForSave(
       Number(parsedCapacity) < 1 ||
       Number(parsedCapacity) > 255
     ) {
-      throw new Error('Virtual channel capacity must be an integer between 1 and 255');
+      throw new Error(t`Virtual channel capacity must be an integer between 1 and 255`);
     }
     normalized.virtual_channel_capacity = parsedCapacity;
     const slots = normalized.channel_slots;
     if (!Array.isArray(slots) || slots.length > Number(parsedCapacity)) {
-      throw new Error('Virtual channel selection exceeds the configured slot capacity');
+      throw new Error(t`Virtual channel selection exceeds the configured slot capacity`);
     }
   }
 
@@ -544,7 +627,7 @@ function normalizeCommunityWebsocketPath(value: unknown): string {
   const path = String(value ?? '').trim();
   if (!path) return DEFAULT_COMMUNITY_WEBSOCKET_PATH;
   if (!path.startsWith('/') || /\s|[?#]/.test(path)) {
-    throw new Error('WebSocket Path must start with / and contain no spaces, ? or #');
+    throw new Error(t`WebSocket Path must start with / and contain no spaces, ? or #`);
   }
   return path;
 }
@@ -554,7 +637,7 @@ function getCommunityWebsocketPathError(value: unknown): string | null {
     normalizeCommunityWebsocketPath(value);
     return null;
   } catch (error) {
-    return error instanceof Error ? error.message : 'Invalid WebSocket Path';
+    return error instanceof Error ? error.message : t`Invalid WebSocket Path`;
   }
 }
 
@@ -577,7 +660,7 @@ function normalizeDraftConfig(draftType: DraftType, config: Record<string, unkno
   if (draftType === 'mqtt_community_meshrank') {
     const token = String(config.token || '').trim();
     if (!/^[A-Za-z0-9_-]{8,128}$/.test(token)) {
-      throw new Error('A valid MeshRank uplink token (8–128 URL-safe characters) is required');
+      throw new Error(t`A valid MeshRank uplink token (8–128 URL-safe characters) is required`);
     }
     return normalizeIntegrationConfigForSave('mqtt_community', {
       ...config,
@@ -657,6 +740,8 @@ function CreateIntegrationDialog({
   onSelect: (type: DraftType) => void;
   onCreate: () => void;
 }) {
+  useLingui();
+
   const selectedOption =
     options.find((option) => option.value === selectedType) ?? options[0] ?? null;
   const listRef = useRef<HTMLDivElement | null>(null);
@@ -696,7 +781,9 @@ function CreateIntegrationDialog({
         className="flex max-h-[calc(100dvh-2rem)] w-[96vw] max-w-[960px] flex-col overflow-hidden p-0 sm:rounded-xl"
       >
         <DialogHeader className="border-b border-border px-5 py-4">
-          <DialogTitle>Create Integration</DialogTitle>
+          <DialogTitle>
+            <Trans>Create Integration</Trans>
+          </DialogTitle>
         </DialogHeader>
 
         <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden md:grid-cols-[240px_minmax(0,1fr)]">
@@ -761,7 +848,7 @@ function CreateIntegrationDialog({
               </>
             ) : (
               <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                No integration types are currently available.
+                <Trans>No integration types are currently available.</Trans>
               </div>
             )}
           </div>
@@ -769,10 +856,10 @@ function CreateIntegrationDialog({
 
         <DialogFooter className="gap-2 border-t border-border px-5 py-4 sm:justify-end">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Close
+            <Trans>Close</Trans>
           </Button>
           <Button onClick={onCreate} disabled={!selectedOption}>
-            Create
+            <Trans>Create</Trans>
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -833,7 +920,7 @@ function formatAppriseTargets(urls: string | undefined) {
 
 function formatSqsQueueSummary(config: Record<string, unknown>) {
   const queueUrl = ((config.queue_url as string) || '').trim();
-  if (!queueUrl) return 'No queue configured';
+  if (!queueUrl) return t`No queue configured`;
   return queueUrl;
 }
 
@@ -845,16 +932,16 @@ function getDefaultIntegrationName(type: string, configs: FanoutConfig[]) {
 
 function getStatusLabel(status: string | undefined, type?: string) {
   if (type === 'virtual_companion_tcp') {
-    if (status === 'listening') return 'Listening';
-    if (status === 'disabled') return 'Off';
+    if (status === 'listening') return t`Listening`;
+    if (status === 'disabled') return t`Off`;
   }
   if (status === 'connected' || status === 'listening')
     return type === 'bot' || type === 'webhook' || type === 'apprise' || type === 'map_upload'
-      ? 'Active'
-      : 'Connected';
-  if (status === 'error') return 'Error';
-  if (status === 'disconnected') return 'Disconnected';
-  return 'Inactive';
+      ? t`Active`
+      : t`Connected`;
+  if (status === 'error') return t`Error`;
+  if (status === 'disconnected') return t`Disconnected`;
+  return t`Inactive`;
 }
 
 function getStatusColor(status: string | undefined, enabled?: boolean) {
@@ -880,7 +967,7 @@ function isLiteralIpAddress(host: string) {
 }
 
 function formatCompanionSessionTime(timestamp: number) {
-  return new Date(timestamp * 1000).toLocaleString();
+  return new Date(timestamp * 1000).toLocaleString(getLocale());
 }
 
 function VirtualCompanionConfigEditor({
@@ -894,6 +981,8 @@ function VirtualCompanionConfigEditor({
   status?: HealthStatus['fanout_statuses'][string];
   radioConnected: boolean;
 }) {
+  useLingui();
+
   const { data: channels = [] } = useQuery({
     queryKey: queryKeys.channels(),
     queryFn: ({ signal }) => api.getChannels(signal),
@@ -913,7 +1002,7 @@ function VirtualCompanionConfigEditor({
   const [channelToAdd, setChannelToAdd] = useState('');
   const sessions = status?.client_sessions ?? [];
   const statusLabel =
-    status?.status === 'listening' ? 'Listening' : status?.status === 'error' ? 'Error' : 'Off';
+    status?.status === 'listening' ? t`Listening` : status?.status === 'error' ? t`Error` : t`Off`;
 
   const updateAccessMode = (mode: string) => {
     if (mode === 'loopback' || mode === 'lan') {
@@ -954,8 +1043,10 @@ function VirtualCompanionConfigEditor({
   return (
     <div className="space-y-5">
       <div className="rounded-md border border-warning/50 bg-warning/10 px-4 py-3 text-sm text-warning">
-        In the official app, enter <strong>MESHRIK&apos;s hostname</strong> and this virtual TCP
-        port. Never enter the physical Companion radio&apos;s TCP address or port.
+        <Trans>
+          In the official app, enter <strong>MESHRIK&apos;s hostname</strong> and this virtual TCP
+          port. Never enter the physical Companion radio&apos;s TCP address or port.
+        </Trans>
       </div>
 
       <section className="space-y-3" aria-labelledby="virtual-companion-status-heading">
@@ -963,46 +1054,60 @@ function VirtualCompanionConfigEditor({
           id="virtual-companion-status-heading"
           className="text-base font-semibold tracking-tight"
         >
-          Status
+          <Trans>Status</Trans>
         </h3>
         <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
           <div>
-            <span className="text-muted-foreground">Listener:</span> {statusLabel}
+            <span className="text-muted-foreground">
+              <Trans>Listener:</Trans>
+            </span>{' '}
+            {statusLabel}
           </div>
           <div>
-            <span className="text-muted-foreground">Endpoint:</span> {status?.bind_host ?? bindHost}
-            :{status?.port ?? String(config.port ?? 5000)}
+            <span className="text-muted-foreground">
+              <Trans>Endpoint:</Trans>
+            </span>{' '}
+            {status?.bind_host ?? bindHost}:{status?.port ?? String(config.port ?? 5000)}
           </div>
           <div>
-            <span className="text-muted-foreground">Clients:</span> {status?.clients ?? 0}
+            <span className="text-muted-foreground">
+              <Trans>Clients:</Trans>
+            </span>{' '}
+            {status?.clients ?? 0}
           </div>
         </div>
         {status?.identity_status === 'verified' && status.identity_public_key ? (
           <div className="space-y-1">
             <div className="text-[0.625rem] font-medium uppercase tracking-wider text-muted-foreground">
-              Shared node identity
+              <Trans>Shared node identity</Trans>
             </div>
-            <code className="text-xs" aria-label="Verified shared public identity">
+            <code className="text-xs" aria-label={t`Verified shared public identity`}>
               {status.identity_public_key.slice(0, 12)}…{status.identity_public_key.slice(-8)}
             </code>
             <p className="text-[0.8125rem] text-muted-foreground">
-              Read-only public identity shared by all connected apps. Private keys never leave the
-              backend.
+              <Trans>
+                Read-only public identity shared by all connected apps. Private keys never leave the
+                backend.
+              </Trans>
             </p>
           </div>
         ) : (
           <p className="text-[0.8125rem] text-muted-foreground">
-            Shared identity unavailable until the physical radio identity has been verified.
+            <Trans>
+              Shared identity unavailable until the physical radio identity has been verified.
+            </Trans>
           </p>
         )}
         {!radioConnected && (
           <p className="text-[0.8125rem] text-warning" role="status">
-            Physical radio disconnected. The virtual listener can still serve cached data, but radio
-            sends are unavailable until it reconnects.
+            <Trans>
+              Physical radio disconnected. The virtual listener can still serve cached data, but
+              radio sends are unavailable until it reconnects.
+            </Trans>
           </p>
         )}
         {sessions.length > 0 ? (
-          <ul className="space-y-2" aria-label="Connected virtual Companion clients">
+          <ul className="space-y-2" aria-label={t`Connected virtual Companion clients`}>
             {sessions.map((session) => (
               <li
                 key={session.session_id}
@@ -1012,18 +1117,24 @@ function VirtualCompanionConfigEditor({
                   {session.session_id} · {session.status}
                 </div>
                 <div className="text-muted-foreground">
-                  Protocol {session.protocol_version ?? 'not negotiated'} · identity{' '}
-                  {session.identity_verified ? 'verified' : 'pending'}
+                  <Trans>
+                    Protocol {session.protocol_version ?? 'not negotiated'} · identity{' '}
+                    {session.identity_verified ? 'verified' : 'pending'}
+                  </Trans>
                 </div>
                 <div className="text-muted-foreground">
-                  Connected {formatCompanionSessionTime(session.connected_at)} · last seen{' '}
-                  {formatCompanionSessionTime(session.last_seen_at)}
+                  <Trans>
+                    Connected {formatCompanionSessionTime(session.connected_at)} · last seen{' '}
+                    {formatCompanionSessionTime(session.last_seen_at)}
+                  </Trans>
                 </div>
               </li>
             ))}
           </ul>
         ) : (
-          <p className="text-xs text-muted-foreground">No virtual app clients are connected.</p>
+          <p className="text-xs text-muted-foreground">
+            <Trans>No virtual app clients are connected.</Trans>
+          </p>
         )}
       </section>
 
@@ -1034,39 +1145,56 @@ function VirtualCompanionConfigEditor({
           id="virtual-companion-connection-heading"
           className="text-base font-semibold tracking-tight"
         >
-          Connection
+          <Trans>Connection</Trans>
         </h3>
         <div className="space-y-2">
-          <Label htmlFor="virtual-companion-access">Access</Label>
+          <Label htmlFor="virtual-companion-access">
+            <Trans>Access</Trans>
+          </Label>
           <select
             id="virtual-companion-access"
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            value={remote ? secureAccess || 'vpn' : bindHost === '0.0.0.0' ? 'lan' : 'loopback'}
+            value={remote ? secureAccess || `vpn` : bindHost === '0.0.0.0' ? `lan` : `loopback`}
             onChange={(event) => updateAccessMode(event.target.value)}
           >
-            <option value="lan">Local area network (0.0.0.0)</option>
-            <option value="loopback">This MESHRIK device only (localhost)</option>
-            <option value="vpn">Remote through a protected VPN</option>
-            <option value="mtls_proxy">Remote through an mTLS proxy</option>
+            <option value="lan">
+              <Trans>Local area network (0.0.0.0)</Trans>
+            </option>
+            <option value="loopback">
+              <Trans>This MESHRIK device only (localhost)</Trans>
+            </option>
+            <option value="vpn">
+              <Trans>Remote through a protected VPN</Trans>
+            </option>
+            <option value="mtls_proxy">
+              <Trans>Remote through an mTLS proxy</Trans>
+            </option>
           </select>
         </div>
         {remote ? (
           <div className="space-y-3 rounded-md border border-destructive/50 bg-destructive/10 p-3">
             <p className="text-[0.8125rem] text-destructive">
-              Raw Companion TCP has no HTTP Basic auth or built-in TLS. Bind only an address
-              reachable through the selected protected transport; never expose this port publicly.
+              <Trans>
+                Raw Companion TCP has no HTTP Basic auth or built-in TLS. Bind only an address
+                reachable through the selected protected transport; never expose this port publicly.
+              </Trans>
             </p>
             <div className="space-y-2">
-              <Label htmlFor="virtual-companion-host">Protected bind address</Label>
+              <Label htmlFor="virtual-companion-host">
+                <Trans>Protected bind address</Trans>
+              </Label>
               <Input
                 id="virtual-companion-host"
                 value={bindHost}
-                placeholder="VPN or proxy-facing literal IP"
+                placeholder={t`VPN or proxy-facing literal IP`}
                 onChange={(event) => onChange({ ...config, bind_host: event.target.value })}
                 aria-describedby="virtual-companion-host-help"
               />
               <p id="virtual-companion-host-help" className="text-xs text-muted-foreground">
-                Use a literal IP assigned to this host. Wildcard/public exposure is not recommended.
+                <Trans>
+                  Use a literal IP assigned to this host. Wildcard/public exposure is not
+                  recommended.
+                </Trans>
               </p>
             </div>
             <label className="flex items-start gap-3 text-sm">
@@ -1079,8 +1207,10 @@ function VirtualCompanionConfigEditor({
                 }
               />
               <span>
-                I confirm this address is protected by the selected VPN or mTLS proxy and is not
-                publicly exposed.
+                <Trans>
+                  I confirm this address is protected by the selected VPN or mTLS proxy and is not
+                  publicly exposed.
+                </Trans>
               </span>
             </label>
             <a
@@ -1089,24 +1219,30 @@ function VirtualCompanionConfigEditor({
               target="_blank"
               rel="noreferrer"
             >
-              Open the MESHRIK security guide
+              <Trans>Open the MESHRIK security guide</Trans>
             </a>
           </div>
         ) : bindHost === '0.0.0.0' ? (
           <p className="text-[0.8125rem] text-warning">
-            Listens on all IPv4 interfaces, not only the LAN. Connect using this MESHRIK host&apos;s
-            LAN address, not 0.0.0.0. Raw TCP has no authentication or encryption; restrict this
-            port to trusted devices with a firewall and never expose it publicly.
+            <Trans>
+              Listens on all IPv4 interfaces, not only the LAN. Connect using this MESHRIK
+              host&apos;s LAN address, not 0.0.0.0. Raw TCP has no authentication or encryption;
+              restrict this port to trusted devices with a firewall and never expose it publicly.
+            </Trans>
           </p>
         ) : (
           <p className="text-[0.8125rem] text-muted-foreground">
-            Localhost cannot be reached by a phone or another device. Choose a protected remote
-            option only when your network transport is already secured.
+            <Trans>
+              Localhost cannot be reached by a phone or another device. Choose a protected remote
+              option only when your network transport is already secured.
+            </Trans>
           </p>
         )}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="virtual-companion-port">Virtual TCP port</Label>
+            <Label htmlFor="virtual-companion-port">
+              <Trans>Virtual TCP port</Trans>
+            </Label>
             <Input
               id="virtual-companion-port"
               type="number"
@@ -1119,7 +1255,9 @@ function VirtualCompanionConfigEditor({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="virtual-companion-capacity">Virtual channel slots</Label>
+            <Label htmlFor="virtual-companion-capacity">
+              <Trans>Virtual channel slots</Trans>
+            </Label>
             <Input
               id="virtual-companion-capacity"
               type="number"
@@ -1144,14 +1282,16 @@ function VirtualCompanionConfigEditor({
           id="virtual-companion-channels-heading"
           className="text-base font-semibold tracking-tight"
         >
-          DB-backed channel selection
+          <Trans>DB-backed channel selection</Trans>
         </h3>
         <p className="text-[0.8125rem] text-muted-foreground">
-          These stable virtual indexes select MESHRIK DB channels. They never reassign hardware
-          channel slots. Removing a channel leaves other virtual indexes unchanged.
+          <Trans>
+            These stable virtual indexes select MESHRIK DB channels. They never reassign hardware
+            channel slots. Removing a channel leaves other virtual indexes unchanged.
+          </Trans>
         </p>
         {slots.some((key) => key !== null) ? (
-          <ul className="space-y-2" aria-label="Configured virtual channel slots">
+          <ul className="space-y-2" aria-label={t`Configured virtual channel slots`}>
             {slots.map(
               (key, index) =>
                 key && (
@@ -1159,35 +1299,41 @@ function VirtualCompanionConfigEditor({
                     key={`${index}-${key}`}
                     className="flex items-center gap-2 rounded-md border border-input px-3 py-2 text-sm"
                   >
-                    <span className="font-mono text-xs">Slot {index}</span>
+                    <span className="font-mono text-xs">
+                      <Trans>Slot {index}</Trans>
+                    </span>
                     <span className="min-w-0 flex-1 truncate">
                       {channels.find((channel) => channel.key === key)?.name ??
-                        'Deleted or unavailable channel'}
+                        t`Deleted or unavailable channel`}
                     </span>
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
                       onClick={() => removeChannel(index)}
-                      aria-label={`Remove virtual slot ${index}`}
+                      aria-label={t`Remove virtual slot ${index}`}
                     >
-                      Remove
+                      <Trans>Remove</Trans>
                     </Button>
                   </li>
                 )
             )}
           </ul>
         ) : (
-          <p className="text-xs text-muted-foreground">No virtual channels selected.</p>
+          <p className="text-xs text-muted-foreground">
+            <Trans>No virtual channels selected.</Trans>
+          </p>
         )}
         <div className="flex flex-col gap-2 sm:flex-row">
           <select
-            aria-label="Channel to add to virtual slots"
+            aria-label={t`Channel to add to virtual slots`}
             className="min-w-0 flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
             value={channelToAdd}
             onChange={(event) => setChannelToAdd(event.target.value)}
           >
-            <option value="">Select a DB channel…</option>
+            <option value="">
+              <Trans>Select a DB channel…</Trans>
+            </option>
             {availableChannels.map((channel) => (
               <option key={channel.key} value={channel.key}>
                 {channel.name}
@@ -1200,15 +1346,18 @@ function VirtualCompanionConfigEditor({
             onClick={addChannel}
             disabled={!channelToAdd || slots.filter((key) => key !== null).length >= capacity}
           >
-            Add stable slot
+            <Trans>Add stable slot</Trans>
           </Button>
         </div>
       </section>
 
       <div className="rounded-md border border-warning/50 bg-warning/10 px-3 py-2 text-xs text-warning">
-        Saving a changed bind address, port, channel map, or disabling this integration disconnects
-        virtual clients. It does not disconnect MESHRIK&apos;s physical radio or cancel active
-        scheduled radio jobs. Unsupported firmware administration actions remain blocked.
+        <Trans>
+          Saving a changed bind address, port, channel map, or disabling this integration
+          disconnects virtual clients. It does not disconnect MESHRIK&apos;s physical radio or
+          cancel active scheduled radio jobs. Unsupported firmware administration actions remain
+          blocked.
+        </Trans>
       </div>
     </div>
   );
@@ -1225,30 +1374,40 @@ function MqttPrivateConfigEditor({
   onChange: (config: Record<string, unknown>) => void;
   onScopeChange: (scope: Record<string, unknown>) => void;
 }) {
+  useLingui();
+
   return (
     <div className="space-y-3">
       <p className="text-[0.8125rem] text-muted-foreground">
-        Forward mesh data to your own MQTT broker for home automation, logging, or alerting.
+        <Trans>
+          Forward mesh data to your own MQTT broker for home automation, logging, or alerting.
+        </Trans>
       </p>
 
       <div className="rounded-md border border-warning/50 bg-warning/10 px-3 py-2 text-xs text-warning">
-        Outgoing messages (DMs and group messages) will be reported to private MQTT brokers in
-        decrypted/plaintext form.
+        <Trans>
+          Outgoing messages (DMs and group messages) will be reported to private MQTT brokers in
+          decrypted/plaintext form.
+        </Trans>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="fanout-mqtt-host">Broker Host</Label>
+          <Label htmlFor="fanout-mqtt-host">
+            <Trans>Broker Host</Trans>
+          </Label>
           <Input
             id="fanout-mqtt-host"
             type="text"
-            placeholder="e.g. 192.168.1.100"
+            placeholder={t`e.g. 192.168.1.100`}
             value={(config.broker_host as string) || ''}
             onChange={(e) => onChange({ ...config, broker_host: e.target.value })}
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="fanout-mqtt-port">Broker Port</Label>
+          <Label htmlFor="fanout-mqtt-port">
+            <Trans>Broker Port</Trans>
+          </Label>
           <Input
             id="fanout-mqtt-port"
             type="number"
@@ -1264,21 +1423,25 @@ function MqttPrivateConfigEditor({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="fanout-mqtt-user">Username</Label>
+          <Label htmlFor="fanout-mqtt-user">
+            <Trans>Username</Trans>
+          </Label>
           <Input
             id="fanout-mqtt-user"
             type="text"
-            placeholder="Optional"
+            placeholder={t`Optional`}
             value={(config.username as string) || ''}
             onChange={(e) => onChange({ ...config, username: e.target.value })}
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="fanout-mqtt-pass">Password</Label>
+          <Label htmlFor="fanout-mqtt-pass">
+            <Trans>Password</Trans>
+          </Label>
           <Input
             id="fanout-mqtt-pass"
             type="password"
-            placeholder="Optional"
+            placeholder={t`Optional`}
             value={(config.password as string) || ''}
             onChange={(e) => onChange({ ...config, password: e.target.value })}
           />
@@ -1292,7 +1455,9 @@ function MqttPrivateConfigEditor({
           onChange={(e) => onChange({ ...config, use_tls: e.target.checked })}
           className="h-4 w-4 rounded border-border"
         />
-        <span className="text-sm">Use TLS</span>
+        <span className="text-sm">
+          <Trans>Use TLS</Trans>
+        </span>
       </label>
 
       {!!config.use_tls && (
@@ -1303,18 +1468,22 @@ function MqttPrivateConfigEditor({
             onChange={(e) => onChange({ ...config, tls_insecure: e.target.checked })}
             className="h-4 w-4 rounded border-border"
           />
-          <span className="text-sm">Skip certificate verification</span>
+          <span className="text-sm">
+            <Trans>Skip certificate verification</Trans>
+          </span>
         </label>
       )}
 
       <Separator />
 
       <div className="space-y-2">
-        <Label htmlFor="fanout-mqtt-prefix">Topic Prefix</Label>
+        <Label htmlFor="fanout-mqtt-prefix">
+          <Trans>Topic Prefix</Trans>
+        </Label>
         <Input
           id="fanout-mqtt-prefix"
           type="text"
-          placeholder="meshcore"
+          placeholder={t`meshcore`}
           value={(config.topic_prefix as string | undefined) ?? ''}
           onChange={(e) => onChange({ ...config, topic_prefix: e.target.value })}
         />
@@ -1338,6 +1507,8 @@ function MqttHaConfigEditor({
   onChange: (config: Record<string, unknown>) => void;
   onScopeChange: (scope: Record<string, unknown>) => void;
 }) {
+  useLingui();
+
   const { data: contacts = [] } = useQuery({
     queryKey: queryKeys.contacts(),
     queryFn: ({ signal }) => fetchAllContacts(signal),
@@ -1448,10 +1619,10 @@ function MqttHaConfigEditor({
   }, [nodeIdForKey, prefix, radioConfig, selectedContactDetails, selectedRepeaterDetails]);
 
   const kindLabel: Record<(typeof topicSummary)[number]['kind'], string> = {
-    radio: 'Local radio state',
-    event: 'Message events',
-    repeater: 'Repeater telemetry',
-    contact: 'Contact GPS',
+    radio: t`Local radio state`,
+    event: t`Message events`,
+    repeater: t`Repeater telemetry`,
+    contact: t`Contact GPS`,
   };
   const localRadioNodeId = radioConfig?.public_key
     ? nodeIdForKey(radioConfig.public_key)
@@ -1485,195 +1656,255 @@ function MqttHaConfigEditor({
     <div className="space-y-3">
       <div className="space-y-3 rounded-lg border border-primary/20 bg-primary/5 p-4">
         <div className="space-y-1">
-          <h3 className="text-base font-semibold tracking-tight">Home Assistant MQTT Discovery</h3>
+          <h3 className="text-base font-semibold tracking-tight">
+            <Trans>Home Assistant MQTT Discovery</Trans>
+          </h3>
           <p className="text-sm text-muted-foreground">
-            Publish discovery configs and MeshCore state to your MQTT broker so Home Assistant
-            creates native devices, sensors, GPS trackers, and message events automatically.
+            <Trans>
+              Publish discovery configs and MeshCore state to your MQTT broker so Home Assistant
+              creates native devices, sensors, GPS trackers, and message events automatically.
+            </Trans>
           </p>
         </div>
 
         <div className="grid gap-2 md:grid-cols-3">
           <div className="rounded-md border border-border/70 bg-background/80 p-3">
-            <div className="text-sm font-medium text-foreground">1. Same broker</div>
+            <div className="text-sm font-medium text-foreground">
+              <Trans>1. Same broker</Trans>
+            </div>
             <p className="mt-1 text-[0.8125rem] text-muted-foreground">
-              Home Assistant&apos;s built-in MQTT integration must point at the same broker
-              configured below.
+              <Trans>
+                Home Assistant&apos;s built-in MQTT integration must point at the same broker
+                configured below.
+              </Trans>
             </p>
           </div>
           <div className="rounded-md border border-border/70 bg-background/80 p-3">
-            <div className="text-sm font-medium text-foreground">2. Pick what to expose</div>
+            <div className="text-sm font-medium text-foreground">
+              <Trans>2. Pick what to expose</Trans>
+            </div>
             <p className="mt-1 text-[0.8125rem] text-muted-foreground">
-              Choose repeaters for telemetry sensors and contacts for GPS tracker entities.
+              <Trans>
+                Choose repeaters for telemetry sensors and contacts for GPS tracker entities.
+              </Trans>
             </p>
           </div>
           <div className="rounded-md border border-border/70 bg-background/80 p-3">
-            <div className="text-sm font-medium text-foreground">3. Automate in HA</div>
+            <div className="text-sm font-medium text-foreground">
+              <Trans>3. Automate in HA</Trans>
+            </div>
             <p className="mt-1 text-[0.8125rem] text-muted-foreground">
-              Radio health and message events publish continuously; repeater and contact data update
-              when new data is heard or collected.
+              <Trans>
+                Radio health and message events publish continuously; repeater and contact data
+                update when new data is heard or collected.
+              </Trans>
             </p>
           </div>
         </div>
 
         <p className="text-[0.8125rem] text-muted-foreground">
-          Uses{' '}
-          <span
-            role="link"
-            tabIndex={0}
-            className="underline cursor-pointer hover:text-primary transition-colors"
-            onClick={() =>
-              window.open(
-                'https://www.home-assistant.io/integrations/mqtt/#mqtt-discovery',
-                '_blank'
-              )
-            }
-            onKeyDown={(e) => {
-              if (e.key === 'Enter')
+          <Trans>
+            Uses{' '}
+            <span
+              role="link"
+              tabIndex={0}
+              className="underline cursor-pointer hover:text-primary transition-colors"
+              onClick={() =>
                 window.open(
                   'https://www.home-assistant.io/integrations/mqtt/#mqtt-discovery',
                   '_blank'
-                );
-            }}
-          >
-            MQTT Discovery
-          </span>{' '}
-          and the topic conventions documented in{' '}
-          <span
-            role="link"
-            tabIndex={0}
-            className="underline cursor-pointer hover:text-primary transition-colors"
-            onClick={() =>
-              window.open('https://github.com/Bjorkan/MESHRIK/blob/main/README_HA.md', '_blank')
-            }
-            onKeyDown={(e) => {
-              if (e.key === 'Enter')
-                window.open('https://github.com/Bjorkan/MESHRIK/blob/main/README_HA.md', '_blank');
-            }}
-          >
-            README_HA.md
-          </span>
-          .
+                )
+              }
+              onKeyDown={(e) => {
+                if (e.key === 'Enter')
+                  window.open(
+                    'https://www.home-assistant.io/integrations/mqtt/#mqtt-discovery',
+                    '_blank'
+                  );
+              }}
+            >
+              MQTT Discovery
+            </span>{' '}
+            and the topic conventions documented in{' '}
+            <span
+              role="link"
+              tabIndex={0}
+              className="underline cursor-pointer hover:text-primary transition-colors"
+              onClick={() =>
+                window.open('https://github.com/Bjorkan/MESHRIK/blob/main/README_HA.md', '_blank')
+              }
+              onKeyDown={(e) => {
+                if (e.key === 'Enter')
+                  window.open(
+                    'https://github.com/Bjorkan/MESHRIK/blob/main/README_HA.md',
+                    '_blank'
+                  );
+              }}
+            >
+              README_HA.md
+            </span>
+            .
+          </Trans>
         </p>
       </div>
 
       <details className="group">
         <summary className="text-sm font-medium text-foreground cursor-pointer select-none flex items-center gap-1">
           <ChevronDown className="h-3 w-3 transition-transform group-open:rotate-0 -rotate-90" />
-          What gets created in Home Assistant
+          <Trans>What gets created in Home Assistant</Trans>
         </summary>
         <div className="mt-2 space-y-2 text-sm text-muted-foreground rounded-md border border-border bg-muted/20 p-3">
           <div>
-            <span className="font-medium text-foreground">Local radio device</span> (always)
-            <span className="ml-1">&mdash; updates every 60s</span>
+            <span className="font-medium text-foreground">
+              <Trans>Local radio device</Trans>
+            </span>{' '}
+            <Trans>(always)</Trans>
+            <span className="ml-1">
+              <Trans>&mdash; updates every 60s</Trans>
+            </span>
             <ul className="mt-0.5 ml-4 list-disc space-y-0.5">
               <li>
-                <code className="text-[0.6875rem]">
-                  {`binary_sensor.meshcore_${localRadioNodeId}_connected`}
-                </code>{' '}
-                &mdash; radio online/offline
+                <Trans>
+                  <code className="text-[0.6875rem]">
+                    {`binary_sensor.meshcore_${localRadioNodeId}_connected`}
+                  </code>{' '}
+                  &mdash; radio online/offline
+                </Trans>
               </li>
               <li>
-                <code className="text-[0.6875rem]">
-                  {`sensor.meshcore_${localRadioNodeId}_noise_floor`}
-                </code>{' '}
-                &mdash; radio noise floor (dBm)
+                <Trans>
+                  <code className="text-[0.6875rem]">
+                    {`sensor.meshcore_${localRadioNodeId}_noise_floor`}
+                  </code>{' '}
+                  &mdash; radio noise floor (dBm)
+                </Trans>
               </li>
             </ul>
           </div>
 
           <div>
-            <span className="font-medium text-foreground">Per tracked repeater</span> &mdash;
-            updates on telemetry collect cycle (~8h) or manual dashboard fetch. Entity IDs shown use
-            one repeater for example; these sensors are created for each selected repeater.
+            <span className="font-medium text-foreground">
+              <Trans>Per tracked repeater</Trans>
+            </span>{' '}
+            <Trans>
+              &mdash; updates on telemetry collect cycle (~8h) or manual dashboard fetch. Entity IDs
+              shown use one repeater for example; these sensors are created for each selected
+              repeater.
+            </Trans>
             <ul className="mt-0.5 ml-4 list-disc space-y-0.5">
               <li>
-                <code className="text-[0.6875rem]">
-                  {`sensor.meshcore_${exampleRepeaterNodeId}_battery_voltage`}
-                </code>{' '}
-                (V)
+                <Trans>
+                  <code className="text-[0.6875rem]">
+                    {`sensor.meshcore_${exampleRepeaterNodeId}_battery_voltage`}
+                  </code>{' '}
+                  (V)
+                </Trans>
+              </li>
+              <li>
+                <Trans>
+                  <code className="text-[0.6875rem]">
+                    {`sensor.meshcore_${exampleRepeaterNodeId}_noise_floor`}
+                  </code>
+                  ,{' '}
+                  <code className="text-[0.6875rem]">
+                    {`sensor.meshcore_${exampleRepeaterNodeId}_last_rssi`}
+                  </code>
+                  ,{' '}
+                  <code className="text-[0.6875rem]">
+                    {`sensor.meshcore_${exampleRepeaterNodeId}_last_snr`}
+                  </code>{' '}
+                  (dBm/dB)
+                </Trans>
               </li>
               <li>
                 <code className="text-[0.6875rem]">
-                  {`sensor.meshcore_${exampleRepeaterNodeId}_noise_floor`}
+                  {t`sensor.meshcore_${exampleRepeaterNodeId}_packets_received`}
                 </code>
                 ,{' '}
                 <code className="text-[0.6875rem]">
-                  {`sensor.meshcore_${exampleRepeaterNodeId}_last_rssi`}
-                </code>
-                ,{' '}
-                <code className="text-[0.6875rem]">
-                  {`sensor.meshcore_${exampleRepeaterNodeId}_last_snr`}
-                </code>{' '}
-                (dBm/dB)
-              </li>
-              <li>
-                <code className="text-[0.6875rem]">
-                  {`sensor.meshcore_${exampleRepeaterNodeId}_packets_received`}
-                </code>
-                ,{' '}
-                <code className="text-[0.6875rem]">
-                  {`sensor.meshcore_${exampleRepeaterNodeId}_packets_sent`}
+                  {t`sensor.meshcore_${exampleRepeaterNodeId}_packets_sent`}
                 </code>
               </li>
               <li>
-                <code className="text-[0.6875rem]">
-                  {`sensor.meshcore_${exampleRepeaterNodeId}_uptime`}
-                </code>{' '}
-                (seconds)
+                <Trans>
+                  <code className="text-[0.6875rem]">
+                    {`sensor.meshcore_${exampleRepeaterNodeId}_uptime`}
+                  </code>{' '}
+                  (seconds)
+                </Trans>
               </li>
               <li>
-                <code className="text-[0.6875rem]">
-                  {`sensor.meshcore_${exampleRepeaterNodeId}_lpp_temperature_ch1`}
-                </code>
-                ,{' '}
-                <code className="text-[0.6875rem]">
-                  {`sensor.meshcore_${exampleRepeaterNodeId}_lpp_humidity_ch1`}
-                </code>
-                , etc. &mdash; CayenneLPP sensors (auto-detected from repeater)
+                <Trans>
+                  <code className="text-[0.6875rem]">
+                    {`sensor.meshcore_${exampleRepeaterNodeId}_lpp_temperature_ch1`}
+                  </code>
+                  ,{' '}
+                  <code className="text-[0.6875rem]">
+                    {`sensor.meshcore_${exampleRepeaterNodeId}_lpp_humidity_ch1`}
+                  </code>
+                  , etc. &mdash; CayenneLPP sensors (auto-detected from repeater)
+                </Trans>
               </li>
             </ul>
           </div>
 
           <div>
-            <span className="font-medium text-foreground">Per tracked contact</span> &mdash; updates
-            passively when advertisements with GPS are heard, and from any GPS reading in the
-            contact&apos;s CayenneLPP telemetry. Shown for one contact; a tracker is created for
-            each selected contact.
+            <span className="font-medium text-foreground">
+              <Trans>Per tracked contact</Trans>
+            </span>{' '}
+            <Trans>
+              &mdash; updates passively when advertisements with GPS are heard, and from any GPS
+              reading in the contact&apos;s CayenneLPP telemetry. Shown for one contact; a tracker
+              is created for each selected contact.
+            </Trans>
             <ul className="mt-0.5 ml-4 list-disc space-y-0.5">
               <li>
-                <code className="text-[0.6875rem]">
-                  {`device_tracker.meshcore_${exampleContactNodeId}`}
-                </code>{' '}
-                &mdash; latitude/longitude (plus altitude when telemetry provides it)
+                <Trans>
+                  <code className="text-[0.6875rem]">
+                    {`device_tracker.meshcore_${exampleContactNodeId}`}
+                  </code>{' '}
+                  &mdash; latitude/longitude (plus altitude when telemetry provides it)
+                </Trans>
               </li>
               <li>
-                <code className="text-[0.6875rem]">
-                  {`sensor.meshcore_${exampleContactNodeId}_lpp_temperature_ch1`}
-                </code>
-                , etc. &mdash; CayenneLPP sensors (when the contact is tracked for telemetry; GPS
-                goes to the tracker above)
+                <Trans>
+                  <code className="text-[0.6875rem]">
+                    {`sensor.meshcore_${exampleContactNodeId}_lpp_temperature_ch1`}
+                  </code>
+                  , etc. &mdash; CayenneLPP sensors (when the contact is tracked for telemetry; GPS
+                  goes to the tracker above)
+                </Trans>
               </li>
             </ul>
           </div>
 
           <div>
-            <span className="font-medium text-foreground">Message events</span> &mdash; fires for
-            each message matching the scope below
+            <span className="font-medium text-foreground">
+              <Trans>Message events</Trans>
+            </span>{' '}
+            <Trans>&mdash; fires for each message matching the scope below</Trans>
             <ul className="mt-0.5 ml-4 list-disc space-y-0.5">
               <li>
-                <code className="text-[0.6875rem]">
-                  {`event.meshcore_${localRadioNodeId}_messages`}
-                </code>{' '}
-                &mdash; trigger automations on sender, channel, or message content
+                <Trans>
+                  <code className="text-[0.6875rem]">
+                    {`event.meshcore_${localRadioNodeId}_messages`}
+                  </code>{' '}
+                  &mdash; trigger automations on sender, channel, or message content
+                </Trans>
               </li>
             </ul>
           </div>
 
           <p className="text-[0.6875rem] mt-1.5">
-            Entity IDs use the first 12 characters of the node&apos;s public key. Entities are
-            removed from HA when this integration is disabled or deleted. State topics are published
-            under{' '}
-            <code className="text-[0.6875rem]">{prefix}/&lt;node_id&gt;/health|telemetry|gps</code>.
+            <Trans>
+              Entity IDs use the first 12 characters of the node&apos;s public key. Entities are
+              removed from HA when this integration is disabled or deleted. State topics are
+              published under{' '}
+              <code className="text-[0.6875rem]">
+                {prefix}/&lt;node_id&gt;/health|telemetry|gps
+              </code>
+              .
+            </Trans>
           </p>
         </div>
       </details>
@@ -1681,18 +1912,22 @@ function MqttHaConfigEditor({
       <details className="group">
         <summary className="text-sm font-medium text-foreground cursor-pointer select-none flex items-center gap-1">
           <ChevronDown className="h-3 w-3 transition-transform group-open:rotate-0 -rotate-90" />
-          Published topic summary
+          <Trans>Published topic summary</Trans>
         </summary>
         <div className="mt-2 space-y-2 rounded-md border border-border bg-muted/20 p-3">
           <p className="text-xs text-muted-foreground">
-            Home Assistant device and entity IDs are keyed off the first 12 characters of each
-            node&apos;s public key, not the display name. Those same 12 characters are used in the
-            MQTT state topics below.
+            <Trans>
+              Home Assistant device and entity IDs are keyed off the first 12 characters of each
+              node&apos;s public key, not the display name. Those same 12 characters are used in the
+              MQTT state topics below.
+            </Trans>
           </p>
           {topicSummary.length === 0 ? (
             <p className="text-xs text-muted-foreground italic">
-              No topic previews available yet. Connect to a radio to resolve the local radio key,
-              and select contacts or repeaters above to preview their published topics.
+              <Trans>
+                No topic previews available yet. Connect to a radio to resolve the local radio key,
+                and select contacts or repeaters above to preview their published topics.
+              </Trans>
             </p>
           ) : (
             <div className="space-y-2">
@@ -1705,11 +1940,11 @@ function MqttHaConfigEditor({
                     <span className="font-medium text-foreground">{kindLabel[item.kind]}</span>
                     <span className="text-foreground">{item.label}</span>
                     <span className="font-mono text-[0.6875rem] text-muted-foreground">
-                      node id {item.nodeId}
+                      <Trans>node id {item.nodeId}</Trans>
                     </span>
                   </div>
                   <div className="mt-1 text-[0.6875rem] text-muted-foreground font-mono break-all">
-                    key {item.publicKey}
+                    <Trans>key {item.publicKey}</Trans>
                   </div>
                   {item.topics.map((topic) => (
                     <div
@@ -1724,30 +1959,38 @@ function MqttHaConfigEditor({
             </div>
           )}
           <p className="text-[0.6875rem] text-muted-foreground">
-            Discovery config topics are also published under{' '}
-            <code className="text-[0.6875rem]">homeassistant/.../config</code>, but the topics above
-            are the primary runtime state and event topics.
+            <Trans>
+              Discovery config topics are also published under{' '}
+              <code className="text-[0.6875rem]">homeassistant/.../config</code>, but the topics
+              above are the primary runtime state and event topics.
+            </Trans>
           </p>
         </div>
       </details>
 
       <Separator />
 
-      <h3 className="text-base font-semibold tracking-tight">MQTT Broker</h3>
+      <h3 className="text-base font-semibold tracking-tight">
+        <Trans>MQTT Broker</Trans>
+      </h3>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="fanout-ha-host">Broker Host</Label>
+          <Label htmlFor="fanout-ha-host">
+            <Trans>Broker Host</Trans>
+          </Label>
           <Input
             id="fanout-ha-host"
             type="text"
-            placeholder="e.g. 192.168.1.100"
+            placeholder={t`e.g. 192.168.1.100`}
             value={(config.broker_host as string) || ''}
             onChange={(e) => onChange({ ...config, broker_host: e.target.value })}
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="fanout-ha-port">Broker Port</Label>
+          <Label htmlFor="fanout-ha-port">
+            <Trans>Broker Port</Trans>
+          </Label>
           <Input
             id="fanout-ha-port"
             type="number"
@@ -1763,21 +2006,25 @@ function MqttHaConfigEditor({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="fanout-ha-user">Username</Label>
+          <Label htmlFor="fanout-ha-user">
+            <Trans>Username</Trans>
+          </Label>
           <Input
             id="fanout-ha-user"
             type="text"
-            placeholder="Optional"
+            placeholder={t`Optional`}
             value={(config.username as string) || ''}
             onChange={(e) => onChange({ ...config, username: e.target.value })}
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="fanout-ha-pass">Password</Label>
+          <Label htmlFor="fanout-ha-pass">
+            <Trans>Password</Trans>
+          </Label>
           <Input
             id="fanout-ha-pass"
             type="password"
-            placeholder="Optional"
+            placeholder={t`Optional`}
             value={(config.password as string) || ''}
             onChange={(e) => onChange({ ...config, password: e.target.value })}
           />
@@ -1791,7 +2038,9 @@ function MqttHaConfigEditor({
           onChange={(e) => onChange({ ...config, use_tls: e.target.checked })}
           className="h-4 w-4 rounded border-border"
         />
-        <span className="text-sm">Use TLS</span>
+        <span className="text-sm">
+          <Trans>Use TLS</Trans>
+        </span>
       </label>
 
       {!!config.use_tls && (
@@ -1802,33 +2051,44 @@ function MqttHaConfigEditor({
             onChange={(e) => onChange({ ...config, tls_insecure: e.target.checked })}
             className="h-4 w-4 rounded border-border"
           />
-          <span className="text-sm">Skip certificate verification</span>
+          <span className="text-sm">
+            <Trans>Skip certificate verification</Trans>
+          </span>
         </label>
       )}
 
       <div className="space-y-2">
-        <Label htmlFor="fanout-ha-prefix">Topic Prefix</Label>
+        <Label htmlFor="fanout-ha-prefix">
+          <Trans>Topic Prefix</Trans>
+        </Label>
         <Input
           id="fanout-ha-prefix"
           type="text"
-          placeholder="meshcore"
+          placeholder={t`meshcore`}
           value={(config.topic_prefix as string | undefined) ?? ''}
           onChange={(e) => onChange({ ...config, topic_prefix: e.target.value })}
         />
         <p className="text-[0.6875rem] text-muted-foreground">
-          State updates publish under <code className="text-[0.6875rem]">{prefix}/</code>. Discovery
-          configs always use the <code className="text-[0.6875rem]">homeassistant/</code> prefix.
+          <Trans>
+            State updates publish under <code className="text-[0.6875rem]">{prefix}/</code>.
+            Discovery configs always use the{' '}
+            <code className="text-[0.6875rem]">homeassistant/</code> prefix.
+          </Trans>
         </p>
       </div>
 
       <Separator />
 
       <div className="space-y-2">
-        <h3 className="text-base font-semibold tracking-tight">GPS Tracked Contacts</h3>
+        <h3 className="text-base font-semibold tracking-tight">
+          <Trans>GPS Tracked Contacts</Trans>
+        </h3>
         <p className="text-[0.8125rem] text-muted-foreground">
-          Each selected contact becomes a <code className="text-[0.6875rem]">device_tracker</code>{' '}
-          in HA, updated whenever an advertisement with GPS coordinates is heard. Useful for
-          tracking mobile nodes on an HA map dashboard.
+          <Trans>
+            Each selected contact becomes a <code className="text-[0.6875rem]">device_tracker</code>{' '}
+            in HA, updated whenever an advertisement with GPS coordinates is heard. Useful for
+            tracking mobile nodes on an HA map dashboard.
+          </Trans>
         </p>
 
         {selectedContactDetails.length > 0 && (
@@ -1843,9 +2103,9 @@ function MqttHaConfigEditor({
                   type="button"
                   className="ml-0.5 hover:text-destructive transition-colors"
                   onClick={() => toggleTrackedContact(c.public_key)}
-                  aria-label={`Remove ${c.name || c.public_key.slice(0, 12)}`}
+                  aria-label={t`Remove ${c.name || c.public_key.slice(0, 12)}`}
                 >
-                  &times;
+                  <Trans>&times;</Trans>
                 </button>
               </span>
             ))}
@@ -1853,12 +2113,14 @@ function MqttHaConfigEditor({
         )}
 
         {contactOptions.length === 0 ? (
-          <p className="text-[0.8125rem] text-muted-foreground italic">No contacts available.</p>
+          <p className="text-[0.8125rem] text-muted-foreground italic">
+            <Trans>No contacts available.</Trans>
+          </p>
         ) : (
           <>
             <Input
               type="text"
-              placeholder={`Search ${contactOptions.length} contacts...`}
+              placeholder={t`Search ${contactOptions.length} contacts...`}
               value={contactSearch}
               onChange={(e) => setContactSearch(e.target.value)}
               className="h-8 text-sm"
@@ -1866,7 +2128,7 @@ function MqttHaConfigEditor({
             <div className="max-h-48 overflow-y-auto space-y-1 rounded border border-border p-2">
               {filteredContacts.length === 0 ? (
                 <p className="text-[0.8125rem] text-muted-foreground italic py-1">
-                  No contacts match &ldquo;{contactSearch}&rdquo;
+                  <Trans>No contacts match &ldquo;{contactSearch}&rdquo;</Trans>
                 </p>
               ) : (
                 filteredContacts.map((c) => (
@@ -1895,23 +2157,29 @@ function MqttHaConfigEditor({
       <Separator />
 
       <div className="space-y-2">
-        <h3 className="text-base font-semibold tracking-tight">Telemetry Tracked Repeaters</h3>
+        <h3 className="text-base font-semibold tracking-tight">
+          <Trans>Telemetry Tracked Repeaters</Trans>
+        </h3>
         <p className="text-[0.8125rem] text-muted-foreground">
-          Each selected repeater becomes an HA device with sensors for battery voltage, RSSI, SNR,
-          noise floor, packet counts, and uptime. Data updates whenever telemetry is collected
-          (auto-collect runs every ~8 hours, or on manual dashboard fetch). Only repeaters already
-          in the auto-telemetry tracking list appear here (add new repeaters by logging into the
-          repeater and opting in at the bottom of the page).
+          <Trans>
+            Each selected repeater becomes an HA device with sensors for battery voltage, RSSI, SNR,
+            noise floor, packet counts, and uptime. Data updates whenever telemetry is collected
+            (auto-collect runs every ~8 hours, or on manual dashboard fetch). Only repeaters already
+            in the auto-telemetry tracking list appear here (add new repeaters by logging into the
+            repeater and opting in at the bottom of the page).
+          </Trans>
         </p>
         {trackedRepeaters.length === 0 ? (
           <div className="rounded-md border border-muted bg-muted/30 px-3 py-2 text-[0.8125rem] text-muted-foreground">
-            No repeaters are being auto-tracked for telemetry. Add repeaters to the auto-telemetry
-            tracking list in the Radio section first, then return here to select which ones to
-            expose to HA.
+            <Trans>
+              No repeaters are being auto-tracked for telemetry. Add repeaters to the auto-telemetry
+              tracking list in the Radio section first, then return here to select which ones to
+              expose to HA.
+            </Trans>
           </div>
         ) : repeaterOptions.length === 0 ? (
           <p className="text-[0.8125rem] text-muted-foreground italic">
-            Auto-tracked repeaters not found in contact list.
+            <Trans>Auto-tracked repeaters not found in contact list.</Trans>
           </p>
         ) : (
           <div className="max-h-40 overflow-y-auto space-y-1 rounded border border-border p-2">
@@ -1936,12 +2204,16 @@ function MqttHaConfigEditor({
       <Separator />
 
       <div className="space-y-2">
-        <h3 className="text-base font-semibold tracking-tight">Message Events</h3>
+        <h3 className="text-base font-semibold tracking-tight">
+          <Trans>Message Events</Trans>
+        </h3>
         <p className="text-[0.8125rem] text-muted-foreground">
-          Matching messages fire an{' '}
-          <code className="text-[0.6875rem]">{`event.meshcore_${localRadioNodeId}_messages`}</code>{' '}
-          entity in HA with sender, text, channel, and direction attributes. Use HA automations to
-          trigger actions on specific messages, channels, or contacts.
+          <Trans>
+            Matching messages fire an{' '}
+            <code className="text-[0.6875rem]">{`event.meshcore_${localRadioNodeId}_messages`}</code>{' '}
+            entity in HA with sender, text, channel, and direction attributes. Use HA automations to
+            trigger actions on specific messages, channels, or contacts.
+          </Trans>
         </p>
       </div>
       <ScopeSelector scope={scope} onChange={onScopeChange} />
@@ -1956,6 +2228,8 @@ function MqttCommunityConfigEditor({
   config: Record<string, unknown>;
   onChange: (config: Record<string, unknown>) => void;
 }) {
+  useLingui();
+
   const authMode = (config.auth_mode as string) || DEFAULT_COMMUNITY_AUTH_MODE;
   const isMeshRank = config.profile === 'meshrank';
   const websocketPathError = getCommunityWebsocketPathError(config.websocket_path);
@@ -1979,13 +2253,17 @@ function MqttCommunityConfigEditor({
   return (
     <div className="space-y-3">
       <p className="text-[0.8125rem] text-muted-foreground">
-        Advanced community MQTT editor. Use this for manual meshcoretomqtt-compatible setups or for
-        modifying a saved preset after creation. Only raw RF packets are shared &mdash; never
-        decrypted messages.
+        <Trans>
+          Advanced community MQTT editor. Use this for manual meshcoretomqtt-compatible setups or
+          for modifying a saved preset after creation. Only raw RF packets are shared &mdash; never
+          decrypted messages.
+        </Trans>
       </p>
 
       <div className="space-y-2">
-        <Label htmlFor="fanout-comm-preset">Verified broker profile</Label>
+        <Label htmlFor="fanout-comm-preset">
+          <Trans>Verified broker profile</Trans>
+        </Label>
         <select
           id="fanout-comm-preset"
           value={(config.preset as string) || ''}
@@ -2028,7 +2306,9 @@ function MqttCommunityConfigEditor({
           }}
           className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
         >
-          <option value="">Existing custom/legacy settings</option>
+          <option value="">
+            <Trans>Existing custom/legacy settings</Trans>
+          </option>
           {Object.entries(communityPresets).map(([key, preset]) => (
             <option key={key} value={key}>
               {preset.label}
@@ -2036,14 +2316,18 @@ function MqttCommunityConfigEditor({
           ))}
         </select>
         <p className="text-xs text-muted-foreground">
-          Selecting a preset changes connection defaults; existing saved broker overrides remain
-          unchanged until you select one.
+          <Trans>
+            Selecting a preset changes connection defaults; existing saved broker overrides remain
+            unchanged until you select one.
+          </Trans>
         </p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="fanout-comm-host">Broker Host</Label>
+          <Label htmlFor="fanout-comm-host">
+            <Trans>Broker Host</Trans>
+          </Label>
           <Input
             id="fanout-comm-host"
             type="text"
@@ -2065,7 +2349,9 @@ function MqttCommunityConfigEditor({
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="fanout-comm-port">Broker Port</Label>
+          <Label htmlFor="fanout-comm-port">
+            <Trans>Broker Port</Trans>
+          </Label>
           <Input
             id="fanout-comm-port"
             type="number"
@@ -2084,7 +2370,9 @@ function MqttCommunityConfigEditor({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="fanout-comm-transport">Transport</Label>
+          <Label htmlFor="fanout-comm-transport">
+            <Trans>Transport</Trans>
+          </Label>
           <select
             id="fanout-comm-transport"
             value={(config.transport as string) || DEFAULT_COMMUNITY_TRANSPORT}
@@ -2102,24 +2390,38 @@ function MqttCommunityConfigEditor({
             }
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
           >
-            <option value="websockets">WebSockets</option>
-            <option value="tcp">TCP</option>
+            <option value="websockets">
+              <Trans>WebSockets</Trans>
+            </option>
+            <option value="tcp">
+              <Trans>TCP</Trans>
+            </option>
           </select>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="fanout-comm-auth-mode">Authentication</Label>
+          <Label htmlFor="fanout-comm-auth-mode">
+            <Trans>Authentication</Trans>
+          </Label>
           <select
             id="fanout-comm-auth-mode"
             value={authMode}
             onChange={(e) => onChange({ ...config, auth_mode: e.target.value })}
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
           >
-            <option value="token">Token</option>
-            <option value="none">None</option>
-            <option value="password">Username / Password</option>
+            <option value="token">
+              <Trans>Token</Trans>
+            </option>
+            <option value="none">
+              <Trans>None</Trans>
+            </option>
+            <option value="password">
+              <Trans>Username / Password</Trans>
+            </option>
           </select>
           <p className="text-[0.8125rem] text-muted-foreground">
-            LetsMesh uses <code>token</code> auth. MeshRank uses <code>none</code>.
+            <Trans>
+              LetsMesh uses <code>token</code> auth. MeshRank uses <code>none</code>.
+            </Trans>
           </p>
         </div>
       </div>
@@ -2127,14 +2429,16 @@ function MqttCommunityConfigEditor({
       {((config.transport as string) || DEFAULT_COMMUNITY_TRANSPORT) === 'websockets' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="fanout-comm-ws-path">WebSocket Path</Label>
+            <Label htmlFor="fanout-comm-ws-path">
+              <Trans>WebSocket Path</Trans>
+            </Label>
             <Input
               id="fanout-comm-ws-path"
               type="text"
               placeholder="/"
               value={(config.websocket_path as string | undefined) ?? ''}
               aria-invalid={websocketPathError ? true : undefined}
-              aria-describedby={websocketPathError ? 'fanout-comm-ws-path-error' : undefined}
+              aria-describedby={websocketPathError ? `fanout-comm-ws-path-error` : undefined}
               onChange={(e) =>
                 onChange({
                   ...config,
@@ -2154,8 +2458,10 @@ function MqttCommunityConfigEditor({
                 className="rounded-md border border-warning/40 bg-warning/10 p-2 text-xs"
               >
                 <p>
-                  {legacyRootPathPreset.label} uses <code>/</code>. This saved <code>/mqtt</code>{' '}
-                  value is preserved in case it was intentional.
+                  <Trans>
+                    {legacyRootPathPreset.label} uses <code>/</code>. This saved <code>/mqtt</code>{' '}
+                    value is preserved in case it was intentional.
+                  </Trans>
                 </p>
                 <Button
                   type="button"
@@ -2170,13 +2476,15 @@ function MqttCommunityConfigEditor({
                     })
                   }
                 >
-                  Use recommended /
+                  <Trans>Use recommended /</Trans>
                 </Button>
               </div>
             )}
             <p className="text-[0.8125rem] text-muted-foreground">
-              Blank values normalize to <code>/</code>. Use <code>/mqtt</code> only for brokers that
-              require it; paths cannot contain spaces, <code>?</code> or <code>#</code>.
+              <Trans>
+                Blank values normalize to <code>/</code>. Use <code>/mqtt</code> only for brokers
+                that require it; paths cannot contain spaces, <code>?</code> or <code>#</code>.
+              </Trans>
             </p>
           </div>
         </div>
@@ -2185,7 +2493,9 @@ function MqttCommunityConfigEditor({
       {authMode === 'token' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="fanout-comm-token-audience">Token Audience</Label>
+            <Label htmlFor="fanout-comm-token-audience">
+              <Trans>Token Audience</Trans>
+            </Label>
             <Input
               id="fanout-comm-token-audience"
               type="text"
@@ -2194,20 +2504,22 @@ function MqttCommunityConfigEditor({
               onChange={(e) => onChange({ ...config, token_audience: e.target.value })}
             />
             <p className="text-[0.8125rem] text-muted-foreground">
-              Defaults to the broker host when blank
+              <Trans>Defaults to the broker host when blank</Trans>
             </p>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="fanout-comm-email">Owner Email (optional)</Label>
+            <Label htmlFor="fanout-comm-email">
+              <Trans>Owner Email (optional)</Trans>
+            </Label>
             <Input
               id="fanout-comm-email"
               type="email"
-              placeholder="you@example.com"
+              placeholder={t`you@example.com`}
               value={(config.email as string) || ''}
               onChange={(e) => onChange({ ...config, email: e.target.value })}
             />
             <p className="text-[0.8125rem] text-muted-foreground">
-              Used to claim your node on the community aggregator
+              <Trans>Used to claim your node on the community aggregator</Trans>
             </p>
           </div>
         </div>
@@ -2216,7 +2528,9 @@ function MqttCommunityConfigEditor({
       {authMode === 'password' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="fanout-comm-username">Username</Label>
+            <Label htmlFor="fanout-comm-username">
+              <Trans>Username</Trans>
+            </Label>
             <Input
               id="fanout-comm-username"
               type="text"
@@ -2225,7 +2539,9 @@ function MqttCommunityConfigEditor({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="fanout-comm-password">Password</Label>
+            <Label htmlFor="fanout-comm-password">
+              <Trans>Password</Trans>
+            </Label>
             <Input
               id="fanout-comm-password"
               type="password"
@@ -2244,7 +2560,9 @@ function MqttCommunityConfigEditor({
             onChange={(e) => onChange({ ...config, use_tls: e.target.checked })}
             className="h-4 w-4 rounded border-border"
           />
-          <span className="text-sm">Use TLS</span>
+          <span className="text-sm">
+            <Trans>Use TLS</Trans>
+          </span>
         </label>
 
         <label className="flex items-center gap-3 cursor-pointer ml-7">
@@ -2255,14 +2573,16 @@ function MqttCommunityConfigEditor({
             className="h-4 w-4 rounded border-border"
             disabled={config.use_tls === undefined ? false : !config.use_tls}
           />
-          <span className="text-sm">Verify TLS certificates</span>
+          <span className="text-sm">
+            <Trans>Verify TLS certificates</Trans>
+          </span>
         </label>
       </div>
 
       {isMeshRank && (
         <div className="space-y-2">
           <Label htmlFor="fanout-comm-meshrank-token">
-            MeshRank uplink token (leave blank to keep existing)
+            <Trans>MeshRank uplink token (leave blank to keep existing)</Trans>
           </Label>
           <Input
             id="fanout-comm-meshrank-token"
@@ -2272,25 +2592,29 @@ function MqttCommunityConfigEditor({
             onChange={(e) => onChange({ ...config, token: e.target.value })}
           />
           <p className="text-xs text-muted-foreground">
-            Generated topics and broker identity are private. The saved token is never returned by
-            the API.
+            <Trans>
+              Generated topics and broker identity are private. The saved token is never returned by
+              the API.
+            </Trans>
           </p>
         </div>
       )}
       {!isMeshRank && (
         <div className="space-y-2">
-          <Label htmlFor="fanout-comm-iata">Region Code (IATA)</Label>
+          <Label htmlFor="fanout-comm-iata">
+            <Trans>Region Code (IATA)</Trans>
+          </Label>
           <Input
             id="fanout-comm-iata"
             type="text"
             maxLength={3}
-            placeholder="e.g. DEN, LAX, NYC"
+            placeholder={t`e.g. DEN, LAX, NYC`}
             value={(config.iata as string) || ''}
             onChange={(e) => onChange({ ...config, iata: e.target.value.toUpperCase() })}
             className="w-32"
           />
           <p className="text-[0.8125rem] text-muted-foreground">
-            Your nearest airport&apos;s IATA code (required)
+            <Trans>Your nearest airport&apos;s IATA code (required)</Trans>
           </p>
         </div>
       )}
@@ -2315,7 +2639,9 @@ function MqttCommunityConfigEditor({
           </label>
         ))}
         <div>
-          <Label htmlFor="fanout-comm-status-interval">Status interval (1–60 min)</Label>
+          <Label htmlFor="fanout-comm-status-interval">
+            <Trans>Status interval (1–60 min)</Trans>
+          </Label>
           <Input
             id="fanout-comm-status-interval"
             type="number"
@@ -2331,7 +2657,9 @@ function MqttCommunityConfigEditor({
           />
         </div>
         <div>
-          <Label htmlFor="fanout-comm-neighbor-interval">Neighbor interval (12–336 h)</Label>
+          <Label htmlFor="fanout-comm-neighbor-interval">
+            <Trans>Neighbor interval (12–336 h)</Trans>
+          </Label>
           <Input
             id="fanout-comm-neighbor-interval"
             type="number"
@@ -2348,37 +2676,51 @@ function MqttCommunityConfigEditor({
         </div>
       </div>
       <p className="text-xs text-muted-foreground">
-        Neighbor snapshots use only previous host-observed discovery results; scheduling does not
-        send automatic radio discovery or mutate radio contacts.
+        <Trans>
+          Neighbor snapshots use only previous host-observed discovery results; scheduling does not
+          send automatic radio discovery or mutate radio contacts.
+        </Trans>
       </p>
 
       <div className="space-y-2">
-        <Label htmlFor="fanout-comm-tx">Outbound raw frame upload</Label>
+        <Label htmlFor="fanout-comm-tx">
+          <Trans>Outbound raw frame upload</Trans>
+        </Label>
         <select
           id="fanout-comm-tx"
-          value={(config.tx_mode as string) || 'off'}
+          value={(config.tx_mode as string) || `off`}
           onChange={(e) => onChange({ ...config, tx_mode: e.target.value })}
           className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
         >
-          <option value="off">Off (default)</option>
-          <option value="advert">Advertisements only (future firmware)</option>
-          <option value="on">All eligible raw TX (future firmware)</option>
+          <option value="off">
+            <Trans>Off (default)</Trans>
+          </option>
+          <option value="advert">
+            <Trans>Advertisements only (future firmware)</Trans>
+          </option>
+          <option value="on">
+            <Trans>All eligible raw TX (future firmware)</Trans>
+          </option>
         </select>
         <p className="text-xs text-muted-foreground">
-          Companion protocol 13 does not expose verified raw TX frames. This setting is stored for
-          forward compatibility, but no outgoing packet upload is performed. Command send
-          acknowledgements are not proof of RF transmission.
+          <Trans>
+            Companion protocol 13 does not expose verified raw TX frames. This setting is stored for
+            forward compatibility, but no outgoing packet upload is performed. Command send
+            acknowledgements are not proof of RF transmission.
+          </Trans>
         </p>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="fanout-comm-filter">MeshCore payload type filter</Label>
+        <Label htmlFor="fanout-comm-filter">
+          <Trans>MeshCore payload type filter</Trans>
+        </Label>
         <select
           id="fanout-comm-filter"
           value={
             Array.isArray(config.packet_filter)
-              ? 'selected'
-              : (config.packet_filter as string) || 'all'
+              ? `selected`
+              : (config.packet_filter as string) || `all`
           }
           onChange={(e) =>
             onChange({
@@ -2388,9 +2730,15 @@ function MqttCommunityConfigEditor({
           }
           className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
         >
-          <option value="all">All packet types</option>
-          <option value="none">None (status only)</option>
-          <option value="selected">Selected types</option>
+          <option value="all">
+            <Trans>All packet types</Trans>
+          </option>
+          <option value="none">
+            <Trans>None (status only)</Trans>
+          </option>
+          <option value="selected">
+            <Trans>Selected types</Trans>
+          </option>
         </select>
         {Array.isArray(config.packet_filter) && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -2424,7 +2772,7 @@ function MqttCommunityConfigEditor({
                       })
                     }
                   />
-                  {id}: {names[id] || 'reserved'}
+                  {id}: {names[id] || t`reserved`}
                 </label>
               );
             })}
@@ -2434,7 +2782,9 @@ function MqttCommunityConfigEditor({
 
       {!isMeshRank && (
         <div className="space-y-2">
-          <Label htmlFor="fanout-comm-topic-template">Packet Topic Template</Label>
+          <Label htmlFor="fanout-comm-topic-template">
+            <Trans>Packet Topic Template</Trans>
+          </Label>
           <Input
             id="fanout-comm-topic-template"
             type="text"
@@ -2443,8 +2793,10 @@ function MqttCommunityConfigEditor({
             onChange={(e) => onChange({ ...config, topic_template: e.target.value })}
           />
           <p className="text-[0.8125rem] text-muted-foreground">
-            Use <code>{'{IATA}'}</code> and <code>{'{PUBLIC_KEY}'}</code>. Default:{' '}
-            <code>{DEFAULT_COMMUNITY_PACKET_TOPIC_TEMPLATE}</code>
+            <Trans>
+              Use <code>{'{IATA}'}</code> and <code>{'{PUBLIC_KEY}'}</code>. Default:{' '}
+              <code>{DEFAULT_COMMUNITY_PACKET_TOPIC_TEMPLATE}</code>
+            </Trans>
           </p>
         </div>
       )}
@@ -2459,34 +2811,44 @@ function MeshRankConfigEditor({
   config: Record<string, unknown>;
   onChange: (config: Record<string, unknown>) => void;
 }) {
+  useLingui();
+
   return (
     <div className="space-y-3">
       <p className="text-[0.8125rem] text-muted-foreground">
-        MeshRank publishes under a broker-issued token, not an IATA region or a manually constructed
-        MQTT topic. Provide only your personal uplink token.
+        <Trans>
+          MeshRank publishes under a broker-issued token, not an IATA region or a manually
+          constructed MQTT topic. Provide only your personal uplink token.
+        </Trans>
       </p>
       <div className="rounded-md border border-input bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-        Broker{' '}
-        <code>
-          {DEFAULT_MESHRANK_BROKER_HOST}:{DEFAULT_MESHRANK_BROKER_PORT}
-        </code>
-        , TLS with certificate verification. No MQTT username or password.
+        <Trans>
+          Broker{' '}
+          <code>
+            {DEFAULT_MESHRANK_BROKER_HOST}:{DEFAULT_MESHRANK_BROKER_PORT}
+          </code>
+          , TLS with certificate verification. No MQTT username or password.
+        </Trans>
       </div>
       <div className="space-y-2">
-        <Label htmlFor="fanout-meshrank-token">MeshRank uplink token</Label>
+        <Label htmlFor="fanout-meshrank-token">
+          <Trans>MeshRank uplink token</Trans>
+        </Label>
         <Input
           id="fanout-meshrank-token"
           type="password"
           autoComplete="new-password"
-          placeholder="Enter your broker-issued token"
+          placeholder={t`Enter your broker-issued token`}
           value={(config.token as string) || ''}
           onChange={(e) =>
             onChange({ ...config, profile: 'meshrank', token: e.target.value, iata: '' })
           }
         />
         <p className="text-[0.8125rem] text-muted-foreground">
-          The token is encrypted at rest and omitted from returned integration details. To rotate a
-          saved token, enter the replacement token here.
+          <Trans>
+            The token is encrypted at rest and omitted from returned integration details. To rotate
+            a saved token, enter the replacement token here.
+          </Trans>
         </p>
       </div>
     </div>
@@ -2502,26 +2864,35 @@ function LetsMeshConfigEditor({
   onChange: (config: Record<string, unknown>) => void;
   brokerHost: string;
 }) {
+  useLingui();
+
   return (
     <div className="space-y-3">
       <p className="text-[0.8125rem] text-muted-foreground">
-        Pre-filled LetsMesh setup. This saves as a regular Community MQTT integration once created,
-        but only asks for the values LetsMesh expects from you.
+        <Trans>
+          Pre-filled LetsMesh setup. This saves as a regular Community MQTT integration once
+          created, but only asks for the values LetsMesh expects from you.
+        </Trans>
       </p>
 
       <div className="rounded-md border border-input bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-        Broker <code>{brokerHost}</code> on port <code>{DEFAULT_COMMUNITY_BROKER_PORT}</code> via{' '}
-        <code>{DEFAULT_COMMUNITY_TRANSPORT}</code>, auth <code>{DEFAULT_COMMUNITY_AUTH_MODE}</code>,
-        TLS on, certificate verification on, token audience fixed to <code>{brokerHost}</code>.
+        <Trans>
+          Broker <code>{brokerHost}</code> on port <code>{DEFAULT_COMMUNITY_BROKER_PORT}</code> via{' '}
+          <code>{DEFAULT_COMMUNITY_TRANSPORT}</code>, auth{' '}
+          <code>{DEFAULT_COMMUNITY_AUTH_MODE}</code>, TLS on, certificate verification on, token
+          audience fixed to <code>{brokerHost}</code>.
+        </Trans>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="fanout-letsmesh-email">Email</Label>
+          <Label htmlFor="fanout-letsmesh-email">
+            <Trans>Email</Trans>
+          </Label>
           <Input
             id="fanout-letsmesh-email"
             type="email"
-            placeholder="you@example.com"
+            placeholder={t`you@example.com`}
             value={(config.email as string) || ''}
             onChange={(e) =>
               onChange({ ...config, email: e.target.value, broker_host: brokerHost })
@@ -2529,12 +2900,14 @@ function LetsMeshConfigEditor({
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="fanout-letsmesh-iata">Region Code (IATA)</Label>
+          <Label htmlFor="fanout-letsmesh-iata">
+            <Trans>Region Code (IATA)</Trans>
+          </Label>
           <Input
             id="fanout-letsmesh-iata"
             type="text"
             maxLength={3}
-            placeholder="e.g. DEN, LAX, NYC"
+            placeholder={t`e.g. DEN, LAX, NYC`}
             value={(config.iata as string) || ''}
             onChange={(e) =>
               onChange({
@@ -2559,35 +2932,45 @@ function BotConfigEditor({
   config: Record<string, unknown>;
   onChange: (config: Record<string, unknown>) => void;
 }) {
+  useLingui();
+
   const code = (config.code as string) || '';
   return (
     <div className="space-y-3">
       <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-md">
         <p className="text-sm text-destructive">
-          <strong>Experimental:</strong> This is an alpha feature and introduces automated message
-          sending to your radio; unexpected behavior may occur. Use with caution, and please report
-          any bugs!
+          <Trans>
+            <strong>Experimental:</strong> This is an alpha feature and introduces automated message
+            sending to your radio; unexpected behavior may occur. Use with caution, and please
+            report any bugs!
+          </Trans>
         </p>
       </div>
 
       <div className="p-3 bg-warning/10 border border-warning/30 rounded-md">
         <p className="text-sm text-warning">
-          <strong>Security Warning:</strong> This feature executes arbitrary Python code on the
-          server. Only run trusted code, and be cautious of arbitrary usage of message parameters.
+          <Trans>
+            <strong>Security Warning:</strong> This feature executes arbitrary Python code on the
+            server. Only run trusted code, and be cautious of arbitrary usage of message parameters.
+          </Trans>
         </p>
       </div>
 
       <div className="p-3 bg-warning/10 border border-warning/30 rounded-md">
         <p className="text-sm text-warning">
-          <strong>Don&apos;t wreck the mesh!</strong> Bots process ALL messages, including their
-          own. Be careful of creating infinite loops!
+          <Trans>
+            <strong>Don&apos;t wreck the mesh!</strong> Bots process ALL messages, including their
+            own. Be careful of creating infinite loops!
+          </Trans>
         </p>
       </div>
 
       <div className="flex items-center justify-between">
         <p className="text-[0.8125rem] text-muted-foreground">
-          Define a <code className="bg-muted px-1 rounded">bot()</code> function that receives
-          message data and optionally returns a reply.
+          <Trans>
+            Define a <code className="bg-muted px-1 rounded">bot()</code> function that receives
+            message data and optionally returns a reply.
+          </Trans>
         </p>
         <Button
           type="button"
@@ -2595,14 +2978,14 @@ function BotConfigEditor({
           size="sm"
           onClick={() => onChange({ ...config, code: DEFAULT_BOT_CODE })}
         >
-          Reset to Example
+          <Trans>Reset to Example</Trans>
         </Button>
       </div>
 
       <Suspense
         fallback={
           <div className="h-64 md:h-96 rounded-md border border-input bg-code-editor-bg flex items-center justify-center text-muted-foreground">
-            Loading editor...
+            <Trans>Loading editor...</Trans>
           </div>
         }
       >
@@ -2611,17 +2994,23 @@ function BotConfigEditor({
 
       <div className="text-[0.8125rem] text-muted-foreground space-y-1">
         <p>
-          <strong>Available:</strong> Standard Python libraries and any modules installed in the
-          server environment.
+          <Trans>
+            <strong>Available:</strong> Standard Python libraries and any modules installed in the
+            server environment.
+          </Trans>
         </p>
         <p>
-          <strong>Limits:</strong> 10 second timeout per bot.
+          <Trans>
+            <strong>Limits:</strong> 10 second timeout per bot.
+          </Trans>
         </p>
         <p>
-          <strong>Note:</strong> Bots respond to all messages, including your own. For channel
-          messages, <code>sender_key</code> is <code>None</code>. Multiple enabled bots run
-          concurrently. Outgoing messages are serialized with a two-second delay between sends to
-          prevent repeater collision.
+          <Trans>
+            <strong>Note:</strong> Bots respond to all messages, including your own. For channel
+            messages, <code>sender_key</code> is <code>None</code>. Multiple enabled bots run
+            concurrently. Outgoing messages are serialized with a two-second delay between sends to
+            prevent repeater collision.
+          </Trans>
         </p>
       </div>
     </div>
@@ -2635,6 +3024,8 @@ function MapUploadConfigEditor({
   config: Record<string, unknown>;
   onChange: (config: Record<string, unknown>) => void;
 }) {
+  useLingui();
+
   const isDryRun = config.dry_run !== false;
   const [radioLat, setRadioLat] = useState<number | null>(null);
   const [radioLon, setRadioLon] = useState<number | null>(null);
@@ -2658,25 +3049,29 @@ function MapUploadConfigEditor({
   return (
     <div className="space-y-3">
       <p className="text-[0.8125rem] text-muted-foreground">
-        Automatically upload heard repeater and room server advertisements to{' '}
-        <a
-          href="https://map.meshcore.io"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="underline hover:text-foreground"
-        >
-          map.meshcore.io
-        </a>
-        . Requires the radio&apos;s private key to be available (firmware must have{' '}
-        <code>ENABLE_PRIVATE_KEY_EXPORT=1</code>). Only raw RF packets are shared &mdash; never
-        decrypted messages.
+        <Trans>
+          Automatically upload heard repeater and room server advertisements to{' '}
+          <a
+            href="https://map.meshcore.io"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:text-foreground"
+          >
+            map.meshcore.io
+          </a>
+          . Requires the radio&apos;s private key to be available (firmware must have{' '}
+          <code>ENABLE_PRIVATE_KEY_EXPORT=1</code>). Only raw RF packets are shared &mdash; never
+          decrypted messages.
+        </Trans>
       </p>
 
       <div className="rounded-md border border-warning/50 bg-warning/10 px-3 py-2 text-xs text-warning">
-        <strong>Dry Run is {isDryRun ? 'ON' : 'OFF'}.</strong>{' '}
+        <strong>
+          <Trans>Dry Run is {isDryRun ? 'ON' : 'OFF'}.</Trans>
+        </strong>{' '}
         {isDryRun
-          ? 'No uploads will be sent. Check the backend logs to verify the payload looks correct before enabling live sends.'
-          : 'Live uploads are enabled. Each advert is rate-limited to once per hour per node.'}
+          ? t`No uploads will be sent. Check the backend logs to verify the payload looks correct before enabling live sends.`
+          : t`Live uploads are enabled. Each advert is rate-limited to once per hour per node.`}
       </div>
 
       <label className="flex items-center gap-3 cursor-pointer">
@@ -2687,10 +3082,14 @@ function MapUploadConfigEditor({
           className="h-4 w-4 rounded border-border"
         />
         <div>
-          <span className="text-sm font-medium">Dry Run (log only, no uploads)</span>
+          <span className="text-sm font-medium">
+            <Trans>Dry Run (log only, no uploads)</Trans>
+          </span>
           <p className="text-[0.8125rem] text-muted-foreground">
-            When enabled, upload payloads are logged at INFO level but not sent. Disable once you
-            have confirmed the logged output looks correct.
+            <Trans>
+              When enabled, upload payloads are logged at INFO level but not sent. Disable once you
+              have confirmed the logged output looks correct.
+            </Trans>
           </p>
         </div>
       </label>
@@ -2698,7 +3097,9 @@ function MapUploadConfigEditor({
       <Separator />
 
       <div className="space-y-2">
-        <Label htmlFor="fanout-map-api-url">API URL (optional)</Label>
+        <Label htmlFor="fanout-map-api-url">
+          <Trans>API URL (optional)</Trans>
+        </Label>
         <Input
           id="fanout-map-api-url"
           type="url"
@@ -2707,7 +3108,9 @@ function MapUploadConfigEditor({
           onChange={(e) => onChange({ ...config, api_url: e.target.value })}
         />
         <p className="text-[0.8125rem] text-muted-foreground">
-          Leave blank to use the default <code>map.meshcore.io</code> endpoint.
+          <Trans>
+            Leave blank to use the default <code>map.meshcore.io</code> endpoint.
+          </Trans>
         </p>
       </div>
 
@@ -2721,11 +3124,15 @@ function MapUploadConfigEditor({
           className="h-4 w-4 rounded border-border"
         />
         <div>
-          <span className="text-sm font-medium">Enable Geofence</span>
+          <span className="text-sm font-medium">
+            <Trans>Enable Geofence</Trans>
+          </span>
           <p className="text-[0.8125rem] text-muted-foreground">
-            Only upload nodes whose location falls within the configured radius of your radio&apos;s
-            own position. Helps exclude nodes with false or spoofed coordinates. Uses the
-            latitude/longitude set in Radio Settings.
+            <Trans>
+              Only upload nodes whose location falls within the configured radius of your
+              radio&apos;s own position. Helps exclude nodes with false or spoofed coordinates. Uses
+              the latitude/longitude set in Radio Settings.
+            </Trans>
           </p>
         </div>
       </label>
@@ -2734,28 +3141,34 @@ function MapUploadConfigEditor({
         <div className="space-y-3 pl-7">
           {!radioLatLonConfigured && (
             <div className="rounded-md border border-warning/50 bg-warning/10 px-3 py-2 text-xs text-warning">
-              Your radio does not currently have a latitude/longitude configured. Geofencing will be
-              silently skipped until coordinates are set in{' '}
-              <strong>Settings &rarr; Radio &rarr; Location</strong>.
+              <Trans>
+                Your radio does not currently have a latitude/longitude configured. Geofencing will
+                be silently skipped until coordinates are set in{' '}
+                <strong>Settings &rarr; Radio &rarr; Location</strong>.
+              </Trans>
             </div>
           )}
           {radioLatLonConfigured && (
             <p className="text-[0.8125rem] text-muted-foreground">
-              Using radio position{' '}
-              <code>
-                {radioLat?.toFixed(5)}, {radioLon?.toFixed(5)}
-              </code>{' '}
-              as the geofence center. Update coordinates in Radio Settings to move the center.
+              <Trans>
+                Using radio position{' '}
+                <code>
+                  {radioLat?.toFixed(5)}, {radioLon?.toFixed(5)}
+                </code>{' '}
+                as the geofence center. Update coordinates in Radio Settings to move the center.
+              </Trans>
             </p>
           )}
           <div className="space-y-2">
-            <Label htmlFor="fanout-map-geofence-radius">Radius (km)</Label>
+            <Label htmlFor="fanout-map-geofence-radius">
+              <Trans>Radius (km)</Trans>
+            </Label>
             <Input
               id="fanout-map-geofence-radius"
               type="number"
               min="0"
               step="any"
-              placeholder="e.g. 100"
+              placeholder={t`e.g. 100`}
               value={getOptionalNumberInputValue(config.geofence_radius_km)}
               onChange={(e) =>
                 onChange({
@@ -2765,7 +3178,10 @@ function MapUploadConfigEditor({
               }
             />
             <p className="text-[0.8125rem] text-muted-foreground">
-              Nodes further than this distance from your radio&apos;s position will not be uploaded.
+              <Trans>
+                Nodes further than this distance from your radio&apos;s position will not be
+                uploaded.
+              </Trans>
             </p>
           </div>
         </div>
@@ -2840,6 +3256,8 @@ function PillsSearchList({
   searchPlaceholder: string;
   emptyItemsMessage: string;
 }) {
+  useLingui();
+
   const [search, setSearch] = useState('');
   const searchLower = search.toLowerCase().trim();
 
@@ -2877,7 +3295,7 @@ function PillsSearchList({
             className="text-xs text-muted-foreground hover:text-foreground transition-colors"
             onClick={onAll}
           >
-            All
+            <Trans>All</Trans>
           </button>
           <span className="text-xs text-muted-foreground">/</span>
           <button
@@ -2885,7 +3303,7 @@ function PillsSearchList({
             className="text-xs text-muted-foreground hover:text-foreground transition-colors"
             onClick={onNone}
           >
-            None
+            <Trans>None</Trans>
           </button>
         </span>
       </div>
@@ -2894,8 +3312,10 @@ function PillsSearchList({
         <div className="flex flex-wrap gap-1.5">
           {overPillLimit ? (
             <span className="inline-flex items-center text-[0.6875rem] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
-              &gt;{MAX_SCOPE_PILL_DISPLAY} selections made; hiding selection preview to keep the
-              interface clean
+              <Trans>
+                &gt;{MAX_SCOPE_PILL_DISPLAY} selections made; hiding selection preview to keep the
+                interface clean
+              </Trans>
             </span>
           ) : (
             selectedDetails.map((it) => (
@@ -2908,9 +3328,9 @@ function PillsSearchList({
                   type="button"
                   className="ml-0.5 hover:text-destructive transition-colors"
                   onClick={() => onToggle(it.key)}
-                  aria-label={`Remove ${it.label}`}
+                  aria-label={t`Remove ${it.label}`}
                 >
-                  &times;
+                  <Trans>&times;</Trans>
                 </button>
               </span>
             ))
@@ -2932,7 +3352,9 @@ function PillsSearchList({
           <div className="max-h-48 overflow-y-auto space-y-1 rounded border border-border p-2">
             {filtered.length === 0 ? (
               <p className="text-[0.8125rem] text-muted-foreground italic py-1">
-                No {label.toLowerCase()} match &ldquo;{search}&rdquo;
+                <Trans>
+                  No {label.toLowerCase()} match &ldquo;{search}&rdquo;
+                </Trans>
               </p>
             ) : (
               filtered.map((it) => (
@@ -2968,6 +3390,8 @@ function ScopeSelector({
   onChange: (scope: Record<string, unknown>) => void;
   showRawPackets?: boolean;
 }) {
+  useLingui();
+
   const { data: channels = [] } = useQuery({
     queryKey: queryKeys.channels(),
     queryFn: ({ signal }) => api.getChannels(signal),
@@ -3036,10 +3460,10 @@ function ScopeSelector({
   const filteredContacts = contacts.filter((c) => c.type === 0 || c.type === 1);
 
   const modeDescriptions: Record<ScopeMode, string> = {
-    all: 'All messages',
-    none: 'No messages',
-    only: 'Only listed channels/contacts',
-    except: 'All except listed channels/contacts',
+    all: t`All messages`,
+    none: t`No messages`,
+    only: t`Only listed channels/contacts`,
+    except: t`All except listed channels/contacts`,
   };
 
   const rawEnabled = showRawPackets && scope.raw_packets === 'all';
@@ -3068,7 +3492,9 @@ function ScopeSelector({
 
   return (
     <div className="space-y-3">
-      <h3 className="text-base font-semibold tracking-tight">Message Scope</h3>
+      <h3 className="text-base font-semibold tracking-tight">
+        <Trans>Message Scope</Trans>
+      </h3>
 
       {showRawPackets && (
         <label className="flex items-center gap-3 cursor-pointer">
@@ -3078,7 +3504,9 @@ function ScopeSelector({
             onChange={(e) => onChange({ ...scope, raw_packets: e.target.checked ? 'all' : 'none' })}
             className="h-4 w-4 rounded border-border"
           />
-          <span className="text-sm">Forward raw packets</span>
+          <span className="text-sm">
+            <Trans>Forward raw packets</Trans>
+          </span>
         </label>
       )}
 
@@ -3099,7 +3527,7 @@ function ScopeSelector({
 
       {showEmptyScopeWarning && (
         <div className="rounded-md border border-warning/50 bg-warning/10 px-3 py-2 text-xs text-warning">
-          Nothing is selected &mdash; this integration will not forward any data.
+          <Trans>Nothing is selected &mdash; this integration will not forward any data.</Trans>
         </div>
       )}
 
@@ -3109,7 +3537,7 @@ function ScopeSelector({
 
           {channels.length > 0 && (
             <PillsSearchList
-              label="Channels"
+              label={t`Channels`}
               labelSuffix={checkboxLabel}
               items={channels.map((ch) => ({ key: ch.key, label: ch.name }))}
               selectedKeys={selectedChannels}
@@ -3131,7 +3559,7 @@ function ScopeSelector({
 
           {filteredContacts.length > 0 && (
             <PillsSearchList
-              label="Contacts"
+              label={t`Contacts`}
               labelSuffix={checkboxLabel}
               items={filteredContacts.map((c) => ({
                 key: c.public_key,
@@ -3243,20 +3671,22 @@ function AppriseFormatPreview({
   vars: Record<string, string>;
   markdown?: boolean;
 }) {
+  useLingui();
+
   const raw = appriseApplyFormat(format, vars);
   return (
     <div className="rounded-md border border-border bg-muted/30 p-2 space-y-1.5">
       {markdown && (
         <div>
           <span className="text-[0.625rem] uppercase tracking-wider text-muted-foreground font-medium">
-            Rendered (Discord, Slack, Telegram)
+            <Trans>Rendered (Discord, Slack, Telegram)</Trans>
           </span>
           <p className="text-xs break-all">{appriseRenderMarkdown(raw)}</p>
         </div>
       )}
       <div>
         <span className="text-[0.625rem] uppercase tracking-wider text-muted-foreground font-medium">
-          {markdown ? 'Raw (email, SMS)' : 'Preview'}
+          {markdown ? t`Raw (email, SMS)` : t`Preview`}
         </span>
         <p className="text-xs font-mono break-all text-muted-foreground">{raw}</p>
       </div>
@@ -3281,6 +3711,8 @@ function AppriseConfigEditor({
   onChange: (config: Record<string, unknown>) => void;
   onScopeChange: (scope: Record<string, unknown>) => void;
 }) {
+  useLingui();
+
   const markdown = config.markdown_format !== false;
   const defaultDm = markdown ? APPRISE_DEFAULT_DM : APPRISE_DEFAULT_DM_PLAIN;
   const defaultChan = markdown ? APPRISE_DEFAULT_CHANNEL : APPRISE_DEFAULT_CHANNEL_PLAIN;
@@ -3290,42 +3722,46 @@ function AppriseConfigEditor({
   return (
     <div className="space-y-3">
       <p className="text-[0.8125rem] text-muted-foreground">
-        Send push notifications via{' '}
-        <a
-          href="https://github.com/caronc/apprise"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="underline hover:text-foreground"
-        >
-          Apprise
-        </a>{' '}
-        when messages are received. Supports Discord, Slack, Telegram, email, and{' '}
-        <a
-          href="https://github.com/caronc/apprise/wiki#supported-notifications"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="underline hover:text-foreground"
-        >
-          100+ other services
-        </a>
-        .
+        <Trans>
+          Send push notifications via{' '}
+          <a
+            href="https://github.com/caronc/apprise"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:text-foreground"
+          >
+            Apprise
+          </a>{' '}
+          when messages are received. Supports Discord, Slack, Telegram, email, and{' '}
+          <a
+            href="https://github.com/caronc/apprise/wiki#supported-notifications"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:text-foreground"
+          >
+            100+ other services
+          </a>
+          .
+        </Trans>
       </p>
 
       <div className="space-y-2">
-        <Label htmlFor="fanout-apprise-urls">Notification URLs</Label>
+        <Label htmlFor="fanout-apprise-urls">
+          <Trans>Notification URLs</Trans>
+        </Label>
         <textarea
           id="fanout-apprise-urls"
           className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono min-h-[80px]"
-          placeholder={
-            'discord://webhook_id/token\nslack://token_a/token_b/token_c\ntgram://bot_token/chat_id'
-          }
+          placeholder={t`discord://webhook_id/token\nslack://token_a/token_b/token_c\ntgram://bot_token/chat_id`}
           value={(config.urls as string) || ''}
           onChange={(e) => onChange({ ...config, urls: e.target.value })}
           rows={4}
         />
         <p className="text-[0.8125rem] text-muted-foreground">
-          One URL per line. All URLs receive every matched notification. For Matrix room version 12
-          (servername-less room IDs), append <code>?hsreq=no</code> to the URL.
+          <Trans>
+            One URL per line. All URLs receive every matched notification. For Matrix room version
+            12 (servername-less room IDs), append <code>?hsreq=no</code> to the URL.
+          </Trans>
         </p>
       </div>
 
@@ -3337,10 +3773,14 @@ function AppriseConfigEditor({
           className="h-4 w-4 rounded border-border"
         />
         <div>
-          <span className="text-sm">Preserve identity on Discord</span>
+          <span className="text-sm">
+            <Trans>Preserve identity on Discord</Trans>
+          </span>
           <p className="text-[0.8125rem] text-muted-foreground">
-            When enabled, Discord webhooks will use their configured name/avatar instead of
-            overriding with MeshCore sender info.
+            <Trans>
+              When enabled, Discord webhooks will use their configured name/avatar instead of
+              overriding with MeshCore sender info.
+            </Trans>
           </p>
         </div>
       </label>
@@ -3353,18 +3793,24 @@ function AppriseConfigEditor({
           className="h-4 w-4 rounded border-border"
         />
         <div>
-          <span className="text-sm">Forward MESHRIK-sent messages</span>
+          <span className="text-sm">
+            <Trans>Forward MESHRIK-sent messages</Trans>
+          </span>
           <p className="text-[0.8125rem] text-muted-foreground">
-            Include DMs and channel messages sent by this MESHRIK instance, including manual sends
-            and bot replies. Outgoing messages carry no routing path or signal data, so path-related
-            format fields render as direct and RSSI/SNR are empty.
+            <Trans>
+              Include DMs and channel messages sent by this MESHRIK instance, including manual sends
+              and bot replies. Outgoing messages carry no routing path or signal data, so
+              path-related format fields render as direct and RSSI/SNR are empty.
+            </Trans>
           </p>
         </div>
       </label>
 
       <Separator />
 
-      <h3 className="text-base font-semibold tracking-tight">Message Format</h3>
+      <h3 className="text-base font-semibold tracking-tight">
+        <Trans>Message Format</Trans>
+      </h3>
 
       <label className="flex items-center gap-3 cursor-pointer">
         <input
@@ -3391,10 +3837,14 @@ function AppriseConfigEditor({
           className="h-4 w-4 rounded border-border"
         />
         <div>
-          <span className="text-sm">Markdown formatting</span>
+          <span className="text-sm">
+            <Trans>Markdown formatting</Trans>
+          </span>
           <p className="text-[0.8125rem] text-muted-foreground">
-            If notifications fail on services like Telegram due to special characters in sender
-            names, disable this option.
+            <Trans>
+              If notifications fail on services like Telegram due to special characters in sender
+              names, disable this option.
+            </Trans>
           </p>
         </div>
       </label>
@@ -3402,66 +3852,88 @@ function AppriseConfigEditor({
       <details className="group">
         <summary className="text-sm font-medium text-foreground cursor-pointer select-none flex items-center gap-1">
           <ChevronDown className="h-3 w-3 transition-transform group-open:rotate-0 -rotate-90" />
-          Available variables
+          <Trans>Available variables</Trans>
         </summary>
         <div className="mt-2 rounded-md border border-border bg-muted/30 p-2 text-xs space-y-0.5">
           <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
-            <code className="text-[0.6875rem] font-mono bg-muted px-1 rounded">{'{text}'}</code>
-            <span className="text-muted-foreground">Message body</span>
-            <code className="text-[0.6875rem] font-mono bg-muted px-1 rounded">
-              {'{sender_name}'}
-            </code>
-            <span className="text-muted-foreground">Sender display name</span>
-            <code className="text-[0.6875rem] font-mono bg-muted px-1 rounded">
-              {'{sender_key}'}
-            </code>
-            <span className="text-muted-foreground">Sender public key (hex)</span>
-            <code className="text-[0.6875rem] font-mono bg-muted px-1 rounded">
-              {'{channel_name}'}
-            </code>
-            <span className="text-muted-foreground">Channel name (channel messages only)</span>
-            <code className="text-[0.6875rem] font-mono bg-muted px-1 rounded">
-              {'{conversation_key}'}
-            </code>
+            <code className="text-[0.6875rem] font-mono bg-muted px-1 rounded">{t`{text}`}</code>
             <span className="text-muted-foreground">
-              Contact pubkey (DM) or channel key (channel)
-            </span>
-            <code className="text-[0.6875rem] font-mono bg-muted px-1 rounded">{'{type}'}</code>
-            <span className="text-muted-foreground">PRIV or CHAN</span>
-            <code className="text-[0.6875rem] font-mono bg-muted px-1 rounded">{'{hops}'}</code>
-            <span className="text-muted-foreground">
-              Comma-separated hop IDs, or &quot;direct&quot;
+              <Trans>Message body</Trans>
             </span>
             <code className="text-[0.6875rem] font-mono bg-muted px-1 rounded">
-              {'{hops_backticked}'}
+              {t`{sender_name}`}
             </code>
-            <span className="text-muted-foreground">Hops wrapped in backticks for markdown</span>
+            <span className="text-muted-foreground">
+              <Trans>Sender display name</Trans>
+            </span>
             <code className="text-[0.6875rem] font-mono bg-muted px-1 rounded">
-              {'{hop_count}'}
+              {t`{sender_key}`}
             </code>
-            <span className="text-muted-foreground">Number of hops (0 for direct)</span>
-            <code className="text-[0.6875rem] font-mono bg-muted px-1 rounded">{'{rssi}'}</code>
-            <span className="text-muted-foreground">Last-hop RSSI in dBm</span>
-            <code className="text-[0.6875rem] font-mono bg-muted px-1 rounded">{'{snr}'}</code>
-            <span className="text-muted-foreground">Last-hop SNR in dB</span>
+            <span className="text-muted-foreground">
+              <Trans>Sender public key (hex)</Trans>
+            </span>
+            <code className="text-[0.6875rem] font-mono bg-muted px-1 rounded">
+              {t`{channel_name}`}
+            </code>
+            <span className="text-muted-foreground">
+              <Trans>Channel name (channel messages only)</Trans>
+            </span>
+            <code className="text-[0.6875rem] font-mono bg-muted px-1 rounded">
+              {t`{conversation_key}`}
+            </code>
+            <span className="text-muted-foreground">
+              <Trans>Contact pubkey (DM) or channel key (channel)</Trans>
+            </span>
+            <code className="text-[0.6875rem] font-mono bg-muted px-1 rounded">{t`{type}`}</code>
+            <span className="text-muted-foreground">
+              <Trans>PRIV or CHAN</Trans>
+            </span>
+            <code className="text-[0.6875rem] font-mono bg-muted px-1 rounded">{t`{hops}`}</code>
+            <span className="text-muted-foreground">
+              <Trans>Comma-separated hop IDs, or &quot;direct&quot;</Trans>
+            </span>
+            <code className="text-[0.6875rem] font-mono bg-muted px-1 rounded">
+              {t`{hops_backticked}`}
+            </code>
+            <span className="text-muted-foreground">
+              <Trans>Hops wrapped in backticks for markdown</Trans>
+            </span>
+            <code className="text-[0.6875rem] font-mono bg-muted px-1 rounded">
+              {t`{hop_count}`}
+            </code>
+            <span className="text-muted-foreground">
+              <Trans>Number of hops (0 for direct)</Trans>
+            </span>
+            <code className="text-[0.6875rem] font-mono bg-muted px-1 rounded">{t`{rssi}`}</code>
+            <span className="text-muted-foreground">
+              <Trans>Last-hop RSSI in dBm</Trans>
+            </span>
+            <code className="text-[0.6875rem] font-mono bg-muted px-1 rounded">{t`{snr}`}</code>
+            <span className="text-muted-foreground">
+              <Trans>Last-hop SNR in dB</Trans>
+            </span>
           </div>
           <p className="text-xs text-muted-foreground mt-1.5">
-            Empty textareas use the default format. RSSI/SNR may be empty if unavailable.
+            <Trans>
+              Empty textareas use the default format. RSSI/SNR may be empty if unavailable.
+            </Trans>
           </p>
         </div>
       </details>
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <Label htmlFor="fanout-apprise-fmt-dm">DM format</Label>
+          <Label htmlFor="fanout-apprise-fmt-dm">
+            <Trans>DM format</Trans>
+          </Label>
           {!appriseIsDefault(config.body_format_dm, defaultDm) && (
             <button
               type="button"
-              aria-label="Reset DM format to default"
+              aria-label={t`Reset DM format to default`}
               className="text-xs text-muted-foreground hover:text-foreground transition-colors"
               onClick={() => onChange({ ...config, body_format_dm: defaultDm })}
             >
-              Reset to default
+              <Trans>Reset to default</Trans>
             </button>
           )}
         </div>
@@ -3478,15 +3950,17 @@ function AppriseConfigEditor({
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <Label htmlFor="fanout-apprise-fmt-chan">Channel format</Label>
+          <Label htmlFor="fanout-apprise-fmt-chan">
+            <Trans>Channel format</Trans>
+          </Label>
           {!appriseIsDefault(config.body_format_channel, defaultChan) && (
             <button
               type="button"
-              aria-label="Reset channel format to default"
+              aria-label={t`Reset channel format to default`}
               className="text-xs text-muted-foreground hover:text-foreground transition-colors"
               onClick={() => onChange({ ...config, body_format_channel: defaultChan })}
             >
-              Reset to default
+              <Trans>Reset to default</Trans>
             </button>
           )}
         </div>
@@ -3519,6 +3993,8 @@ function WebhookConfigEditor({
   onChange: (config: Record<string, unknown>) => void;
   onScopeChange: (scope: Record<string, unknown>) => void;
 }) {
+  useLingui();
+
   const headersStr = JSON.stringify(config.headers ?? {}, null, 2);
   const headersForm = useForm({
     defaultValues: { text: headersStr, error: null as string | null },
@@ -3533,24 +4009,26 @@ function WebhookConfigEditor({
     try {
       const parsed = JSON.parse(text);
       if (typeof parsed !== 'object' || Array.isArray(parsed)) {
-        headersForm.setFieldValue('error', 'Must be a JSON object');
+        headersForm.setFieldValue('error', t`Must be a JSON object`);
         return;
       }
       headersForm.setFieldValue('error', null);
       onChange({ ...config, headers: parsed });
     } catch {
-      headersForm.setFieldValue('error', 'Invalid JSON');
+      headersForm.setFieldValue('error', t`Invalid JSON`);
     }
   };
 
   return (
     <div className="space-y-3">
       <p className="text-[0.8125rem] text-muted-foreground">
-        Send message data as JSON to an HTTP endpoint when messages are received.
+        <Trans>Send message data as JSON to an HTTP endpoint when messages are received.</Trans>
       </p>
 
       <div className="space-y-2">
-        <Label htmlFor="fanout-webhook-url">URL</Label>
+        <Label htmlFor="fanout-webhook-url">
+          <Trans>URL</Trans>
+        </Label>
         <Input
           id="fanout-webhook-url"
           type="url"
@@ -3562,16 +4040,24 @@ function WebhookConfigEditor({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="fanout-webhook-method">HTTP Method</Label>
+          <Label htmlFor="fanout-webhook-method">
+            <Trans>HTTP Method</Trans>
+          </Label>
           <select
             id="fanout-webhook-method"
-            value={(config.method as string) || 'POST'}
+            value={(config.method as string) || `POST`}
             onChange={(e) => onChange({ ...config, method: e.target.value })}
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
           >
-            <option value="POST">POST</option>
-            <option value="PUT">PUT</option>
-            <option value="PATCH">PATCH</option>
+            <option value="POST">
+              <Trans>POST</Trans>
+            </option>
+            <option value="PUT">
+              <Trans>PUT</Trans>
+            </option>
+            <option value="PATCH">
+              <Trans>PATCH</Trans>
+            </option>
           </select>
         </div>
       </div>
@@ -3579,29 +4065,38 @@ function WebhookConfigEditor({
       <Separator />
 
       <div className="space-y-3">
-        <h3 className="text-base font-semibold tracking-tight">HMAC Signing</h3>
+        <h3 className="text-base font-semibold tracking-tight">
+          <Trans>HMAC Signing</Trans>
+        </h3>
         <p className="text-[0.8125rem] text-muted-foreground">
-          When a secret is set, each request includes an HMAC-SHA256 signature of the JSON body in
-          the specified header (e.g. <code className="bg-muted px-1 rounded">sha256=ab12cd...</code>
-          ).
+          <Trans>
+            When a secret is set, each request includes an HMAC-SHA256 signature of the JSON body in
+            the specified header (e.g.{' '}
+            <code className="bg-muted px-1 rounded">sha256=ab12cd...</code>
+            ).
+          </Trans>
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="fanout-webhook-hmac-secret">HMAC Secret</Label>
+            <Label htmlFor="fanout-webhook-hmac-secret">
+              <Trans>HMAC Secret</Trans>
+            </Label>
             <Input
               id="fanout-webhook-hmac-secret"
               type="password"
-              placeholder="Leave empty to disable signing"
+              placeholder={t`Leave empty to disable signing`}
               value={(config.hmac_secret as string) || ''}
               onChange={(e) => onChange({ ...config, hmac_secret: e.target.value })}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="fanout-webhook-hmac-header">Signature Header Name</Label>
+            <Label htmlFor="fanout-webhook-hmac-header">
+              <Trans>Signature Header Name</Trans>
+            </Label>
             <Input
               id="fanout-webhook-hmac-header"
               type="text"
-              placeholder="X-Webhook-Signature"
+              placeholder={t`X-Webhook-Signature`}
               value={(config.hmac_header as string) || ''}
               onChange={(e) => onChange({ ...config, hmac_header: e.target.value })}
             />
@@ -3612,15 +4107,17 @@ function WebhookConfigEditor({
       <Separator />
 
       <div className="space-y-2">
-        <Label htmlFor="fanout-webhook-headers">Extra Headers (JSON)</Label>
+        <Label htmlFor="fanout-webhook-headers">
+          <Trans>Extra Headers (JSON)</Trans>
+        </Label>
         <textarea
           id="fanout-webhook-headers"
           className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono min-h-[60px]"
           value={headersText}
           onChange={(e) => handleHeadersChange(e.target.value)}
-          placeholder='{"Authorization": "Bearer ..."}'
+          placeholder={t`{"Authorization": "Bearer ..."}`}
           aria-invalid={headersError ? true : undefined}
-          aria-describedby={headersError ? 'fanout-webhook-headers-error' : undefined}
+          aria-describedby={headersError ? `fanout-webhook-headers-error` : undefined}
         />
         {headersError && (
           <p id="fanout-webhook-headers-error" className="text-xs text-destructive" role="alert">
@@ -3647,20 +4144,28 @@ function SqsConfigEditor({
   onChange: (config: Record<string, unknown>) => void;
   onScopeChange: (scope: Record<string, unknown>) => void;
 }) {
+  useLingui();
+
   return (
     <div className="space-y-3">
       <p className="text-[0.8125rem] text-muted-foreground">
-        Send matched mesh events to an Amazon SQS queue for durable processing by workers, Lambdas,
-        or downstream automation.
+        <Trans>
+          Send matched mesh events to an Amazon SQS queue for durable processing by workers,
+          Lambdas, or downstream automation.
+        </Trans>
       </p>
 
       <div className="rounded-md border border-warning/50 bg-warning/10 px-3 py-2 text-xs text-warning">
-        Outgoing messages and any selected raw packets will be delivered exactly as forwarded by the
-        fanout scope, including decrypted/plaintext message content.
+        <Trans>
+          Outgoing messages and any selected raw packets will be delivered exactly as forwarded by
+          the fanout scope, including decrypted/plaintext message content.
+        </Trans>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="fanout-sqs-queue-url">Queue URL</Label>
+        <Label htmlFor="fanout-sqs-queue-url">
+          <Trans>Queue URL</Trans>
+        </Label>
         <Input
           id="fanout-sqs-queue-url"
           type="url"
@@ -3672,17 +4177,21 @@ function SqsConfigEditor({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="fanout-sqs-region">Region (optional)</Label>
+          <Label htmlFor="fanout-sqs-region">
+            <Trans>Region (optional)</Trans>
+          </Label>
           <Input
             id="fanout-sqs-region"
             type="text"
-            placeholder="us-east-1"
+            placeholder={t`us-east-1`}
             value={(config.region_name as string) || ''}
             onChange={(e) => onChange({ ...config, region_name: e.target.value })}
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="fanout-sqs-endpoint">Endpoint URL (optional)</Label>
+          <Label htmlFor="fanout-sqs-endpoint">
+            <Trans>Endpoint URL (optional)</Trans>
+          </Label>
           <Input
             id="fanout-sqs-endpoint"
             type="url"
@@ -3691,7 +4200,7 @@ function SqsConfigEditor({
             onChange={(e) => onChange({ ...config, endpoint_url: e.target.value })}
           />
           <p className="text-[0.8125rem] text-muted-foreground">
-            Useful for LocalStack or custom endpoints
+            <Trans>Useful for LocalStack or custom endpoints</Trans>
           </p>
         </div>
       </div>
@@ -3699,15 +4208,19 @@ function SqsConfigEditor({
       <Separator />
 
       <div className="space-y-2">
-        <h3 className="text-base font-semibold tracking-tight">Static Credentials (optional)</h3>
+        <h3 className="text-base font-semibold tracking-tight">
+          <Trans>Static Credentials (optional)</Trans>
+        </h3>
         <p className="text-[0.8125rem] text-muted-foreground">
-          Leave blank to use the server&apos;s normal AWS credential chain.
+          <Trans>Leave blank to use the server&apos;s normal AWS credential chain.</Trans>
         </p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="fanout-sqs-access-key">Access Key ID</Label>
+          <Label htmlFor="fanout-sqs-access-key">
+            <Trans>Access Key ID</Trans>
+          </Label>
           <Input
             id="fanout-sqs-access-key"
             type="text"
@@ -3716,7 +4229,9 @@ function SqsConfigEditor({
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="fanout-sqs-secret-key">Secret Access Key</Label>
+          <Label htmlFor="fanout-sqs-secret-key">
+            <Trans>Secret Access Key</Trans>
+          </Label>
           <Input
             id="fanout-sqs-secret-key"
             type="password"
@@ -3727,7 +4242,9 @@ function SqsConfigEditor({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="fanout-sqs-session-token">Session Token (optional)</Label>
+        <Label htmlFor="fanout-sqs-session-token">
+          <Trans>Session Token (optional)</Trans>
+        </Label>
         <Input
           id="fanout-sqs-session-token"
           type="password"
@@ -3752,6 +4269,8 @@ export function SettingsFanoutSection({
   onHealthRefresh?: () => Promise<void>;
   className?: string;
 }) {
+  useLingui();
+
   const queryClient = useQueryClient();
   const { data: configs = [] } = useQuery({
     queryKey: FANOUT_CONFIGS_QUERY_KEY,
@@ -3807,8 +4326,8 @@ export function SettingsFanoutSection({
       if (!editingId && !value.draftType) return;
       editForm.setFieldValue('serverError', null);
       if (!value.name.trim()) {
-        editForm.setFieldValue('serverError', 'Name cannot be empty');
-        toast.error('Name cannot be empty');
+        editForm.setFieldValue('serverError', t`Name cannot be empty`);
+        toast.error(t`Name cannot be empty`);
         return;
       }
       try {
@@ -3825,7 +4344,7 @@ export function SettingsFanoutSection({
             },
           });
         } else {
-          if (!editingId) throw new Error('Missing fanout config id for update');
+          if (!editingId) throw new Error(t`Missing fanout config id for update`);
           const editingType = configs.find((cfg) => cfg.id === editingId)?.type ?? '';
           await saveConfigMutation.mutateAsync({
             kind: 'update',
@@ -3848,9 +4367,9 @@ export function SettingsFanoutSection({
             console.error('Failed to refresh health after saving fanout config:', err);
           }
         }
-        toast.success(value.enabled ? 'Integration saved and enabled' : 'Integration saved');
+        toast.success(value.enabled ? t`Integration saved and enabled` : t`Integration saved`);
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to save';
+        const message = err instanceof Error ? err.message : t`Failed to save`;
         editForm.setFieldValue('serverError', message);
         toast.error(message);
       }
@@ -3875,7 +4394,7 @@ export function SettingsFanoutSection({
       if (!cfg) return;
       const nextName = value.name.trim();
       if (!nextName) {
-        toast.error('Name cannot be empty');
+        toast.error(t`Name cannot be empty`);
         handleCancelInlineEdit();
         return;
       }
@@ -3887,9 +4406,9 @@ export function SettingsFanoutSection({
         await renameConfigMutation.mutateAsync({ id: cfg.id, name: nextName });
         if (editingId === cfg.id) editForm.setFieldValue('name', nextName);
         await refreshConfigs();
-        toast.success('Name updated');
+        toast.success(t`Name updated`);
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Failed to update name');
+        toast.error(err instanceof Error ? err.message : t`Failed to update name`);
       } finally {
         handleCancelInlineEdit();
       }
@@ -3933,7 +4452,7 @@ export function SettingsFanoutSection({
       cfg.type === 'virtual_companion_tcp' &&
       cfg.enabled &&
       !confirm(
-        'Disable the virtual listener and disconnect its app clients? The physical radio and scheduled jobs will keep running.'
+        t`Disable the virtual listener and disconnect its app clients? The physical radio and scheduled jobs will keep running.`
       )
     ) {
       return;
@@ -3948,9 +4467,9 @@ export function SettingsFanoutSection({
           console.error('Failed to refresh health after toggling fanout config:', err);
         }
       }
-      toast.success(cfg.enabled ? 'Integration disabled' : 'Integration enabled');
+      toast.success(cfg.enabled ? t`Integration disabled` : t`Integration enabled`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to update');
+      toast.error(err instanceof Error ? err.message : t`Failed to update`);
     }
   };
 
@@ -3990,7 +4509,7 @@ export function SettingsFanoutSection({
           scope: editScope,
         }
       );
-    if (shouldConfirm && !confirm('Leave without saving?')) return;
+    if (shouldConfirm && !confirm(t`Leave without saving?`)) return;
     setEditingId(null);
     editForm.reset();
   };
@@ -4007,10 +4526,11 @@ export function SettingsFanoutSection({
 
   const handleDelete = async (id: string) => {
     const cfg = configs.find((c) => c.id === id);
+    const configName = cfg?.name ?? t`this integration`;
     const warning =
       cfg?.type === 'virtual_companion_tcp'
-        ? `Delete "${cfg.name}" and disconnect its virtual app clients? The physical radio and scheduled jobs will keep running. This cannot be undone.`
-        : `Delete "${cfg?.name}"? This cannot be undone.`;
+        ? t`Delete "${cfg.name}" and disconnect its virtual app clients? The physical radio and scheduled jobs will keep running. This cannot be undone.`
+        : t`Delete "${configName}"? This cannot be undone.`;
     if (!confirm(warning)) return;
     try {
       await deleteConfigMutation.mutateAsync(id);
@@ -4023,9 +4543,9 @@ export function SettingsFanoutSection({
           console.error('Failed to refresh health after deleting fanout config:', err);
         }
       }
-      toast.success('Integration deleted');
+      toast.success(t`Integration deleted`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to delete');
+      toast.error(err instanceof Error ? err.message : t`Failed to delete`);
     }
   };
 
@@ -4069,22 +4589,26 @@ export function SettingsFanoutSection({
           className="inline-flex items-center rounded-md border border-warning/50 bg-warning/10 px-3 py-2 text-sm text-warning transition-colors hover:bg-warning/20"
           onClick={handleBackToList}
         >
-          &larr; Back to list
+          <Trans>&larr; Back to list</Trans>
         </button>
 
         <div className="space-y-2">
-          <Label htmlFor="fanout-edit-name">Name</Label>
+          <Label htmlFor="fanout-edit-name">
+            <Trans>Name</Trans>
+          </Label>
           <Input
             id="fanout-edit-name"
             type="text"
             value={editName}
             onChange={(e) => editForm.setFieldValue('name', e.target.value)}
             aria-invalid={editServerError ? true : undefined}
-            aria-describedby={editServerError ? 'fanout-save-error' : undefined}
+            aria-describedby={editServerError ? `fanout-save-error` : undefined}
           />
         </div>
 
-        <div className="text-xs text-muted-foreground">Type: {getDetailTypeLabel(detailType)}</div>
+        <div className="text-xs text-muted-foreground">
+          <Trans>Type: {getDetailTypeLabel(detailType)}</Trans>
+        </div>
 
         <Separator />
 
@@ -4186,7 +4710,7 @@ export function SettingsFanoutSection({
             disabled={busy}
             className="flex-1 bg-status-connected hover:bg-status-connected/90 text-primary-foreground"
           >
-            {busy ? 'Saving...' : 'Save as Enabled'}
+            {busy ? t`Saving...` : t`Save as Enabled`}
           </Button>
           <Button
             variant="secondary"
@@ -4194,11 +4718,11 @@ export function SettingsFanoutSection({
             disabled={busy}
             className="flex-1"
           >
-            {busy ? 'Saving...' : 'Save as Disabled'}
+            {busy ? t`Saving...` : t`Save as Disabled`}
           </Button>
           {!isDraft && editingConfig && (
             <Button variant="destructive" onClick={() => handleDelete(editingConfig.id)}>
-              Delete
+              <Trans>Delete</Trans>
             </Button>
           )}
         </div>
@@ -4210,21 +4734,23 @@ export function SettingsFanoutSection({
   return (
     <div className={cn('mx-auto w-full max-w-[800px] space-y-4', className)}>
       <div className="rounded-md border border-warning/50 bg-warning/10 px-4 py-3 text-sm text-warning">
-        Integrations are an experimental feature in open beta, and allow you to fanout raw and
-        decrypted messages across multiple services for automation, analysis, or archiving.
+        <Trans>
+          Integrations are an experimental feature in open beta, and allow you to fanout raw and
+          decrypted messages across multiple services for automation, analysis, or archiving.
+        </Trans>
       </div>
 
       {health?.bots_disabled && (
         <div className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {health.bots_disabled_source === 'until_restart'
-            ? 'Bot system is disabled until the server restarts. Bot integrations cannot run, be created, or be modified right now.'
-            : 'Bot system is disabled by server configuration (MESHCORE_DISABLE_BOTS). Bot integrations cannot run, be created, or be modified.'}
+            ? t`Bot system is disabled until the server restarts. Bot integrations cannot run, be created, or be modified right now.`
+            : t`Bot system is disabled by server configuration (MESHCORE_DISABLE_BOTS). Bot integrations cannot run, be created, or be modified.`}
         </div>
       )}
 
       <div className="flex flex-wrap gap-2">
         <Button type="button" size="sm" onClick={() => setCreateDialogOpen(true)}>
-          Add Integration
+          <Trans>Add Integration</Trans>
         </Button>
       </div>
 
@@ -4252,10 +4778,12 @@ export function SettingsFanoutSection({
         <DialogContent className="sm:max-w-md">
           <DialogHeader className="border-b border-border px-5 py-4">
             <DialogTitle>
-              {errorDialogState ? `${errorDialogState.integrationName} Error` : 'Integration Error'}
+              {errorDialogState
+                ? t`${errorDialogState.integrationName} Error`
+                : t`Integration Error`}
             </DialogTitle>
             <DialogDescription>
-              Most recent backend error retained for this integration.
+              <Trans>Most recent backend error retained for this integration.</Trans>
             </DialogDescription>
           </DialogHeader>
           <div className="px-5 py-4 text-sm text-muted-foreground">
@@ -4272,7 +4800,7 @@ export function SettingsFanoutSection({
             <section
               key={group.type}
               className="mb-4 inline-block w-full break-inside-avoid space-y-2"
-              aria-label={`${group.label} integrations`}
+              aria-label={t`${group.label} integrations`}
             >
               <div className="px-1 text-sm font-medium text-muted-foreground">{group.label}</div>
               <div className="space-y-2">
@@ -4285,7 +4813,7 @@ export function SettingsFanoutSection({
                     <div
                       key={cfg.id}
                       role="group"
-                      aria-label={`Integration ${cfg.name}`}
+                      aria-label={t`Integration ${cfg.name}`}
                       className="border border-input rounded-md overflow-hidden"
                     >
                       <div className="flex items-center gap-2 px-3 py-2 bg-muted/50">
@@ -4299,7 +4827,7 @@ export function SettingsFanoutSection({
                             onChange={() => handleToggleEnabled(cfg)}
                             disabled={toggleConfigMutation.isPending}
                             className="w-4 h-4 rounded border-input accent-primary"
-                            aria-label={`Enable ${cfg.name}`}
+                            aria-label={t`Enable ${cfg.name}`}
                           />
                         </label>
 
@@ -4321,7 +4849,7 @@ export function SettingsFanoutSection({
                                   handleCancelInlineEdit();
                                 }
                               }}
-                              aria-label={`Edit name for ${cfg.name}`}
+                              aria-label={t`Edit name for ${cfg.name}`}
                               className="h-8"
                             />
                           ) : (
@@ -4340,11 +4868,11 @@ export function SettingsFanoutSection({
                             'w-2 h-2 rounded-full transition-colors',
                             getStatusColor(status, cfg.enabled)
                           )}
-                          title={cfg.enabled ? getStatusLabel(status, cfg.type) : 'Disabled'}
+                          title={cfg.enabled ? getStatusLabel(status, cfg.type) : t`Disabled`}
                           aria-hidden="true"
                         />
                         <span className="text-xs text-muted-foreground hidden sm:inline">
-                          {cfg.enabled ? getStatusLabel(status, cfg.type) : 'Disabled'}
+                          {cfg.enabled ? getStatusLabel(status, cfg.type) : t`Disabled`}
                         </span>
 
                         {lastError && (
@@ -4359,8 +4887,8 @@ export function SettingsFanoutSection({
                                 error: lastError,
                               })
                             }
-                            aria-label={`View error details for ${cfg.name}`}
-                            title="View latest error"
+                            aria-label={t`View error details for ${cfg.name}`}
+                            title={t`View latest error`}
                           >
                             <Info className="h-3.5 w-3.5" aria-hidden="true" />
                           </Button>
@@ -4373,25 +4901,29 @@ export function SettingsFanoutSection({
                           className="h-6 px-2 text-xs"
                           onClick={() => handleEdit(cfg)}
                         >
-                          Edit
+                          <Trans>Edit</Trans>
                         </Button>
                       </div>
 
                       {cfg.type === 'mqtt_community' && (
                         <div className="space-y-1 border-t border-input px-3 py-2 text-xs text-muted-foreground">
                           <div>
-                            Broker:{' '}
-                            {formatBrokerSummary(communityConfig, {
-                              host: DEFAULT_COMMUNITY_BROKER_HOST,
-                              port: DEFAULT_COMMUNITY_BROKER_PORT,
-                            })}
+                            <Trans>
+                              Broker:{' '}
+                              {formatBrokerSummary(communityConfig, {
+                                host: DEFAULT_COMMUNITY_BROKER_HOST,
+                                port: DEFAULT_COMMUNITY_BROKER_PORT,
+                              })}
+                            </Trans>
                           </div>
                           <div className="break-all">
-                            Topic:{' '}
-                            <code>
-                              {(communityConfig.topic_template as string) ||
-                                DEFAULT_COMMUNITY_PACKET_TOPIC_TEMPLATE}
-                            </code>
+                            <Trans>
+                              Topic:{' '}
+                              <code>
+                                {(communityConfig.topic_template as string) ||
+                                  DEFAULT_COMMUNITY_PACKET_TOPIC_TEMPLATE}
+                              </code>
+                            </Trans>
                           </div>
                         </div>
                       )}
@@ -4399,21 +4931,25 @@ export function SettingsFanoutSection({
                       {cfg.type === 'virtual_companion_tcp' && (
                         <div className="space-y-1 border-t border-input px-3 py-2 text-xs text-muted-foreground">
                           <div>
-                            Virtual endpoint:{' '}
-                            <code>
-                              {String(cfg.config.bind_host ?? '0.0.0.0')}:
-                              {String(cfg.config.port ?? 5000)}
-                            </code>
+                            <Trans>
+                              Virtual endpoint:{' '}
+                              <code>
+                                {String(cfg.config.bind_host ?? '0.0.0.0')}:
+                                {String(cfg.config.port ?? 5000)}
+                              </code>
+                            </Trans>
                           </div>
                           <div>
-                            {health?.fanout_statuses?.[cfg.id]?.clients ?? 0} connected app client
-                            {(health?.fanout_statuses?.[cfg.id]?.clients ?? 0) === 1
-                              ? ''
-                              : 's'} ·{' '}
-                            {Array.isArray(cfg.config.channel_slots)
-                              ? cfg.config.channel_slots.filter((key) => key !== null).length
-                              : 0}{' '}
-                            configured virtual slots
+                            <Trans>
+                              {health?.fanout_statuses?.[cfg.id]?.clients ?? 0} connected app client
+                              {(health?.fanout_statuses?.[cfg.id]?.clients ?? 0) === 1
+                                ? ''
+                                : 's'} ·{' '}
+                              {Array.isArray(cfg.config.channel_slots)
+                                ? cfg.config.channel_slots.filter((key) => key !== null).length
+                                : 0}{' '}
+                              configured virtual slots
+                            </Trans>
                           </div>
                         </div>
                       )}
@@ -4421,17 +4957,21 @@ export function SettingsFanoutSection({
                       {cfg.type === 'mqtt_private' && (
                         <div className="space-y-1 border-t border-input px-3 py-2 text-xs text-muted-foreground">
                           <div>
-                            Broker:{' '}
-                            {formatBrokerSummary(cfg.config as Record<string, unknown>, {
-                              host: '',
-                              port: 1883,
-                            })}
+                            <Trans>
+                              Broker:{' '}
+                              {formatBrokerSummary(cfg.config as Record<string, unknown>, {
+                                host: '',
+                                port: 1883,
+                              })}
+                            </Trans>
                           </div>
                           <div className="break-all">
-                            Topics:{' '}
-                            <code>
-                              {formatPrivateTopicSummary(cfg.config as Record<string, unknown>)}
-                            </code>
+                            <Trans>
+                              Topics:{' '}
+                              <code>
+                                {formatPrivateTopicSummary(cfg.config as Record<string, unknown>)}
+                              </code>
+                            </Trans>
                           </div>
                         </div>
                       )}
@@ -4439,10 +4979,13 @@ export function SettingsFanoutSection({
                       {cfg.type === 'webhook' && (
                         <div className="space-y-1 border-t border-input px-3 py-2 text-xs text-muted-foreground">
                           <div className="break-all">
-                            URL:{' '}
-                            <code>
-                              {((cfg.config as Record<string, unknown>).url as string) || 'Not set'}
-                            </code>
+                            <Trans>
+                              URL:{' '}
+                              <code>
+                                {((cfg.config as Record<string, unknown>).url as string) ||
+                                  'Not set'}
+                              </code>
+                            </Trans>
                           </div>
                         </div>
                       )}
@@ -4450,12 +4993,14 @@ export function SettingsFanoutSection({
                       {cfg.type === 'apprise' && (
                         <div className="space-y-1 border-t border-input px-3 py-2 text-xs text-muted-foreground">
                           <div className="break-all">
-                            Targets:{' '}
-                            <code>
-                              {formatAppriseTargets(
-                                (cfg.config as Record<string, unknown>).urls as string | undefined
-                              )}
-                            </code>
+                            <Trans>
+                              Targets:{' '}
+                              <code>
+                                {formatAppriseTargets(
+                                  (cfg.config as Record<string, unknown>).urls as string | undefined
+                                )}
+                              </code>
+                            </Trans>
                           </div>
                         </div>
                       )}
@@ -4463,10 +5008,12 @@ export function SettingsFanoutSection({
                       {cfg.type === 'sqs' && (
                         <div className="space-y-1 border-t border-input px-3 py-2 text-xs text-muted-foreground">
                           <div className="break-all">
-                            Queue:{' '}
-                            <code>
-                              {formatSqsQueueSummary(cfg.config as Record<string, unknown>)}
-                            </code>
+                            <Trans>
+                              Queue:{' '}
+                              <code>
+                                {formatSqsQueueSummary(cfg.config as Record<string, unknown>)}
+                              </code>
+                            </Trans>
                           </div>
                         </div>
                       )}

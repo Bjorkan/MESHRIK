@@ -1,3 +1,7 @@
+import { Trans } from '@lingui/react/macro';
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
+import { getLocale } from '@/i18n';
 import { useState, useEffect } from 'react';
 import { useForm, useStore } from '@tanstack/react-form';
 import { ChevronRight, Logs, MessageSquare, Send, Settings, X } from 'lucide-react';
@@ -17,6 +21,7 @@ import {
   setReopenLastConversationEnabled,
 } from '../../utils/lastViewedConversation';
 import { ThemeSelector } from './ThemeSelector';
+import { LanguageSelector } from './LanguageSelector';
 import { getLocalLabel, setLocalLabel, type LocalLabel } from '../../utils/localLabel';
 import {
   DISTANCE_UNIT_LABELS,
@@ -84,6 +89,8 @@ function PushDeviceManagement({
   contacts?: Contact[];
   channels?: Channel[];
 }) {
+  useLingui();
+
   const {
     isSupported,
     allSubscriptions,
@@ -104,11 +111,13 @@ function PushDeviceManagement({
   if (!isSupported) {
     return (
       <div className="space-y-3">
-        <h3 className="text-base font-semibold tracking-tight">Web Push Notifications</h3>
+        <h3 className="text-base font-semibold tracking-tight">
+          <Trans>Web Push Notifications</Trans>
+        </h3>
         <p className="text-[0.8125rem] text-muted-foreground">
           {window.isSecureContext
-            ? 'Push notifications are not supported by this browser.'
-            : 'Web Push requires HTTPS. Access MESHRIK over HTTPS (self-signed certificates work) to enable push notifications.'}
+            ? t`Push notifications are not supported by this browser.`
+            : t`Web Push requires HTTPS. Access MESHRIK over HTTPS (self-signed certificates work) to enable push notifications.`}
         </p>
       </div>
     );
@@ -117,30 +126,36 @@ function PushDeviceManagement({
   return (
     <div className="space-y-4">
       <div className="space-y-1">
-        <h3 className="text-base font-semibold tracking-tight">Web Push Notifications</h3>
+        <h3 className="text-base font-semibold tracking-tight">
+          <Trans>Web Push Notifications</Trans>
+        </h3>
         <p className="text-[0.8125rem] text-muted-foreground">
-          Receive notifications even when the browser is closed. Use the bell icon in any
-          conversation header to enable push for that contact or channel, or subscribe this browser
-          to receive notifications for all push-enabled conversations.
+          <Trans>
+            Receive notifications even when the browser is closed. Use the bell icon in any
+            conversation header to enable push for that contact or channel, or subscribe this
+            browser to receive notifications for all push-enabled conversations.
+          </Trans>
         </p>
         <p className="text-[0.8125rem] text-muted-foreground">
-          The set of channels or DMs that trigger push notifications are global per-install (i.e.
-          all devices that register for Web Push will have the same set of channels/DMs that trigger
-          notifications). Subscribing or unsubscribing a particular browser only controls whether
-          that browser receives notifications for the configured set of channels/DMs.
+          <Trans>
+            The set of channels or DMs that trigger push notifications are global per-install (i.e.
+            all devices that register for Web Push will have the same set of channels/DMs that
+            trigger notifications). Subscribing or unsubscribing a particular browser only controls
+            whether that browser receives notifications for the configured set of channels/DMs.
+          </Trans>
         </p>
       </div>
 
       {!currentSubscriptionId && (
         <Button variant="outline" size="sm" onClick={() => void subscribe()} disabled={loading}>
-          {loading ? 'Subscribing...' : 'Subscribe This Browser'}
+          {loading ? t`Subscribing...` : t`Subscribe This Browser`}
         </Button>
       )}
 
       {pushConversations.length > 0 && (
         <div className="space-y-2">
           <span className="text-[0.625rem] uppercase tracking-wider text-muted-foreground font-medium">
-            Push-enabled conversations
+            <Trans>Push-enabled conversations</Trans>
           </span>
           <div className="flex flex-wrap gap-1.5">
             {pushConversations.map((key) => (
@@ -153,8 +168,8 @@ function PushDeviceManagement({
                   type="button"
                   onClick={() => void toggleConversation(key)}
                   className="rounded-full p-0.5 hover:bg-accent transition-colors"
-                  title="Remove"
-                  aria-label={`Remove ${resolveConversationName(key, contacts, channels)} from push`}
+                  title={t`Remove`}
+                  aria-label={t`Remove ${resolveConversationName(key, contacts, channels)} from push`}
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
@@ -167,7 +182,7 @@ function PushDeviceManagement({
       {allSubscriptions.length > 0 && (
         <div className="space-y-2">
           <span className="text-[0.625rem] uppercase tracking-wider text-muted-foreground font-medium">
-            Registered Devices
+            <Trans>Registered Devices</Trans>
           </span>
           <div className="mt-2 space-y-2">
             {allSubscriptions.map((sub) => (
@@ -178,18 +193,18 @@ function PushDeviceManagement({
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 overflow-hidden">
                     <span className="truncate text-sm font-medium">
-                      {sub.label || 'Unknown device'}
+                      {sub.label || t`Unknown device`}
                     </span>
                     {sub.id === currentSubscriptionId && (
                       <span className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[0.625rem] font-medium text-primary">
-                        Current device
+                        <Trans>Current device</Trans>
                       </span>
                     )}
                   </div>
                   <span className="text-xs text-muted-foreground">
                     {sub.last_success_at
-                      ? `Last push: ${new Date(sub.last_success_at * 1000).toLocaleDateString()}`
-                      : 'Never pushed'}
+                      ? t`Last push: ${new Date(sub.last_success_at * 1000).toLocaleDateString(getLocale())}`
+                      : t`Never pushed`}
                     {sub.failure_count > 0 && ` · ${sub.failure_count} failures`}
                   </span>
                 </div>
@@ -200,17 +215,17 @@ function PushDeviceManagement({
                     className="h-8 text-sm"
                     onClick={() => void testPush(sub.id)}
                   >
-                    Test
+                    <Trans>Test</Trans>
                   </Button>
                   <Button
                     variant="ghost"
                     size="sm"
                     className="h-8 text-sm text-destructive hover:text-destructive"
                     onClick={() => {
-                      void deleteSubscription(sub.id).then(() => toast.success('Device removed'));
+                      void deleteSubscription(sub.id).then(() => toast.success(t`Device removed`));
                     }}
                   >
-                    Unsubscribe this device
+                    <Trans>Unsubscribe this device</Trans>
                   </Button>
                 </div>
               </div>
@@ -233,6 +248,8 @@ export function SettingsLocalSection({
   channels?: Channel[];
   className?: string;
 }) {
+  useLingui();
+
   const { distanceUnit, setDistanceUnit } = useDistanceUnit();
   const { renderRichPayloads, setRenderRichPayloads } = useRichPayloads();
   const { showPathHopWidth, setShowPathHopWidth } = usePathHopWidth();
@@ -302,19 +319,24 @@ export function SettingsLocalSection({
   return (
     <div className={className}>
       <p className="text-[0.8125rem] text-muted-foreground">
-        These settings apply only to this device/browser.
+        <Trans>These settings apply only to this device/browser.</Trans>
       </p>
 
       <div className="space-y-1">
-        <h3 className="text-base font-semibold tracking-tight">Color Scheme</h3>
+        <h3 className="text-base font-semibold tracking-tight">
+          <Trans>Color Scheme</Trans>
+        </h3>
         <ThemeSelector />
+        <LanguageSelector />
         <ThemePreview className="mt-6" />
       </div>
 
       <Separator />
 
       <div className="space-y-3">
-        <h3 className="text-base font-semibold tracking-tight">Local Label</h3>
+        <h3 className="text-base font-semibold tracking-tight">
+          <Trans>Local Label</Trans>
+        </h3>
         <div className="flex items-center gap-2">
           <Input
             value={localLabelText}
@@ -324,8 +346,8 @@ export function SettingsLocalSection({
               setLocalLabel(text, localLabelColor);
               onLocalLabelChange?.({ text, color: localLabelColor });
             }}
-            placeholder="e.g. Home Base, Field Radio 2"
-            aria-label="Local label text"
+            placeholder={t`e.g. Home Base, Field Radio 2`}
+            aria-label={t`Local label text`}
             className="flex-1"
           />
           <input
@@ -337,19 +359,21 @@ export function SettingsLocalSection({
               setLocalLabel(localLabelText, color);
               onLocalLabelChange?.({ text: localLabelText, color });
             }}
-            aria-label="Local label color"
+            aria-label={t`Local label color`}
             className="w-10 h-9 rounded border border-input cursor-pointer bg-transparent p-0.5"
           />
         </div>
         <p className="text-[0.8125rem] text-muted-foreground">
-          Display a colored banner at the top of the page to identify this instance.
+          <Trans>Display a colored banner at the top of the page to identify this instance.</Trans>
         </p>
       </div>
 
       <Separator />
 
       <div className="space-y-3">
-        <Label htmlFor="distance-units">Distance Units</Label>
+        <Label htmlFor="distance-units">
+          <Trans>Distance Units</Trans>
+        </Label>
         <select
           id="distance-units"
           value={distanceUnitDraft}
@@ -368,14 +392,16 @@ export function SettingsLocalSection({
           ))}
         </select>
         <p className="text-[0.8125rem] text-muted-foreground">
-          Controls how distances are shown throughout the app.
+          <Trans>Controls how distances are shown throughout the app.</Trans>
         </p>
       </div>
 
       <Separator />
 
       <div className="space-y-3">
-        <h3 className="text-base font-semibold tracking-tight">UI Tweaks</h3>
+        <h3 className="text-base font-semibold tracking-tight">
+          <Trans>UI Tweaks</Trans>
+        </h3>
 
         <div className="space-y-2">
           <div className="flex items-start gap-3 rounded-md border border-border/60 p-3">
@@ -386,10 +412,14 @@ export function SettingsLocalSection({
               className="mt-0.5"
             />
             <div className="space-y-1">
-              <Label htmlFor="reopen-last">Reopen Last Conversation</Label>
+              <Label htmlFor="reopen-last">
+                <Trans>Reopen Last Conversation</Trans>
+              </Label>
               <p className="text-[0.8125rem] text-muted-foreground">
-                Automatically reopen to the last-open channel or contact when the app loads to the
-                bare URL.
+                <Trans>
+                  Automatically reopen to the last-open channel or contact when the app loads to the
+                  bare URL.
+                </Trans>
               </p>
             </div>
           </div>
@@ -406,9 +436,13 @@ export function SettingsLocalSection({
               className="mt-0.5"
             />
             <div className="space-y-1">
-              <Label htmlFor="auto-focus-input">Auto-Focus Message Input</Label>
+              <Label htmlFor="auto-focus-input">
+                <Trans>Auto-Focus Message Input</Trans>
+              </Label>
               <p className="text-[0.8125rem] text-muted-foreground">
-                Place the cursor in the message input when switching conversations. Desktop only.
+                <Trans>
+                  Place the cursor in the message input when switching conversations. Desktop only.
+                </Trans>
               </p>
             </div>
           </div>
@@ -426,10 +460,14 @@ export function SettingsLocalSection({
               className="mt-0.5"
             />
             <div className="space-y-1">
-              <Label htmlFor="battery-percent">Show Battery Percentage</Label>
+              <Label htmlFor="battery-percent">
+                <Trans>Show Battery Percentage</Trans>
+              </Label>
               <p className="text-[0.8125rem] text-muted-foreground">
-                Display the radio&apos;s battery percentage in the status bar. Data updates every 60
-                seconds and may take up to a minute to appear after connecting.
+                <Trans>
+                  Display the radio&apos;s battery percentage in the status bar. Data updates every
+                  60 seconds and may take up to a minute to appear after connecting.
+                </Trans>
               </p>
             </div>
           </div>
@@ -447,10 +485,14 @@ export function SettingsLocalSection({
               className="mt-0.5"
             />
             <div className="space-y-1">
-              <Label htmlFor="battery-voltage">Show Battery Voltage</Label>
+              <Label htmlFor="battery-voltage">
+                <Trans>Show Battery Voltage</Trans>
+              </Label>
               <p className="text-[0.8125rem] text-muted-foreground">
-                Display the radio&apos;s battery voltage in the status bar (in mV). Data updates
-                every 60 seconds and may take up to a minute to appear after connecting.
+                <Trans>
+                  Display the radio&apos;s battery voltage in the status bar (in mV). Data updates
+                  every 60 seconds and may take up to a minute to appear after connecting.
+                </Trans>
               </p>
             </div>
           </div>
@@ -468,10 +510,14 @@ export function SettingsLocalSection({
               className="mt-0.5"
             />
             <div className="space-y-1">
-              <Label htmlFor="status-dot-pulse">Status Dot Glitters</Label>
+              <Label htmlFor="status-dot-pulse">
+                <Trans>Status Dot Glitters</Trans>
+              </Label>
               <p className="text-[0.8125rem] text-muted-foreground">
-                Flash the connection status dot in color as packets arrive: blue for channel, purple
-                for DM, cyan for advert, dark green for other.
+                <Trans>
+                  Flash the connection status dot in color as packets arrive: blue for channel,
+                  purple for DM, cyan for advert, dark green for other.
+                </Trans>
               </p>
             </div>
           </div>
@@ -490,16 +536,18 @@ export function SettingsLocalSection({
             />
             <div className="space-y-1">
               <Label htmlFor="render-rich-payloads">
-                Render MeshCore Open GIFs &amp; Reactions
+                <Trans>Render MeshCore Open GIFs &amp; Reactions</Trans>
               </Label>
               <p className="text-[0.8125rem] text-muted-foreground">
-                MeshCore Open clients send GIFs and emoji reactions as encoded text (e.g.{' '}
-                <code className="text-[0.75rem]">g:abc123</code> or{' '}
-                <code className="text-[0.75rem]">r:1a2b:05</code>). When enabled, these render as
-                the GIF image or reaction emoji instead of the raw text. Reactions show generically
-                (the emoji is not tied to a specific message). GIFs load from media.giphy.com, which
-                reaches outside your local network and exposes your IP to Giphy — so this is off by
-                default.
+                <Trans>
+                  MeshCore Open clients send GIFs and emoji reactions as encoded text (e.g.{' '}
+                  <code className="text-[0.75rem]">g:abc123</code> or{' '}
+                  <code className="text-[0.75rem]">r:1a2b:05</code>). When enabled, these render as
+                  the GIF image or reaction emoji instead of the raw text. Reactions show
+                  generically (the emoji is not tied to a specific message). GIFs load from
+                  media.giphy.com, which reaches outside your local network and exposes your IP to
+                  Giphy — so this is off by default.
+                </Trans>
               </p>
             </div>
           </div>
@@ -517,11 +565,15 @@ export function SettingsLocalSection({
               className="mt-0.5"
             />
             <div className="space-y-1">
-              <Label htmlFor="show-path-hop-width">Show Path Hop Width</Label>
+              <Label htmlFor="show-path-hop-width">
+                <Trans>Show Path Hop Width</Trans>
+              </Label>
               <p className="text-[0.8125rem] text-muted-foreground">
-                Append the per-hop identifier width to the hop-count badge on received messages —
-                e.g. <code className="text-[0.75rem]">(2 · 2B)</code> for a 2-hop path with 2-byte
-                hops. Direct (0-hop) messages show no width. Off by default.
+                <Trans>
+                  Append the per-hop identifier width to the hop-count badge on received messages —
+                  e.g. <code className="text-[0.75rem]">(2 · 2B)</code> for a 2-hop path with 2-byte
+                  hops. Direct (0-hop) messages show no width. Off by default.
+                </Trans>
               </p>
             </div>
           </div>
@@ -539,10 +591,14 @@ export function SettingsLocalSection({
                 className="mt-0.5"
               />
               <div className="space-y-1">
-                <Label htmlFor="text-replace">Replace as you Type</Label>
+                <Label htmlFor="text-replace">
+                  <Trans>Replace as you Type</Trans>
+                </Label>
                 <p className="text-[0.8125rem] text-muted-foreground">
-                  Automatically replace characters as you type in the message input. Define
-                  replacements as a JSON object mapping source strings to their replacements.
+                  <Trans>
+                    Automatically replace characters as you type in the message input. Define
+                    replacements as a JSON object mapping source strings to their replacements.
+                  </Trans>
                 </p>
               </div>
             </div>
@@ -561,13 +617,13 @@ export function SettingsLocalSection({
                     'w-full rounded-md border bg-background px-3 py-2 text-sm font-mono',
                     textReplaceError ? 'border-destructive' : 'border-input'
                   )}
-                  aria-label="Text replacement map (JSON)"
+                  aria-label={t`Text replacement map (JSON)`}
                   aria-invalid={textReplaceError ? true : undefined}
-                  aria-describedby={textReplaceError ? 'text-replace-error' : undefined}
+                  aria-describedby={textReplaceError ? `text-replace-error` : undefined}
                 />
                 {textReplaceError && (
                   <p id="text-replace-error" className="text-xs text-destructive" role="alert">
-                    {textReplaceError} Changes are not saved until this is resolved.
+                    <Trans>{textReplaceError} Changes are not saved until this is resolved.</Trans>
                   </p>
                 )}
                 <button
@@ -579,7 +635,7 @@ export function SettingsLocalSection({
                   }}
                   className="inline-flex h-8 items-center justify-center rounded-md border border-input px-3 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  Reset to Default
+                  <Trans>Reset to Default</Trans>
                 </button>
               </div>
             )}
@@ -587,7 +643,9 @@ export function SettingsLocalSection({
         </div>
 
         <div className="space-y-3">
-          <Label htmlFor="font-scale-input">Relative Font Size</Label>
+          <Label htmlFor="font-scale-input">
+            <Trans>Relative Font Size</Trans>
+          </Label>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <input
               type="range"
@@ -600,7 +658,7 @@ export function SettingsLocalSection({
               onTouchEnd={(event) => handleSliderCommit(Number(event.currentTarget.value))}
               onKeyUp={(event) => handleSliderCommit(Number(event.currentTarget.value))}
               onBlur={(event) => handleSliderCommit(Number(event.currentTarget.value))}
-              aria-label="Relative font size slider"
+              aria-label={t`Relative font size slider`}
               className="w-full accent-primary sm:flex-1"
             />
             <div className="flex items-center gap-2 sm:w-40">
@@ -644,7 +702,7 @@ export function SettingsLocalSection({
                   }
                   commitFontScale(parsed);
                 }}
-                aria-label="Relative font size percentage"
+                aria-label={t`Relative font size percentage`}
               />
               <span className="text-sm text-muted-foreground">%</span>
             </div>
@@ -654,12 +712,14 @@ export function SettingsLocalSection({
               className="inline-flex h-9 items-center justify-center rounded-md border border-input px-3 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
               disabled={fontScale === DEFAULT_FONT_SCALE}
             >
-              Reset
+              <Trans>Reset</Trans>
             </button>
           </div>
           <p className="text-[0.8125rem] text-muted-foreground">
-            Scales the app&apos;s typography for this browser only. The slider moves in 5% steps;
-            the number field accepts any value from 25% to 400%.
+            <Trans>
+              Scales the app&apos;s typography for this browser only. The slider moves in 5% steps;
+              the number field accepts any value from 25% to 400%.
+            </Trans>
           </p>
         </div>
       </div>
@@ -672,23 +732,25 @@ export function SettingsLocalSection({
 }
 
 function ThemePreview({ className }: { className?: string }) {
+  useLingui();
+
   const [showStyleRef, setShowStyleRef] = useState(false);
 
   return (
     <div className={`rounded-lg border border-border bg-card p-3 ${className ?? ''}`}>
       <p className="text-xs text-muted-foreground mb-3">
-        Preview alert, message, sidebar, and badge contrast for the selected theme.
+        <Trans>Preview alert, message, sidebar, and badge contrast for the selected theme.</Trans>
       </p>
 
       <div className="space-y-2">
         <PreviewBanner className="border border-status-connected/30 bg-status-connected/15 text-status-connected">
-          Connected preview: radio link healthy and syncing.
+          <Trans>Connected preview: radio link healthy and syncing.</Trans>
         </PreviewBanner>
         <PreviewBanner className="border border-warning/50 bg-warning/10 text-warning">
-          Warning preview: packet audit suggests missing history.
+          <Trans>Warning preview: packet audit suggests missing history.</Trans>
         </PreviewBanner>
         <PreviewBanner className="border border-destructive/30 bg-destructive/10 text-destructive">
-          Error preview: radio reconnect failed.
+          <Trans>Error preview: radio reconnect failed.</Trans>
         </PreviewBanner>
       </div>
 
@@ -707,7 +769,9 @@ function ThemePreview({ className }: { className?: string }) {
       </div>
 
       <div className="mt-4 rounded-md border border-border bg-background p-2">
-        <p className="mb-2 text-[0.6875rem] font-medium text-muted-foreground">Sidebar preview</p>
+        <p className="mb-2 text-[0.6875rem] font-medium text-muted-foreground">
+          <Trans>Sidebar preview</Trans>
+        </p>
         <div className="space-y-1">
           <PreviewSidebarRow
             active
@@ -719,11 +783,11 @@ function ThemePreview({ className }: { className?: string }) {
                 <Logs className="h-3.5 w-3.5" />
               </span>
             }
-            label="Packet Feed"
+            label={t`Packet Feed`}
           />
           <PreviewSidebarRow
             leading={<ContactAvatar name="Alice" publicKey={'ab'.repeat(32)} size={24} />}
-            label="Alice"
+            label={t`Alice`}
             badge={
               <span className="rounded-full bg-badge-unread/90 px-1.5 py-0.5 text-[0.625rem] font-semibold text-badge-unread-foreground">
                 3
@@ -732,7 +796,7 @@ function ThemePreview({ className }: { className?: string }) {
           />
           <PreviewSidebarRow
             leading={<ContactAvatar name="Mesh Ops" publicKey={'cd'.repeat(32)} size={24} />}
-            label="Mesh Ops"
+            label={t`Mesh Ops`}
             badge={
               <span className="rounded-full bg-badge-mention px-1.5 py-0.5 text-[0.625rem] font-semibold text-badge-mention-foreground">
                 @2
@@ -751,88 +815,94 @@ function ThemePreview({ className }: { className?: string }) {
         <ChevronRight
           className={cn('h-3.5 w-3.5 transition-transform', showStyleRef && 'rotate-90')}
         />
-        Canonical style reference
+        <Trans>Canonical style reference</Trans>
       </button>
 
       {showStyleRef && (
         <>
           {/* ── Text Hierarchy ── */}
-          <PreviewSection title="Text hierarchy">
+          <PreviewSection title={t`Text hierarchy`}>
             <div className="space-y-2">
               <PreviewTextRow
                 classes="text-xl font-semibold"
-                label="text-xl font-semibold"
+                label={t`text-xl font-semibold`}
                 desc="Hero / large data"
               />
               <PreviewTextRow
                 classes="text-lg font-semibold"
-                label="text-lg font-semibold"
+                label={t`text-lg font-semibold`}
                 desc="Sheet / dialog title"
               />
               <PreviewTextRow
                 classes="text-base font-semibold tracking-tight"
-                label="text-base font-semibold tracking-tight"
+                label={t`text-base font-semibold tracking-tight`}
                 desc="Section / group title"
               />
-              <PreviewTextRow classes="text-sm" label="text-sm" desc="Body text, form labels" />
+              <PreviewTextRow classes="text-sm" label={t`text-sm`} desc="Body text, form labels" />
               <PreviewTextRow
                 classes="text-[0.8125rem] text-muted-foreground"
-                label="text-[0.8125rem] text-muted-foreground"
+                label={t`text-[0.8125rem] text-muted-foreground`}
                 desc="Helper / description text"
               />
               <PreviewTextRow
                 classes="text-[0.6875rem] text-muted-foreground"
-                label="text-[0.6875rem] text-muted-foreground"
+                label={t`text-[0.6875rem] text-muted-foreground`}
                 desc="Metadata, timestamps"
               />
               <div>
                 <p className="text-[0.625rem] uppercase tracking-wider text-muted-foreground font-medium">
-                  Metadata Label
+                  <Trans>Metadata Label</Trans>
                 </p>
                 <p className="text-[0.625rem] text-muted-foreground/60 mt-0.5">
-                  text-[0.625rem] uppercase tracking-wider text-muted-foreground font-medium
+                  <Trans>
+                    text-[0.625rem] uppercase tracking-wider text-muted-foreground font-medium
+                  </Trans>
                 </p>
               </div>
             </div>
           </PreviewSection>
 
           {/* ── Mono Text ── */}
-          <PreviewSection title="Mono text">
+          <PreviewSection title={t`Mono text`}>
             <div className="space-y-1.5">
               <div>
                 <p className="text-xs font-mono text-muted-foreground">
-                  a1b2c3d4e5f6...7890abcdef01
+                  <Trans>a1b2c3d4e5f6...7890abcdef01</Trans>
                 </p>
                 <p className="text-[0.625rem] text-muted-foreground/60">
-                  text-xs font-mono — keys, identifiers
-                </p>
-              </div>
-              <div>
-                <p className="text-[0.6875rem] font-mono">1h 23m 45s uptime</p>
-                <p className="text-[0.625rem] text-muted-foreground/60">
-                  text-[0.6875rem] font-mono — metadata mono
+                  <Trans>text-xs font-mono — keys, identifiers</Trans>
                 </p>
               </div>
               <div>
-                <p className="text-sm font-mono">$ req_status_sync 0xA1B2...</p>
+                <p className="text-[0.6875rem] font-mono">
+                  <Trans>1h 23m 45s uptime</Trans>
+                </p>
                 <p className="text-[0.625rem] text-muted-foreground/60">
-                  text-sm font-mono — console / code
+                  <Trans>text-[0.6875rem] font-mono — metadata mono</Trans>
+                </p>
+              </div>
+              <div>
+                <p className="text-sm font-mono">
+                  <Trans>$ req_status_sync 0xA1B2...</Trans>
+                </p>
+                <p className="text-[0.625rem] text-muted-foreground/60">
+                  <Trans>text-sm font-mono — console / code</Trans>
                 </p>
               </div>
             </div>
           </PreviewSection>
 
           {/* ── Badges ── */}
-          <PreviewSection title="Badges and tags">
+          <PreviewSection title={t`Badges and tags`}>
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-[0.625rem] uppercase tracking-wider px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">
-                Hashtag
+                <Trans>Hashtag</Trans>
               </span>
               <span className="text-[0.625rem] uppercase tracking-wider px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">
-                Repeater
+                <Trans>Repeater</Trans>
               </span>
               <span className="text-[0.625rem] uppercase tracking-wider px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">
-                On Radio
+                <Trans>On Radio</Trans>
               </span>
               <span className="rounded-full bg-badge-unread/90 px-1.5 py-0.5 text-[0.625rem] font-semibold text-badge-unread-foreground">
                 3
@@ -842,30 +912,34 @@ function ThemePreview({ className }: { className?: string }) {
               </span>
             </div>
             <p className="text-[0.625rem] text-muted-foreground/60 mt-1.5">
-              Muted: bg-muted &middot; Primary: bg-primary/10 &middot; Unread/Mention: bg-badge-*
+              <Trans>
+                Muted: bg-muted &middot; Primary: bg-primary/10 &middot; Unread/Mention: bg-badge-*
+              </Trans>
             </p>
           </PreviewSection>
 
           {/* ── Buttons ── */}
-          <PreviewSection title="Buttons">
+          <PreviewSection title={t`Buttons`}>
             <div className="space-y-3">
               <div>
                 <p className="text-[0.625rem] text-muted-foreground/60 mb-1.5">
-                  Standard variants (size sm)
+                  <Trans>Standard variants (size sm)</Trans>
                 </p>
                 <div className="flex flex-wrap gap-1.5">
-                  <Button size="sm">Default</Button>
+                  <Button size="sm">
+                    <Trans>Default</Trans>
+                  </Button>
                   <Button size="sm" variant="outline">
-                    Outline
+                    <Trans>Outline</Trans>
                   </Button>
                   <Button size="sm" variant="secondary">
-                    Secondary
+                    <Trans>Secondary</Trans>
                   </Button>
                   <Button size="sm" variant="destructive">
-                    Destructive
+                    <Trans>Destructive</Trans>
                   </Button>
                   <Button size="sm" variant="ghost">
-                    Ghost
+                    <Trans>Ghost</Trans>
                   </Button>
                   <Button size="icon" variant="outline">
                     <Settings className="h-4 w-4" />
@@ -877,7 +951,7 @@ function ThemePreview({ className }: { className?: string }) {
               </div>
               <div>
                 <p className="text-[0.625rem] text-muted-foreground/60 mb-1.5">
-                  Semantic outline variants
+                  <Trans>Semantic outline variants</Trans>
                 </p>
                 <div className="flex flex-wrap gap-1.5">
                   <Button
@@ -885,27 +959,27 @@ function ThemePreview({ className }: { className?: string }) {
                     variant="outline"
                     className="border-destructive/50 text-destructive hover:bg-destructive/10"
                   >
-                    Danger
+                    <Trans>Danger</Trans>
                   </Button>
                   <Button
                     size="sm"
                     variant="outline"
                     className="border-warning/50 text-warning hover:bg-warning/10"
                   >
-                    Warning
+                    <Trans>Warning</Trans>
                   </Button>
                   <Button
                     size="sm"
                     variant="outline"
                     className="border-green-600/50 text-green-600 hover:bg-green-600/10"
                   >
-                    Success
+                    <Trans>Success</Trans>
                   </Button>
                 </div>
               </div>
               <div>
                 <p className="text-[0.625rem] text-muted-foreground/60 mb-1.5">
-                  Metric selector pills
+                  <Trans>Metric selector pills</Trans>
                 </p>
                 <div className="flex gap-1">
                   {['Voltage', 'Noise Floor', 'Packets'].map((label, i) => (
@@ -928,40 +1002,42 @@ function ThemePreview({ className }: { className?: string }) {
           </PreviewSection>
 
           {/* ── Clickable Text ── */}
-          <PreviewSection title="Clickable text">
+          <PreviewSection title={t`Clickable text`}>
             <div className="space-y-1.5">
               <span
                 role="button"
                 tabIndex={0}
                 className="text-xs font-mono text-muted-foreground cursor-pointer hover:text-primary transition-colors block"
               >
-                a1b2c3d4e5f6 (click to copy)
+                <Trans>a1b2c3d4e5f6 (click to copy)</Trans>
               </span>
               <span
                 role="button"
                 tabIndex={0}
                 className="text-sm cursor-pointer underline underline-offset-2 decoration-muted-foreground/50 hover:text-primary transition-colors"
               >
-                Underlined navigational link
+                <Trans>Underlined navigational link</Trans>
               </span>
             </div>
             <p className="text-[0.625rem] text-muted-foreground/60 mt-1.5">
-              cursor-pointer hover:text-primary transition-colors — use role=&quot;button&quot; +
-              tabIndex
+              <Trans>
+                cursor-pointer hover:text-primary transition-colors — use role=&quot;button&quot; +
+                tabIndex
+              </Trans>
             </p>
           </PreviewSection>
 
           {/* ── Inline Alerts ── */}
-          <PreviewSection title="Inline alerts">
+          <PreviewSection title={t`Inline alerts`}>
             <div className="space-y-1.5">
               <div className="rounded-md border border-info/30 bg-info/10 px-3 py-2 text-xs text-info">
-                Info: channel slot cache refreshed from radio.
+                <Trans>Info: channel slot cache refreshed from radio.</Trans>
               </div>
               <div className="rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning">
-                Warning: radio clock skew detected.
+                <Trans>Warning: radio clock skew detected.</Trans>
               </div>
               <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-                Error: post-connect setup timed out. Reboot the radio and restart.
+                <Trans>Error: post-connect setup timed out. Reboot the radio and restart.</Trans>
               </div>
             </div>
           </PreviewSection>
@@ -972,6 +1048,8 @@ function ThemePreview({ className }: { className?: string }) {
 }
 
 function PreviewSection({ title, children }: { title: string; children: React.ReactNode }) {
+  useLingui();
+
   return (
     <div className="mt-4 rounded-md border border-border bg-background p-2">
       <p className="mb-2 text-[0.6875rem] font-medium text-muted-foreground">{title}</p>
@@ -989,9 +1067,13 @@ function PreviewTextRow({
   label: string;
   desc: string;
 }) {
+  useLingui();
+
   return (
     <div>
-      <p className={classes}>Sample text at this size</p>
+      <p className={classes}>
+        <Trans>Sample text at this size</Trans>
+      </p>
       <p className="text-[0.625rem] text-muted-foreground/60">
         {label} — {desc}
       </p>
@@ -1000,6 +1082,8 @@ function PreviewTextRow({
 }
 
 function PreviewBanner({ children, className }: { children: React.ReactNode; className: string }) {
+  useLingui();
+
   return <div className={`rounded-md px-3 py-2 text-xs ${className}`}>{children}</div>;
 }
 
@@ -1014,6 +1098,8 @@ function PreviewMessage({
   bubbleClassName: string;
   alignRight?: boolean;
 }) {
+  useLingui();
+
   return (
     <div className={`flex ${alignRight ? 'justify-end' : 'justify-start'}`}>
       <div className={`max-w-[85%] ${alignRight ? 'items-end' : 'items-start'} flex flex-col`}>
@@ -1035,9 +1121,11 @@ function PreviewSidebarRow({
   badge?: React.ReactNode;
   active?: boolean;
 }) {
+  useLingui();
+
   return (
     <div
-      data-active={active ? 'true' : undefined}
+      data-active={active ? `true` : undefined}
       className={`sidebar-action-row flex items-center gap-2 rounded-md border-l-2 px-3 py-2 text-[0.8125rem] ${
         active ? 'border-l-primary bg-accent text-foreground' : 'border-l-transparent'
       }`}

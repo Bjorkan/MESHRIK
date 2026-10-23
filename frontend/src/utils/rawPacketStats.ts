@@ -1,3 +1,4 @@
+import { getLocale } from '@/i18n';
 import { MeshCoreDecoder, PayloadType, Utils } from '@michaelhart/meshcore-decoder';
 
 import type { RawPacket } from '../types';
@@ -300,7 +301,7 @@ function median(values: number[]): number | null {
 }
 
 function formatTimelineLabel(timestamp: number): string {
-  return new Date(timestamp * 1000).toLocaleTimeString([], {
+  return new Date(timestamp * 1000).toLocaleTimeString(getLocale(), {
     hour: '2-digit',
     minute: '2-digit',
   });

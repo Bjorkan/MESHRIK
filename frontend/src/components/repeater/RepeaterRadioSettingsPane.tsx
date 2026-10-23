@@ -1,3 +1,6 @@
+import { Trans } from '@lingui/react/macro';
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
 import { cn } from '@/lib/utils';
 import { Separator } from '../ui/separator';
 import {
@@ -59,34 +62,38 @@ export function RadioSettingsPane({
   advertState: PaneState;
   onRefreshAdvert: () => void;
 }) {
+  useLingui();
+
   const formattedRadio = formatRadioTuple(data?.radio ?? null);
 
   return (
-    <RepeaterPane title="Radio Settings" state={state} onRefresh={onRefresh} disabled={disabled}>
+    <RepeaterPane title={t`Radio Settings`} state={state} onRefresh={onRefresh} disabled={disabled}>
       {!data ? (
         <NotFetched />
       ) : (
         <div>
-          <KvRow label="Firmware" value={data.firmware_version ?? '—'} />
+          <KvRow label={t`Firmware`} value={data.firmware_version ?? '—'} />
           <KvRow
-            label="Radio"
+            label={t`Radio`}
             value={<span title={formattedRadio.raw ?? undefined}>{formattedRadio.display}</span>}
           />
-          <KvRow label="TX Power" value={data.tx_power != null ? `${data.tx_power} dBm` : '—'} />
-          <KvRow label="Airtime Factor" value={data.airtime_factor ?? '—'} />
+          <KvRow label={t`TX Power`} value={data.tx_power != null ? `${data.tx_power} dBm` : '—'} />
+          <KvRow label={t`Airtime Factor`} value={data.airtime_factor ?? '—'} />
           {/* Duty cycle limit is firmware >= 1.15 only; omit the row entirely on
               older nodes rather than showing an empty placeholder. */}
           {data.duty_cycle_limit != null && (
-            <KvRow label="Duty Cycle Limit" value={data.duty_cycle_limit} />
+            <KvRow label={t`Duty Cycle Limit`} value={data.duty_cycle_limit} />
           )}
-          <KvRow label="Repeat Mode" value={data.repeat_enabled ?? '—'} />
-          <KvRow label="Max Flood Hops" value={data.flood_max ?? '—'} />
+          <KvRow label={t`Repeat Mode`} value={data.repeat_enabled ?? '—'} />
+          <KvRow label={t`Max Flood Hops`} value={data.flood_max ?? '—'} />
         </div>
       )}
       {/* Advert Intervals sub-section */}
       <Separator className="my-2" />
       <div className="flex items-center justify-between mb-1">
-        <span className="text-xs font-medium text-muted-foreground">Advert Intervals</span>
+        <span className="text-xs font-medium text-muted-foreground">
+          <Trans>Advert Intervals</Trans>
+        </span>
         <button
           type="button"
           onClick={onRefreshAdvert}
@@ -97,8 +104,8 @@ export function RadioSettingsPane({
               ? 'text-muted-foreground'
               : 'text-success hover:bg-accent hover:text-success'
           )}
-          title="Refresh Advert Intervals"
-          aria-label="Refresh Advert Intervals"
+          title={t`Refresh Advert Intervals`}
+          aria-label={t`Refresh Advert Intervals`}
         >
           <RefreshIcon
             className={cn(
@@ -111,18 +118,20 @@ export function RadioSettingsPane({
       {advertState.error && <p className="text-xs text-destructive mb-1">{advertState.error}</p>}
       {advertState.loading ? (
         <p className="text-sm text-muted-foreground italic">
-          Fetching{advertState.attempt > 1 ? ` (attempt ${advertState.attempt}/3)` : ''}...
+          <Trans>
+            Fetching{advertState.attempt > 1 ? ` (attempt ${advertState.attempt}/3)` : ''}...
+          </Trans>
         </p>
       ) : !advertData ? (
         <NotFetched />
       ) : (
         <div>
           <KvRow
-            label="Local Advert"
+            label={t`Local Advert`}
             value={formatAdvertInterval(advertData.advert_interval, 'minutes')}
           />
           <KvRow
-            label="Flood Advert"
+            label={t`Flood Advert`}
             value={formatAdvertInterval(advertData.flood_advert_interval)}
           />
         </div>

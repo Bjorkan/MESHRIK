@@ -1,3 +1,7 @@
+import { Trans } from '@lingui/react/macro';
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
+import { getLocale } from '@/i18n';
 import { Fragment, useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import MapLibreMap, {
   Layer,
@@ -52,11 +56,46 @@ const MAP_REPEATER_RING = '#f8fafc';
 // Relative presets mirror the marker recency legend so the chips and the dot
 // colors describe the same buckets. `seconds: null` means "no lower bound".
 const MAP_SINCE_PRESETS = [
-  { id: '1h', label: '<1h', windowLabel: '1 hour', seconds: 3600 },
-  { id: '1d', label: '<1d', windowLabel: '24 hours', seconds: 24 * 60 * 60 },
-  { id: '3d', label: '<3d', windowLabel: '3 days', seconds: 3 * 24 * 60 * 60 },
-  { id: '7d', label: '7d', windowLabel: '7 days', seconds: 7 * 24 * 60 * 60 },
-  { id: 'all', label: 'All', windowLabel: null, seconds: null },
+  {
+    id: '1h',
+    get label() {
+      return t`<1h`;
+    },
+    windowLabel: '1 hour',
+    seconds: 3600,
+  },
+  {
+    id: '1d',
+    get label() {
+      return t`<1d`;
+    },
+    windowLabel: '24 hours',
+    seconds: 24 * 60 * 60,
+  },
+  {
+    id: '3d',
+    get label() {
+      return t`<3d`;
+    },
+    windowLabel: '3 days',
+    seconds: 3 * 24 * 60 * 60,
+  },
+  {
+    id: '7d',
+    get label() {
+      return t`7d`;
+    },
+    windowLabel: '7 days',
+    seconds: 7 * 24 * 60 * 60,
+  },
+  {
+    id: 'all',
+    get label() {
+      return t`All`;
+    },
+    windowLabel: null,
+    seconds: null,
+  },
 ] as const;
 
 type MapSinceId = (typeof MAP_SINCE_PRESETS)[number]['id'] | 'custom';
@@ -203,6 +242,8 @@ function MapBoundsHandler({
   contacts: Contact[];
   focusedContact: Contact | null;
 }) {
+  useLingui();
+
   const hasInitialized = useRef(false);
 
   useEffect(() => {
@@ -270,6 +311,8 @@ function ParticleOverlay({
   mapRef: React.RefObject<MapRef | null>;
   particles: MapParticle[];
 }) {
+  useLingui();
+
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const animRef = useRef<number>(0);
 
@@ -433,6 +476,8 @@ export function MapView({
   blockedNames,
   onSelectContact,
 }: MapViewProps) {
+  useLingui();
+
   const mapRef = useRef<MapRef>(null);
   const rawPackets = useRawPackets();
   const [sinceId, setSinceId] = useState<MapSinceId>(getSavedSinceId);
@@ -735,7 +780,7 @@ export function MapView({
     if (sinceId === 'custom') {
       return sinceCutoffSec == null
         ? 'at any time'
-        : `since ${new Date(sinceCutoffSec * 1000).toLocaleString()}`;
+        : `since ${new Date(sinceCutoffSec * 1000).toLocaleString(getLocale())}`;
     }
     if (!activeSincePreset || activeSincePreset.windowLabel == null) return 'at any time';
     return `in the last ${activeSincePreset.windowLabel}`;
@@ -763,7 +808,7 @@ export function MapView({
             <div
               className="flex flex-wrap items-center gap-x-3 gap-y-1"
               role="group"
-              aria-label="Marker recency legend"
+              aria-label={t`Marker recency legend`}
             >
               <span className="flex items-center gap-1">
                 <span
@@ -771,7 +816,7 @@ export function MapView({
                   style={{ backgroundColor: MAP_RECENCY_COLORS.recent }}
                   aria-hidden="true"
                 />{' '}
-                &lt;1h
+                <Trans>&lt;1h</Trans>
               </span>
               <span className="flex items-center gap-1">
                 <span
@@ -779,7 +824,7 @@ export function MapView({
                   style={{ backgroundColor: MAP_RECENCY_COLORS.today }}
                   aria-hidden="true"
                 />{' '}
-                &lt;1d
+                <Trans>&lt;1d</Trans>
               </span>
               <span className="flex items-center gap-1">
                 <span
@@ -787,7 +832,7 @@ export function MapView({
                   style={{ backgroundColor: MAP_RECENCY_COLORS.stale }}
                   aria-hidden="true"
                 />{' '}
-                &lt;3d
+                <Trans>&lt;3d</Trans>
               </span>
               <span className="flex items-center gap-1">
                 <span
@@ -795,7 +840,7 @@ export function MapView({
                   style={{ backgroundColor: MAP_RECENCY_COLORS.old }}
                   aria-hidden="true"
                 />{' '}
-                older
+                <Trans>older</Trans>
               </span>
             </div>
           )}
@@ -807,7 +852,7 @@ export function MapView({
                   style={{ backgroundColor: PARTICLE_COLOR_MAP['AD'] }}
                   aria-hidden="true"
                 />
-                Ad
+                <Trans>Ad</Trans>
               </span>
               <span className="flex items-center gap-1">
                 <span
@@ -815,7 +860,7 @@ export function MapView({
                   style={{ backgroundColor: PARTICLE_COLOR_MAP['GT'] }}
                   aria-hidden="true"
                 />
-                Ch
+                <Trans>Ch</Trans>
               </span>
               <span className="flex items-center gap-1">
                 <span
@@ -823,7 +868,7 @@ export function MapView({
                   style={{ backgroundColor: PARTICLE_COLOR_MAP['DM'] }}
                   aria-hidden="true"
                 />
-                DM
+                <Trans>DM</Trans>
               </span>
               <span className="flex items-center gap-1">
                 <span
@@ -831,7 +876,7 @@ export function MapView({
                   style={{ backgroundColor: PARTICLE_COLOR_MAP['ACK'] }}
                   aria-hidden="true"
                 />
-                ACK
+                <Trans>ACK</Trans>
               </span>
             </>
           )}
@@ -841,7 +886,7 @@ export function MapView({
               style={{ borderColor: MAP_REPEATER_RING, backgroundColor: MAP_RECENCY_COLORS.today }}
               aria-hidden="true"
             />{' '}
-            repeater
+            <Trans>repeater</Trans>
           </span>
           {/* "Heard since" filter. Hidden in discovery mode, which selects
               nodes by live traffic rather than by recency. */}
@@ -849,9 +894,11 @@ export function MapView({
             <div
               className="flex flex-wrap items-center gap-1"
               role="group"
-              aria-label="Show nodes heard since"
+              aria-label={t`Show nodes heard since`}
             >
-              <span className="text-[0.6875rem] text-muted-foreground">Since</span>
+              <span className="text-[0.6875rem] text-muted-foreground">
+                <Trans>Since</Trans>
+              </span>
               {MAP_SINCE_PRESETS.map((preset) => (
                 <button
                   key={preset.id}
@@ -879,7 +926,7 @@ export function MapView({
                     : 'bg-muted hover:bg-accent'
                 )}
               >
-                Custom
+                <Trans>Custom</Trans>
               </button>
               {sinceId === 'custom' && (
                 <>
@@ -887,7 +934,7 @@ export function MapView({
                     type="datetime-local"
                     value={customSince}
                     onChange={(e) => setCustomSince(e.target.value)}
-                    aria-label="Show nodes heard since (local time)"
+                    aria-label={t`Show nodes heard since (local time)`}
                     className="rounded border border-input bg-background px-1.5 py-0.5 text-[0.6875rem] text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   />
                   {customSince && (
@@ -896,7 +943,7 @@ export function MapView({
                       onClick={() => setCustomSince('')}
                       className="rounded px-1.5 py-0.5 text-[0.625rem] uppercase tracking-wider bg-muted hover:bg-accent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
-                      Clear
+                      <Trans>Clear</Trans>
                     </button>
                   )}
                 </>
@@ -910,7 +957,9 @@ export function MapView({
               onChange={(e) => setShowPackets(e.target.checked)}
               className="rounded border-border"
             />
-            <span className="text-[0.6875rem]">Visualize packets</span>
+            <span className="text-[0.6875rem]">
+              <Trans>Visualize packets</Trans>
+            </span>
           </label>
           {showPackets && (
             <label className="flex items-center gap-1.5 cursor-pointer">
@@ -920,7 +969,9 @@ export function MapView({
                 onChange={(e) => setDiscoveryMode(e.target.checked)}
                 className="rounded border-border"
               />
-              <span className="text-[0.6875rem]">Discover nodes</span>
+              <span className="text-[0.6875rem]">
+                <Trans>Discover nodes</Trans>
+              </span>
             </label>
           )}
         </div>
@@ -931,7 +982,7 @@ export function MapView({
         className="flex-1 relative"
         style={{ zIndex: 0 }}
         role="img"
-        aria-label="Map showing mesh node locations"
+        aria-label={t`Map showing mesh node locations`}
       >
         <MapLibreMap
           ref={mapRef}
@@ -1007,7 +1058,7 @@ export function MapView({
                       opacity: 0.9,
                     }}
                     onClick={() => setOpenPopupKey(contact.public_key)}
-                    aria-label={`Show ${displayName} on map`}
+                    aria-label={t`Show ${displayName} on map`}
                   />
                 </Marker>
                 {popupOpen && (
@@ -1022,7 +1073,7 @@ export function MapView({
                     <div className="text-sm">
                       <div className="font-medium flex items-center gap-1">
                         {isRepeater && (
-                          <span title="Repeater" aria-hidden="true">
+                          <span title={t`Repeater`} aria-hidden="true">
                             🛜
                           </span>
                         )}
@@ -1034,7 +1085,7 @@ export function MapView({
                               event.stopPropagation();
                               onSelectContact(contact);
                             }}
-                            title={`Open conversation with ${displayName}`}
+                            title={t`Open conversation with ${displayName}`}
                           >
                             {displayName}
                           </button>
@@ -1042,7 +1093,9 @@ export function MapView({
                           displayName
                         )}
                       </div>
-                      <div className="text-xs text-gray-500 mt-1">Last heard: {lastHeardLabel}</div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        <Trans>Last heard: {lastHeardLabel}</Trans>
+                      </div>
                       <div className="text-xs text-gray-400 mt-1 font-mono">
                         {contact.lat!.toFixed(5)}, {contact.lon!.toFixed(5)}
                       </div>
@@ -1056,14 +1109,18 @@ export function MapView({
           {showPackets && <ParticleOverlay mapRef={mapRef} particles={particles} />}
         </MapLibreMap>
         <label className="absolute left-2 top-2 z-10 rounded bg-background/95 px-2 py-1 text-xs shadow">
-          <span className="sr-only">Map style</span>
+          <span className="sr-only">
+            <Trans>Map style</Trans>
+          </span>
           <select
-            aria-label="Map style"
+            aria-label={t`Map style`}
             value={selectedLayerId}
             onChange={(event) => setMapStyle(event.target.value)}
             className="bg-transparent text-foreground outline-none"
           >
-            <option value={MAP_STYLE_AUTO_ID}>Auto (app theme)</option>
+            <option value={MAP_STYLE_AUTO_ID}>
+              <Trans>Auto (app theme)</Trans>
+            </option>
             {MAP_STYLES.map((style) => (
               <option key={style.id} value={style.id}>
                 {style.label}

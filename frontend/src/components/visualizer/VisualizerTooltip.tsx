@@ -1,3 +1,6 @@
+import { Trans } from '@lingui/react/macro';
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
 import type { PacketNetworkNode } from '../../networkGraph/packetNetworkGraph';
 import { formatRelativeTime } from './shared';
 
@@ -14,6 +17,8 @@ export function VisualizerTooltip({
   canonicalNeighborIds,
   renderedNodeIds,
 }: VisualizerTooltipProps) {
+  useLingui();
+
   if (!activeNodeId) return null;
 
   const node = canonicalNodes.get(activeNodeId);
@@ -39,36 +44,54 @@ export function VisualizerTooltip({
     <div className="absolute top-4 right-4 bg-background/90 backdrop-blur-sm rounded-lg p-3 text-xs border border-border z-10 max-w-72 max-h-[calc(100%-2rem)] overflow-y-auto">
       <div className="flex flex-col gap-1">
         <div className="font-medium">
-          {node.name || (node.type === 'self' ? 'Me' : node.id.slice(0, 8))}
+          {node.name || (node.type === 'self' ? t`Me` : node.id.slice(0, 8))}
         </div>
-        <div className="text-muted-foreground">ID: {node.id}</div>
         <div className="text-muted-foreground">
-          Type: {node.type}
-          {node.isAmbiguous ? ' (ambiguous)' : ''}
+          <Trans>ID: {node.id}</Trans>
+        </div>
+        <div className="text-muted-foreground">
+          <Trans>
+            Type: {node.type}
+            {node.isAmbiguous ? ' (ambiguous)' : ''}
+          </Trans>
         </div>
         {node.probableIdentity && (
-          <div className="text-muted-foreground">Probably: {node.probableIdentity}</div>
+          <div className="text-muted-foreground">
+            <Trans>Probably: {node.probableIdentity}</Trans>
+          </div>
         )}
         {node.ambiguousNames && node.ambiguousNames.length > 0 && (
           <div className="text-muted-foreground">
-            {node.probableIdentity ? 'Other possible: ' : 'Possible: '}
+            {node.probableIdentity ? t`Other possible: ` : t`Possible: `}
             {node.ambiguousNames.join(', ')}
           </div>
         )}
         {node.type !== 'self' && (
           <div className="text-muted-foreground border-t border-border pt-1 mt-1">
-            <div>Last active: {formatRelativeTime(node.lastActivity)}</div>
-            {node.lastActivityReason && <div>Reason: {node.lastActivityReason}</div>}
+            <div>
+              <Trans>Last active: {formatRelativeTime(node.lastActivity)}</Trans>
+            </div>
+            {node.lastActivityReason && (
+              <div>
+                <Trans>Reason: {node.lastActivityReason}</Trans>
+              </div>
+            )}
           </div>
         )}
         {neighbors.length > 0 && (
           <div className="text-muted-foreground border-t border-border pt-1 mt-1">
-            <div className="mb-0.5">Traffic exchanged with:</div>
+            <div className="mb-0.5">
+              <Trans>Traffic exchanged with:</Trans>
+            </div>
             <ul className="pl-3 flex flex-col gap-0.5">
               {neighbors.map((neighbor) => (
                 <li key={neighbor.id}>
                   {neighbor.name}
-                  {neighbor.hidden && <span className="text-muted-foreground/60"> (hidden)</span>}
+                  {neighbor.hidden && (
+                    <span className="text-muted-foreground/60">
+                      <Trans> (hidden)</Trans>
+                    </span>
+                  )}
                   {neighbor.ambiguousNames && neighbor.ambiguousNames.length > 0 && (
                     <span className="text-muted-foreground/60">
                       {' '}

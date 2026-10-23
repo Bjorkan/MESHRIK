@@ -1,3 +1,5 @@
+import { Trans } from '@lingui/react/macro';
+import { useLingui } from '@lingui/react';
 import type { HealthStatus } from '../../types';
 import { Separator } from '../ui/separator';
 
@@ -10,6 +12,8 @@ export function SettingsAboutSection({
   health?: HealthStatus | null;
   className?: string;
 }) {
+  useLingui();
+
   const version = health?.app_info?.version ?? 'unknown';
   const commit = health?.app_info?.commit_hash;
 
@@ -18,9 +22,12 @@ export function SettingsAboutSection({
       <div className="space-y-6">
         {/* Version */}
         <div className="text-center space-y-1">
-          <h3 className="text-lg font-semibold">MESHRIK for MeshCore</h3>
+          <h3 className="text-lg font-semibold">
+            <Trans>MESHRIK for MeshCore</Trans>
+          </h3>
           <div className="text-sm text-muted-foreground">
-            v{version}
+            <Trans>v</Trans>
+            {version}
             {commit ? (
               <>
                 <span className="mx-1.5">·</span>
@@ -37,46 +44,52 @@ export function SettingsAboutSection({
         {/* Author & License */}
         <div className="text-sm text-center space-y-2">
           <p>
-            MESHRIK is maintained by{' '}
-            <a
-              href="https://github.com/Bjorkan"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary hover:underline"
-            >
-              Bjorkan
-            </a>
-            . Originally created with love and open source by{' '}
-            <a
-              href="https://jacksbrain.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary hover:underline"
-            >
-              Jack Kingsman
-            </a>
+            <Trans>
+              MESHRIK is maintained by{' '}
+              <a
+                href="https://github.com/Bjorkan"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline"
+              >
+                Bjorkan
+              </a>
+              . Originally created with love and open source by{' '}
+              <a
+                href="https://jacksbrain.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline"
+              >
+                Jack Kingsman
+              </a>
+            </Trans>
           </p>
           <p>
-            Licensed under the{' '}
-            <a
-              href={`${GITHUB_URL}/blob/main/LICENSE.md`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary hover:underline"
-            >
-              MIT License
-            </a>
+            <Trans>
+              Licensed under the{' '}
+              <a
+                href={`${GITHUB_URL}/blob/main/LICENSE.md`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline"
+              >
+                MIT License
+              </a>
+            </Trans>
           </p>
           <p>
-            This code is free and ad-free. If you appreciate the original work,{' '}
-            <a
-              href="https://ko-fi.com/jackkingsman"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary hover:underline"
-            >
-              buy me a coffee!
-            </a>
+            <Trans>
+              This code is free and ad-free. If you appreciate the original work,{' '}
+              <a
+                href="https://ko-fi.com/jackkingsman"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline"
+              >
+                buy me a coffee!
+              </a>
+            </Trans>
           </p>
         </div>
 
@@ -90,7 +103,7 @@ export function SettingsAboutSection({
             rel="noopener noreferrer"
             className="text-primary hover:underline"
           >
-            GitHub
+            <Trans>GitHub</Trans>
           </a>
           <a
             href={`${GITHUB_URL}/issues`}
@@ -98,7 +111,7 @@ export function SettingsAboutSection({
             rel="noopener noreferrer"
             className="text-primary hover:underline"
           >
-            Report a Bug
+            <Trans>Report a Bug</Trans>
           </a>
           <a
             href={`${GITHUB_URL}/blob/main/CHANGELOG.md`}
@@ -106,7 +119,7 @@ export function SettingsAboutSection({
             rel="noopener noreferrer"
             className="text-primary hover:underline"
           >
-            Changelog
+            <Trans>Changelog</Trans>
           </a>
         </div>
 
@@ -114,7 +127,11 @@ export function SettingsAboutSection({
 
         {/* Acknowledgements */}
         <div className="text-sm text-center text-muted-foreground space-y-2">
-          <p>With great appreciation to those who have made the tools upon which this is built:</p>
+          <p>
+            <Trans>
+              With great appreciation to those who have made the tools upon which this is built:
+            </Trans>
+          </p>
           <p>
             <a
               href="https://github.com/meshcore-dev/MeshCore"
@@ -122,7 +139,7 @@ export function SettingsAboutSection({
               rel="noopener noreferrer"
               className="text-primary hover:underline"
             >
-              MeshCore
+              <Trans>MeshCore</Trans>
             </a>
             <span className="mx-1.5">·</span>
             <a
@@ -131,7 +148,7 @@ export function SettingsAboutSection({
               rel="noopener noreferrer"
               className="text-primary hover:underline"
             >
-              meshcore_py
+              <Trans>meshcore_py</Trans>
             </a>
           </p>
         </div>
@@ -145,7 +162,7 @@ export function SettingsAboutSection({
             rel="noopener noreferrer"
             className="text-xs text-muted-foreground hover:text-primary hover:underline"
           >
-            Open debug support snapshot
+            <Trans>Open debug support snapshot</Trans>
           </a>
         </div>
       </div>

@@ -1,3 +1,4 @@
+import { t } from '@lingui/core/macro';
 import {
   useCallback,
   useImperativeHandle,
@@ -71,10 +72,10 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(fu
         form.reset();
       } catch (err) {
         console.error('Failed to send message:', err);
-        const description = err instanceof Error ? err.message : 'Check radio connection';
+        const description = err instanceof Error ? err.message : t`Check radio connection`;
         const isRadioNoResponse =
           err instanceof Error && err.message.toLowerCase().includes(RADIO_NO_RESPONSE_SNIPPET);
-        toast.error(isRadioNoResponse ? 'Radio did not confirm send' : 'Failed to send message', {
+        toast.error(isRadioNoResponse ? t`Radio did not confirm send` : t`Failed to send message`, {
           description,
         });
         return;
@@ -224,7 +225,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(fu
         <textarea
           ref={textareaRef}
           name="chat-message-input"
-          aria-label={placeholder || 'Type a message'}
+          aria-label={placeholder || t`Type a message`}
           data-lpignore="true"
           data-1p-ignore="true"
           data-bwignore="true"
@@ -232,7 +233,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(fu
           value={text}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
-          placeholder={placeholder || 'Type a message...'}
+          placeholder={placeholder || t`Type a message...`}
           aria-invalid={limitState === 'error'}
           disabled={disabled || sending}
           className={cn(
@@ -248,7 +249,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(fu
           disabled={disabled || sending || !canSubmit}
           className="flex-shrink-0"
         >
-          {sending ? 'Sending...' : 'Send'}
+          {sending ? t`Sending...` : t`Send`}
         </Button>
       </div>
       {showCharCounter && (

@@ -115,6 +115,23 @@ Commit both `frontend/openapi/openapi.json` and
 checked-in artifacts are stale; CI runs that check on every push and pull request. WebSocket payloads
 remain governed separately by `app/events.py` and `frontend/src/wsEvents.ts`.
 
+### Frontend translations
+
+Frontend copy is extracted with Lingui. Use `<Trans>` for JSX, the `t` macro for attributes and
+imperative messages, and `getLocale()` for date and number formatting. Do not translate protocol
+values, API payloads, CSS classes, user-authored content, or radio data. After changing visible
+copy, regenerate and commit the catalogs:
+
+```bash
+cd frontend
+npm run i18n:update
+npm run i18n:compile
+npm run i18n:check
+```
+
+Keep the English source catalog complete. A language PR must translate the full catalog and pass
+strict compilation so a partially translated interface cannot be presented as complete.
+
 ### Schema-based API checks
 
 `tests/test_openapi_contract.py` runs a bounded Schemathesis profile in process. It uses the same

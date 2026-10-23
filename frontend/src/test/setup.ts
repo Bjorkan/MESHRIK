@@ -1,4 +1,35 @@
 import '@testing-library/jest-dom/vitest';
+import { createElement } from 'react';
+import { I18nProvider } from '@lingui/react';
+import { i18n } from '../i18n';
+import { vi, beforeEach } from 'vitest';
+
+// Exercise the real provider/catalog, while keeping pre-existing English assertions deterministic.
+vi.mock('@testing-library/react', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@testing-library/react')>();
+  const withLanguage = (Wrapper?: React.ComponentType<{ children: React.ReactNode }>) =>
+    function TestLanguageProvider({ children }: { children: React.ReactNode }) {
+      return createElement(
+        I18nProvider,
+        { i18n },
+        Wrapper ? createElement(Wrapper, null, children) : children
+      );
+    };
+  return {
+    ...actual,
+    render: (
+      ui: Parameters<typeof actual.render>[0],
+      options: Parameters<typeof actual.render>[1] = {}
+    ) => actual.render(ui, { ...options, wrapper: withLanguage(options.wrapper) }),
+    renderHook: (
+      callback: (props: unknown) => unknown,
+      options: { wrapper?: React.ComponentType<{ children: React.ReactNode }> } = {}
+    ) => actual.renderHook(callback, { ...options, wrapper: withLanguage(options.wrapper) }),
+  };
+});
+beforeEach(() => {
+  if (i18n.locale !== 'en') i18n.activate('en');
+});
 
 // Node 26 exposes an experimental global `localStorage` that evaluates to
 // undefined unless the process is started with --localstorage-file. Define a

@@ -16,6 +16,7 @@ frontend/test-results/
 frontend/dist/
 frontend/prebuilt/
 frontend/.eslintcache
+frontend/src/locales/*/messages.js
 
 # Release artifacts
 meshrik-prebuilt-frontend-v*.zip

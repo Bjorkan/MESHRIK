@@ -1,3 +1,6 @@
+import { Trans } from '@lingui/react/macro';
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
 import { RepeaterPane, NotFetched } from './repeaterPaneShared';
 import { cn } from '@/lib/utils';
 import type { RepeaterRegionsResponse, PaneState } from '../../types';
@@ -13,6 +16,8 @@ export function RegionsPane({
   onRefresh: () => void;
   disabled?: boolean;
 }) {
+  useLingui();
+
   const headerNote = data?.truncated
     ? 'List truncated by the radio — showing the first regions only'
     : data?.source === 'anon'
@@ -21,7 +26,7 @@ export function RegionsPane({
 
   return (
     <RepeaterPane
-      title="Regions"
+      title={t`Regions`}
       state={state}
       onRefresh={onRefresh}
       disabled={disabled}
@@ -31,8 +36,10 @@ export function RegionsPane({
         <NotFetched />
       ) : data.regions.length === 0 ? (
         <p className="text-sm text-muted-foreground italic">
-          No regions returned. The repeater may be unreachable, or full region details require admin
-          access.
+          <Trans>
+            No regions returned. The repeater may be unreachable, or full region details require
+            admin access.
+          </Trans>
         </p>
       ) : (
         <div className="space-y-0.5">
@@ -43,11 +50,11 @@ export function RegionsPane({
               style={{ paddingLeft: `${region.depth * 0.9}rem` }}
             >
               <span className="font-mono truncate">
-                {region.name === '*' ? '∗ (all regions)' : region.name}
+                {region.name === '*' ? t`∗ (all regions)` : region.name}
               </span>
               {region.is_home && (
                 <span className="text-[0.625rem] uppercase tracking-wider px-1.5 py-0.5 rounded bg-primary/10 text-primary">
-                  Home
+                  <Trans>Home</Trans>
                 </span>
               )}
               <span
@@ -59,11 +66,11 @@ export function RegionsPane({
                 )}
                 title={
                   region.flood_allowed
-                    ? 'Flood is allowed for this region'
-                    : 'Flood is blocked for this region'
+                    ? t`Flood is allowed for this region`
+                    : t`Flood is blocked for this region`
                 }
               >
-                {region.flood_allowed ? 'Flood' : 'Blocked'}
+                {region.flood_allowed ? t`Flood` : t`Blocked`}
               </span>
             </div>
           ))}

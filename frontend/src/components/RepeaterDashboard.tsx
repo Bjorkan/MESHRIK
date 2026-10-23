@@ -1,3 +1,6 @@
+import { Trans } from '@lingui/react/macro';
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { api } from '../api';
@@ -72,6 +75,8 @@ export function RepeaterDashboard({
   autoLoginAndLoadAll,
   onAutoLoginConsumed,
 }: RepeaterDashboardProps) {
+  useLingui();
+
   const [pathDiscoveryOpen, setPathDiscoveryOpen] = useState(false);
   const contact = contacts.find((c) => c.public_key === conversation.id) ?? null;
   const hasAdvertLocation = isValidLocation(contact?.lat ?? null, contact?.lon ?? null);
@@ -121,7 +126,7 @@ export function RepeaterDashboard({
       .catch(() => {
         if (telemetryHistoryRequestRef.current !== requestId) return;
         setTelemetryHistoryLoading(false);
-        setTelemetryHistoryError('Could not load saved telemetry');
+        setTelemetryHistoryError(t`Could not load saved telemetry`);
       });
   }, [conversation.id]);
 
@@ -187,7 +192,7 @@ export function RepeaterDashboard({
                   <button
                     type="button"
                     className="flex max-w-full min-w-0 items-center gap-1.5 overflow-hidden rounded-sm text-left transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    aria-label={`View info for ${conversation.name}`}
+                    aria-label={t`View info for ${conversation.name}`}
                     onClick={() => onOpenContactInfo(conversation.id)}
                   >
                     <span className="truncate">{conversation.name}</span>
@@ -203,11 +208,11 @@ export function RepeaterDashboard({
               <button
                 type="button"
                 className="max-w-32 truncate rounded text-left font-mono text-xs text-muted-foreground hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                onClick={() => void copyTextWithFeedback(conversation.id, 'Contact key copied!')}
-                title="Copy full public key"
-                aria-label="Copy repeater public key"
+                onClick={() => void copyTextWithFeedback(conversation.id, t`Contact key copied!`)}
+                title={t`Copy full public key`}
+                aria-label={t`Copy repeater public key`}
               >
-                {`${conversation.id.slice(0, 10)}…${conversation.id.slice(-6)}`}
+                {t`${conversation.id.slice(0, 10)}…${conversation.id.slice(-6)}`}
               </button>
             </span>
           </span>
@@ -226,15 +231,15 @@ export function RepeaterDashboard({
               disabled={anyLoading}
               className="h-7 px-2 text-[0.6875rem] leading-none border-success text-success hover:bg-success/10 hover:text-success sm:h-8 sm:px-3 sm:text-xs"
             >
-              {anyLoading ? 'Loading...' : 'Load All'}
+              {anyLoading ? t`Loading...` : t`Load All`}
             </Button>
           )}
           {contact && (
             <button
               className="p-1 rounded hover:bg-accent text-lg leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               onClick={() => setPathDiscoveryOpen(true)}
-              title="Path Discovery. Send a routed probe and inspect the forward and return paths"
-              aria-label="Path Discovery"
+              title={t`Path Discovery. Send a routed probe and inspect the forward and return paths`}
+              aria-label={t`Path Discovery`}
             >
               <Route className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
             </button>
@@ -242,8 +247,8 @@ export function RepeaterDashboard({
           <button
             className="p-1 rounded hover:bg-accent text-lg leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             onClick={onTrace}
-            title="Direct Trace"
-            aria-label="Direct Trace"
+            title={t`Direct Trace`}
+            aria-label={t`Direct Trace`}
           >
             <DirectTraceIcon className="h-4 w-4 text-muted-foreground" />
           </button>
@@ -253,25 +258,25 @@ export function RepeaterDashboard({
               onClick={onToggleNotifications}
               title={
                 notificationsEnabled
-                  ? 'Disable desktop notifications for this conversation'
+                  ? t`Disable desktop notifications for this conversation`
                   : notificationsPermission === 'denied'
-                    ? 'Notifications blocked by the browser'
-                    : 'Enable desktop notifications for this conversation'
+                    ? t`Notifications blocked by the browser`
+                    : t`Enable desktop notifications for this conversation`
               }
               aria-label={
                 notificationsEnabled
-                  ? 'Disable notifications for this conversation'
-                  : 'Enable notifications for this conversation'
+                  ? t`Disable notifications for this conversation`
+                  : t`Enable notifications for this conversation`
               }
             >
               <Bell
                 className={`h-4 w-4 ${notificationsEnabled ? 'text-status-connected' : 'text-muted-foreground'}`}
-                fill={notificationsEnabled ? 'currentColor' : 'none'}
+                fill={notificationsEnabled ? `currentColor` : `none`}
                 aria-hidden="true"
               />
               {notificationsEnabled && (
                 <span className="hidden md:inline text-[0.6875rem] font-medium text-status-connected">
-                  Notifications On
+                  <Trans>Notifications On</Trans>
                 </span>
               )}
             </button>
@@ -281,10 +286,10 @@ export function RepeaterDashboard({
             onClick={() => onToggleFavorite('contact', conversation.id)}
             title={
               isFav
-                ? 'Remove from favorites. Favorite contacts stay loaded on the radio for ACK support.'
-                : 'Add to favorites. Favorite contacts stay loaded on the radio for ACK support.'
+                ? t`Remove from favorites. Favorite contacts stay loaded on the radio for ACK support.`
+                : t`Add to favorites. Favorite contacts stay loaded on the radio for ACK support.`
             }
-            aria-label={isFav ? 'Remove from favorites' : 'Add to favorites'}
+            aria-label={isFav ? t`Remove from favorites` : t`Add to favorites`}
           >
             {isFav ? (
               <Star className="h-4 w-4 fill-current text-favorite" aria-hidden="true" />
@@ -295,8 +300,8 @@ export function RepeaterDashboard({
           <button
             className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive text-lg leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             onClick={() => onDeleteContact(conversation.id)}
-            title="Delete"
-            aria-label="Delete"
+            title={t`Delete`}
+            aria-label={t`Delete`}
           >
             <Trash2 className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -336,10 +341,14 @@ export function RepeaterDashboard({
               onRetryBlank={handleRepeaterGuestLogin}
               blankRetryLabel="Retry Existing-Access Login"
             />
-            <section aria-label="Repeater details" className="space-y-3">
+            <section aria-label={t`Repeater details`} className="space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <h3 className="font-semibold text-sm">Repeater details</h3>
-                <span className="text-xs text-muted-foreground">Fetch only what you need</span>
+                <h3 className="font-semibold text-sm">
+                  <Trans>Repeater details</Trans>
+                </h3>
+                <span className="text-xs text-muted-foreground">
+                  <Trans>Fetch only what you need</Trans>
+                </span>
               </div>
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:items-start">
                 <NodeInfoPane
@@ -401,7 +410,7 @@ export function RepeaterDashboard({
               </div>
               <details className="border-t border-border pt-2">
                 <summary className="cursor-pointer text-sm font-medium">
-                  Advanced radio controls
+                  <Trans>Advanced radio controls</Trans>
                 </summary>
                 <div className="mt-3">
                   <ActionsPane
@@ -417,7 +426,9 @@ export function RepeaterDashboard({
             </section>
 
             <details className="border-t border-border pt-2">
-              <summary className="cursor-pointer text-sm font-medium">Command console</summary>
+              <summary className="cursor-pointer text-sm font-medium">
+                <Trans>Command console</Trans>
+              </summary>
               <div className="mt-3">
                 <ConsolePane
                   history={consoleHistory}

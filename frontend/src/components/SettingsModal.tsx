@@ -1,3 +1,5 @@
+import { Trans } from '@lingui/react/macro';
+import { useLingui } from '@lingui/react';
 import { useState, useEffect, type ReactNode } from 'react';
 import type {
   AppSettings,
@@ -70,6 +72,8 @@ export type SettingsModalProps = SettingsModalBaseProps &
   );
 
 export function SettingsModal(props: SettingsModalProps) {
+  useLingui();
+
   const {
     open,
     pageMode = false,
@@ -250,7 +254,7 @@ export function SettingsModal(props: SettingsModalProps) {
             ) : (
               <div className={sectionContentClass}>
                 <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
-                  Radio is not available.
+                  <Trans>Radio is not available.</Trans>
                 </div>
               </div>
             ))}
@@ -294,7 +298,7 @@ export function SettingsModal(props: SettingsModalProps) {
             ) : (
               <div className={sectionContentClass}>
                 <div className="rounded-md border border-input bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
-                  Loading app settings...
+                  <Trans>Loading app settings...</Trans>
                 </div>
               </div>
             ))}
@@ -316,7 +320,7 @@ export function SettingsModal(props: SettingsModalProps) {
             ) : (
               <div className={sectionContentClass}>
                 <div className="rounded-md border border-input bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
-                  Loading app settings...
+                  <Trans>Loading app settings...</Trans>
                 </div>
               </div>
             ))}

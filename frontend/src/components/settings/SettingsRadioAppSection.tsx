@@ -1,3 +1,7 @@
+import { getLocale } from '@/i18n';
+import { Trans } from '@lingui/react/macro';
+import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
 import { useState, useEffect, useRef } from 'react';
 import { useForm, useStore } from '@tanstack/react-form';
 import { Label } from '../ui/label';
@@ -46,6 +50,8 @@ export function SettingsRadioAppSection({
   onToggleTrackedTelemetryContact?: (publicKey: string) => Promise<void>;
   className?: string;
 }) {
+  useLingui();
+
   const { distanceUnit } = useDistanceUnit();
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const form = useForm({
@@ -148,8 +154,8 @@ export function SettingsRadioAppSection({
       } catch (err) {
         console.error('Failed to save radio-app settings:', err);
         revert();
-        toast.error('Failed to save setting', {
-          description: err instanceof Error ? err.message : 'Unknown error',
+        toast.error(t`Failed to save setting`, {
+          description: err instanceof Error ? err.message : t`Unknown error`,
         });
       }
     });
@@ -161,18 +167,23 @@ export function SettingsRadioAppSection({
     <div className={className}>
       {/* ── Tracked Repeater Telemetry ── */}
       <div className="space-y-3">
-        <h3 className="text-base font-semibold tracking-tight">Tracked Repeater Telemetry</h3>
+        <h3 className="text-base font-semibold tracking-tight">
+          <Trans>Tracked Repeater Telemetry</Trans>
+        </h3>
         <p className="text-[0.8125rem] text-muted-foreground">
-          Repeaters opted into automatic telemetry collection are polled on a scheduled interval. To
-          limit mesh traffic, the app caps telemetry at 24 checks per day across all tracked
-          repeaters — so fewer tracked repeaters allows shorter intervals, and more tracked
-          repeaters forces longer ones. Up to {schedule?.max_tracked ?? 8} repeaters may be tracked
-          at once ({trackedTelemetryRepeaters.length} / {schedule?.max_tracked ?? 8} slots used).
+          <Trans>
+            Repeaters opted into automatic telemetry collection are polled on a scheduled interval.
+            To limit mesh traffic, the app caps telemetry at 24 checks per day across all tracked
+            repeaters — so fewer tracked repeaters allows shorter intervals, and more tracked
+            repeaters forces longer ones. Up to {schedule?.max_tracked ?? 8} repeaters may be
+            tracked at once ({trackedTelemetryRepeaters.length} / {schedule?.max_tracked ?? 8} slots
+            used).
+          </Trans>
         </p>
 
         <div className="space-y-1.5">
           <Label htmlFor="telemetry-interval" className="text-sm">
-            Collection interval
+            <Trans>Collection interval</Trans>
           </Label>
           <div className="flex items-center gap-2">
             <select
@@ -191,20 +202,24 @@ export function SettingsRadioAppSection({
             >
               {(schedule?.options ?? [1, 2, 3, 4, 6, 8, 12, 24]).map((hrs) => (
                 <option key={hrs} value={hrs}>
-                  Every {hrs} hour{hrs === 1 ? '' : 's'} ({Math.floor(24 / hrs)} check
-                  {Math.floor(24 / hrs) === 1 ? '' : 's'}/day)
+                  <Trans>
+                    Every {hrs} hour{hrs === 1 ? '' : 's'} ({Math.floor(24 / hrs)} check
+                    {Math.floor(24 / hrs) === 1 ? '' : 's'}/day)
+                  </Trans>
                 </option>
               ))}
             </select>
           </div>
           {schedule && schedule.effective_hours !== schedule.preferred_hours && (
             <p className="text-xs text-warning">
-              Saved preference is {schedule.preferred_hours} hour
-              {schedule.preferred_hours === 1 ? '' : 's'}, but the scheduler is using{' '}
-              {schedule.effective_hours} hours because {schedule.tracked_count} repeater
-              {schedule.tracked_count === 1 ? '' : 's'}{' '}
-              {schedule.tracked_count === 1 ? 'is' : 'are'} tracked. Your preference will be
-              restored if you drop back to a supported count.
+              <Trans>
+                Saved preference is {schedule.preferred_hours} hour
+                {schedule.preferred_hours === 1 ? '' : 's'}, but the scheduler is using{' '}
+                {schedule.effective_hours} hours because {schedule.tracked_count} repeater
+                {schedule.tracked_count === 1 ? '' : 's'}{' '}
+                {schedule.tracked_count === 1 ? 'is' : 'are'} tracked. Your preference will be
+                restored if you drop back to a supported count.
+              </Trans>
             </p>
           )}
         </div>
@@ -223,30 +238,40 @@ export function SettingsRadioAppSection({
             className="w-4 h-4 rounded border-input accent-primary mt-0.5"
           />
           <div>
-            <span className="text-sm">Poll direct/routed-path repeaters hourly</span>
+            <span className="text-sm">
+              <Trans>Poll direct/routed-path repeaters hourly</Trans>
+            </span>
             <p className="text-[0.8125rem] text-muted-foreground">
-              When enabled, tracked repeaters with a direct or routed path (not flood) are polled
-              every hour instead of on the scheduled interval above. Flood-only repeaters still
-              follow the normal schedule.
+              <Trans>
+                When enabled, tracked repeaters with a direct or routed path (not flood) are polled
+                every hour instead of on the scheduled interval above. Flood-only repeaters still
+                follow the normal schedule.
+              </Trans>
             </p>
           </div>
         </label>
 
         {schedule?.next_run_at != null && (
           <p className="text-xs text-muted-foreground">
-            {schedule.routed_hourly ? 'Next flood run at' : 'Next run at'}{' '}
-            {formatTime(schedule.next_run_at)} (UTC top of hour).
+            <Trans>
+              {schedule.routed_hourly ? t`Next flood run at` : t`Next run at`}{' '}
+              {formatTime(schedule.next_run_at)} (UTC top of hour).
+            </Trans>
           </p>
         )}
         {schedule?.next_routed_run_at != null && (
           <p className="text-xs text-muted-foreground">
-            Next direct/routed run at {formatTime(schedule.next_routed_run_at)} (UTC top of hour).
+            <Trans>
+              Next direct/routed run at {formatTime(schedule.next_routed_run_at)} (UTC top of hour).
+            </Trans>
           </p>
         )}
 
         {trackedTelemetryRepeaters.length === 0 ? (
           <p className="text-sm text-muted-foreground italic">
-            No repeaters are being tracked. Enable tracking from a repeater's dashboard.
+            <Trans>
+              No repeaters are being tracked. Enable tracking from a repeater's dashboard.
+            </Trans>
           </p>
         ) : (
           <div className="space-y-2">
@@ -291,19 +316,33 @@ export function SettingsRadioAppSection({
                         onClick={() => onToggleTrackedTelemetry(key)}
                         className="h-7 text-xs flex-shrink-0 text-destructive hover:text-destructive"
                       >
-                        Remove
+                        <Trans>Remove</Trans>
                       </Button>
                     )}
                   </div>
                   {d ? (
                     <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[0.625rem] text-muted-foreground">
-                      <span>{d.battery_volts?.toFixed(2)}V</span>
-                      <span>noise {d.noise_floor_dbm} dBm</span>
                       <span>
-                        rx {d.packets_received != null ? d.packets_received.toLocaleString() : '?'}
+                        <Trans>{d.battery_volts?.toFixed(2)}V</Trans>
                       </span>
                       <span>
-                        tx {d.packets_sent != null ? d.packets_sent.toLocaleString() : '?'}
+                        <Trans>noise {d.noise_floor_dbm} dBm</Trans>
+                      </span>
+                      <span>
+                        <Trans>
+                          rx{' '}
+                          {d.packets_received != null
+                            ? d.packets_received.toLocaleString(getLocale())
+                            : '?'}
+                        </Trans>
+                      </span>
+                      <span>
+                        <Trans>
+                          tx{' '}
+                          {d.packets_sent != null
+                            ? d.packets_sent.toLocaleString(getLocale())
+                            : '?'}
+                        </Trans>
                       </span>
                       {d.lpp_sensors?.map((s) => {
                         const display = lppDisplayUnit(s.type_name, s.value, distanceUnit);
@@ -317,15 +356,17 @@ export function SettingsRadioAppSection({
                         return (
                           <span key={`${s.type_name}-${s.channel}`}>
                             {label} {val}
-                            {display.unit ? ` ${display.unit}` : ''}
+                            {display.unit ? t` ${display.unit}` : ''}
                           </span>
                         );
                       })}
-                      <span className="ml-auto">checked {formatTime(snap.timestamp)}</span>
+                      <span className="ml-auto">
+                        <Trans>checked {formatTime(snap.timestamp)}</Trans>
+                      </span>
                     </div>
                   ) : snap === null ? (
                     <div className="mt-1 text-[0.625rem] text-muted-foreground italic">
-                      No telemetry recorded yet
+                      <Trans>No telemetry recorded yet</Trans>
                     </div>
                   ) : null}
                 </div>
@@ -339,17 +380,23 @@ export function SettingsRadioAppSection({
 
       {/* ── Tracked Contact Telemetry ── */}
       <div className="space-y-3">
-        <h3 className="text-base font-semibold tracking-tight">Tracked Contact Telemetry</h3>
+        <h3 className="text-base font-semibold tracking-tight">
+          <Trans>Tracked Contact Telemetry</Trans>
+        </h3>
         <p className="text-[0.8125rem] text-muted-foreground">
-          Non-repeater contacts (companions, rooms, sensors) can also be tracked for periodic LPP
-          telemetry collection (battery, sensors, GPS). Up to 8 contacts may be tracked. The daily
-          check ceiling is shared with tracked repeaters — adding contacts may clamp the interval
-          upward.
+          <Trans>
+            Non-repeater contacts (companions, rooms, sensors) can also be tracked for periodic LPP
+            telemetry collection (battery, sensors, GPS). Up to 8 contacts may be tracked. The daily
+            check ceiling is shared with tracked repeaters — adding contacts may clamp the interval
+            upward.
+          </Trans>
         </p>
 
         {trackedTelemetryContacts.length === 0 ? (
           <p className="text-sm text-muted-foreground italic">
-            No contacts are being tracked. Enable tracking from a contact&apos;s info pane.
+            <Trans>
+              No contacts are being tracked. Enable tracking from a contact&apos;s info pane.
+            </Trans>
           </p>
         ) : (
           <div className="space-y-2">
@@ -394,7 +441,7 @@ export function SettingsRadioAppSection({
                         onClick={() => onToggleTrackedTelemetryContact(key)}
                         className="h-7 text-xs flex-shrink-0 text-destructive hover:text-destructive"
                       >
-                        Remove
+                        <Trans>Remove</Trans>
                       </Button>
                     )}
                   </div>
@@ -413,15 +460,17 @@ export function SettingsRadioAppSection({
                         return (
                           <span key={`${s.type_name}-${s.channel}`}>
                             {label} {val}
-                            {display.unit ? ` ${display.unit}` : ''}
+                            {display.unit ? t` ${display.unit}` : ''}
                           </span>
                         );
                       })}
-                      <span className="ml-auto">checked {formatTime(snap.timestamp)}</span>
+                      <span className="ml-auto">
+                        <Trans>checked {formatTime(snap.timestamp)}</Trans>
+                      </span>
                     </div>
                   ) : snap === null ? (
                     <div className="mt-1 text-[0.625rem] text-muted-foreground italic">
-                      No telemetry recorded yet
+                      <Trans>No telemetry recorded yet</Trans>
                     </div>
                   ) : null}
                 </div>
@@ -435,13 +484,19 @@ export function SettingsRadioAppSection({
 
       {/* ── Contact Management ── */}
       <div className="space-y-5">
-        <h3 className="text-base font-semibold tracking-tight">Contact Management</h3>
+        <h3 className="text-base font-semibold tracking-tight">
+          <Trans>Contact Management</Trans>
+        </h3>
 
         <div className="space-y-3">
-          <h4 className="text-sm font-semibold">Block Discovery of New Node Types</h4>
+          <h4 className="text-sm font-semibold">
+            <Trans>Block Discovery of New Node Types</Trans>
+          </h4>
           <p className="text-[0.8125rem] text-muted-foreground">
-            Checked types will be ignored when heard via advertisement. Existing contacts of these
-            types are still updated. This does not affect contacts added manually or via DM.
+            <Trans>
+              Checked types will be ignored when heard via advertisement. Existing contacts of these
+              types are still updated. This does not affect contacts added manually or via DM.
+            </Trans>
           </p>
           <div className="space-y-1.5">
             {(
@@ -477,36 +532,52 @@ export function SettingsRadioAppSection({
           </div>
           {discoveryBlockedTypes.length > 0 && (
             <p className="text-xs text-warning">
-              New{' '}
-              {discoveryBlockedTypes
-                .map((t) =>
-                  t === 1 ? 'clients' : t === 2 ? 'repeaters' : t === 3 ? 'room servers' : 'sensors'
-                )
-                .join(', ')}{' '}
-              heard via advertisement will not be added to your contact list.
+              <Trans>
+                New{' '}
+                {discoveryBlockedTypes
+                  .map((t) =>
+                    t === 1
+                      ? 'clients'
+                      : t === 2
+                        ? 'repeaters'
+                        : t === 3
+                          ? 'room servers'
+                          : 'sensors'
+                  )
+                  .join(', ')}{' '}
+                heard via advertisement will not be added to your contact list.
+              </Trans>
             </p>
           )}
         </div>
 
         <div className="space-y-3">
-          <h4 className="text-sm font-semibold">Blocked Contacts</h4>
+          <h4 className="text-sm font-semibold">
+            <Trans>Blocked Contacts</Trans>
+          </h4>
           <p className="text-[0.8125rem] text-muted-foreground">
-            Blocked contacts are hidden from the sidebar. Blocking only hides messages from the UI —
-            MQTT forwarding and bot responses are not affected. Messages are still stored and will
-            reappear if unblocked.
+            <Trans>
+              Blocked contacts are hidden from the sidebar. Blocking only hides messages from the UI
+              — MQTT forwarding and bot responses are not affected. Messages are still stored and
+              will reappear if unblocked.
+            </Trans>
           </p>
 
           {blockedKeys.length === 0 && blockedNames.length === 0 ? (
             <p className="text-sm text-muted-foreground italic">
-              No blocked contacts. Block contacts from their info pane, viewed by clicking their
-              avatar in any channel, or their name within the top status bar with the conversation
-              open.
+              <Trans>
+                No blocked contacts. Block contacts from their info pane, viewed by clicking their
+                avatar in any channel, or their name within the top status bar with the conversation
+                open.
+              </Trans>
             </p>
           ) : (
             <div className="space-y-2">
               {blockedKeys.length > 0 && (
                 <div>
-                  <span className="text-xs text-muted-foreground font-medium">Blocked Keys</span>
+                  <span className="text-xs text-muted-foreground font-medium">
+                    <Trans>Blocked Keys</Trans>
+                  </span>
                   <div className="mt-1 space-y-1">
                     {blockedKeys.map((key) => (
                       <div key={key} className="flex items-center justify-between gap-2">
@@ -518,7 +589,7 @@ export function SettingsRadioAppSection({
                             onClick={() => onToggleBlockedKey(key)}
                             className="h-7 text-xs flex-shrink-0"
                           >
-                            Unblock
+                            <Trans>Unblock</Trans>
                           </Button>
                         )}
                       </div>
@@ -528,7 +599,9 @@ export function SettingsRadioAppSection({
               )}
               {blockedNames.length > 0 && (
                 <div>
-                  <span className="text-xs text-muted-foreground font-medium">Blocked Names</span>
+                  <span className="text-xs text-muted-foreground font-medium">
+                    <Trans>Blocked Names</Trans>
+                  </span>
                   <div className="mt-1 space-y-1">
                     {blockedNames.map((name) => (
                       <div key={name} className="flex items-center justify-between gap-2">
@@ -540,7 +613,7 @@ export function SettingsRadioAppSection({
                             onClick={() => onToggleBlockedName(name)}
                             className="h-7 text-xs flex-shrink-0"
                           >
-                            Unblock
+                            <Trans>Unblock</Trans>
                           </Button>
                         )}
                       </div>
@@ -553,13 +626,17 @@ export function SettingsRadioAppSection({
         </div>
 
         <div className="space-y-3">
-          <h4 className="text-sm font-semibold">Bulk Delete Contacts</h4>
+          <h4 className="text-sm font-semibold">
+            <Trans>Bulk Delete Contacts</Trans>
+          </h4>
           <p className="text-[0.8125rem] text-muted-foreground">
-            Remove multiple contacts or repeaters at once. Useful for cleaning up spam or unwanted
-            nodes. Message history will be preserved.
+            <Trans>
+              Remove multiple contacts or repeaters at once. Useful for cleaning up spam or unwanted
+              nodes. Message history will be preserved.
+            </Trans>
           </p>
           <Button variant="outline" className="w-full" onClick={() => setBulkDeleteOpen(true)}>
-            Open Bulk Delete
+            <Trans>Open Bulk Delete</Trans>
           </Button>
           <BulkDeleteContactsModal
             open={bulkDeleteOpen}

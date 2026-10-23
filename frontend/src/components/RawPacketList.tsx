@@ -1,3 +1,6 @@
+import { Trans } from '@lingui/react/macro';
+import { useLingui } from '@lingui/react';
+import { getLocale } from '@/i18n';
 import { useEffect, useRef, useMemo } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import type { Channel, RawPacket } from '../types';
@@ -21,7 +24,11 @@ const ESTIMATED_PACKET_HEIGHT = 104;
 
 function formatTime(timestamp: number): string {
   const date = new Date(timestamp * 1000);
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  return date.toLocaleTimeString(getLocale(), {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
 }
 
 function formatSignalInfo(packet: RawPacket): string {
@@ -73,6 +80,8 @@ export function RawPacketList({
   onPacketClick,
   autoScroll = true,
 }: RawPacketListProps) {
+  useLingui();
+
   const listRef = useRef<HTMLDivElement>(null);
   const decoderOptions = useMemo(() => createDecoderOptions(channels), [channels]);
 
@@ -116,7 +125,7 @@ export function RawPacketList({
   if (packets.length === 0) {
     return (
       <div className="h-full overflow-y-auto p-5 text-center text-muted-foreground [contain:layout_paint]">
-        No packets received yet. Packets will appear here in real-time.
+        <Trans>No packets received yet. Packets will appear here in real-time.</Trans>
       </div>
     );
   }
@@ -143,7 +152,9 @@ export function RawPacketList({
                 {!packet.decrypted && (
                   <>
                     <span aria-hidden="true">🔒</span>
-                    <span className="sr-only">Encrypted</span>
+                    <span className="sr-only">
+                      <Trans>Encrypted</Trans>
+                    </span>
                   </>
                 )}
 
