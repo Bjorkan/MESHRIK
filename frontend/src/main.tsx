@@ -1,6 +1,12 @@
 import { StrictMode } from 'react';
 import { I18nProvider } from '@lingui/react';
-import { i18n, activateLanguage, getLanguagePreference, LANGUAGE_STORAGE_KEY } from './i18n';
+import {
+  i18n,
+  activateLanguage,
+  getLanguagePreference,
+  LANGUAGE_STORAGE_KEY,
+  syncLanguagePreferenceFromStorage,
+} from './i18n';
 import { createRoot } from 'react-dom/client';
 import { RouterProvider } from '@tanstack/react-router';
 import { HotkeysProvider } from '@tanstack/react-hotkeys';
@@ -25,7 +31,7 @@ window.addEventListener('languagechange', () => {
 });
 window.addEventListener('storage', (event) => {
   if (event.key === LANGUAGE_STORAGE_KEY || event.key === null)
-    void activateLanguage(getLanguagePreference());
+    void syncLanguagePreferenceFromStorage();
 });
 
 createRoot(document.getElementById('root')!).render(

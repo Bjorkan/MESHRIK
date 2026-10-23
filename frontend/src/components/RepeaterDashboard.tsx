@@ -208,7 +208,7 @@ export function RepeaterDashboard({
               <button
                 type="button"
                 className="max-w-32 truncate rounded text-left font-mono text-xs text-muted-foreground hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                onClick={() => void copyTextWithFeedback(conversation.id, 'Contact key copied!')}
+                onClick={() => void copyTextWithFeedback(conversation.id, t`Contact key copied!`)}
                 title={t`Copy full public key`}
                 aria-label={t`Copy repeater public key`}
               >

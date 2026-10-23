@@ -115,7 +115,7 @@ export function ChannelInfoPane({
                 <button
                   type="button"
                   className="text-xs font-mono text-muted-foreground cursor-pointer hover:text-primary transition-colors block truncate"
-                  onClick={() => void copyTextWithFeedback(channel.key, 'Channel key copied!')}
+                  onClick={() => void copyTextWithFeedback(channel.key, t`Channel key copied!`)}
                   title={t`Click to copy`}
                 >
                   {channel.key.toLowerCase()}

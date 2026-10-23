@@ -42,15 +42,33 @@ const BotCodeEditor = lazy(() =>
 const FANOUT_CONFIGS_QUERY_KEY = ['fanout', 'configs'] as const;
 
 const TYPE_LABELS: Record<string, string> = {
-  virtual_companion_tcp: 'MeshCore App (Virtual TCP Companion)',
-  mqtt_private: 'Private MQTT',
-  mqtt_community: 'Community Sharing',
-  mqtt_ha: 'Home Assistant',
-  bot: 'Python Bot',
-  webhook: 'Webhook',
-  apprise: 'Apprise',
-  sqs: 'Amazon SQS',
-  map_upload: 'Map Upload',
+  get virtual_companion_tcp() {
+    return t`MeshCore App (Virtual TCP Companion)`;
+  },
+  get mqtt_private() {
+    return t`Private MQTT`;
+  },
+  get mqtt_community() {
+    return t`Community Sharing`;
+  },
+  get mqtt_ha() {
+    return t`Home Assistant`;
+  },
+  get bot() {
+    return t`Python Bot`;
+  },
+  get webhook() {
+    return t`Webhook`;
+  },
+  get apprise() {
+    return t`Apprise`;
+  },
+  get sqs() {
+    return t`Amazon SQS`;
+  },
+  get map_upload() {
+    return t`Map Upload`;
+  },
 };
 
 const DEFAULT_COMMUNITY_PACKET_TOPIC_TEMPLATE = 'meshcore/{IATA}/{PUBLIC_KEY}/packets';
@@ -179,7 +197,9 @@ const CREATE_INTEGRATION_DEFINITIONS: readonly CreateIntegrationDefinition[] = [
     get label() {
       return t`MeshCore App (Virtual TCP Companion)`;
     },
-    section: 'MeshCore Apps',
+    get section() {
+      return t`MeshCore Apps`;
+    },
     get description() {
       return t`Let the official MeshCore app use MESHRIK's shared node and DB through a separate virtual TCP listener. This is not the physical radio's TCP endpoint and does not provide full firmware administration.`;
     },
@@ -204,7 +224,9 @@ const CREATE_INTEGRATION_DEFINITIONS: readonly CreateIntegrationDefinition[] = [
     get label() {
       return t`Private MQTT`;
     },
-    section: 'Private Forwarding',
+    get section() {
+      return t`Private Forwarding`;
+    },
     get description() {
       return t`Customizable-scope forwarding of all or some messages to an MQTT broker of your choosing, in raw and/or decrypted form.`;
     },
@@ -229,7 +251,9 @@ const CREATE_INTEGRATION_DEFINITIONS: readonly CreateIntegrationDefinition[] = [
     get label() {
       return t`Home Assistant MQTT Discovery`;
     },
-    section: 'Private Forwarding',
+    get section() {
+      return t`Private Forwarding`;
+    },
     get description() {
       return t`Publishes MQTT Discovery payloads so mesh devices appear natively in Home Assistant. Requires HA's built-in MQTT integration connected to the same broker. Select specific contacts for GPS tracking and repeaters for telemetry sensors.`;
     },
@@ -256,7 +280,9 @@ const CREATE_INTEGRATION_DEFINITIONS: readonly CreateIntegrationDefinition[] = [
     get label() {
       return t`Community MQTT/meshcoretomqtt`;
     },
-    section: 'Community Sharing',
+    get section() {
+      return t`Community Sharing`;
+    },
     get description() {
       return t`MeshcoreToMQTT-compatible raw-packet feed publishing, compatible with community aggregators (in other words, make your companion radio also serve as an observer node). Superset of other Community MQTT presets.`;
     },
@@ -273,7 +299,9 @@ const CREATE_INTEGRATION_DEFINITIONS: readonly CreateIntegrationDefinition[] = [
     get label() {
       return t`MeshRank`;
     },
-    section: 'Community Sharing',
+    get section() {
+      return t`Community Sharing`;
+    },
     get description() {
       return t`A community MQTT config preconfigured for MeshRank, requiring only your MeshRank uplink token. A subset of the primary Community MQTT/meshcoretomqtt configuration; you are free to edit all configuration after creation.`;
     },
@@ -301,7 +329,9 @@ const CREATE_INTEGRATION_DEFINITIONS: readonly CreateIntegrationDefinition[] = [
     get label() {
       return t`LetsMesh (US)`;
     },
-    section: 'Community Sharing',
+    get section() {
+      return t`Community Sharing`;
+    },
     get description() {
       return t`A community MQTT config preconfigured for the LetsMesh US-ingest endpoint, requiring only your email and IATA region code. Good to use with an additional EU configuration for redundancy. A subset of the primary Community MQTT/meshcoretomqtt configuration; you are free to edit all configuration after creation.`;
     },
@@ -321,7 +351,9 @@ const CREATE_INTEGRATION_DEFINITIONS: readonly CreateIntegrationDefinition[] = [
     get label() {
       return t`LetsMesh (EU)`;
     },
-    section: 'Community Sharing',
+    get section() {
+      return t`Community Sharing`;
+    },
     get description() {
       return t`A community MQTT config preconfigured for the LetsMesh EU-ingest endpoint, requiring only your email and IATA region code. Good to use with an additional US configuration for redundancy. A subset of the primary Community MQTT/meshcoretomqtt configuration; you are free to edit all configuration after creation.`;
     },
@@ -341,7 +373,9 @@ const CREATE_INTEGRATION_DEFINITIONS: readonly CreateIntegrationDefinition[] = [
     get label() {
       return t`Webhook`;
     },
-    section: 'Automation',
+    get section() {
+      return t`Automation`;
+    },
     get description() {
       return t`Generic webhook for decrypted channel/DM messages with customizable verb, method, and optional HMAC signature.`;
     },
@@ -364,7 +398,9 @@ const CREATE_INTEGRATION_DEFINITIONS: readonly CreateIntegrationDefinition[] = [
     get label() {
       return t`Apprise`;
     },
-    section: 'Automation',
+    get section() {
+      return t`Automation`;
+    },
     get description() {
       return t`A wide-ranging generic fanout, capable of forwarding decrypted channel/DM messages to Discord, Telegram, email, SMS, and many others.`;
     },
@@ -389,7 +425,9 @@ const CREATE_INTEGRATION_DEFINITIONS: readonly CreateIntegrationDefinition[] = [
     get label() {
       return t`Amazon SQS`;
     },
-    section: 'Private Forwarding',
+    get section() {
+      return t`Private Forwarding`;
+    },
     get description() {
       return t`Send full or scope-customized raw or decrypted packets to an SQS`;
     },
@@ -413,7 +451,9 @@ const CREATE_INTEGRATION_DEFINITIONS: readonly CreateIntegrationDefinition[] = [
     get label() {
       return t`Python Bot`;
     },
-    section: 'Automation',
+    get section() {
+      return t`Automation`;
+    },
     get description() {
       return t`A simple, Python-based interface for basic bots that can respond to DM and channel messages.`;
     },
@@ -432,7 +472,9 @@ const CREATE_INTEGRATION_DEFINITIONS: readonly CreateIntegrationDefinition[] = [
     get label() {
       return t`Map Upload`;
     },
-    section: 'Community Sharing',
+    get section() {
+      return t`Community Sharing`;
+    },
     get description() {
       return t`Upload repeaters and room servers to map.meshcore.io or a compatible map API endpoint.`;
     },
@@ -595,7 +637,7 @@ function getCommunityWebsocketPathError(value: unknown): string | null {
     normalizeCommunityWebsocketPath(value);
     return null;
   } catch (error) {
-    return error instanceof Error ? error.message : 'Invalid WebSocket Path';
+    return error instanceof Error ? error.message : t`Invalid WebSocket Path`;
   }
 }
 
@@ -878,7 +920,7 @@ function formatAppriseTargets(urls: string | undefined) {
 
 function formatSqsQueueSummary(config: Record<string, unknown>) {
   const queueUrl = ((config.queue_url as string) || '').trim();
-  if (!queueUrl) return 'No queue configured';
+  if (!queueUrl) return t`No queue configured`;
   return queueUrl;
 }
 
@@ -890,16 +932,16 @@ function getDefaultIntegrationName(type: string, configs: FanoutConfig[]) {
 
 function getStatusLabel(status: string | undefined, type?: string) {
   if (type === 'virtual_companion_tcp') {
-    if (status === 'listening') return 'Listening';
-    if (status === 'disabled') return 'Off';
+    if (status === 'listening') return t`Listening`;
+    if (status === 'disabled') return t`Off`;
   }
   if (status === 'connected' || status === 'listening')
     return type === 'bot' || type === 'webhook' || type === 'apprise' || type === 'map_upload'
-      ? 'Active'
-      : 'Connected';
-  if (status === 'error') return 'Error';
-  if (status === 'disconnected') return 'Disconnected';
-  return 'Inactive';
+      ? t`Active`
+      : t`Connected`;
+  if (status === 'error') return t`Error`;
+  if (status === 'disconnected') return t`Disconnected`;
+  return t`Inactive`;
 }
 
 function getStatusColor(status: string | undefined, enabled?: boolean) {
@@ -1577,10 +1619,10 @@ function MqttHaConfigEditor({
   }, [nodeIdForKey, prefix, radioConfig, selectedContactDetails, selectedRepeaterDetails]);
 
   const kindLabel: Record<(typeof topicSummary)[number]['kind'], string> = {
-    radio: 'Local radio state',
-    event: 'Message events',
-    repeater: 'Repeater telemetry',
-    contact: 'Contact GPS',
+    radio: t`Local radio state`,
+    event: t`Message events`,
+    repeater: t`Repeater telemetry`,
+    contact: t`Contact GPS`,
   };
   const localRadioNodeId = radioConfig?.public_key
     ? nodeIdForKey(radioConfig.public_key)
@@ -3418,10 +3460,10 @@ function ScopeSelector({
   const filteredContacts = contacts.filter((c) => c.type === 0 || c.type === 1);
 
   const modeDescriptions: Record<ScopeMode, string> = {
-    all: 'All messages',
-    none: 'No messages',
-    only: 'Only listed channels/contacts',
-    except: 'All except listed channels/contacts',
+    all: t`All messages`,
+    none: t`No messages`,
+    only: t`Only listed channels/contacts`,
+    except: t`All except listed channels/contacts`,
   };
 
   const rawEnabled = showRawPackets && scope.raw_packets === 'all';

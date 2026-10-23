@@ -124,8 +124,9 @@ copy, regenerate and commit the catalogs:
 
 ```bash
 cd frontend
-npm run i18n:extract
+npm run i18n:update
 npm run i18n:compile
+npm run i18n:check
 ```
 
 Keep the English source catalog complete. A language PR must translate the full catalog and pass

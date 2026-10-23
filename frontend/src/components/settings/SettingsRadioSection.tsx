@@ -1,5 +1,5 @@
 import { Trans } from '@lingui/react/macro';
-import { t } from '@lingui/core/macro';
+import { plural, t } from '@lingui/core/macro';
 import { useLingui } from '@lingui/react';
 import { getLocale } from '@/i18n';
 import { useState, useEffect, useMemo, useRef } from 'react';
@@ -323,7 +323,7 @@ export function SettingsRadioSection({
       if (!update) {
         radioForm.setFieldValue(
           'serverError',
-          'All numeric fields must contain complete, valid values'
+          t`All numeric fields must contain complete, valid values`
         );
         return;
       }
@@ -339,7 +339,7 @@ export function SettingsRadioSection({
       } catch (err) {
         radioForm.setFieldValue(
           'serverError',
-          err instanceof Error ? err.message : 'Failed to save'
+          err instanceof Error ? err.message : t`Failed to save`
         );
       }
     },
@@ -366,9 +366,9 @@ export function SettingsRadioSection({
   } = radioValues;
   const [gettingLocation, setGettingLocation] = useState(false);
   const [officialPresets, setOfficialPresets] = useState<typeof RADIO_PRESETS>([]);
-  const [officialPresetsStatus, setOfficialPresetsStatus] = useState(
-    t`Bundled presets (offline fallback)`
-  );
+  const [officialPresetsSource, setOfficialPresetsSource] = useState<
+    'bundled' | 'cached' | 'official'
+  >('bundled');
   const allRadioPresets = useMemo(
     () => [
       ...RADIO_PRESETS,
@@ -388,13 +388,11 @@ export function SettingsRadioSection({
         if (!active) return;
         if (Array.isArray(result.presets)) {
           setOfficialPresets(result.presets);
-          setOfficialPresetsStatus(
-            result.stale ? t`Cached suggestions (offline)` : t`Official community suggestions`
-          );
+          setOfficialPresetsSource(result.stale ? 'cached' : 'official');
         }
       })
       .catch(() => {
-        if (active) setOfficialPresetsStatus(t`Bundled presets (offline fallback)`);
+        if (active) setOfficialPresetsSource('bundled');
       });
     return () => {
       active = false;
@@ -466,7 +464,7 @@ export function SettingsRadioSection({
       } catch (err) {
         floodForm.setFieldValue(
           'serverError',
-          err instanceof Error ? err.message : 'Failed to save'
+          err instanceof Error ? err.message : t`Failed to save`
         );
       }
     },
@@ -486,7 +484,7 @@ export function SettingsRadioSection({
       if (hours === null || hours < 0) {
         advertIntervalForm.setFieldValue(
           'serverError',
-          'Advertising interval must be a whole number of hours, zero or greater'
+          t`Advertising interval must be a whole number of hours, zero or greater`
         );
         return;
       }
@@ -499,7 +497,7 @@ export function SettingsRadioSection({
       } catch (err) {
         advertIntervalForm.setFieldValue(
           'serverError',
-          err instanceof Error ? err.message : 'Failed to save'
+          err instanceof Error ? err.message : t`Failed to save`
         );
       }
     },
@@ -530,7 +528,7 @@ export function SettingsRadioSection({
       } catch (err) {
         radioForm.setFieldValue(
           'serverError',
-          err instanceof Error ? err.message : 'Failed to import config'
+          err instanceof Error ? err.message : t`Failed to import config`
         );
       }
     },
@@ -683,7 +681,7 @@ export function SettingsRadioSection({
     try {
       await onDiscoverMesh(target);
     } catch (err) {
-      setDiscoverError(err instanceof Error ? err.message : 'Failed to run mesh discovery');
+      setDiscoverError(err instanceof Error ? err.message : t`Failed to run mesh discovery`);
     }
   };
 
@@ -711,7 +709,10 @@ export function SettingsRadioSection({
     }
     floodForm.setFieldValue('knownRegions', [...existing, ...additions].join('\n'));
     toast.success(
-      t`Added ${additions.length} region${additions.length === 1 ? '' : 's'} — review and Save Messaging Settings`
+      plural(additions.length, {
+        one: 'Added # region — review and Save Messaging Settings',
+        other: 'Added # regions — review and Save Messaging Settings',
+      })
     );
   };
 
@@ -875,7 +876,7 @@ export function SettingsRadioSection({
     } catch (err) {
       radioForm.setFieldValue(
         'serverError',
-        err instanceof Error ? err.message : 'Failed to import config'
+        err instanceof Error ? err.message : t`Failed to import config`
       );
     } finally {
       if (importInputRef.current) importInputRef.current.value = '';
@@ -903,28 +904,43 @@ export function SettingsRadioSection({
   const setupNeedsRetry = radioDegraded || radioSetupFailed;
   const workerQuarantined = health?.radio_scheduler?.quarantined === true;
   const connectionActionLabel = workerQuarantined
-    ? 'Restart required'
+    ? t`Restart required`
     : setupNeedsRetry
-      ? 'Retry setup'
+      ? t`Retry setup`
       : radioState === 'paused'
-        ? 'Reconnect'
+        ? t`Reconnect`
         : transportConnected
-          ? 'Disconnect'
-          : 'Stop Trying';
+          ? t`Disconnect`
+          : t`Stop Trying`;
 
   const connectionStatusLabel = radioReady
-    ? health?.connection_info || 'Connected'
+    ? health?.connection_info || t`Connected`
     : radioDegraded
-      ? `Transport connected — setup degraded${health?.startup_error_stage ? ` at ${health.startup_error_stage}` : ''}`
+      ? health?.startup_error_stage
+        ? t`Transport connected — setup degraded at ${health.startup_error_stage}`
+        : t`Transport connected — setup degraded`
       : radioSetupFailed
-        ? `Transport connected — setup failed${health?.startup_error_stage ? ` at ${health.startup_error_stage}` : ''}`
+        ? health?.startup_error_stage
+          ? t`Transport connected — setup failed at ${health.startup_error_stage}`
+          : t`Transport connected — setup failed`
         : radioState === 'initializing'
-          ? `Initializing ${health?.connection_info || 'radio'}`
+          ? t`Initializing ${health?.connection_info || t`radio`}`
           : radioState === 'connecting'
-            ? `Attempting to connect${health?.connection_info ? ` to ${health.connection_info}` : ''}`
+            ? health?.connection_info
+              ? t`Attempting to connect to ${health.connection_info}`
+              : t`Attempting to connect`
             : radioState === 'paused'
-              ? `Connection paused${health?.connection_info ? ` (${health.connection_info})` : ''}`
-              : 'Not connected';
+              ? health?.connection_info
+                ? t`Connection paused (${health.connection_info})`
+                : t`Connection paused`
+              : t`Not connected`;
+
+  const officialPresetsStatus =
+    officialPresetsSource === 'cached'
+      ? t`Cached suggestions (offline)`
+      : officialPresetsSource === 'official'
+        ? t`Official community suggestions`
+        : t`Bundled presets (offline fallback)`;
 
   const deviceInfoLabel = useMemo(() => {
     const info = health?.radio_device_info;
@@ -1915,10 +1931,10 @@ export function SettingsRadioSection({
               )}
               <div className="flex items-center justify-between gap-4">
                 <p className="text-sm font-medium">
-                  <Trans>
-                    Last sweep: {meshDiscovery.results.length} node
-                    {meshDiscovery.results.length === 1 ? '' : 's'}
-                  </Trans>
+                  {plural(meshDiscovery.results.length, {
+                    one: 'Last sweep: # node',
+                    other: 'Last sweep: # nodes',
+                  })}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   <Trans>{meshDiscovery.duration_seconds.toFixed(0)}s listen window</Trans>
@@ -1940,9 +1956,10 @@ export function SettingsRadioSection({
                           {result.name ?? <span className="capitalize">{result.node_type}</span>}
                         </span>
                         <span className="text-xs text-muted-foreground">
-                          <Trans>
-                            heard {result.heard_count} time{result.heard_count === 1 ? '' : 's'}
-                          </Trans>
+                          {plural(result.heard_count, {
+                            one: 'heard # time',
+                            other: 'heard # times',
+                          })}
                         </span>
                       </div>
                       {result.name && (

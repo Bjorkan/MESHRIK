@@ -8,6 +8,7 @@ import {
   SlidersHorizontal,
   type LucideIcon,
 } from 'lucide-react';
+import { t } from '@lingui/core/macro';
 
 export type SettingsSection =
   'radio' | 'local' | 'radio-app' | 'database' | 'fanout' | 'statistics' | 'about';
@@ -23,13 +24,27 @@ export const SETTINGS_SECTION_ORDER: SettingsSection[] = [
 ];
 
 export const SETTINGS_SECTION_LABELS: Record<SettingsSection, string> = {
-  radio: 'Radio',
-  local: 'Local Configuration',
-  'radio-app': 'Radio-App Management',
-  database: 'Database',
-  fanout: 'MQTT & Automation',
-  statistics: 'Statistics',
-  about: 'About',
+  get radio() {
+    return t`Radio`;
+  },
+  get local() {
+    return t`Local Configuration`;
+  },
+  get 'radio-app'() {
+    return t`Radio-App Management`;
+  },
+  get database() {
+    return t`Database`;
+  },
+  get fanout() {
+    return t`MQTT & Automation`;
+  },
+  get statistics() {
+    return t`Statistics`;
+  },
+  get about() {
+    return t`About`;
+  },
 };
 
 export const SETTINGS_SECTION_ICONS: Record<SettingsSection, LucideIcon> = {

@@ -1,14 +1,19 @@
-import { useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { Trans } from '@lingui/react/macro';
 import {
   SUPPORTED_LANGUAGES,
   getLanguagePreference,
   setLanguagePreference,
+  subscribeLanguagePreference,
   type LanguagePreference,
 } from '../../i18n';
 
 export function LanguageSelector() {
-  const [preference, setPreference] = useState(getLanguagePreference);
+  const preference = useSyncExternalStore(
+    subscribeLanguagePreference,
+    getLanguagePreference,
+    getLanguagePreference
+  );
   const [pending, setPending] = useState(false);
   return (
     <fieldset className="space-y-3" disabled={pending}>
@@ -38,7 +43,6 @@ export function LanguageSelector() {
                 setPending(true);
                 try {
                   await setLanguagePreference(code as LanguagePreference);
-                  setPreference(code as LanguagePreference);
                 } finally {
                   setPending(false);
                 }

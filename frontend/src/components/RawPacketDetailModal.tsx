@@ -748,7 +748,7 @@ export function RawPacketInspectionPanel({
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => void copyTextWithFeedback(packet.data, 'Packet hex copied!')}
+            onClick={() => void copyTextWithFeedback(packet.data, t`Packet hex copied!`)}
           >
             <Trans>Copy</Trans>
           </Button>

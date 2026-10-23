@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { LanguageSelector } from '../components/settings/LanguageSelector';
 import {
@@ -11,12 +11,17 @@ import {
   getLocale,
   resolveLanguage,
   setLanguagePreference,
+  syncLanguagePreferenceFromStorage,
 } from '../i18n';
 
 describe('language preference', () => {
   beforeEach(async () => {
     localStorage.clear();
     await activateLanguage('en');
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('uses a supported browser language and falls back to English', () => {
@@ -37,6 +42,35 @@ describe('language preference', () => {
 
     expect(getLanguagePreference()).toBe('auto');
     expect(localStorage.getItem(LANGUAGE_STORAGE_KEY)).toBeNull();
+  });
+
+  it('preserves the browser regional locale in automatic mode', async () => {
+    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-GB']);
+
+    await setLanguagePreference('auto');
+
+    expect(getLocale()).toBe('en-GB');
+  });
+
+  it('keeps an in-memory choice when browser storage is unavailable', async () => {
+    await activateLanguage('auto');
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('Storage disabled');
+    });
+
+    await setLanguagePreference('en');
+
+    expect(getLanguagePreference()).toBe('en');
+  });
+
+  it('reacts to preference changes made in another tab', async () => {
+    render(<LanguageSelector />);
+    expect(screen.getByRole('radio', { name: 'English' })).toBeChecked();
+
+    localStorage.removeItem(LANGUAGE_STORAGE_KEY);
+    await syncLanguagePreferenceFromStorage();
+
+    expect(screen.getByRole('radio', { name: 'Automatic (browser language)' })).toBeChecked();
   });
 
   it('changes preference without remounting the surrounding settings form', async () => {

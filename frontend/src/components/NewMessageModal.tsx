@@ -261,10 +261,16 @@ export function NewMessageModal({
             <Trans>New Conversation</Trans>
           </DialogTitle>
           <DialogDescription className="sr-only">
-            {tab === 'new-contact' && 'Add a new contact by entering their name and public key'}
-            {tab === 'new-channel' && 'Create a private channel with a shared encryption key'}
-            {tab === 'hashtag' && 'Join a public hashtag channel'}
-            {tab === 'bulk-hashtag' && 'Paste multiple hashtag channels to add them in one batch'}
+            {tab === 'new-contact' && (
+              <Trans>Add a new contact by entering their name and public key</Trans>
+            )}
+            {tab === 'new-channel' && (
+              <Trans>Create a private channel with a shared encryption key</Trans>
+            )}
+            {tab === 'hashtag' && <Trans>Join a public hashtag channel</Trans>}
+            {tab === 'bulk-hashtag' && (
+              <Trans>Paste multiple hashtag channels to add them in one batch</Trans>
+            )}
           </DialogDescription>
         </DialogHeader>
 

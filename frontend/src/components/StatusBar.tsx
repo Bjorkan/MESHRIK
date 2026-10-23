@@ -258,7 +258,7 @@ export function StatusBar({
           <button
             type="button"
             className="min-w-0 max-w-48 truncate rounded-sm font-mono text-sm text-muted-foreground cursor-pointer hover:text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            onClick={() => void copyTextWithFeedback(config.public_key, 'Public key copied!')}
+            onClick={() => void copyTextWithFeedback(config.public_key, t`Public key copied!`)}
             title={config.public_key.toLowerCase()}
             aria-label={t`Copy public key`}
           >

@@ -263,8 +263,8 @@ export function ChatHeader({
                     void copyTextWithFeedback(
                       conversation.id,
                       conversation.type === 'channel'
-                        ? 'Channel key copied!'
-                        : 'Contact key copied!'
+                        ? t`Channel key copied!`
+                        : t`Contact key copied!`
                     );
                   }}
                   title={t`Click to copy`}

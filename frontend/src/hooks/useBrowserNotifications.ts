@@ -82,16 +82,16 @@ function getMessageConversationNotificationKey(message: Message): string | null 
 function buildNotificationTitle(message: Message): string {
   if (message.type === 'PRIV') {
     return message.sender_name
-      ? `New message from ${message.sender_name}`
-      : `New message from ${message.conversation_key.slice(0, 12)}`;
+      ? t`New message from ${message.sender_name}`
+      : t`New message from ${message.conversation_key.slice(0, 12)}`;
   }
 
   const roomName = message.channel_name || message.conversation_key.slice(0, 8);
-  return `New message in ${roomName}`;
+  return t`New message in ${roomName}`;
 }
 
 function buildPreviewNotificationTitle(type: 'channel' | 'contact', label: string): string {
-  return type === 'contact' ? `New message from ${label}` : `New message in ${label}`;
+  return type === 'contact' ? t`New message from ${label}` : t`New message in ${label}`;
 }
 
 function buildMessageNotificationPath(message: Message): string | null {
@@ -221,7 +221,7 @@ export function useBrowserNotifications() {
           return next;
         });
         new window.Notification(buildPreviewNotificationTitle(type, label), {
-          body: 'Notifications will look like this. These require the tab to stay open, and will not be reliable on mobile.',
+          body: t`Notifications will look like this. These require the tab to stay open, and will not be reliable on mobile.`,
           icon: NOTIFICATION_ICON_PATH,
           tag: `meshcore-notification-preview-${conversationKey}`,
         });
@@ -243,8 +243,8 @@ export function useBrowserNotifications() {
       toast.error(t`Notifications not enabled`, {
         description:
           nextPermission === 'denied'
-            ? 'Desktop notifications were denied by your browser. Allow notifications in browser settings, then try again.'
-            : 'The browser permission request was dismissed.',
+            ? t`Desktop notifications were denied by your browser. Allow notifications in browser settings, then try again.`
+            : t`The browser permission request was dismissed.`,
       });
     },
     [enabledByConversation, permission]

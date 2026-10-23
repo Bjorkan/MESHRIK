@@ -341,7 +341,7 @@ export function ContactInfoPane({
                     type="button"
                     className="text-xs font-mono text-muted-foreground cursor-pointer hover:text-primary transition-colors block truncate"
                     onClick={() =>
-                      void copyTextWithFeedback(contact.public_key, 'Public key copied!')
+                      void copyTextWithFeedback(contact.public_key, t`Public key copied!`)
                     }
                     title={t`Click to copy`}
                   >

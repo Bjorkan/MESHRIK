@@ -1,4 +1,3 @@
-import { useLingui } from '@lingui/react';
 import { getContactAvatar } from '../utils/contactAvatar';
 
 interface ContactAvatarProps {
@@ -11,8 +10,6 @@ interface ContactAvatarProps {
 }
 
 function CorruptAvatarGraphic({ size }: { size: number }) {
-  useLingui();
-
   return (
     <svg
       data-testid="corrupt-avatar"
@@ -48,8 +45,6 @@ export function ContactAvatar({
   clickable,
   variant = 'default',
 }: ContactAvatarProps) {
-  useLingui();
-
   if (variant === 'corrupt') {
     return (
       <div

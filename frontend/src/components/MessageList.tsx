@@ -1,5 +1,5 @@
 import { Trans } from '@lingui/react/macro';
-import { t } from '@lingui/core/macro';
+import { plural, t } from '@lingui/core/macro';
 import { useLingui } from '@lingui/react';
 import {
   useEffect,
@@ -1376,7 +1376,10 @@ export function MessageList({
                                 });
                               }}
                               title={t`View echo paths`}
-                              aria-label={t`Acknowledged, ${msg.acked} echo${msg.acked !== 1 ? 's' : ''} — view paths`}
+                              aria-label={plural(msg.acked, {
+                                one: 'Acknowledged, # echo — view paths',
+                                other: 'Acknowledged, # echoes — view paths',
+                              })}
                             >{t` ✓${msg.acked > 1 ? msg.acked : ''}`}</span>
                           ) : (
                             <span className="text-muted-foreground">{t` ✓${msg.acked > 1 ? msg.acked : ''}`}</span>

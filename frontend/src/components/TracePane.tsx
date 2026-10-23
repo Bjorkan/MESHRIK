@@ -1,5 +1,5 @@
 import { Trans } from '@lingui/react/macro';
-import { t } from '@lingui/core/macro';
+import { plural, t } from '@lingui/core/macro';
 import { useLingui } from '@lingui/react';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useForm, useStore } from '@tanstack/react-form';
@@ -691,9 +691,10 @@ export function TracePane({ contacts, config, onRunTracePath }: TracePaneProps) 
                         ) : null}
                         {selectedCount > 0 ? (
                           <div className="mt-1 text-[0.6875rem] text-muted-foreground">
-                            <Trans>
-                              Added {selectedCount} time{selectedCount === 1 ? '' : 's'}
-                            </Trans>
+                            {plural(selectedCount, {
+                              one: 'Added # time',
+                              other: 'Added # times',
+                            })}
                           </div>
                         ) : null}
                       </div>
@@ -890,7 +891,10 @@ export function TracePane({ contacts, config, onRunTracePath }: TracePaneProps) 
               <div className="min-w-0 flex-1 text-xs text-muted-foreground">
                 {draftHops.length === 0
                   ? t`No hops selected`
-                  : t`${draftHops.length} hop${draftHops.length === 1 ? '' : 's'} selected · ${effectiveHopHashBytes}-byte trace · you must be able to hear the final repeater for trace success`}
+                  : t`${plural(draftHops.length, {
+                      one: '# hop selected',
+                      other: '# hops selected',
+                    })} · ${effectiveHopHashBytes}-byte trace · you must be able to hear the final repeater for trace success`}
               </div>
               <Button onClick={handleRunTrace} disabled={loading || draftHops.length === 0}>
                 {loading ? t`Tracing...` : t`Send trace`}
