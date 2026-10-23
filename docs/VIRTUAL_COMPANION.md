@@ -1,11 +1,11 @@
-# Virtual Companion operator guide and release gate
+# Virtual Companion operator guide
 
-> [!CAUTION]
-> This feature is part of the unmerged S01–S13 stack under
-> [epic #224](https://github.com/Bjorkan/MESHRIK/issues/224). Keep every PR in the stack unmerged and
-> keep the listener OFF until the hardware-free tip is green and reviewed. Official Android/iOS
-> devices and physical-radio behavior are intentionally validated only after the complete stack has
-> merged. This document does not announce a released feature.
+> [!IMPORTANT]
+> Virtual Companion is available on `main`, but it is opt-in and disabled by default. Enabling it
+> opens an unauthenticated raw TCP listener, so use it only on a trusted LAN or behind a protected
+> VPN/mTLS gateway. Automated protocol and SDK coverage is complete; compatibility with particular
+> released Android/iOS app builds is claimed only when recorded in the
+> [compatibility evidence table](../tests/e2e/virtual_companion/README.md).
 
 The MeshCore App integration lets Companion-protocol clients talk to a **virtual TCP endpoint owned
 by MESHRIK**. MESHRIK remains the only owner of the physical radio connection. This is not a TCP
@@ -69,19 +69,21 @@ For a client build that exposes a custom TCP connection, the functional sequence
 3. Connect and verify the public node identity matches MESHRIK.
 4. Confirm contact/channel sync, then send only after the app shows the expected shared node.
 
-### Post-merge official-app hardware validation
+### Official-app compatibility evidence
 
 As of 2026-10-21, public upstream sources confirm Companion TCP support in the Android ecosystem,
 but they do not publish a stable, versioned click path for the currently released official Android
 and iOS UIs. The project has no authorized sanitized captures proving both current releases. Exact
 menu labels must therefore **not** be guessed in release documentation.
 
-This is deliberately **not a pre-merge requirement**. After the complete stack has merged, and
-before claiming released mobile compatibility, complete the version/OS/click-path/transcript table in
+Before claiming compatibility with a specific mobile release, complete the
+version/OS/click-path/transcript table in
 [`tests/e2e/virtual_companion/README.md`](../tests/e2e/virtual_companion/README.md) with real Android
 and iOS builds and two simultaneous clients. If a current build has no custom TCP option, cannot
-connect, or demands a private key, record that result and keep release blocked. The source-derived
-fixtures and `meshcore_py` harness prove protocol behavior, not official mobile UI compatibility.
+connect, or demands a private key, record that result without weakening the security policy. The
+source-derived fixtures and `meshcore_py` harness prove protocol behavior, not official mobile UI
+compatibility. This evidence work is tracked in
+[#256](https://github.com/Bjorkan/MESHRIK/issues/256).
 
 Relevant upstream references are the
 [MeshCore firmware protocol](https://github.com/meshcore-dev/MeshCore/blob/main/docs/companion_protocol.md),
@@ -263,63 +265,44 @@ clients and proxy only to MESHRIK loopback/private container networking. Bind an
 side so it is unreachable except from the gateway. MESHRIK does not provision certificates or
 validate gateway policy.
 
-## Stacked PR map
+## Historical implementation stack
 
-Every PR is same-repository and based on the previous head. None may merge until the final checklist
-below passes.
+S01–S13 were developed as a same-repository stack and are now merged into `main`. The table remains
+as an implementation and review record; it is not an instruction to recreate or withhold the stack.
 
-| Layer | Issue | PR | Base | Dormant/safety invariant |
-| --- | --- | --- | --- | --- |
-| S01 protocol | [#225](https://github.com/Bjorkan/MESHRIK/issues/225) | [#238](https://github.com/Bjorkan/MESHRIK/pull/238) | `main` | fixtures/docs only |
-| S02 transport | [#226](https://github.com/Bjorkan/MESHRIK/issues/226) | [#239](https://github.com/Bjorkan/MESHRIK/pull/239) | S01 | unwired listener classes |
-| S03 integration | [#227](https://github.com/Bjorkan/MESHRIK/issues/227) | [#240](https://github.com/Bjorkan/MESHRIK/pull/240) | S02 | singleton defaults OFF |
-| S04 identity | [#228](https://github.com/Bjorkan/MESHRIK/issues/228) | [#241](https://github.com/Bjorkan/MESHRIK/pull/241) | S03 | verified cached public identity only |
-| S05 contacts | [#229](https://github.com/Bjorkan/MESHRIK/issues/229) | [#242](https://github.com/Bjorkan/MESHRIK/pull/242) | S04 | DB reads only |
-| S06 channels | [#230](https://github.com/Bjorkan/MESHRIK/issues/230) | [#243](https://github.com/Bjorkan/MESHRIK/pull/243) | S05 | stable virtual slots only |
-| S07 messages | [#231](https://github.com/Bjorkan/MESHRIK/issues/231) | [#244](https://github.com/Bjorkan/MESHRIK/pull/244) | S06 | DB cursors, no radio drain |
-| S08 direct send | [#232](https://github.com/Bjorkan/MESHRIK/issues/232) | [#245](https://github.com/Bjorkan/MESHRIK/pull/245) | S07 | canonical worker/idempotency only |
-| S09 channel send | [#233](https://github.com/Bjorkan/MESHRIK/issues/233) | [#246](https://github.com/Bjorkan/MESHRIK/pull/246) | S08 | canonical worker/stable key only |
-| S10 policy | [#234](https://github.com/Bjorkan/MESHRIK/issues/234) | [#247](https://github.com/Bjorkan/MESHRIK/pull/247) | S09 | exhaustive default deny |
-| S11 UI | [#235](https://github.com/Bjorkan/MESHRIK/issues/235) | [#248](https://github.com/Bjorkan/MESHRIK/pull/248) | S10 | create flow and persisted state remain OFF |
-| S12 proof | [#236](https://github.com/Bjorkan/MESHRIK/issues/236) | [#249](https://github.com/Bjorkan/MESHRIK/pull/249) | S11 | hardware-free SDK/security proof |
-| S13 docs/release | [#237](https://github.com/Bjorkan/MESHRIK/issues/237) | this PR | S12 | documentation cannot activate listener |
+| Layer | Issue | Merged PR | Safety invariant |
+| --- | --- | --- | --- |
+| S01 protocol | [#225](https://github.com/Bjorkan/MESHRIK/issues/225) | [#238](https://github.com/Bjorkan/MESHRIK/pull/238) | source-derived fixtures and contract |
+| S02 transport | [#226](https://github.com/Bjorkan/MESHRIK/issues/226) | [#239](https://github.com/Bjorkan/MESHRIK/pull/239) | bounded independent client sessions |
+| S03 integration | [#227](https://github.com/Bjorkan/MESHRIK/issues/227) | [#240](https://github.com/Bjorkan/MESHRIK/pull/240) | singleton defaults OFF |
+| S04 identity | [#228](https://github.com/Bjorkan/MESHRIK/issues/228) | [#241](https://github.com/Bjorkan/MESHRIK/pull/241) | verified cached public identity only |
+| S05 contacts | [#229](https://github.com/Bjorkan/MESHRIK/issues/229) | [#242](https://github.com/Bjorkan/MESHRIK/pull/242) | DB-backed contact sync |
+| S06 channels | [#230](https://github.com/Bjorkan/MESHRIK/issues/230) | [#243](https://github.com/Bjorkan/MESHRIK/pull/243) | stable virtual slots only |
+| S07 messages | [#231](https://github.com/Bjorkan/MESHRIK/issues/231) | [#244](https://github.com/Bjorkan/MESHRIK/pull/244) | DB cursors, no radio drain |
+| S08 direct send | [#232](https://github.com/Bjorkan/MESHRIK/issues/232) | [#245](https://github.com/Bjorkan/MESHRIK/pull/245) | canonical worker/idempotency only |
+| S09 channel send | [#233](https://github.com/Bjorkan/MESHRIK/issues/233) | [#246](https://github.com/Bjorkan/MESHRIK/pull/246) | canonical worker/stable key only |
+| S10 policy | [#234](https://github.com/Bjorkan/MESHRIK/issues/234) | [#247](https://github.com/Bjorkan/MESHRIK/pull/247) | exhaustive default deny |
+| S11 UI | [#235](https://github.com/Bjorkan/MESHRIK/issues/235) | [#248](https://github.com/Bjorkan/MESHRIK/pull/248) | explicit opt-in and truthful status |
+| S12 proof | [#236](https://github.com/Bjorkan/MESHRIK/issues/236) | [#249](https://github.com/Bjorkan/MESHRIK/pull/249) | hardware-free SDK/security proof |
+| S13 docs/release | [#237](https://github.com/Bjorkan/MESHRIK/issues/237) | [#250](https://github.com/Bjorkan/MESHRIK/pull/250) | operator and deployment guidance |
 
 Parent: [#224](https://github.com/Bjorkan/MESHRIK/issues/224). Upstream protocol dependencies:
 MeshCore firmware protocol 13/14 and pinned `meshcore==2.3.16`; see
 [`VIRTUAL_COMPANION_PROTOCOL.md`](VIRTUAL_COMPANION_PROTOCOL.md) for source provenance.
 
-## Test and controlled rollout checklist
+## Current verification and rollout
 
-Before the **first** merge to `main`:
+The merged implementation is covered by the standard repository quality gate, the focused virtual
+Companion suite and the hardware-free SDK harness:
 
-- [ ] All 13 PRs remain draft/unmerged until S13 review begins; bases match the table.
-- [ ] Reviewer approves protocol policy, no-physical-bypass proof, UI warning and this runbook.
-- [ ] `PYTHONPATH=. uv run pytest tests/test_virtual_companion_*.py -q` passes.
-- [ ] `PYTHONPATH=. uv run python tests/e2e/virtual_companion/harness.py` passes.
-- [ ] `./scripts/quality/all_quality.sh` passes on the S13 tip.
-- [ ] Every PR's GitHub **All Quality** and autofix checks are green.
-- [ ] A reviewer confirms creation defaults OFF and no listener binds from merely opening settings.
+```bash
+PYTHONPATH=. uv run pytest tests/test_virtual_companion_*.py -q
+PYTHONPATH=. uv run python tests/e2e/virtual_companion/harness.py
+./scripts/quality/all_quality.sh
+```
 
-GitHub stacks merge sequentially, never atomically. Merge **base to tip** (#238, #239, …, this PR),
-allowing GitHub to retarget the next PR after each merge. Require CI on every resulting `main` commit.
-If any merge/check fails, stop immediately. Do not enable the integration, announce it, bypass branch
-protection, or skip to a later PR. Already merged intermediate layers remain dormant by default; fix
-and revalidate the remaining stack before continuing.
-
-After the final merge, but before release/public announcement:
-
-- [ ] Record Android and iOS app version/OS/click-path evidence with two simultaneous real devices.
-- [ ] Run the supervised managed-radio smoke checks; no real hardware is required before merge.
-- [ ] Fresh database: `GET /api/fanout` has no virtual integration and no virtual port is listening.
-- [ ] Creating the singleton without `enabled` persists OFF and does not bind.
-- [ ] Enabling a protected test endpoint shows `Listening`; disabling it closes only virtual clients.
-- [ ] Physical radio still has one owner/worker; connect/list/sync/denied commands record zero direct
-      physical TCP/BLE/serial opens and zero generic SDK dispatch.
-- [ ] Direct/channel tests show only canonical scheduled sends, with no duplicate after ambiguity.
-- [ ] Port collision and unavailable identity show truthful errors and no fallback to the radio.
-- [ ] `/api/debug` omits real identities, channel keys, message text and internal transport/bind
-      locations above the log boundary.
-- [ ] Roll back by disabling/deleting the integration; do not alter the physical radio endpoint.
-
-Close epic #224 only after every box is evidenced on the merged tip. The listener must still be OFF
-until an operator explicitly creates and enables this integration.
+Fresh databases contain no enabled virtual integration and bind no virtual port. Creating the
+singleton without `enabled` keeps it OFF. Operators can roll back by disabling or deleting the
+integration without altering the physical radio endpoint. Evidence for specific released mobile
+apps remains separate in the compatibility table and [#256](https://github.com/Bjorkan/MESHRIK/issues/256);
+absence of that evidence must not be described as completed compatibility testing.
