@@ -211,6 +211,59 @@ async def test_get_by_key_and_malformed_since_are_protocol_exact(test_db):
     assert await dispatcher.dispatch(b"\x04\x00", context) == b"\x01\x06"
 
 
+@pytest.mark.asyncio
+async def test_get_by_key_uses_index_and_rejects_ambiguous_identity(test_db):
+    target = _contact(0xAB)
+    rows = [(f"{index:064x}", f"Contact {index}", 1) for index in range(1, 1002)]
+    async with test_db.tx() as conn:
+        await conn.executemany(
+            "INSERT INTO contacts(public_key, name, type) VALUES (?, ?, ?)", rows
+        )
+    await ContactRepository.upsert(target)
+
+    result = await ContactRepository.get_companion_contact_by_key(target.public_key.upper())
+    assert result is not None
+    contact, revision = result
+    assert contact.public_key == target.public_key
+    assert revision > 0
+
+    async with test_db.readonly() as conn:
+        async with conn.execute(
+            "EXPLAIN QUERY PLAN SELECT * FROM contacts WHERE lower(public_key) = ?",
+            (target.public_key,),
+        ) as cursor:
+            plan = " ".join(str(column) for row in await cursor.fetchall() for column in row)
+    assert "idx_contacts_public_key_lower" in plan
+
+    async with test_db.tx() as conn:
+        await conn.execute(
+            "INSERT INTO contacts(public_key, name, type) VALUES (?, ?, 1)",
+            (target.public_key.upper(), "Ambiguous"),
+        )
+    assert await ContactRepository.get_companion_contact_by_key(target.public_key) is None
+
+
+@pytest.mark.asyncio
+async def test_get_by_key_does_not_load_full_snapshot(test_db):
+    target = _contact(0x66)
+    await ContactRepository.upsert(target)
+    repository = SimpleNamespace(
+        get_companion_contact_by_key=AsyncMock(
+            return_value=await ContactRepository.get_companion_contact_by_key(target.public_key)
+        ),
+        get_companion_snapshot=AsyncMock(side_effect=AssertionError("full snapshot requested")),
+    )
+    adapter = VirtualCompanionContacts(repository)
+
+    response = await adapter.get_contact_by_key(
+        b"\x1e" + bytes.fromhex(target.public_key), SessionState()
+    )
+
+    assert response[0] == RESP_CODE_CONTACT
+    repository.get_companion_contact_by_key.assert_awaited_once_with(target.public_key)
+    repository.get_companion_snapshot.assert_not_awaited()
+
+
 def test_contact_read_path_has_no_physical_radio_or_worker_call():
     source = "\n".join(
         (

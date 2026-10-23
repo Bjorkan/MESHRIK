@@ -410,6 +410,40 @@ class ContactRepository:
         )
 
     @staticmethod
+    async def get_companion_contact_by_key(public_key: str) -> tuple[Contact, int] | None:
+        """Return one unambiguous full-key contact without scanning the catalog."""
+        normalized_key = public_key.lower()
+        if len(normalized_key) != 64:
+            return None
+        try:
+            if len(bytes.fromhex(normalized_key)) != 32:
+                return None
+        except ValueError:
+            return None
+
+        async with db.readonly() as conn:
+            async with conn.execute(
+                """
+                SELECT contacts.*, changes.revision AS companion_revision
+                FROM contacts
+                JOIN virtual_companion_contact_changes AS changes
+                  ON changes.public_key = ? AND changes.deleted = 0
+                WHERE lower(contacts.public_key) = ?
+                ORDER BY contacts.public_key
+                LIMIT 2
+                """,
+                (normalized_key, normalized_key),
+            ) as cursor:
+                rows = list(await cursor.fetchall())
+
+        # SQLite's primary key is case-sensitive in legacy databases. Refuse a
+        # normalized identity if more than one differently-cased row exists.
+        if len(rows) != 1:
+            return None
+        row = rows[0]
+        return ContactRepository._row_to_contact(row), int(row["companion_revision"])
+
+    @staticmethod
     async def apply_companion_mutation(
         mutation: CompanionContactMutation,
     ) -> tuple[Contact, int] | None:

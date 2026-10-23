@@ -19,14 +19,16 @@ ERR_CODE_NOT_FOUND = 0x02
 MAX_PATH_SIZE = 64
 
 
-class ContactSnapshotRepository(Protocol):
+class CompanionContactRepository(Protocol):
     async def get_companion_snapshot(self, since: int = 0) -> CompanionContactSnapshot: ...
+
+    async def get_companion_contact_by_key(self, public_key: str) -> tuple[Contact, int] | None: ...
 
 
 class VirtualCompanionContacts:
     """Serialize repository snapshots without touching the physical radio."""
 
-    def __init__(self, repository: ContactSnapshotRepository = ContactRepository) -> None:
+    def __init__(self, repository: CompanionContactRepository = ContactRepository) -> None:
         self._repository = repository
 
     async def get_contacts(self, payload: bytes, _context: DispatchContext) -> CommandResponse:
@@ -45,10 +47,10 @@ class VirtualCompanionContacts:
 
     async def get_contact_by_key(self, payload: bytes, _context: DispatchContext) -> bytes:
         requested_key = payload[1:].hex()
-        snapshot = await self._repository.get_companion_snapshot(0)
-        for contact, revision in snapshot.contacts:
-            if contact.public_key.lower() == requested_key:
-                return encode_contact(contact, revision)
+        result = await self._repository.get_companion_contact_by_key(requested_key)
+        if result is not None:
+            contact, revision = result
+            return encode_contact(contact, revision)
         return bytes((RESP_CODE_ERR, ERR_CODE_NOT_FOUND))
 
 

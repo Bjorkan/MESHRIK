@@ -241,6 +241,7 @@ CREATE INDEX IF NOT EXISTS idx_raw_packets_message_id ON raw_packets(message_id)
 CREATE INDEX IF NOT EXISTS idx_raw_packets_timestamp ON raw_packets(timestamp);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_raw_packets_payload_hash ON raw_packets(payload_hash);
 CREATE INDEX IF NOT EXISTS idx_contacts_type_last_seen ON contacts(type, last_seen);
+CREATE INDEX IF NOT EXISTS idx_contacts_public_key_lower ON contacts(lower(public_key));
 CREATE INDEX IF NOT EXISTS idx_virtual_companion_contact_changes_revision
     ON virtual_companion_contact_changes(revision);
 CREATE INDEX IF NOT EXISTS idx_messages_type_received_conversation
