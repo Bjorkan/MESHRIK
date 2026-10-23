@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [react(), lingui({ macroTransform: true })],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      '@': path.resolve(import.meta.dirname, './src'),
     },
   },
   test: {
