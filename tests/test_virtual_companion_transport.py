@@ -55,11 +55,42 @@ async def test_invalid_frame_boundaries_fail_closed(wire, exception):
 
 
 @pytest.mark.asyncio
-async def test_clean_eof_and_idle_timeout_are_distinct():
+async def test_clean_eof_and_partial_header_timeout_are_distinct():
     with pytest.raises(EOFError):
         await read_frame(make_reader(b""), timeout=0.1)
+
+    reader = asyncio.StreamReader()
+    reader.feed_data(b"<")
     with pytest.raises(FrameTimeout):
-        await read_frame(asyncio.StreamReader(), timeout=0.01)
+        await read_frame(reader, timeout=0.01)
+
+
+@pytest.mark.asyncio
+async def test_idle_session_survives_frame_deadline_and_accepts_next_command():
+    dispatcher = CommandDispatcher()
+
+    async def echo(payload, _context):
+        return bytes((0x20, payload[1]))
+
+    dispatcher.register(0x16, echo, min_length=2, max_length=2)
+    reader = asyncio.StreamReader()
+    writer = RecordingWriter()
+    session = VirtualCompanionSession(reader, writer, dispatcher, read_timeout=0.01)
+    task = asyncio.create_task(session.run())
+
+    await asyncio.sleep(0.03)
+    assert not task.done()
+    assert not session.closed
+
+    reader.feed_data(b"<\x02\x00\x16\x0e")
+    async with asyncio.timeout(1):
+        while not writer.data:
+            await asyncio.sleep(0)
+    assert writer.data == encode_frame(b"\x20\x0e")
+
+    reader.feed_eof()
+    await asyncio.wait_for(task, timeout=1)
+    assert session.closed
 
 
 def test_encoder_bounds_and_direction():

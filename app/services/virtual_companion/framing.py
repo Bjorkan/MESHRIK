@@ -52,8 +52,17 @@ async def read_frame(
     timeout: float,
     expected_prefix: bytes = INBOUND_PREFIX,
 ) -> bytes:
-    """Read exactly one frame, preserving any coalesced bytes for the next call."""
-    header = await _readexactly(reader, HEADER_SIZE, timeout)
+    """Read one frame without treating an idle connection as a stalled frame."""
+    try:
+        prefix = await reader.readexactly(1)
+    except asyncio.IncompleteReadError as exc:
+        if not exc.partial:
+            raise EOFError from exc
+        raise TruncatedFrame("connection closed during Companion frame") from exc
+
+    # A deadline starts only after the peer has begun a frame. Healthy clients
+    # may otherwise remain silent indefinitely between commands.
+    header = prefix + await _readexactly(reader, HEADER_SIZE - 1, timeout)
     if header[:1] != expected_prefix:
         raise FrameError("unexpected Companion frame direction")
     (length,) = struct.unpack_from("<H", header, 1)
