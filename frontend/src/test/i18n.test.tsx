@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -26,8 +26,19 @@ describe('language preference', () => {
 
   it('uses a supported browser language and falls back to English', () => {
     expect(resolveLanguage('auto', ['en-GB', 'sv-SE'])).toBe('en');
+    expect(resolveLanguage('auto', ['sv-SE', 'en-GB'])).toBe('sv');
     expect(resolveLanguage('auto', ['de-DE'])).toBe('en');
     expect(resolveLanguage('en', ['sv-SE'])).toBe('en');
+    expect(resolveLanguage('sv', ['en-GB'])).toBe('sv');
+  });
+
+  it('activates Swedish with Swedish formatting and document metadata', async () => {
+    await setLanguagePreference('sv');
+
+    expect(getLanguagePreference()).toBe('sv');
+    expect(localStorage.getItem(LANGUAGE_STORAGE_KEY)).toBe('sv');
+    expect(document.documentElement.lang).toBe('sv');
+    expect(getLocale()).toBe('sv-SE');
   });
 
   it('persists an explicit choice and removes storage for automatic detection', async () => {
@@ -91,9 +102,10 @@ describe('language preference', () => {
 
     render(<SettingsDraft />);
     await user.type(screen.getByLabelText('Draft'), 'unchanged');
-    await user.click(screen.getByRole('radio', { name: 'English' }));
+    await user.click(screen.getByRole('radio', { name: 'Svenska' }));
 
     expect(screen.getByLabelText('Draft')).toHaveValue('unchanged');
-    expect(screen.getByRole('radio', { name: 'English' })).toBeChecked();
+    expect(screen.getByRole('radio', { name: 'Svenska' })).toBeChecked();
+    await waitFor(() => expect(screen.getByText('Språk')).toBeInTheDocument());
   });
 });

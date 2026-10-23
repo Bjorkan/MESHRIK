@@ -1,8 +1,12 @@
 import { i18n } from '@lingui/core';
-import { messages } from './locales/en/messages.po';
+import { messages as englishMessages } from './locales/en/messages.po';
+import { messages as swedishMessages } from './locales/sv/messages.po';
 
 export const LANGUAGE_STORAGE_KEY = 'meshrik-language';
-export const SUPPORTED_LANGUAGES = [{ code: 'en', name: 'English' }] as const;
+export const SUPPORTED_LANGUAGES = [
+  { code: 'en', name: 'English' },
+  { code: 'sv', name: 'Svenska' },
+] as const;
 export type Language = (typeof SUPPORTED_LANGUAGES)[number]['code'];
 export type LanguagePreference = Language | 'auto';
 
@@ -46,7 +50,7 @@ function notifyPreferenceListeners() {
 }
 
 // The English catalog is always available as the deterministic source fallback.
-i18n.load('en', messages);
+i18n.load({ en: englishMessages, sv: swedishMessages });
 i18n.activate('en');
 
 export async function activateLanguage(preference: LanguagePreference): Promise<void> {
@@ -79,7 +83,7 @@ export function getLocale(): string {
   if (currentPreference === 'auto' && typeof navigator !== 'undefined') {
     return navigator.languages?.[0] || navigator.language || i18n.locale;
   }
-  return i18n.locale === 'en' ? 'en-US' : i18n.locale;
+  return i18n.locale === 'en' ? 'en-US' : i18n.locale === 'sv' ? 'sv-SE' : i18n.locale;
 }
 
 export { i18n };
