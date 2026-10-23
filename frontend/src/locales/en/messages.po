@@ -2820,7 +2820,7 @@ msgstr "Fetching..."
 msgid "Fetching{0}..."
 msgstr "Fetching{0}..."
 
-#: src/utils/rawPacketInspector.ts:318
+#: src/utils/rawPacketInspector.ts:316
 msgid "Field-level payload breakdown is not available for this packet type."
 msgstr "Field-level payload breakdown is not available for this packet type."
 
