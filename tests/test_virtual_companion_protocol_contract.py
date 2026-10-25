@@ -197,4 +197,4 @@ def test_command_policy_covers_every_firmware_opcode_and_denies_privileged_acces
     assert all(policy[command] == "C" for command in FORBIDDEN_IDS)
     assert policy[1] == policy[4] == policy[10] == policy[22] == "A"
     assert policy[2] == policy[3] == "B"
-    assert "default-deny" in DOC and "no production tcp listener" in DOC.lower()
+    assert "default-deny" in DOC

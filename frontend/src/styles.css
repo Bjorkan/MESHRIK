@@ -1,10 +1,6 @@
-/* Base styles - minimal CSS that Tailwind/shadcn can't handle */
-
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
+/* Base styles not covered by Tailwind/shadcn. Tailwind's preflight owns the
+   global box model and reset; keeping an unlayered `*` reset here would
+   override every layered margin and padding utility in Tailwind 4. */
 
 html {
   height: 100dvh;
