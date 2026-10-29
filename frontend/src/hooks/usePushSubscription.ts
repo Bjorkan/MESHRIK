@@ -3,6 +3,7 @@ import { useLingui } from '@lingui/react';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { toast } from '../components/ui/sonner';
 import { api } from '../api';
+import { ingressEmbedding } from '../basePath';
 import type { PushSubscriptionInfo } from '../types';
 
 function generateLabel(): string {
@@ -131,7 +132,8 @@ export function usePushSubscription(): PushSubscriptionState {
       window.isSecureContext &&
       'serviceWorker' in navigator &&
       'PushManager' in window &&
-      'Notification' in window;
+      'Notification' in window &&
+      !ingressEmbedding();
     setIsSupported(supported);
 
     if (supported) {
@@ -159,6 +161,7 @@ export function usePushSubscription(): PushSubscriptionState {
   }, [reconcileCurrentSubscription]);
 
   const refreshSubscriptions = useCallback(async () => {
+    if (ingressEmbedding()) return [];
     try {
       const subs = await api.getPushSubscriptions();
       const reg = await withTimeout(
@@ -237,6 +240,7 @@ export function usePushSubscription(): PushSubscriptionState {
   }, [isSupported, refreshSubscriptions]);
 
   const unsubscribe = useCallback(async () => {
+    if (ingressEmbedding()) return;
     setLoading(true);
     try {
       const reg = await navigator.serviceWorker.ready;
@@ -275,7 +279,7 @@ export function usePushSubscription(): PushSubscriptionState {
   const deleteSubscription = useCallback(
     async (subscriptionId: string) => {
       await api.deletePushSubscription(subscriptionId);
-      if (subscriptionId === currentSubscriptionId) {
+      if (!ingressEmbedding() && subscriptionId === currentSubscriptionId) {
         setCurrentSubscriptionId(null);
         try {
           const reg = await navigator.serviceWorker.ready;
