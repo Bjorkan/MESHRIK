@@ -17,7 +17,9 @@ describe('per-request application base path', () => {
     document.head.prepend(base);
 
     expect(appBasePath()).toBe('/api/hassio_ingress/abc123/');
-    expect(appUrl('api/contacts?limit=10')).toBe('/api/hassio_ingress/abc123/api/contacts?limit=10');
+    expect(appUrl('api/contacts?limit=10')).toBe(
+      '/api/hassio_ingress/abc123/api/contacts?limit=10'
+    );
     expect(appUrl('/api/ws')).toBe('/api/hassio_ingress/abc123/api/ws');
     expect(appUrl('favicon.svg')).toBe('/api/hassio_ingress/abc123/favicon.svg');
     expect(ingressEmbedding()).toBe(true);
