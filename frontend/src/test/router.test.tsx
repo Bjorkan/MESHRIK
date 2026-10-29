@@ -235,13 +235,17 @@ describe('application router', () => {
         createMemoryHistory({ initialEntries: ['/api/hassio_ingress/test-token/settings/radio'] })
       );
       await router.load();
-      expect(router.state.matches[router.state.matches.length - 1]?.routeId).toBe('/_app/settings/radio');
+      expect(router.state.matches[router.state.matches.length - 1]?.routeId).toBe(
+        '/_app/settings/radio'
+      );
 
       await router.navigate({ to: '/map' });
       expect(router.history.location.pathname).toBe('/api/hassio_ingress/test-token/map');
       router.history.back();
       await router.load();
-      expect(router.state.matches[router.state.matches.length - 1]?.routeId).toBe('/_app/settings/radio');
+      expect(router.state.matches[router.state.matches.length - 1]?.routeId).toBe(
+        '/_app/settings/radio'
+      );
     } finally {
       base.remove();
     }
