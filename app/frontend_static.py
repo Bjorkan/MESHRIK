@@ -58,7 +58,10 @@ def _serve_index(index_file: Path, request: Request) -> HTMLResponse:
     # deep links, and expose exactly one canonical app base to JS and router.
     base = escape(_request_app_path(request), quote=True)
     html = index_file.read_text(encoding="utf-8")
-    html = html.replace("<head>", f'<head><base href="{base}">', 1)
+    if '<base href="/"' in html:
+        html = html.replace('<base href="/"', f'<base href="{base}"', 1)
+    else:
+        html = html.replace("<head>", f'<head><base href="{base}">', 1)
     if base != "/":
         # Home Assistant's origin is not the app's own PWA installation origin.
         html = re.sub(r'<link rel="manifest"[^>]*>', "", html, count=1)

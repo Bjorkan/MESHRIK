@@ -8,7 +8,8 @@ export function appBasePath(): string {
 
 export function appUrl(path: string): string {
   // Callers pass app-relative routes/assets, never origin-absolute paths.
-  return new URL(path.replace(/^\/+/, ''), document.baseURI).pathname;
+  const url = new URL(path.replace(/^[/]+/, ''), document.baseURI);
+  return url.pathname + url.search + url.hash;
 }
 
 export function ingressEmbedding(): boolean {

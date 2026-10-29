@@ -39,7 +39,7 @@ self.addEventListener('notificationclick', (event) => {
   // A worker registered on a subpath must never navigate outside its own
   // scope (including after a push payload with ../ or encoded traversal).
   const appOrigin = self.registration.scope;
-  const candidate = new URL(urlPath.replace(/^\\/+/, ''), appOrigin).href;
+  const candidate = new URL(urlPath.replace(/^[/]+/, ''), appOrigin).href;
   const targetUrl = candidate.startsWith(appOrigin) ? candidate : appOrigin;
 
   event.waitUntil(
