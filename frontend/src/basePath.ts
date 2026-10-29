@@ -2,13 +2,19 @@
  * All URL consumers use this single source so deep links cannot change
  * where the frontend contacts the API or loads static resources.
  */
+function appBaseUrl(): string {
+  // Built pages always include <base>. Default to the origin root in tests and
+  // callers without an HTML shell, rather than interpreting nested routes as base.
+  return document.querySelector('base')?.href ?? `${window.location.origin}/`;
+}
+
 export function appBasePath(): string {
-  return new URL('.', document.baseURI).pathname;
+  return new URL('.', appBaseUrl()).pathname;
 }
 
 export function appUrl(path: string): string {
   // Callers pass app-relative routes/assets, never origin-absolute paths.
-  const url = new URL(path.replace(/^[/]+/, ''), document.baseURI);
+  const url = new URL(path.replace(/^[/]+/, ''), appBaseUrl());
   return url.pathname + url.search + url.hash;
 }
 
