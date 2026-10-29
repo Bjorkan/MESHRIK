@@ -48,4 +48,4 @@ jobs:
       - name: Sync Python dependencies
         run: uv sync --dev --frozen
       - name: Test dynamic HTML base, SPA fallback and manifest
-        run: uv run pytest -n 0 tests/test_frontend_static.py -q
+        run: PYTHONPATH=. uv run pytest -n 0 tests/test_frontend_static.py -q
