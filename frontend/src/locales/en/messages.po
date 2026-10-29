@@ -1465,7 +1465,7 @@ msgstr "Check radio connection and power"
 msgid "Check radio connection and try again"
 msgstr "Check radio connection and try again"
 
-#: src/hooks/usePushSubscription.ts:230
+#: src/hooks/usePushSubscription.ts:233
 msgid "Check that notifications are allowed"
 msgstr "Check that notifications are allowed"
 
@@ -2149,27 +2149,27 @@ msgstr "Deny"
 msgid "Desktop notifications (legacy)"
 msgstr "Desktop notifications (legacy)"
 
-#: src/hooks/useBrowserNotifications.ts:205
+#: src/hooks/useBrowserNotifications.ts:206
 msgid "Desktop notifications are blocked by your browser. Allow notifications in browser settings, then try again. Non-HTTPS or untrusted HTTPS origins may also prevent notifications from working reliably."
 msgstr "Desktop notifications are blocked by your browser. Allow notifications in browser settings, then try again. Non-HTTPS or untrusted HTTPS origins may also prevent notifications from working reliably."
 
-#: src/hooks/useBrowserNotifications.ts:187
+#: src/hooks/useBrowserNotifications.ts:188
 msgid "Desktop notifications are off for {label}."
 msgstr "Desktop notifications are off for {label}."
 
-#: src/hooks/useBrowserNotifications.ts:236
+#: src/hooks/useBrowserNotifications.ts:237
 msgid "Desktop notifications are on for {label}."
 msgstr "Desktop notifications are on for {label}."
 
-#: src/hooks/useBrowserNotifications.ts:129
+#: src/hooks/useBrowserNotifications.ts:130
 msgid "Desktop notifications are on for this conversation, but you are using HTTP instead of HTTPS. Notifications will likely not work reliably."
 msgstr "Desktop notifications are on for this conversation, but you are using HTTP instead of HTTPS. Notifications will likely not work reliably."
 
-#: src/hooks/useBrowserNotifications.ts:144
+#: src/hooks/useBrowserNotifications.ts:145
 msgid "Desktop notifications are on for this conversation, but your HTTPS connection is untrusted, such as a self-signed certificate. Notification delivery may be inconsistent depending on your browser."
 msgstr "Desktop notifications are on for this conversation, but your HTTPS connection is untrusted, such as a self-signed certificate. Notification delivery may be inconsistent depending on your browser."
 
-#: src/hooks/useBrowserNotifications.ts:246
+#: src/hooks/useBrowserNotifications.ts:247
 msgid "Desktop notifications were denied by your browser. Allow notifications in browser settings, then try again."
 msgstr "Desktop notifications were denied by your browser. Allow notifications in browser settings, then try again."
 
@@ -2621,7 +2621,7 @@ msgstr "Failed to disable bots"
 msgid "Failed to discover regions"
 msgstr "Failed to discover regions"
 
-#: src/hooks/usePushSubscription.ts:229
+#: src/hooks/usePushSubscription.ts:232
 msgid "Failed to enable push notifications"
 msgstr "Failed to enable push notifications"
 
@@ -2656,7 +2656,7 @@ msgid "Failed to load contact info"
 msgstr "Failed to load contact info"
 
 #. placeholder {0}: response.status
-#: src/hooks/useFaviconBadge.ts:110
+#: src/hooks/useFaviconBadge.ts:111
 msgid "Failed to load favicon SVG: {0}"
 msgstr "Failed to load favicon SVG: {0}"
 
@@ -2758,7 +2758,7 @@ msgstr "Failed to update mute"
 msgid "Failed to update name"
 msgstr "Failed to update name"
 
-#: src/hooks/usePushSubscription.ts:264
+#: src/hooks/usePushSubscription.ts:268
 msgid "Failed to update push preferences"
 msgstr "Failed to update push preferences"
 
@@ -4211,20 +4211,20 @@ msgstr "New Conversation"
 
 #. placeholder {0}: message.conversation_key.slice(0, 12)
 #. placeholder {0}: message.sender_name
-#: src/hooks/useBrowserNotifications.ts:85
 #: src/hooks/useBrowserNotifications.ts:86
+#: src/hooks/useBrowserNotifications.ts:87
 msgid "New message from {0}"
 msgstr "New message from {0}"
 
-#: src/hooks/useBrowserNotifications.ts:94
+#: src/hooks/useBrowserNotifications.ts:95
 msgid "New message from {label}"
 msgstr "New message from {label}"
 
-#: src/hooks/useBrowserNotifications.ts:94
+#: src/hooks/useBrowserNotifications.ts:95
 msgid "New message in {label}"
 msgstr "New message in {label}"
 
-#: src/hooks/useBrowserNotifications.ts:90
+#: src/hooks/useBrowserNotifications.ts:91
 msgid "New message in {roomName}"
 msgstr "New message in {roomName}"
 
@@ -4573,7 +4573,7 @@ msgstr "Notification settings"
 msgid "Notification URLs"
 msgstr "Notification URLs"
 
-#: src/hooks/useBrowserNotifications.ts:203
+#: src/hooks/useBrowserNotifications.ts:204
 msgid "Notifications blocked"
 msgstr "Notifications blocked"
 
@@ -4581,23 +4581,23 @@ msgstr "Notifications blocked"
 msgid "Notifications blocked by the browser"
 msgstr "Notifications blocked by the browser"
 
-#: src/hooks/useBrowserNotifications.ts:185
+#: src/hooks/useBrowserNotifications.ts:186
 msgid "Notifications disabled"
 msgstr "Notifications disabled"
 
 #: src/components/Sidebar.tsx:690
 #: src/components/Sidebar.tsx:690
-#: src/hooks/useBrowserNotifications.ts:114
-#: src/hooks/useBrowserNotifications.ts:152
+#: src/hooks/useBrowserNotifications.ts:115
+#: src/hooks/useBrowserNotifications.ts:153
 msgid "Notifications enabled"
 msgstr "Notifications enabled"
 
-#: src/hooks/useBrowserNotifications.ts:126
-#: src/hooks/useBrowserNotifications.ts:141
+#: src/hooks/useBrowserNotifications.ts:127
+#: src/hooks/useBrowserNotifications.ts:142
 msgid "Notifications enabled with warning"
 msgstr "Notifications enabled with warning"
 
-#: src/hooks/useBrowserNotifications.ts:243
+#: src/hooks/useBrowserNotifications.ts:244
 msgid "Notifications not enabled"
 msgstr "Notifications not enabled"
 
@@ -4605,11 +4605,11 @@ msgstr "Notifications not enabled"
 msgid "Notifications On"
 msgstr "Notifications On"
 
-#: src/hooks/useBrowserNotifications.ts:194
+#: src/hooks/useBrowserNotifications.ts:195
 msgid "Notifications unavailable"
 msgstr "Notifications unavailable"
 
-#: src/hooks/useBrowserNotifications.ts:224
+#: src/hooks/useBrowserNotifications.ts:225
 msgid "Notifications will look like this. These require the tab to stay open, and will not be reliable on mobile."
 msgstr "Notifications will look like this. These require the tab to stay open, and will not be reliable on mobile."
 
@@ -6778,11 +6778,11 @@ msgstr "Telemetry Tracked Repeaters"
 msgid "Test"
 msgstr "Test"
 
-#: src/hooks/usePushSubscription.ts:298
+#: src/hooks/usePushSubscription.ts:302
 msgid "Test notification failed"
 msgstr "Test notification failed"
 
-#: src/hooks/usePushSubscription.ts:296
+#: src/hooks/usePushSubscription.ts:300
 msgid "Test notification sent"
 msgstr "Test notification sent"
 
@@ -6842,7 +6842,7 @@ msgstr "that this message traveled through the mesh network. Repeater identities
 msgid "The advertisement request was not accepted"
 msgstr "The advertisement request was not accepted"
 
-#: src/hooks/useBrowserNotifications.ts:247
+#: src/hooks/useBrowserNotifications.ts:248
 msgid "The browser permission request was dismissed."
 msgstr "The browser permission request was dismissed."
 
@@ -6882,7 +6882,7 @@ msgstr "These settings apply only to this device/browser."
 msgid "These stable virtual indexes select MESHRIK DB channels. They never reassign hardware channel slots. Removing a channel leaves other virtual indexes unchanged."
 msgstr "These stable virtual indexes select MESHRIK DB channels. They never reassign hardware channel slots. Removing a channel leaves other virtual indexes unchanged."
 
-#: src/hooks/useBrowserNotifications.ts:196
+#: src/hooks/useBrowserNotifications.ts:197
 msgid "This browser does not support desktop notifications."
 msgstr "This browser does not support desktop notifications."
 
