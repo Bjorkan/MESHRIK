@@ -8,6 +8,7 @@ interface ErrorEvent {
 }
 
 interface SuccessEvent {
+import { appUrl } from './basePath';
   message: string;
   details?: string;
 }
@@ -58,7 +59,7 @@ export function useWebSocket(options: UseWebSocketOptions) {
   const connect = useCallback(() => {
     // Always connect at the application origin, regardless of the active route.
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/api/ws`;
+    const wsUrl = `${protocol}//${window.location.host}${appUrl('api/ws')}`;
 
     const ws = new WebSocket(wsUrl);
 

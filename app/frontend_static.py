@@ -1,8 +1,10 @@
 import logging
+import re
+from html import escape
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 logger = logging.getLogger(__name__)
@@ -38,8 +40,33 @@ def _is_index_file(path: Path, index_file: Path) -> bool:
     return path == index_file
 
 
+# Only Supervisor's X-Ingress-Path, not generic X-Forwarded-Prefix, is used
+# to select Home Assistant's dynamic session URL. Never reflect arbitrary
+# header bytes (HTML, query strings, encoded separators) into an HTML <base>.
+_INGRESS_PATH_RE = re.compile(r"^/api/hassio_ingress/[A-Za-z0-9_-]+/?$")
+
+
+def _request_app_path(request: Request) -> str:
+    ingress = request.headers.get("x-ingress-path", "")
+    if _INGRESS_PATH_RE.fullmatch(ingress):
+        return ingress.rstrip("/") + "/"
+    return "/"
+
+
+def _serve_index(index_file: Path, request: Request) -> HTMLResponse:
+    # The Vite build uses relative asset URLs. Fix their resolution on SPA
+    # deep links, and expose exactly one canonical app base to JS and router.
+    base = escape(_request_app_path(request), quote=True)
+    html = index_file.read_text(encoding="utf-8")
+    html = html.replace("<head>", f'<head><base href="{base}">', 1)
+    if base != "/":
+        # Home Assistant's origin is not the app's own PWA installation origin.
+        html = re.sub(r'<link rel="manifest"[^>]*>', "", html, count=1)
+    return HTMLResponse(html, headers={"Cache-Control": INDEX_CACHE_CONTROL})
+
+
 def _resolve_request_base(request: Request) -> str:
-    """Resolve the external origin root, honoring forwarded origin headers."""
+    """Resolve the external origin and app base, honoring ingress and forwarded headers."""
     forwarded_proto = request.headers.get("x-forwarded-proto")
     forwarded_host = request.headers.get("x-forwarded-host")
 
@@ -53,7 +80,7 @@ def _resolve_request_base(request: Request) -> str:
     else:
         origin = str(request.base_url).rstrip("/")
 
-    return f"{origin}/"
+    return f"{origin}{_request_app_path(request)}"
 
 
 def _validate_frontend_dir(frontend_dir: Path, *, log_failures: bool = True) -> tuple[bool, Path]:
@@ -101,9 +128,9 @@ def register_frontend_static_routes(app: FastAPI, frontend_dir: Path) -> bool:
         )
 
     @app.get("/", include_in_schema=False)
-    async def serve_index():
+    async def serve_index(request: Request):
         """Serve the frontend index.html."""
-        return _file_response(index_file, cache_control=INDEX_CACHE_CONTROL)
+        return _serve_index(index_file, request)
 
     @app.get("/site.webmanifest", include_in_schema=False)
     async def serve_webmanifest(request: Request):
@@ -189,7 +216,7 @@ def register_frontend_static_routes(app: FastAPI, frontend_dir: Path) -> bool:
         )
 
     @app.get("/{path:path}", include_in_schema=False)
-    async def serve_frontend(path: str):
+    async def serve_frontend(path: str, request: Request):
         """Serve frontend files, falling back to index.html for SPA routing."""
         if path == "api" or path.startswith("api/"):
             return JSONResponse(
@@ -210,14 +237,11 @@ def register_frontend_static_routes(app: FastAPI, frontend_dir: Path) -> bool:
             raise HTTPException(status_code=404, detail="Not found") from None
 
         if file_path.exists() and file_path.is_file():
-            cache_control = (
-                INDEX_CACHE_CONTROL
-                if _is_index_file(file_path, index_file)
-                else STATIC_FILE_CACHE_CONTROL
-            )
-            return _file_response(file_path, cache_control=cache_control)
+            if _is_index_file(file_path, index_file):
+                return _serve_index(index_file, request)
+            return _file_response(file_path, cache_control=STATIC_FILE_CACHE_CONTROL)
 
-        return _file_response(index_file, cache_control=INDEX_CACHE_CONTROL)
+        return _serve_index(index_file, request)
 
     logger.info("Serving frontend from %s", frontend_dir)
     return True

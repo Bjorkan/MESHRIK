@@ -3,6 +3,7 @@ import type { QueryClient } from '@tanstack/react-query';
 
 import { routeTree } from './routeTree.gen';
 import { createAppQueryClient } from './queryClient';
+import { appBasePath } from './basePath';
 
 export interface AppRouterContext {
   queryClient: QueryClient;
@@ -14,6 +15,7 @@ export function createAppRouter(
 ) {
   return createRouter({
     routeTree,
+    basepath: appBasePath(),
     history,
     context: { queryClient },
     defaultPreload: 'intent',

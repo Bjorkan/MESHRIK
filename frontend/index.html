@@ -15,11 +15,11 @@
       content="Web interface for MeshCore mesh radio networks. Send and receive messages, manage contacts and channels, and configure your radio."
     />
     <title>MESHRIK for MeshCore</title>
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
-    <link rel="shortcut icon" href="/favicon.ico" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-    <link rel="manifest" href="/site.webmanifest" crossorigin="use-credentials" />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <link rel="icon" type="image/png" href="favicon-96x96.png" sizes="96x96" />
+    <link rel="shortcut icon" href="favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
+    <link rel="manifest" href="site.webmanifest" crossorigin="use-credentials" />
     <script>
       // Service worker registration moved to main.tsx (requires isSecureContext
       // for Web Push). Do not duplicate here.
@@ -53,17 +53,17 @@
           });
       };
       window.__prefetch = {
-        config: fetchJsonOrThrow('/api/radio/config'),
-        settings: fetchJsonOrThrow('/api/settings'),
-        channels: fetchJsonOrThrow('/api/channels'),
-        contacts: fetchJsonOrThrow('/api/contacts?limit=1000&offset=0'),
-        unreads: fetchJsonOrThrow('/api/read-state/unreads'),
-        undecryptedCount: fetchJsonOrThrow('/api/packets/undecrypted/count'),
+        config: fetchJsonOrThrow(new URL('api/radio/config', document.baseURI).href),
+        settings: fetchJsonOrThrow(new URL('api/settings', document.baseURI).href),
+        channels: fetchJsonOrThrow(new URL('api/channels', document.baseURI).href),
+        contacts: fetchJsonOrThrow(new URL('api/contacts?limit=1000&offset=0', document.baseURI).href),
+        unreads: fetchJsonOrThrow(new URL('api/read-state/unreads', document.baseURI).href),
+        undecryptedCount: fetchJsonOrThrow(new URL('api/packets/undecrypted/count', document.baseURI).href),
       };
     </script>
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <script type="module" src="./src/main.tsx"></script>
   </body>
 </html>
