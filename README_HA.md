@@ -539,3 +539,38 @@ Discovery topics (entity registration, under `homeassistant/`):
 | `homeassistant/event/meshcore_<node_id>/messages/config`          | Message event entity   |
 
 The `{node_id}` is always the first 12 characters of the node's public key, lowercased.
+
+## Accessing MESHRIK through Home Assistant Ingress
+
+The [HA-MESHRIK app wrapper](https://github.com/Bjorkan/HA-MESHRIK) runs the MESHRIK
+web interface inside Home Assistant's authenticated sidebar. The browser sees a changing
+`/api/hassio_ingress/<session-token>/` prefix; the Supervisor forwards requests to
+MESHRIK and sends `X-Ingress-Path` to the backend.
+
+MESHRIK now serves a per-request HTML `<base>` tag and uses the same base for Vite
+assets, API calls, WebSocket reconnects, TanStack Router pathname navigation,
+favicons and in-tab notification links. This avoids requesting Home Assistant's
+root `/api`, `/assets`, or application routes. The built frontend still serves
+at `/` when accessed directly through a trusted reverse proxy. Do not cache the
+HTML shell across users or Supervisor ingress sessions; the server returns
+`Cache-Control: no-store` for it.
+
+For security, web push/service worker registration is **disabled inside HA Ingress**:
+Home Assistant owns the browser origin, and registering a MESHRIK worker or push
+subscription on that origin could interfere with HA. Other MESHRIK browser features,
+including live WebSocket updates, remain available. PWA/web push are available
+for directly hosted MESHRIK and non-HA subpath deployments with properly scoped workers.
+
+Ingress uses Home Assistant session authentication. Exposed port 8000 and the
+unauthenticated Virtual Companion TCP port (if enabled by the user) are separate
+access routes and are **not protected** by Home Assistant Ingress authentication.
+
+The backend serves built frontend files under its internal root, even though the
+browser sees the Ingress prefix. Non-HA reverse proxies using a fixed subpath must
+**strip that prefix** before forwarding to the backend and forward the desired
+`X-Ingress-Path` only if using Home Assistant's exact prefix format; generic
+subpath deployments require their own public `<base>` strategy.
+
+See [HA-MESHRIK ingress issue #9](https://github.com/Bjorkan/HA-MESHRIK/issues/9)
+for the manual acceptance matrix. An end-to-end Home Assistant OS/ARM64 installation
+is still required to confirm deployed behavior.

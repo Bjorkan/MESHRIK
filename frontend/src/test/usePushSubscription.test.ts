@@ -131,6 +131,25 @@ describe('usePushSubscription', () => {
     });
   });
 
+  it('does not attach a push subscription to Home Assistant ingress service workers', async () => {
+    const base = document.createElement('base');
+    base.href = '/api/hassio_ingress/test-token/';
+    document.head.prepend(base);
+    try {
+      const { result } = renderHook(() => usePushSubscription());
+      await waitFor(() => expect(result.current.isSupported).toBe(false));
+      expect(getSubscriptionMock).not.toHaveBeenCalled();
+      await act(async () => {
+        expect(await result.current.subscribe()).toBeNull();
+        await result.current.unsubscribe();
+      });
+      expect(subscribeMock).not.toHaveBeenCalled();
+      expect(activeSubscription?.unsubscribe).not.toHaveBeenCalled();
+    } finally {
+      base.remove();
+    }
+  });
+
   it('clears currentSubscriptionId when refresh no longer finds this browser on the backend', async () => {
     const { result } = renderHook(() => usePushSubscription());
 

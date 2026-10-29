@@ -1,0 +1,51 @@
+name: Ingress regression
+
+on:
+  pull_request:
+    paths:
+      - 'app/frontend_static.py'
+      - 'frontend/**'
+      - 'tests/test_frontend_static.py'
+      - '.github/workflows/ingress-regression.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  frontend-ingress:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+      - name: Check frontend types and production asset build
+        run: npm run build
+        working-directory: frontend
+      - name: Test ingress URL, router, websocket and PWA contracts
+        working-directory: frontend
+        run: |
+          npm run test:run --             src/test/basePath.test.ts             src/test/router.test.tsx             src/test/api.test.ts             src/test/serviceWorker.test.ts             src/test/serviceWorkerRegistration.test.ts             src/test/usePushSubscription.test.ts             src/test/useWebSocket.lifecycle.test.ts             src/test/useBrowserNotifications.test.ts
+
+  backend-ingress:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.14'
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          enable-cache: true
+      - name: Sync Python dependencies
+        run: uv sync --dev --frozen
+      - name: Test dynamic HTML base, SPA fallback and manifest
+        run: uv run pytest -n 0 tests/test_frontend_static.py -q
