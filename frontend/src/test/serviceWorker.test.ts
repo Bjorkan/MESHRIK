@@ -116,7 +116,7 @@ describe('service worker notification clicks', () => {
     resolveNavigate();
     await lifetime;
     expect(lifetimeSettled).toBe(true);
-    expect(client.navigate).toHaveBeenCalledWith('https://example.test/contact/alice');
+    expect(client.navigate).toHaveBeenCalledWith('https://example.test/meshrik/contact/alice');
     expect(clients.openWindow).not.toHaveBeenCalled();
   });
 
@@ -151,6 +151,6 @@ describe('service worker notification clicks', () => {
     });
 
     await lifetime;
-    expect(clients.openWindow).toHaveBeenCalledWith('https://example.test/channel/ops');
+    expect(clients.openWindow).toHaveBeenCalledWith('https://example.test/meshrik/channel/ops');
   });
 });

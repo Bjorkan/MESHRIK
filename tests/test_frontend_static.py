@@ -251,3 +251,61 @@ def test_first_available_uses_prebuilt_when_dist_missing(tmp_path):
         response = client.get("/")
         assert response.status_code == 200
         assert "prebuilt" in response.text
+
+
+def test_ingress_injects_prefix_into_html_and_manifest_without_exposing_ha_pwa(tmp_path):
+    app = FastAPI()
+    dist = tmp_path / "frontend" / "dist"
+    dist.mkdir(parents=True)
+    (dist / "index.html").write_text(
+        '<html><head><title>MESHRIK</title><link rel="manifest" href="site.webmanifest"></head>'
+        '<body><script type="module" src="./assets/app.js"></script></body></html>'
+    )
+    assert register_frontend_static_routes(app, dist)
+
+    headers = {
+        "x-ingress-path": "/api/hassio_ingress/abc123",
+        "x-forwarded-proto": "https",
+        "x-forwarded-host": "ha.example.net:8123",
+    }
+    with TestClient(app) as client:
+        for route in ("/", "/settings/radio", "/contact/abcd", "/index.html"):
+            response = client.get(route, headers=headers)
+            assert response.status_code == 200
+            assert '<base href="/api/hassio_ingress/abc123/">' in response.text
+            assert 'href="site.webmanifest"' not in response.text
+            assert response.headers["cache-control"] == INDEX_CACHE_CONTROL
+
+        manifest = client.get("/site.webmanifest", headers=headers).json()
+        base = "https://ha.example.net:8123/api/hassio_ingress/abc123/"
+        assert manifest["scope"] == base
+        assert manifest["start_url"] == base
+        assert manifest["id"] == base
+        assert all(asset["src"].startswith(base) for asset in manifest["icons"])
+
+        # The same built assets still resolve at the root on direct HTTP access.
+        root = client.get("/settings/radio")
+        assert '<base href="/">' in root.text
+        assert 'href="site.webmanifest"' in root.text
+
+
+def test_untrusted_ingress_path_header_is_not_reflected_in_html(tmp_path):
+    app = FastAPI()
+    dist = tmp_path / "frontend" / "dist"
+    dist.mkdir(parents=True)
+    (dist / "index.html").write_text("<html><head></head><body>app</body></html>")
+    assert register_frontend_static_routes(app, dist)
+
+    with TestClient(app) as client:
+        for value in (
+            "/api/hassio_ingress/x/<script>",
+            "/api/hassio_ingress/../outside",
+            "/api/hassio_ingress/abc?next=/",
+            "/api/hassio_ingress/abc%2foutside",
+            "/api/hassio_ingress/abc//",
+            "https://untrusted.example/path",
+        ):
+            response = client.get("/settings/radio", headers={"x-ingress-path": value})
+            assert response.status_code == 200
+            assert '<base href="/">' in response.text
+            assert value not in response.text
