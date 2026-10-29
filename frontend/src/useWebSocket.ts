@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import type { Channel, HealthStatus, Contact, Message, MessagePath, RawPacket } from './types';
 import { parseWsEvent, type RadioJobDelta, type RadioActivityDelta } from './wsEvents';
+import { appUrl } from './basePath';
 
 interface ErrorEvent {
   message: string;
@@ -8,7 +9,6 @@ interface ErrorEvent {
 }
 
 interface SuccessEvent {
-import { appUrl } from './basePath';
   message: string;
   details?: string;
 }
