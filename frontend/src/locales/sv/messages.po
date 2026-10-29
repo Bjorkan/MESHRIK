@@ -1475,7 +1475,7 @@ msgstr "Kontrollera radioanslutning och ström"
 msgid "Check radio connection and try again"
 msgstr "Kontrollera radioanslutning och försök igen"
 
-#: src/hooks/usePushSubscription.ts:230
+#: src/hooks/usePushSubscription.ts:233
 msgid "Check that notifications are allowed"
 msgstr "Kontrollera att meddelanden är tillåtna"
 
@@ -2159,27 +2159,27 @@ msgstr "Neka"
 msgid "Desktop notifications (legacy)"
 msgstr "Skrivbordsmeddelanden (legacy)"
 
-#: src/hooks/useBrowserNotifications.ts:205
+#: src/hooks/useBrowserNotifications.ts:206
 msgid "Desktop notifications are blocked by your browser. Allow notifications in browser settings, then try again. Non-HTTPS or untrusted HTTPS origins may also prevent notifications from working reliably."
 msgstr "Webbläsaren blockerar skrivbordsnotiser. Tillåt notiser i webbläsarinställningarna och försök igen. Adresser utan HTTPS eller med ej betrodd HTTPS kan också göra att notiser inte fungerar tillförlitligt."
 
-#: src/hooks/useBrowserNotifications.ts:187
+#: src/hooks/useBrowserNotifications.ts:188
 msgid "Desktop notifications are off for {label}."
 msgstr "Skrivbordsmeddelanden är avstängda för {label}."
 
-#: src/hooks/useBrowserNotifications.ts:236
+#: src/hooks/useBrowserNotifications.ts:237
 msgid "Desktop notifications are on for {label}."
 msgstr "Skrivbordsmeddelanden är på för {label}."
 
-#: src/hooks/useBrowserNotifications.ts:129
+#: src/hooks/useBrowserNotifications.ts:130
 msgid "Desktop notifications are on for this conversation, but you are using HTTP instead of HTTPS. Notifications will likely not work reliably."
 msgstr "Skrivbordsnotiser är aktiverade för konversationen, men anslutningen använder HTTP i stället för HTTPS. Notiser kommer sannolikt inte att fungera tillförlitligt."
 
-#: src/hooks/useBrowserNotifications.ts:144
+#: src/hooks/useBrowserNotifications.ts:145
 msgid "Desktop notifications are on for this conversation, but your HTTPS connection is untrusted, such as a self-signed certificate. Notification delivery may be inconsistent depending on your browser."
 msgstr "Skrivbordsnotiser är aktiverade för konversationen, men HTTPS-anslutningen är inte betrodd, exempelvis på grund av ett självsignerat certifikat. Leveransen av notiser kan därför variera mellan webbläsare."
 
-#: src/hooks/useBrowserNotifications.ts:246
+#: src/hooks/useBrowserNotifications.ts:247
 msgid "Desktop notifications were denied by your browser. Allow notifications in browser settings, then try again."
 msgstr "Webbläsaren nekade skrivbordsnotiser. Tillåt notiser i webbläsarens inställningar och försök igen."
 
@@ -2631,7 +2631,7 @@ msgstr "Det gick inte att inaktivera bottar"
 msgid "Failed to discover regions"
 msgstr "Misslyckades med att upptäcka regioner"
 
-#: src/hooks/usePushSubscription.ts:229
+#: src/hooks/usePushSubscription.ts:232
 msgid "Failed to enable push notifications"
 msgstr "Misslyckades för att möjliggöra push-meddelanden"
 
@@ -2666,7 +2666,7 @@ msgid "Failed to load contact info"
 msgstr "Misslyckades med att ladda kontaktinformation"
 
 #. placeholder {0}: response.status
-#: src/hooks/useFaviconBadge.ts:110
+#: src/hooks/useFaviconBadge.ts:111
 msgid "Failed to load favicon SVG: {0}"
 msgstr "Misslyckades med att ladda favicon SVG: {0}"
 
@@ -2768,7 +2768,7 @@ msgstr "Det gick inte att uppdatera tystningen"
 msgid "Failed to update name"
 msgstr "Det gick inte att uppdatera namnet"
 
-#: src/hooks/usePushSubscription.ts:264
+#: src/hooks/usePushSubscription.ts:268
 msgid "Failed to update push preferences"
 msgstr "Det gick inte att uppdatera pushinställningarna"
 
@@ -4221,20 +4221,20 @@ msgstr "Ny konversation"
 
 #. placeholder {0}: message.conversation_key.slice(0, 12)
 #. placeholder {0}: message.sender_name
-#: src/hooks/useBrowserNotifications.ts:85
 #: src/hooks/useBrowserNotifications.ts:86
+#: src/hooks/useBrowserNotifications.ts:87
 msgid "New message from {0}"
 msgstr "Nytt meddelande från {0}"
 
-#: src/hooks/useBrowserNotifications.ts:94
+#: src/hooks/useBrowserNotifications.ts:95
 msgid "New message from {label}"
 msgstr "Nytt meddelande från {label}"
 
-#: src/hooks/useBrowserNotifications.ts:94
+#: src/hooks/useBrowserNotifications.ts:95
 msgid "New message in {label}"
 msgstr "Nytt meddelande i {label}"
 
-#: src/hooks/useBrowserNotifications.ts:90
+#: src/hooks/useBrowserNotifications.ts:91
 msgid "New message in {roomName}"
 msgstr "Nytt meddelande i {roomName}"
 
@@ -4583,7 +4583,7 @@ msgstr "Notisinställningar"
 msgid "Notification URLs"
 msgstr "Notis-URL:er"
 
-#: src/hooks/useBrowserNotifications.ts:203
+#: src/hooks/useBrowserNotifications.ts:204
 msgid "Notifications blocked"
 msgstr "Notiser blockerade"
 
@@ -4591,23 +4591,23 @@ msgstr "Notiser blockerade"
 msgid "Notifications blocked by the browser"
 msgstr "Meddelanden blockerade av webbläsaren"
 
-#: src/hooks/useBrowserNotifications.ts:185
+#: src/hooks/useBrowserNotifications.ts:186
 msgid "Notifications disabled"
 msgstr "Notiser inaktiverade"
 
 #: src/components/Sidebar.tsx:690
 #: src/components/Sidebar.tsx:690
-#: src/hooks/useBrowserNotifications.ts:114
-#: src/hooks/useBrowserNotifications.ts:152
+#: src/hooks/useBrowserNotifications.ts:115
+#: src/hooks/useBrowserNotifications.ts:153
 msgid "Notifications enabled"
 msgstr "Notiser aktiverade"
 
-#: src/hooks/useBrowserNotifications.ts:126
-#: src/hooks/useBrowserNotifications.ts:141
+#: src/hooks/useBrowserNotifications.ts:127
+#: src/hooks/useBrowserNotifications.ts:142
 msgid "Notifications enabled with warning"
 msgstr "Notiser aktiverade med varning"
 
-#: src/hooks/useBrowserNotifications.ts:243
+#: src/hooks/useBrowserNotifications.ts:244
 msgid "Notifications not enabled"
 msgstr "Notiser är inte aktiverade"
 
@@ -4615,11 +4615,11 @@ msgstr "Notiser är inte aktiverade"
 msgid "Notifications On"
 msgstr "Notiser på"
 
-#: src/hooks/useBrowserNotifications.ts:194
+#: src/hooks/useBrowserNotifications.ts:195
 msgid "Notifications unavailable"
 msgstr "Notiser är inte tillgängliga"
 
-#: src/hooks/useBrowserNotifications.ts:224
+#: src/hooks/useBrowserNotifications.ts:225
 msgid "Notifications will look like this. These require the tab to stay open, and will not be reliable on mobile."
 msgstr "Notiser kommer att se ut så här. Fliken måste vara öppen och funktionen är inte tillförlitlig på mobila enheter."
 
@@ -6788,11 +6788,11 @@ msgstr "Repeaters med telemetrispårning"
 msgid "Test"
 msgstr "Test"
 
-#: src/hooks/usePushSubscription.ts:298
+#: src/hooks/usePushSubscription.ts:302
 msgid "Test notification failed"
 msgstr "Testmeddelande misslyckades"
 
-#: src/hooks/usePushSubscription.ts:296
+#: src/hooks/usePushSubscription.ts:300
 msgid "Test notification sent"
 msgstr "Testmeddelande skickat"
 
@@ -6852,7 +6852,7 @@ msgstr "att meddelandet färdades genom meshnätet. Repeateridentiteter härleds
 msgid "The advertisement request was not accepted"
 msgstr "Begäran om advert accepterades inte"
 
-#: src/hooks/useBrowserNotifications.ts:247
+#: src/hooks/useBrowserNotifications.ts:248
 msgid "The browser permission request was dismissed."
 msgstr "Webbläsarens behörighetsfråga stängdes utan svar."
 
@@ -6892,7 +6892,7 @@ msgstr "Dessa inställningar gäller endast för denna enhet / webbläsare."
 msgid "These stable virtual indexes select MESHRIK DB channels. They never reassign hardware channel slots. Removing a channel leaves other virtual indexes unchanged."
 msgstr "De här stabila virtuella indexen väljer kanaler i MESHRIKs databas. De tilldelar aldrig om radions kanalplatser. När en kanal tas bort behåller övriga virtuella index sina värden."
 
-#: src/hooks/useBrowserNotifications.ts:196
+#: src/hooks/useBrowserNotifications.ts:197
 msgid "This browser does not support desktop notifications."
 msgstr "Den här webbläsaren stöder inte skrivbordsnotiser."
 
