@@ -226,6 +226,31 @@ describe('application router', () => {
     expect(router.state.location.pathname).toBe('/contact/contact-b');
   });
 
+  it('matches and navigates inside a Home Assistant ingress browser-history prefix', async () => {
+    const base = document.createElement('base');
+    base.href = '/api/hassio_ingress/test-token/';
+    document.head.prepend(base);
+    try {
+      const router = createAppRouter(
+        createMemoryHistory({ initialEntries: ['/api/hassio_ingress/test-token/settings/radio'] })
+      );
+      await router.load();
+      expect(router.state.matches[router.state.matches.length - 1]?.routeId).toBe(
+        '/_app/settings/radio'
+      );
+
+      await router.navigate({ to: '/map' });
+      expect(router.history.location.pathname).toBe('/api/hassio_ingress/test-token/map');
+      router.history.back();
+      await router.load();
+      expect(router.state.matches[router.state.matches.length - 1]?.routeId).toBe(
+        '/_app/settings/radio'
+      );
+    } finally {
+      base.remove();
+    }
+  });
+
   it('renders the application not-found UI for an unknown pathname', async () => {
     const router = createAppRouter(createMemoryHistory({ initialEntries: ['/does-not-exist'] }));
 

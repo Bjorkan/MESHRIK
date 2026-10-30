@@ -5,7 +5,8 @@ import { lingui } from '@lingui/vite-plugin';
 import { tanstackRouter } from '@tanstack/router-plugin/vite';
 
 export default defineConfig({
-  base: '/',
+  // Relative assets are rooted via a per-request <base> tag in production.
+  base: './',
   plugins: [
     tanstackRouter({
       target: 'react',

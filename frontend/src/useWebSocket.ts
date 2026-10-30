@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import type { Channel, HealthStatus, Contact, Message, MessagePath, RawPacket } from './types';
 import { parseWsEvent, type RadioJobDelta, type RadioActivityDelta } from './wsEvents';
+import { appUrl } from './basePath';
 
 interface ErrorEvent {
   message: string;
@@ -58,7 +59,7 @@ export function useWebSocket(options: UseWebSocketOptions) {
   const connect = useCallback(() => {
     // Always connect at the application origin, regardless of the active route.
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/api/ws`;
+    const wsUrl = `${protocol}//${window.location.host}${appUrl('api/ws')}`;
 
     const ws = new WebSocket(wsUrl);
 

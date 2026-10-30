@@ -2,6 +2,7 @@ import { useCallback, useMemo } from 'react';
 import { useMatch, useNavigate, useRouter, useRouterState } from '@tanstack/react-router';
 
 import { App } from './App';
+import { appBasePath } from './basePath';
 import type { Conversation } from './types';
 import type { SettingsSection } from './components/settings/settingsConstants';
 import type { EntityRoute } from './routing/entityRoutes';
@@ -229,7 +230,7 @@ export function RoutedApp() {
       queryClient={router.options.context.queryClient}
       routeConversation={routeConversation}
       routeEntity={routeEntity}
-      routeIsRoot={location.pathname === '/'}
+      routeIsRoot={location.pathname === '/' || location.pathname === appBasePath()}
       onNavigateConversation={handleNavigateConversation}
       routeTargetMessageId={routeTargetMessageId}
       onSetRouteTargetMessageId={handleSetTargetMessageId}

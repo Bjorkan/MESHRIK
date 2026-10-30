@@ -5,9 +5,10 @@ import { toast } from '../components/ui/sonner';
 import type { Message } from '../types';
 import { getStateKey } from '../utils/conversationState';
 import { getEntityPath } from '../routing/entityRoutes';
+import { appUrl } from '../basePath';
 
 const STORAGE_KEY = 'meshcore_browser_notifications_enabled_by_conversation';
-const NOTIFICATION_ICON_PATH = '/favicon-256x256.png';
+const NOTIFICATION_ICON_PATH = 'favicon-256x256.png';
 
 type NotificationPermissionState = NotificationPermission | 'unsupported';
 type ConversationNotificationMap = Record<string, boolean>;
@@ -222,7 +223,7 @@ export function useBrowserNotifications() {
         });
         new window.Notification(buildPreviewNotificationTitle(type, label), {
           body: t`Notifications will look like this. These require the tab to stay open, and will not be reliable on mobile.`,
-          icon: NOTIFICATION_ICON_PATH,
+          icon: appUrl(NOTIFICATION_ICON_PATH),
           tag: `meshcore-notification-preview-${conversationKey}`,
         });
         const toastInfo = getNotificationEnableToastInfo();
@@ -264,14 +265,14 @@ export function useBrowserNotifications() {
 
       const notification = new window.Notification(buildNotificationTitle(message), {
         body: message.text,
-        icon: NOTIFICATION_ICON_PATH,
+        icon: appUrl(NOTIFICATION_ICON_PATH),
         tag: `meshcore-message-${message.id}`,
       });
 
       notification.onclick = () => {
         const path = buildMessageNotificationPath(message);
         if (path) {
-          window.open(path, '_self');
+          window.open(appUrl(path), '_self');
         }
         window.focus();
         notification.close();

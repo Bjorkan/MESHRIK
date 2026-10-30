@@ -4,10 +4,11 @@ import { useEffect, useMemo, useRef } from 'react';
 
 import type { Channel, Contact } from '../types';
 import { getStateKey } from '../utils/conversationState';
+import { appUrl } from '../basePath';
 
 const APP_TITLE = 'MESHRIK for MeshCore';
 const UNREAD_APP_TITLE = 'MESHRIK';
-const BASE_FAVICON_PATH = '/favicon.svg';
+const BASE_FAVICON_PATH = 'favicon.svg';
 const GREEN_BADGE_FILL = '#16a34a';
 const RED_BADGE_FILL = '#dc2626';
 const BADGE_CENTER = 750;
@@ -104,7 +105,7 @@ export function buildBadgedFaviconSvg(baseSvg: string, badgeFill: string): strin
 
 async function loadBaseFaviconSvg(): Promise<string> {
   if (!baseFaviconSvgPromise) {
-    baseFaviconSvgPromise = fetch(BASE_FAVICON_PATH, { cache: 'force-cache' })
+    baseFaviconSvgPromise = fetch(appUrl(BASE_FAVICON_PATH), { cache: 'force-cache' })
       .then(async (response) => {
         if (!response.ok) {
           throw new Error(t`Failed to load favicon SVG: ${response.status}`);
@@ -180,7 +181,7 @@ export function useFaviconBadge(
     }
 
     if (badgeState === 'none') {
-      applyFaviconHref(BASE_FAVICON_PATH);
+      applyFaviconHref(appUrl(BASE_FAVICON_PATH));
       return;
     }
 
@@ -203,7 +204,7 @@ export function useFaviconBadge(
       })
       .catch(() => {
         if (!cancelled) {
-          applyFaviconHref(BASE_FAVICON_PATH);
+          applyFaviconHref(appUrl(BASE_FAVICON_PATH));
         }
       });
 

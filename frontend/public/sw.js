@@ -23,8 +23,8 @@ self.addEventListener('push', (event) => {
   const title = data.title || 'New message';
   const options = {
     body: data.body || '',
-    icon: '/favicon-256x256.png',
-    badge: '/favicon-96x96.png',
+    icon: new URL('favicon-256x256.png', self.registration.scope).href,
+    badge: new URL('favicon-96x96.png', self.registration.scope).href,
     tag: data.tag || 'meshcore-push',
     data: { url_path: data.url_path || '/' },
   };
@@ -36,8 +36,11 @@ self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const rawUrlPath = event.notification.data?.url_path;
   const urlPath = typeof rawUrlPath === 'string' && rawUrlPath.startsWith('/') ? rawUrlPath : '/';
-  const appOrigin = `${self.location.origin}/`;
-  const targetUrl = new URL(urlPath, appOrigin).href;
+  // A worker registered on a subpath must never navigate outside its own
+  // scope (including after a push payload with ../ or encoded traversal).
+  const appOrigin = self.registration.scope;
+  const candidate = new URL(urlPath.replace(/^[/]+/, ''), appOrigin).href;
+  const targetUrl = candidate.startsWith(appOrigin) ? candidate : appOrigin;
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (windowClients) => {

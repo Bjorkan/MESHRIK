@@ -46,8 +46,9 @@ import type {
   UnreadCounts,
 } from './types';
 import type { paths } from './generated/api-schema';
+import { appUrl } from './basePath';
 
-const API_BASE = '/api';
+const API_BASE = 'api';
 
 /** Extract the 200 JSON response type for a path + method.
  * @public — available for typed fetch wrappers; unused until schemas are fully hardened. */
@@ -163,7 +164,7 @@ function responseErrorMessage(res: Response, text: string): string {
 
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
   const hasBody = options?.body !== undefined;
-  const res = await fetch(`${API_BASE}${url}`, {
+  const res = await fetch(appUrl(`${API_BASE}${url}`), {
     ...options,
     headers: {
       ...(hasBody && { 'Content-Type': 'application/json' }),
