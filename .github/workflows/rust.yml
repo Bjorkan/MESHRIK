@@ -19,3 +19,11 @@ jobs:
         run: rustup show active-toolchain
       - name: Check Rust format, lint and hardware-free tests
         run: bash scripts/quality/rust.sh
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.15'
+      - uses: astral-sh/setup-uv@v10.3.0
+      - name: Install Python reference dependencies
+        run: uv sync --dev --frozen
+      - name: Check recorded Turso compatibility evidence (not cutover approval)
+        run: bash scripts/quality/turso_gate.sh

@@ -1,0 +1,582 @@
+{
+  "decision": "NO-GO",
+  "default_features": false,
+  "engine": "turso",
+  "scenarios": [
+    {
+      "different_operations": [],
+      "name": "v72.schema",
+      "native_errors": [],
+      "statements": 3,
+      "status": "equivalent"
+    },
+    {
+      "different_operations": [],
+      "name": "pragma.journal_mode",
+      "native_errors": [],
+      "statements": 2,
+      "status": "equivalent"
+    },
+    {
+      "different_operations": [],
+      "name": "pragma.synchronous",
+      "native_errors": [],
+      "statements": 2,
+      "status": "equivalent"
+    },
+    {
+      "different_operations": [
+        0
+      ],
+      "name": "pragma.busy_timeout",
+      "native_errors": [],
+      "statements": 2,
+      "status": "different"
+    },
+    {
+      "different_operations": [],
+      "name": "pragma.cache_size",
+      "native_errors": [],
+      "statements": 2,
+      "status": "equivalent"
+    },
+    {
+      "different_operations": [],
+      "name": "pragma.temp_store",
+      "native_errors": [],
+      "statements": 2,
+      "status": "equivalent"
+    },
+    {
+      "different_operations": [],
+      "name": "pragma.foreign_keys",
+      "native_errors": [],
+      "statements": 2,
+      "status": "equivalent"
+    },
+    {
+      "different_operations": [
+        0
+      ],
+      "name": "pragma.auto_vacuum",
+      "native_errors": [
+        {
+          "category": "error",
+          "operation": 0
+        }
+      ],
+      "statements": 2,
+      "status": "different"
+    },
+    {
+      "different_operations": [
+        1,
+        2
+      ],
+      "name": "maintenance.incremental_vacuum",
+      "native_errors": [],
+      "statements": 3,
+      "status": "different"
+    },
+    {
+      "different_operations": [
+        0
+      ],
+      "name": "maintenance.vacuum",
+      "native_errors": [
+        {
+          "category": "error",
+          "operation": 0
+        }
+      ],
+      "statements": 2,
+      "status": "different"
+    },
+    {
+      "different_operations": [
+        1,
+        2
+      ],
+      "name": "maintenance.foreign_key_check",
+      "native_errors": [
+        {
+          "category": "readonly",
+          "operation": 1
+        }
+      ],
+      "statements": 3,
+      "status": "different"
+    },
+    {
+      "different_operations": [
+        0
+      ],
+      "name": "wal.checkpoint",
+      "native_errors": [],
+      "statements": 2,
+      "status": "different"
+    },
+    {
+      "different_operations": [],
+      "name": "readonly.dry_run",
+      "native_errors": [
+        {
+          "category": "readonly",
+          "operation": 1
+        }
+      ],
+      "statements": 2,
+      "status": "equivalent"
+    },
+    {
+      "different_operations": [],
+      "name": "fresh.v72_ddl",
+      "native_errors": [],
+      "statements": 63,
+      "status": "equivalent"
+    },
+    {
+      "different_operations": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+      ],
+      "name": "contacts.triggers_upsert_rollback_tombstone",
+      "native_errors": [
+        {
+          "category": "readonly",
+          "operation": 0
+        },
+        {
+          "category": "readonly",
+          "operation": 1
+        },
+        {
+          "category": "readonly",
+          "operation": 3
+        },
+        {
+          "category": "readonly",
+          "operation": 6
+        },
+        {
+          "category": "error",
+          "operation": 7
+        },
+        {
+          "category": "readonly",
+          "operation": 9
+        },
+        {
+          "category": "readonly",
+          "operation": 11
+        }
+      ],
+      "statements": 14,
+      "status": "different"
+    },
+    {
+      "different_operations": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "name": "foreign_keys.cascade_and_enforcement",
+      "native_errors": [
+        {
+          "category": "readonly",
+          "operation": 1
+        },
+        {
+          "category": "readonly",
+          "operation": 2
+        },
+        {
+          "category": "readonly",
+          "operation": 3
+        },
+        {
+          "category": "readonly",
+          "operation": 4
+        }
+      ],
+      "statements": 6,
+      "status": "different"
+    },
+    {
+      "different_operations": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "name": "foreign_keys.set_null_and_pending_ack_cascade",
+      "native_errors": [
+        {
+          "category": "readonly",
+          "operation": 1
+        },
+        {
+          "category": "readonly",
+          "operation": 2
+        },
+        {
+          "category": "readonly",
+          "operation": 3
+        },
+        {
+          "category": "readonly",
+          "operation": 4
+        }
+      ],
+      "statements": 7,
+      "status": "different"
+    },
+    {
+      "different_operations": [
+        0,
+        1,
+        2,
+        3,
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "name": "transactions.ingress_send_recovery",
+      "native_errors": [
+        {
+          "category": "readonly",
+          "operation": 0
+        },
+        {
+          "category": "readonly",
+          "operation": 1
+        },
+        {
+          "category": "readonly",
+          "operation": 2
+        },
+        {
+          "category": "error",
+          "operation": 3
+        },
+        {
+          "category": "readonly",
+          "operation": 6
+        },
+        {
+          "category": "readonly",
+          "operation": 7
+        },
+        {
+          "category": "error",
+          "operation": 8
+        },
+        {
+          "category": "readonly",
+          "operation": 9
+        }
+      ],
+      "statements": 11,
+      "status": "different"
+    },
+    {
+      "different_operations": [
+        2,
+        5
+      ],
+      "name": "transactions.savepoint",
+      "native_errors": [
+        {
+          "category": "readonly",
+          "operation": 2
+        },
+        {
+          "category": "error",
+          "operation": 5
+        }
+      ],
+      "statements": 7,
+      "status": "different"
+    },
+    {
+      "different_operations": [],
+      "name": "queries.window_json_blob",
+      "native_errors": [],
+      "statements": 4,
+      "status": "equivalent"
+    },
+    {
+      "different_operations": [
+        0
+      ],
+      "name": "text.invalid_utf8",
+      "native_errors": [],
+      "statements": 1,
+      "status": "different"
+    },
+    {
+      "different_operations": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "name": "indexes.partial_expression",
+      "native_errors": [
+        {
+          "category": "readonly",
+          "operation": 0
+        },
+        {
+          "category": "readonly",
+          "operation": 1
+        },
+        {
+          "category": "readonly",
+          "operation": 2
+        }
+      ],
+      "statements": 4,
+      "status": "different"
+    },
+    {
+      "different_operations": [
+        2,
+        3,
+        4,
+        6,
+        7,
+        9,
+        10,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        21,
+        22,
+        24,
+        25,
+        27,
+        28,
+        29,
+        32,
+        33,
+        35,
+        38,
+        39,
+        41,
+        42,
+        43,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53
+      ],
+      "name": "repository.actual_sql_replay",
+      "native_errors": [
+        {
+          "category": "readonly",
+          "operation": 2
+        },
+        {
+          "category": "readonly",
+          "operation": 3
+        },
+        {
+          "category": "error",
+          "operation": 4
+        },
+        {
+          "category": "readonly",
+          "operation": 6
+        },
+        {
+          "category": "error",
+          "operation": 7
+        },
+        {
+          "category": "readonly",
+          "operation": 9
+        },
+        {
+          "category": "error",
+          "operation": 10
+        },
+        {
+          "category": "readonly",
+          "operation": 12
+        },
+        {
+          "category": "error",
+          "operation": 13
+        },
+        {
+          "category": "readonly",
+          "operation": 21
+        },
+        {
+          "category": "error",
+          "operation": 22
+        },
+        {
+          "category": "readonly",
+          "operation": 24
+        },
+        {
+          "category": "error",
+          "operation": 25
+        },
+        {
+          "category": "readonly",
+          "operation": 27
+        },
+        {
+          "category": "error",
+          "operation": 28
+        },
+        {
+          "category": "readonly",
+          "operation": 32
+        },
+        {
+          "category": "error",
+          "operation": 33
+        },
+        {
+          "category": "readonly",
+          "operation": 38
+        },
+        {
+          "category": "error",
+          "operation": 39
+        },
+        {
+          "category": "readonly",
+          "operation": 41
+        },
+        {
+          "category": "error",
+          "operation": 43
+        },
+        {
+          "category": "readonly",
+          "operation": 45
+        },
+        {
+          "category": "error",
+          "operation": 46
+        }
+      ],
+      "statements": 54,
+      "status": "different"
+    },
+    {
+      "different_operations": [
+        2
+      ],
+      "name": "control_no_autovacuum.maintenance.foreign_key_check",
+      "native_errors": [],
+      "statements": 3,
+      "status": "different"
+    },
+    {
+      "different_operations": [],
+      "name": "control_no_autovacuum.wal.checkpoint",
+      "native_errors": [],
+      "statements": 2,
+      "status": "equivalent"
+    },
+    {
+      "different_operations": [],
+      "name": "control_no_autovacuum.contacts.triggers_upsert_rollback_tombstone",
+      "native_errors": [],
+      "statements": 14,
+      "status": "equivalent"
+    },
+    {
+      "different_operations": [],
+      "name": "control_no_autovacuum.foreign_keys.cascade_and_enforcement",
+      "native_errors": [
+        {
+          "category": "constraint",
+          "operation": 3
+        }
+      ],
+      "statements": 6,
+      "status": "equivalent"
+    },
+    {
+      "different_operations": [],
+      "name": "control_no_autovacuum.foreign_keys.set_null_and_pending_ack_cascade",
+      "native_errors": [],
+      "statements": 7,
+      "status": "equivalent"
+    },
+    {
+      "different_operations": [],
+      "name": "control_no_autovacuum.transactions.ingress_send_recovery",
+      "native_errors": [],
+      "statements": 11,
+      "status": "equivalent"
+    },
+    {
+      "different_operations": [],
+      "name": "control_no_autovacuum.transactions.savepoint",
+      "native_errors": [],
+      "statements": 7,
+      "status": "equivalent"
+    },
+    {
+      "different_operations": [],
+      "name": "control_no_autovacuum.indexes.partial_expression",
+      "native_errors": [
+        {
+          "category": "constraint",
+          "operation": 1
+        }
+      ],
+      "statements": 4,
+      "status": "equivalent"
+    },
+    {
+      "different_operations": [],
+      "name": "control_no_autovacuum.repository.actual_sql_replay",
+      "native_errors": [],
+      "statements": 54,
+      "status": "equivalent"
+    }
+  ],
+  "unverified": [
+    "real_world_sanitized_copy",
+    "historical_upgrade_bridge",
+    "os_crash_and_power_loss",
+    "arm64_workload",
+    "busy_and_active_cursor_concurrency",
+    "safe_maintenance_replacement",
+    "full_application_query_corpus"
+  ],
+  "version": "0.8.3"
+}

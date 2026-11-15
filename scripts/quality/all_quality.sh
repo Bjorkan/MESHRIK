@@ -110,4 +110,8 @@ echo -ne "${BLUE}[rust]${NC} "
 bash "$REPO_ROOT/scripts/quality/rust.sh"
 echo -e "${GREEN}Passed!${NC}"
 
+echo -ne "${BLUE}[turso compatibility evidence]${NC} "
+bash "$REPO_ROOT/scripts/quality/turso_gate.sh"
+echo -e "${GREEN}Recorded evidence matches (not cutover approval)${NC}"
+
 echo -e "${GREEN}=== All quality checks passed! ===${NC}"

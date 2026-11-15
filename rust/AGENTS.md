@@ -13,3 +13,7 @@ never add production radio or DB access by relaxing that check.
   a lock file when releasing it.
 - An unimplemented operation returns an explicit error; schema publication or
   a passing fake test does not establish runtime/hardware parity.
+- `turso-probe` is a test-only byte-input/temp-file executable, separate from
+  the HTTP backend. `scripts/quality/turso_gate.sh` checks reproducibility of
+  recorded NO-GO evidence; a green check does not clear #296. Review the
+  matrix and `docs/migration/TURSO_FEASIBILITY.md` before changing engine pins.
