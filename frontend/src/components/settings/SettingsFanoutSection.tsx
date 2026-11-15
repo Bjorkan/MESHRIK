@@ -1215,7 +1215,7 @@ function VirtualCompanionConfigEditor({
             </label>
             <a
               className="text-sm text-primary underline underline-offset-4"
-              href="https://github.com/Bjorkan/MESHRIK/blob/main/README_ADVANCED.md"
+              href="https://github.com/Bjorkan/MESHRIK/blob/main/docs/ADVANCED_SETUP.md"
               target="_blank"
               rel="noreferrer"
             >
@@ -1731,17 +1731,20 @@ function MqttHaConfigEditor({
               tabIndex={0}
               className="underline cursor-pointer hover:text-primary transition-colors"
               onClick={() =>
-                window.open('https://github.com/Bjorkan/MESHRIK/blob/main/README_HA.md', '_blank')
+                window.open(
+                  'https://github.com/Bjorkan/MESHRIK/blob/main/docs/HOME_ASSISTANT.md',
+                  '_blank'
+                )
               }
               onKeyDown={(e) => {
                 if (e.key === 'Enter')
                   window.open(
-                    'https://github.com/Bjorkan/MESHRIK/blob/main/README_HA.md',
+                    'https://github.com/Bjorkan/MESHRIK/blob/main/docs/HOME_ASSISTANT.md',
                     '_blank'
                   );
               }}
             >
-              README_HA.md
+              docs/HOME_ASSISTANT.md
             </span>
             .
           </Trans>

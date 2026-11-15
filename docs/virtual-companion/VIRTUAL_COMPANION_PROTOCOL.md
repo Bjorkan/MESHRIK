@@ -27,7 +27,7 @@ This contract is based on the user-provided `MeshCore-main` firmware ZIP, specif
 
 **Compatibility evidence boundary:** source-derived fixtures and the Python SDK harness are not native
 Android/iOS captures. Record app/build/OS and sanitized request/response evidence in the dedicated
-[post-merge checklist](../tests/e2e/virtual_companion/README.md) before claiming compatibility with
+[post-merge checklist](../../tests/e2e/virtual_companion/README.md) before claiming compatibility with
 a particular released app build. If a platform cannot use custom TCP or demands prohibited
 commands, record the limitation; **do not claim compatibility or bypass the security policy**.
 
@@ -60,7 +60,7 @@ MESHRIK → app:       3E | payload_length:uint16_le | payload[0..175]
 
 ## Golden byte layouts and response semantics (v14 source)
 
-Golden fixtures: [`tests/fixtures/virtual_companion_protocol_s01.json`](../tests/fixtures/virtual_companion_protocol_s01.json). All public keys, secrets, names, ACK tags, timestamps, battery/PIN fields and message contents are **synthetic**; these are **derived example bytes from source layouts**, not traffic captured from a live app/radio.
+Golden fixtures: [`tests/fixtures/virtual_companion_protocol_s01.json`](../../tests/fixtures/virtual_companion_protocol_s01.json). All public keys, secrets, names, ACK tags, timestamps, battery/PIN fields and message contents are **synthetic**; these are **derived example bytes from source layouts**, not traffic captured from a live app/radio.
 
 | Request/stream | Firmware source | Exact fields and implications |
 |---|---|---|

@@ -22,5 +22,3 @@ transactions, indexes, deduplication and cursor semantics.
   it does not become the outbound DM route.
 - Write migration and repository regression tests for schema or
   index changes. Avoid secret leakage in queries/errors/logs.
-  Consult [backend reference](../../docs/agent-guides/backend-reference.md)
-  for more historical detail only if relevant.

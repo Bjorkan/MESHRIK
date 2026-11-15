@@ -123,7 +123,7 @@ Hardware-independent regressions live in
 monitor suites. They cover one-worker admission, the full read-only baseline,
 rejected legacy configuration, failure and cancellation. CI must never require hardware.
 
-For a live node, follow `HARDWARE_SMOKE_TEST.md`: single process and backed-up
+For a live node, follow `docs/radio/HARDWARE_SMOKE_TEST.md`: single process and backed-up
 DB; start with the full baseline and record configuration before/after. Do not
 test mid-transmission disconnect or enable
 slot deletion just to satisfy CI. Any `degraded`/`failed`, unexpected RF

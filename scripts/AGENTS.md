@@ -16,5 +16,5 @@ Inherits [root AGENTS.md](../AGENTS.md).
 - Validate shell syntax and exit codes, retain strict error
   handling where applicable; never claim checks passed without
   executing them.
-- See [project reference](../docs/agent-guides/project-reference.md)
-  for older setup/deployment information if necessary.
+- See [contributor documentation](../CONTRIBUTING.md) for setup and
+  [advanced installation](../docs/ADVANCED_SETUP.md) for deployment.

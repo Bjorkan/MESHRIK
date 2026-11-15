@@ -30,5 +30,5 @@ and workflow invariants, not HTTP handlers or database schemas.
   replies; timeouts can quarantine a worker. SQLite remains the
   durable outgoing-message source of truth.
 - Write fake-radio / fake-clock regression tests for sensitive
-  changes. See [backend deep reference](../../docs/agent-guides/backend-reference.md)
-  only for detailed protocol rationale when needed.
+  changes. See [scheduler API](../../docs/radio/RADIO_JOB_SCHEDULER.md) and
+  [RX/TX reliability](../../docs/radio/RX_TX_RELIABILITY.md) for radio semantics.

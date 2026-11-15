@@ -39,19 +39,19 @@ msgstr " {0}"
 msgid " ✓{0}"
 msgstr " ✓{0}"
 
-#: src/components/settings/SettingsFanoutSection.tsx:1885
+#: src/components/settings/SettingsFanoutSection.tsx:1888
 msgid "— fires for each message matching the scope below"
 msgstr "— fires for each message matching the scope below"
 
-#: src/components/settings/SettingsFanoutSection.tsx:1763
+#: src/components/settings/SettingsFanoutSection.tsx:1766
 msgid "— updates every 60s"
 msgstr "— updates every 60s"
 
-#: src/components/settings/SettingsFanoutSection.tsx:1789
+#: src/components/settings/SettingsFanoutSection.tsx:1792
 msgid "— updates on telemetry collect cycle (~8h) or manual dashboard fetch. Entity IDs shown use one repeater for example; these sensors are created for each selected repeater."
 msgstr "— updates on telemetry collect cycle (~8h) or manual dashboard fetch. Entity IDs shown use one repeater for example; these sensors are created for each selected repeater."
 
-#: src/components/settings/SettingsFanoutSection.tsx:1855
+#: src/components/settings/SettingsFanoutSection.tsx:1858
 msgid "— updates passively when advertisements with GPS are heard, and from any GPS reading in the contact's CayenneLPP telemetry. Shown for one contact; a tracker is created for each selected contact."
 msgstr "— updates passively when advertisements with GPS are heard, and from any GPS reading in the contact's CayenneLPP telemetry. Shown for one contact; a tracker is created for each selected contact."
 
@@ -77,7 +77,7 @@ msgstr "({0} packets; messages will stream in as decrypted)"
 msgid "(ACL login + load all)"
 msgstr "(ACL login + load all)"
 
-#: src/components/settings/SettingsFanoutSection.tsx:1761
+#: src/components/settings/SettingsFanoutSection.tsx:1764
 msgid "(always)"
 msgstr "(always)"
 
@@ -119,7 +119,7 @@ msgstr "(only)"
 msgid "), or when the repeater is opted into interval telemetry polling, in which case the repeater will be polled for metrics automatically. Fetch frequency can be configured in"
 msgstr "), or when the repeater is opted into interval telemetry polling, in which case the repeater will be polled for metrics automatically. Fetch frequency can be configured in"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4118
+#: src/components/settings/SettingsFanoutSection.tsx:4121
 msgid "{\"Authorization\": \"Bearer ...\"}"
 msgstr "{\"Authorization\": \"Bearer ...\"}"
 
@@ -214,7 +214,7 @@ msgstr "{0} bytes · {1}"
 #. placeholder {0}: health?.fanout_statuses?.[cfg.id]?.clients ?? 0
 #. placeholder {1}: (health?.fanout_statuses?.[cfg.id]?.clients ?? 0) === 1 ? '' : 's'
 #. placeholder {2}: Array.isArray(cfg.config.channel_slots) ? cfg.config.channel_slots.filter((key) => key !== null).length : 0
-#: src/components/settings/SettingsFanoutSection.tsx:4943
+#: src/components/settings/SettingsFanoutSection.tsx:4946
 msgid "{0} connected app client{1} · {2} configured virtual slots"
 msgstr "{0} connected app client{1} · {2} configured virtual slots"
 
@@ -252,7 +252,7 @@ msgid "{0} different routes"
 msgstr "{0} different routes"
 
 #. placeholder {0}: errorDialogState.integrationName
-#: src/components/settings/SettingsFanoutSection.tsx:4782
+#: src/components/settings/SettingsFanoutSection.tsx:4785
 msgid "{0} Error"
 msgstr "{0} Error"
 
@@ -262,7 +262,7 @@ msgid "{0} hex chars"
 msgstr "{0} hex chars"
 
 #. placeholder {0}: group.label
-#: src/components/settings/SettingsFanoutSection.tsx:4803
+#: src/components/settings/SettingsFanoutSection.tsx:4806
 msgid "{0} integrations"
 msgstr "{0} integrations"
 
@@ -319,7 +319,7 @@ msgid "{0} unread message{1}"
 msgstr "{0} unread message{1}"
 
 #. placeholder {0}: legacyRootPathPreset.label
-#: src/components/settings/SettingsFanoutSection.tsx:2461
+#: src/components/settings/SettingsFanoutSection.tsx:2464
 msgid "{0} uses <0>/</0>. This saved <1>/mqtt</1> value is preserved in case it was intentional."
 msgstr "{0} uses <0>/</0>. This saved <1>/mqtt</1> value is preserved in case it was intentional."
 
@@ -364,7 +364,7 @@ msgstr "{0}V"
 msgid "{0}x · {1}"
 msgstr "{0}x · {1}"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3876
+#: src/components/settings/SettingsFanoutSection.tsx:3879
 msgid "{channel_name}"
 msgstr "{channel_name}"
 
@@ -372,7 +372,7 @@ msgstr "{channel_name}"
 msgid "{connectionActionLabel}..."
 msgstr "{connectionActionLabel}..."
 
-#: src/components/settings/SettingsFanoutSection.tsx:3882
+#: src/components/settings/SettingsFanoutSection.tsx:3885
 msgid "{conversation_key}"
 msgstr "{conversation_key}"
 
@@ -384,7 +384,7 @@ msgstr "{elapsedHours, plural, one {# hour ago} other {# hours ago}}"
 msgid "{elapsedMinutes, plural, one {# minute ago} other {# minutes ago}}"
 msgstr "{elapsedMinutes, plural, one {# minute ago} other {# minutes ago}}"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3902
+#: src/components/settings/SettingsFanoutSection.tsx:3905
 msgid "{hop_count}"
 msgstr "{hop_count}"
 
@@ -396,11 +396,11 @@ msgstr "{hopCount, plural, one {# hop} other {# hops}}"
 msgid "{hopCount, plural, one {# hop} other {# hops}} · {hashSize, plural, one {# byte hash} other {# byte hashes}}"
 msgstr "{hopCount, plural, one {# hop} other {# hops}} · {hashSize, plural, one {# byte hash} other {# byte hashes}}"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3896
+#: src/components/settings/SettingsFanoutSection.tsx:3899
 msgid "{hops_backticked}"
 msgstr "{hops_backticked}"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3891
+#: src/components/settings/SettingsFanoutSection.tsx:3894
 msgid "{hops}"
 msgstr "{hops}"
 
@@ -420,7 +420,7 @@ msgstr "{officialPresetsStatus}. Suggestions do not change the radio until saved
 msgid "{part} →"
 msgstr "{part} →"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3907
+#: src/components/settings/SettingsFanoutSection.tsx:3910
 msgid "{rssi}"
 msgstr "{rssi}"
 
@@ -432,15 +432,15 @@ msgstr "{seconds, plural, one {# second ago} other {# seconds ago}}"
 msgid "{selectedCount, plural, one {Added # time} other {Added # times}}"
 msgstr "{selectedCount, plural, one {Added # time} other {Added # times}}"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3870
+#: src/components/settings/SettingsFanoutSection.tsx:3873
 msgid "{sender_key}"
 msgstr "{sender_key}"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3864
+#: src/components/settings/SettingsFanoutSection.tsx:3867
 msgid "{sender_name}"
 msgstr "{sender_name}"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3911
+#: src/components/settings/SettingsFanoutSection.tsx:3914
 msgid "{snr}"
 msgstr "{snr}"
 
@@ -448,7 +448,7 @@ msgstr "{snr}"
 msgid "{snrStr} dB"
 msgstr "{snrStr} dB"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3859
+#: src/components/settings/SettingsFanoutSection.tsx:3862
 msgid "{text}"
 msgstr "{text}"
 
@@ -456,7 +456,7 @@ msgstr "{text}"
 msgid "{textReplaceError} Changes are not saved until this is resolved."
 msgstr "{textReplaceError} Changes are not saved until this is resolved."
 
-#: src/components/settings/SettingsFanoutSection.tsx:3887
+#: src/components/settings/SettingsFanoutSection.tsx:3890
 msgid "{type}"
 msgstr "{type}"
 
@@ -487,7 +487,7 @@ msgstr "#ops\n"
 msgid "← Back to Chat"
 msgstr "← Back to Chat"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4592
+#: src/components/settings/SettingsFanoutSection.tsx:4595
 msgid "← Back to list"
 msgstr "← Back to list"
 
@@ -499,68 +499,68 @@ msgstr "↻ Resend"
 msgid "↻ Resend as new"
 msgstr "↻ Resend as new"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2108
-#: src/components/settings/SettingsFanoutSection.tsx:3333
+#: src/components/settings/SettingsFanoutSection.tsx:2111
+#: src/components/settings/SettingsFanoutSection.tsx:3336
 msgid "×"
 msgstr "×"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2997
+#: src/components/settings/SettingsFanoutSection.tsx:3000
 msgid "<0>Available:</0> Standard Python libraries and any modules installed in the server environment."
 msgstr "<0>Available:</0> Standard Python libraries and any modules installed in the server environment."
 
-#: src/components/settings/SettingsFanoutSection.tsx:1767
+#: src/components/settings/SettingsFanoutSection.tsx:1770
 msgid "<0>binary_sensor.meshcore_{localRadioNodeId}_connected</0> — radio online/offline"
 msgstr "<0>binary_sensor.meshcore_{localRadioNodeId}_connected</0> — radio online/offline"
 
-#: src/components/settings/SettingsFanoutSection.tsx:1862
+#: src/components/settings/SettingsFanoutSection.tsx:1865
 msgid "<0>device_tracker.meshcore_{exampleContactNodeId}</0> — latitude/longitude (plus altitude when telemetry provides it)"
 msgstr "<0>device_tracker.meshcore_{exampleContactNodeId}</0> — latitude/longitude (plus altitude when telemetry provides it)"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2961
+#: src/components/settings/SettingsFanoutSection.tsx:2964
 msgid "<0>Don't wreck the mesh!</0> Bots process ALL messages, including their own. Be careful of creating infinite loops!"
 msgstr "<0>Don't wreck the mesh!</0> Bots process ALL messages, including their own. Be careful of creating infinite loops!"
 
-#: src/components/settings/SettingsFanoutSection.tsx:1888
+#: src/components/settings/SettingsFanoutSection.tsx:1891
 msgid "<0>event.meshcore_{localRadioNodeId}_messages</0> — trigger automations on sender, channel, or message content"
 msgstr "<0>event.meshcore_{localRadioNodeId}_messages</0> — trigger automations on sender, channel, or message content"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2942
+#: src/components/settings/SettingsFanoutSection.tsx:2945
 msgid "<0>Experimental:</0> This is an alpha feature and introduces automated message sending to your radio; unexpected behavior may occur. Use with caution, and please report any bugs!"
 msgstr "<0>Experimental:</0> This is an alpha feature and introduces automated message sending to your radio; unexpected behavior may occur. Use with caution, and please report any bugs!"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3003
+#: src/components/settings/SettingsFanoutSection.tsx:3006
 msgid "<0>Limits:</0> 10 second timeout per bot."
 msgstr "<0>Limits:</0> 10 second timeout per bot."
 
-#: src/components/settings/SettingsFanoutSection.tsx:3008
+#: src/components/settings/SettingsFanoutSection.tsx:3011
 msgid "<0>Note:</0> Bots respond to all messages, including your own. For channel messages, <1>sender_key</1> is <2>None</2>. Multiple enabled bots run concurrently. Outgoing messages are serialized with a two-second delay between sends to prevent repeater collision."
 msgstr "<0>Note:</0> Bots respond to all messages, including your own. For channel messages, <1>sender_key</1> is <2>None</2>. Multiple enabled bots run concurrently. Outgoing messages are serialized with a two-second delay between sends to prevent repeater collision."
 
-#: src/components/settings/SettingsFanoutSection.tsx:2952
+#: src/components/settings/SettingsFanoutSection.tsx:2955
 msgid "<0>Security Warning:</0> This feature executes arbitrary Python code on the server. Only run trusted code, and be cautious of arbitrary usage of message parameters."
 msgstr "<0>Security Warning:</0> This feature executes arbitrary Python code on the server. Only run trusted code, and be cautious of arbitrary usage of message parameters."
 
-#: src/components/settings/SettingsFanoutSection.tsx:1870
+#: src/components/settings/SettingsFanoutSection.tsx:1873
 msgid "<0>sensor.meshcore_{exampleContactNodeId}_lpp_temperature_ch1</0>, etc. — CayenneLPP sensors (when the contact is tracked for telemetry; GPS goes to the tracker above)"
 msgstr "<0>sensor.meshcore_{exampleContactNodeId}_lpp_temperature_ch1</0>, etc. — CayenneLPP sensors (when the contact is tracked for telemetry; GPS goes to the tracker above)"
 
-#: src/components/settings/SettingsFanoutSection.tsx:1796
+#: src/components/settings/SettingsFanoutSection.tsx:1799
 msgid "<0>sensor.meshcore_{exampleRepeaterNodeId}_battery_voltage</0> (V)"
 msgstr "<0>sensor.meshcore_{exampleRepeaterNodeId}_battery_voltage</0> (V)"
 
-#: src/components/settings/SettingsFanoutSection.tsx:1837
+#: src/components/settings/SettingsFanoutSection.tsx:1840
 msgid "<0>sensor.meshcore_{exampleRepeaterNodeId}_lpp_temperature_ch1</0>, <1>sensor.meshcore_{exampleRepeaterNodeId}_lpp_humidity_ch1</1>, etc. — CayenneLPP sensors (auto-detected from repeater)"
 msgstr "<0>sensor.meshcore_{exampleRepeaterNodeId}_lpp_temperature_ch1</0>, <1>sensor.meshcore_{exampleRepeaterNodeId}_lpp_humidity_ch1</1>, etc. — CayenneLPP sensors (auto-detected from repeater)"
 
-#: src/components/settings/SettingsFanoutSection.tsx:1804
+#: src/components/settings/SettingsFanoutSection.tsx:1807
 msgid "<0>sensor.meshcore_{exampleRepeaterNodeId}_noise_floor</0>, <1>sensor.meshcore_{exampleRepeaterNodeId}_last_rssi</1>, <2>sensor.meshcore_{exampleRepeaterNodeId}_last_snr</2> (dBm/dB)"
 msgstr "<0>sensor.meshcore_{exampleRepeaterNodeId}_noise_floor</0>, <1>sensor.meshcore_{exampleRepeaterNodeId}_last_rssi</1>, <2>sensor.meshcore_{exampleRepeaterNodeId}_last_snr</2> (dBm/dB)"
 
-#: src/components/settings/SettingsFanoutSection.tsx:1829
+#: src/components/settings/SettingsFanoutSection.tsx:1832
 msgid "<0>sensor.meshcore_{exampleRepeaterNodeId}_uptime</0> (seconds)"
 msgstr "<0>sensor.meshcore_{exampleRepeaterNodeId}_uptime</0> (seconds)"
 
-#: src/components/settings/SettingsFanoutSection.tsx:1775
+#: src/components/settings/SettingsFanoutSection.tsx:1778
 msgid "<0>sensor.meshcore_{localRadioNodeId}_noise_floor</0> — radio noise floor (dBm)"
 msgstr "<0>sensor.meshcore_{localRadioNodeId}_noise_floor</0> — radio noise floor (dBm)"
 
@@ -588,7 +588,7 @@ msgstr "<UNKNOWN>"
 msgid "> {0}"
 msgstr "> {0}"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3315
+#: src/components/settings/SettingsFanoutSection.tsx:3318
 msgid ">{MAX_SCOPE_PILL_DISPLAY} selections made; hiding selection preview to keep the interface clean"
 msgstr ">{MAX_SCOPE_PILL_DISPLAY} selections made; hiding selection preview to keep the interface clean"
 
@@ -725,7 +725,7 @@ msgstr "About"
 msgid "Access"
 msgstr "Access"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4222
+#: src/components/settings/SettingsFanoutSection.tsx:4225
 msgid "Access Key ID"
 msgstr "Access Key ID"
 
@@ -808,7 +808,7 @@ msgstr "Add Channels"
 msgid "Add custom hop"
 msgstr "Add custom hop"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4753
+#: src/components/settings/SettingsFanoutSection.tsx:4756
 msgid "Add Integration"
 msgstr "Add Integration"
 
@@ -843,7 +843,7 @@ msgstr "Adding..."
 msgid "Advanced"
 msgstr "Advanced"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2256
+#: src/components/settings/SettingsFanoutSection.tsx:2259
 msgid "Advanced community MQTT editor. Use this for manual meshcoretomqtt-compatible setups or for modifying a saved preset after creation. Only raw RF packets are shared — never decrypted messages."
 msgstr "Advanced community MQTT editor. Use this for manual meshcoretomqtt-compatible setups or for modifying a saved preset after creation. Only raw RF packets are shared — never decrypted messages."
 
@@ -865,7 +865,7 @@ msgstr "Advert Location Source"
 msgid "Advertisement"
 msgstr "Advertisement"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2699
+#: src/components/settings/SettingsFanoutSection.tsx:2702
 msgid "Advertisements only (future firmware)"
 msgstr "Advertisements only (future firmware)"
 
@@ -904,7 +904,7 @@ msgstr "Alice"
 #: src/components/MapView.tsx:94
 #: src/components/RawPacketFeedView.tsx:164
 #: src/components/settings/BulkDeleteContactsModal.tsx:301
-#: src/components/settings/SettingsFanoutSection.tsx:3298
+#: src/components/settings/SettingsFanoutSection.tsx:3301
 msgid "All"
 msgstr "All"
 
@@ -912,15 +912,15 @@ msgstr "All"
 msgid "All discovered regions are already listed"
 msgstr "All discovered regions are already listed"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2702
+#: src/components/settings/SettingsFanoutSection.tsx:2705
 msgid "All eligible raw TX (future firmware)"
 msgstr "All eligible raw TX (future firmware)"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3466
+#: src/components/settings/SettingsFanoutSection.tsx:3469
 msgid "All except listed channels/contacts"
 msgstr "All except listed channels/contacts"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3463
+#: src/components/settings/SettingsFanoutSection.tsx:3466
 msgid "All messages"
 msgstr "All messages"
 
@@ -940,7 +940,7 @@ msgstr "All numeric fields must contain complete, valid values"
 msgid "All outcomes"
 msgstr "All outcomes"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2734
+#: src/components/settings/SettingsFanoutSection.tsx:2737
 msgid "All packet types"
 msgstr "All packet types"
 
@@ -991,7 +991,7 @@ msgstr "Analyze Packet"
 msgid "Any time repeater telemetry is fetched, the metrics are stored for 30 days (or 1,000 samples, whichever comes first). This telemetry is stored on normal interactive fetches via the repeater pane, API calls to the endpoint ("
 msgstr "Any time repeater telemetry is fetched, the metrics are stored for 30 days (or 1,000 samples, whichever comes first). This telemetry is stored on normal interactive fetches via the repeater pane, API calls to the endpoint ("
 
-#: src/components/settings/SettingsFanoutSection.tsx:3101
+#: src/components/settings/SettingsFanoutSection.tsx:3104
 msgid "API URL (optional)"
 msgstr "API URL (optional)"
 
@@ -1025,7 +1025,7 @@ msgstr "Attempting to connect"
 msgid "Attempting to connect to {0}"
 msgstr "Attempting to connect to {0}"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2403
+#: src/components/settings/SettingsFanoutSection.tsx:2406
 msgid "Authentication"
 msgstr "Authentication"
 
@@ -1045,7 +1045,7 @@ msgstr "Auto-Focus Message Input"
 msgid "Auto-Resend Unheard Channel Messages"
 msgstr "Auto-Resend Unheard Channel Messages"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2182
+#: src/components/settings/SettingsFanoutSection.tsx:2185
 msgid "Auto-tracked repeaters not found in contact list."
 msgstr "Auto-tracked repeaters not found in contact list."
 
@@ -1069,7 +1069,7 @@ msgstr "Automatically reopen to the last-open channel or contact when the app lo
 msgid "Automatically replace characters as you type in the message input. Define replacements as a JSON object mapping source strings to their replacements."
 msgstr "Automatically replace characters as you type in the message input. Define replacements as a JSON object mapping source strings to their replacements."
 
-#: src/components/settings/SettingsFanoutSection.tsx:3052
+#: src/components/settings/SettingsFanoutSection.tsx:3055
 msgid "Automatically upload heard repeater and room server advertisements to <0>map.meshcore.io</0>. Requires the radio's private key to be available (firmware must have <1>ENABLE_PRIVATE_KEY_EXPORT=1</1>). Only raw RF packets are shared — never decrypted messages."
 msgstr "Automatically upload heard repeater and room server advertisements to <0>map.meshcore.io</0>. Requires the radio's private key to be available (firmware must have <1>ENABLE_PRIVATE_KEY_EXPORT=1</1>). Only raw RF packets are shared — never decrypted messages."
 
@@ -1083,7 +1083,7 @@ msgstr "Automation"
 msgid "Autoscroll"
 msgstr "Autoscroll"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3855
+#: src/components/settings/SettingsFanoutSection.tsx:3858
 msgid "Available variables"
 msgstr "Available variables"
 
@@ -1145,7 +1145,7 @@ msgstr "Better repeater disambiguation, up to 32 hops"
 msgid "Bits {0}"
 msgstr "Bits {0}"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2484
+#: src/components/settings/SettingsFanoutSection.tsx:2487
 msgid "Blank values normalize to <0>/</0>. Use <1>/mqtt</1> only for brokers that require it; paths cannot contain spaces, <2>?</2> or <3>#</3>."
 msgstr "Blank values normalize to <0>/</0>. Use <1>/mqtt</1> only for brokers that require it; paths cannot contain spaces, <2>?</2> or <3>#</3>."
 
@@ -1194,11 +1194,11 @@ msgstr "Blocked Names"
 msgid "Bot code editor"
 msgstr "Bot code editor"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4747
+#: src/components/settings/SettingsFanoutSection.tsx:4750
 msgid "Bot system is disabled by server configuration (MESHCORE_DISABLE_BOTS). Bot integrations cannot run, be created, or be modified."
 msgstr "Bot system is disabled by server configuration (MESHCORE_DISABLE_BOTS). Bot integrations cannot run, be created, or be modified."
 
-#: src/components/settings/SettingsFanoutSection.tsx:4746
+#: src/components/settings/SettingsFanoutSection.tsx:4749
 msgid "Bot system is disabled until the server restarts. Bot integrations cannot run, be created, or be modified right now."
 msgstr "Bot system is disabled until the server restarts. Bot integrations cannot run, be created, or be modified right now."
 
@@ -1214,30 +1214,30 @@ msgstr "Bots disabled until restart"
 msgid "Bright"
 msgstr "Bright"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2879
+#: src/components/settings/SettingsFanoutSection.tsx:2882
 msgid "Broker <0>{brokerHost}</0> on port <1>{DEFAULT_COMMUNITY_BROKER_PORT}</1> via <2>{DEFAULT_COMMUNITY_TRANSPORT}</2>, auth <3>{DEFAULT_COMMUNITY_AUTH_MODE}</3>, TLS on, certificate verification on, token audience fixed to <4>{brokerHost}</4>."
 msgstr "Broker <0>{brokerHost}</0> on port <1>{DEFAULT_COMMUNITY_BROKER_PORT}</1> via <2>{DEFAULT_COMMUNITY_TRANSPORT}</2>, auth <3>{DEFAULT_COMMUNITY_AUTH_MODE}</3>, TLS on, certificate verification on, token audience fixed to <4>{brokerHost}</4>."
 
-#: src/components/settings/SettingsFanoutSection.tsx:2825
+#: src/components/settings/SettingsFanoutSection.tsx:2828
 msgid "Broker <0>{DEFAULT_MESHRANK_BROKER_HOST}:{DEFAULT_MESHRANK_BROKER_PORT}</0>, TLS with certificate verification. No MQTT username or password."
 msgstr "Broker <0>{DEFAULT_MESHRANK_BROKER_HOST}:{DEFAULT_MESHRANK_BROKER_PORT}</0>, TLS with certificate verification. No MQTT username or password."
 
 #: src/components/settings/SettingsFanoutSection.tsx:1397
-#: src/components/settings/SettingsFanoutSection.tsx:1980
-#: src/components/settings/SettingsFanoutSection.tsx:2329
+#: src/components/settings/SettingsFanoutSection.tsx:1983
+#: src/components/settings/SettingsFanoutSection.tsx:2332
 msgid "Broker Host"
 msgstr "Broker Host"
 
 #: src/components/settings/SettingsFanoutSection.tsx:1409
-#: src/components/settings/SettingsFanoutSection.tsx:1992
-#: src/components/settings/SettingsFanoutSection.tsx:2353
+#: src/components/settings/SettingsFanoutSection.tsx:1995
+#: src/components/settings/SettingsFanoutSection.tsx:2356
 msgid "Broker Port"
 msgstr "Broker Port"
 
 #. placeholder {0}: formatBrokerSummary(cfg.config as Record<string, unknown>, { host: '', port: 1883, })
 #. placeholder {0}: formatBrokerSummary(communityConfig, { host: DEFAULT_COMMUNITY_BROKER_HOST, port: DEFAULT_COMMUNITY_BROKER_PORT, })
-#: src/components/settings/SettingsFanoutSection.tsx:4911
-#: src/components/settings/SettingsFanoutSection.tsx:4960
+#: src/components/settings/SettingsFanoutSection.tsx:4914
+#: src/components/settings/SettingsFanoutSection.tsx:4963
 msgid "Broker: {0}"
 msgstr "Broker: {0}"
 
@@ -1368,7 +1368,7 @@ msgstr "Channel finder requires Chrome 113+ or Edge 113+ with WebGPU support."
 msgid "Channel finder will not be available"
 msgstr "Channel finder will not be available"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3954
+#: src/components/settings/SettingsFanoutSection.tsx:3957
 msgid "Channel format"
 msgstr "Channel format"
 
@@ -1414,7 +1414,7 @@ msgstr "Channel name"
 msgid "Channel Name"
 msgstr "Channel Name"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3879
+#: src/components/settings/SettingsFanoutSection.tsx:3882
 msgid "Channel name (channel messages only)"
 msgstr "Channel name (channel messages only)"
 
@@ -1445,7 +1445,7 @@ msgid "channel-name"
 msgstr "channel-name"
 
 #: src/components/CommandPalette.tsx:359
-#: src/components/settings/SettingsFanoutSection.tsx:3540
+#: src/components/settings/SettingsFanoutSection.tsx:3543
 #: src/components/settings/SettingsStatisticsSection.tsx:357
 msgid "Channels"
 msgstr "Channels"
@@ -1610,7 +1610,7 @@ msgstr "Color Scheme"
 msgid "Color theme"
 msgstr "Color theme"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3893
+#: src/components/settings/SettingsFanoutSection.tsx:3896
 msgid "Comma-separated hop IDs, or \"direct\""
 msgstr "Comma-separated hop IDs, or \"direct\""
 
@@ -1645,7 +1645,7 @@ msgstr "Community MQTT/meshcoretomqtt"
 msgid "Community Sharing"
 msgstr "Community Sharing"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2706
+#: src/components/settings/SettingsFanoutSection.tsx:2709
 msgid "Companion protocol 13 does not expose verified raw TX frames. This setting is stored for forward compatibility, but no outgoing packet upload is performed. Command send acknowledgements are not proof of RF transmission."
 msgstr "Companion protocol 13 does not expose verified raw TX frames. This setting is stored for forward compatibility, but no outgoing packet upload is performed. Command send acknowledgements are not proof of RF transmission."
 
@@ -1802,7 +1802,7 @@ msgstr "Contact not found"
 msgid "Contact observed"
 msgstr "Contact observed"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3885
+#: src/components/settings/SettingsFanoutSection.tsx:3888
 msgid "Contact pubkey (DM) or channel key (channel)"
 msgstr "Contact pubkey (DM) or channel key (channel)"
 
@@ -1811,7 +1811,7 @@ msgid "Contact query"
 msgstr "Contact query"
 
 #: src/components/CommandPalette.tsx:330
-#: src/components/settings/SettingsFanoutSection.tsx:3562
+#: src/components/settings/SettingsFanoutSection.tsx:3565
 #: src/components/settings/SettingsStatisticsSection.tsx:345
 msgid "Contacts"
 msgstr "Contacts"
@@ -2068,11 +2068,11 @@ msgstr "Decrypted raw packets purged"
 msgid "Default"
 msgstr "Default"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2507
+#: src/components/settings/SettingsFanoutSection.tsx:2510
 msgid "Defaults to the broker host when blank"
 msgstr "Defaults to the broker host when blank"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2970
+#: src/components/settings/SettingsFanoutSection.tsx:2973
 msgid "Define a <0>bot()</0> function that receives message data and optionally returns a reply."
 msgstr "Define a <0>bot()</0> function that receives message data and optionally returns a reply."
 
@@ -2085,16 +2085,16 @@ msgstr "Degraded"
 #: src/components/RepeaterDashboard.tsx:303
 #: src/components/RepeaterDashboard.tsx:304
 #: src/components/settings/SettingsDatabaseSection.tsx:222
-#: src/components/settings/SettingsFanoutSection.tsx:4725
+#: src/components/settings/SettingsFanoutSection.tsx:4728
 msgid "Delete"
 msgstr "Delete"
 
 #. placeholder {0}: cfg.name
-#: src/components/settings/SettingsFanoutSection.tsx:4532
+#: src/components/settings/SettingsFanoutSection.tsx:4535
 msgid "Delete \"{0}\" and disconnect its virtual app clients? The physical radio and scheduled jobs will keep running. This cannot be undone."
 msgstr "Delete \"{0}\" and disconnect its virtual app clients? The physical radio and scheduled jobs will keep running. This cannot be undone."
 
-#: src/components/settings/SettingsFanoutSection.tsx:4533
+#: src/components/settings/SettingsFanoutSection.tsx:4536
 msgid "Delete \"{configName}\"? This cannot be undone."
 msgstr "Delete \"{configName}\"? This cannot be undone."
 
@@ -2243,7 +2243,7 @@ msgstr "Disable desktop notifications for this conversation"
 msgid "Disable notifications for this conversation"
 msgstr "Disable notifications for this conversation"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4455
+#: src/components/settings/SettingsFanoutSection.tsx:4458
 msgid "Disable the virtual listener and disconnect its app clients? The physical radio and scheduled jobs will keep running."
 msgstr "Disable the virtual listener and disconnect its app clients? The physical radio and scheduled jobs will keep running."
 
@@ -2252,8 +2252,8 @@ msgstr "Disable the virtual listener and disconnect its app clients? The physica
 msgid "Disable tracking on another repeater to free a slot: {0}"
 msgstr "Disable tracking on another repeater to free a slot: {0}"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4871
-#: src/components/settings/SettingsFanoutSection.tsx:4875
+#: src/components/settings/SettingsFanoutSection.tsx:4874
+#: src/components/settings/SettingsFanoutSection.tsx:4878
 msgid "Disabled"
 msgstr "Disabled"
 
@@ -2275,7 +2275,7 @@ msgstr "Disconnect pauses automatic reconnect attempts so another device can use
 msgid "Disconnected"
 msgstr "Disconnected"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3755
+#: src/components/settings/SettingsFanoutSection.tsx:3758
 msgid "discord://webhook_id/token\n"
 "slack://token_a/token_b/token_c\n"
 "tgram://bot_token/chat_id"
@@ -2315,7 +2315,7 @@ msgstr "Discover Sensors"
 msgid "Discovery"
 msgstr "Discovery"
 
-#: src/components/settings/SettingsFanoutSection.tsx:1962
+#: src/components/settings/SettingsFanoutSection.tsx:1965
 msgid "Discovery config topics are also published under <0>homeassistant/.../config</0>, but the topics above are the primary runtime state and event topics."
 msgstr "Discovery config topics are also published under <0>homeassistant/.../config</0>, but the topics above are the primary runtime state and event topics."
 
@@ -2358,7 +2358,7 @@ msgstr "DM"
 msgid "DM Decryption"
 msgstr "DM Decryption"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3927
+#: src/components/settings/SettingsFanoutSection.tsx:3930
 msgid "DM format"
 msgstr "DM format"
 
@@ -2374,12 +2374,12 @@ msgstr "Download all telemetry history as CSV"
 msgid "Download CSV"
 msgstr "Download CSV"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3086
+#: src/components/settings/SettingsFanoutSection.tsx:3089
 msgid "Dry Run (log only, no uploads)"
 msgstr "Dry Run (log only, no uploads)"
 
 #. placeholder {0}: isDryRun ? 'ON' : 'OFF'
-#: src/components/settings/SettingsFanoutSection.tsx:3070
+#: src/components/settings/SettingsFanoutSection.tsx:3073
 msgid "Dry Run is {0}."
 msgstr "Dry Run is {0}."
 
@@ -2395,17 +2395,17 @@ msgstr "Duration"
 msgid "Duty Cycle Limit"
 msgstr "Duty Cycle Limit"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3171
+#: src/components/settings/SettingsFanoutSection.tsx:3174
 msgid "e.g. 100"
 msgstr "e.g. 100"
 
 #: src/components/settings/SettingsFanoutSection.tsx:1402
-#: src/components/settings/SettingsFanoutSection.tsx:1985
+#: src/components/settings/SettingsFanoutSection.tsx:1988
 msgid "e.g. 192.168.1.100"
 msgstr "e.g. 192.168.1.100"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2611
-#: src/components/settings/SettingsFanoutSection.tsx:2910
+#: src/components/settings/SettingsFanoutSection.tsx:2614
+#: src/components/settings/SettingsFanoutSection.tsx:2913
 msgid "e.g. DEN, LAX, NYC"
 msgstr "e.g. DEN, LAX, NYC"
 
@@ -2413,33 +2413,33 @@ msgstr "e.g. DEN, LAX, NYC"
 msgid "e.g. Home Base, Field Radio 2"
 msgstr "e.g. Home Base, Field Radio 2"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2087
+#: src/components/settings/SettingsFanoutSection.tsx:2090
 msgid "Each selected contact becomes a <0>device_tracker</0> in HA, updated whenever an advertisement with GPS coordinates is heard. Useful for tracking mobile nodes on an HA map dashboard."
 msgstr "Each selected contact becomes a <0>device_tracker</0> in HA, updated whenever an advertisement with GPS coordinates is heard. Useful for tracking mobile nodes on an HA map dashboard."
 
-#: src/components/settings/SettingsFanoutSection.tsx:2164
+#: src/components/settings/SettingsFanoutSection.tsx:2167
 msgid "Each selected repeater becomes an HA device with sensors for battery voltage, RSSI, SNR, noise floor, packet counts, and uptime. Data updates whenever telemetry is collected (auto-collect runs every ~8 hours, or on manual dashboard fetch). Only repeaters already in the auto-telemetry tracking list appear here (add new repeaters by logging into the repeater and opting in at the bottom of the page)."
 msgstr "Each selected repeater becomes an HA device with sensors for battery voltage, RSSI, SNR, noise floor, packet counts, and uptime. Data updates whenever telemetry is collected (auto-collect runs every ~8 hours, or on manual dashboard fetch). Only repeaters already in the auto-telemetry tracking list appear here (add new repeaters by logging into the repeater and opting in at the bottom of the page)."
 
-#: src/components/settings/SettingsFanoutSection.tsx:4904
+#: src/components/settings/SettingsFanoutSection.tsx:4907
 msgid "Edit"
 msgstr "Edit"
 
 #. placeholder {0}: cfg.name
-#: src/components/settings/SettingsFanoutSection.tsx:4852
+#: src/components/settings/SettingsFanoutSection.tsx:4855
 msgid "Edit name for {0}"
 msgstr "Edit name for {0}"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2890
+#: src/components/settings/SettingsFanoutSection.tsx:2893
 msgid "Email"
 msgstr "Email"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3917
+#: src/components/settings/SettingsFanoutSection.tsx:3920
 msgid "Empty textareas use the default format. RSSI/SNR may be empty if unavailable."
 msgstr "Empty textareas use the default format. RSSI/SNR may be empty if unavailable."
 
 #. placeholder {0}: cfg.name
-#: src/components/settings/SettingsFanoutSection.tsx:4830
+#: src/components/settings/SettingsFanoutSection.tsx:4833
 msgid "Enable {0}"
 msgstr "Enable {0}"
 
@@ -2447,7 +2447,7 @@ msgstr "Enable {0}"
 msgid "Enable desktop notifications for this conversation"
 msgstr "Enable desktop notifications for this conversation"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3128
+#: src/components/settings/SettingsFanoutSection.tsx:3131
 msgid "Enable Geofence"
 msgstr "Enable Geofence"
 
@@ -2460,7 +2460,7 @@ msgstr "Enable notifications for this conversation"
 msgid "Encrypted"
 msgstr "Encrypted"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4193
+#: src/components/settings/SettingsFanoutSection.tsx:4196
 msgid "Endpoint URL (optional)"
 msgstr "Endpoint URL (optional)"
 
@@ -2485,11 +2485,11 @@ msgstr "Enter fullscreen"
 msgid "Enter hex only"
 msgstr "Enter hex only"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2841
+#: src/components/settings/SettingsFanoutSection.tsx:2844
 msgid "Enter your broker-issued token"
 msgstr "Enter your broker-issued token"
 
-#: src/components/settings/SettingsFanoutSection.tsx:1899
+#: src/components/settings/SettingsFanoutSection.tsx:1902
 msgid "Entity IDs use the first 12 characters of the node's public key. Entities are removed from HA when this integration is disabled or deleted. State topics are published under <0>{prefix}/<node_id>/health|telemetry|gps</0>."
 msgstr "Entity IDs use the first 12 characters of the node's public key. Entities are removed from HA when this integration is disabled or deleted. State topics are published under <0>{prefix}/<node_id>/health|telemetry|gps</0>."
 
@@ -2546,7 +2546,7 @@ msgstr "Executing {0} command"
 msgid "Executing command"
 msgstr "Executing command"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2310
+#: src/components/settings/SettingsFanoutSection.tsx:2313
 msgid "Existing custom/legacy settings"
 msgstr "Existing custom/legacy settings"
 
@@ -2583,7 +2583,7 @@ msgstr "Export saves the current server config to a JSON file. Import loads a co
 msgid "Extra Direct ACK Transmission"
 msgstr "Extra Direct ACK Transmission"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4111
+#: src/components/settings/SettingsFanoutSection.tsx:4114
 msgid "Extra Headers (JSON)"
 msgstr "Extra Headers (JSON)"
 
@@ -2601,7 +2601,7 @@ msgstr "Failed to change radio connection state"
 msgid "Failed to create"
 msgstr "Failed to create"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4548
+#: src/components/settings/SettingsFanoutSection.tsx:4551
 msgid "Failed to delete"
 msgstr "Failed to delete"
 
@@ -2710,7 +2710,7 @@ msgstr "Failed to resend"
 msgid "Failed to run mesh discovery"
 msgstr "Failed to run mesh discovery"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4372
+#: src/components/settings/SettingsFanoutSection.tsx:4375
 #: src/components/settings/SettingsRadioSection.tsx:342
 #: src/components/settings/SettingsRadioSection.tsx:467
 #: src/components/settings/SettingsRadioSection.tsx:500
@@ -2734,7 +2734,7 @@ msgstr "Failed to send message"
 msgid "Failed to set private key"
 msgstr "Failed to set private key"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4472
+#: src/components/settings/SettingsFanoutSection.tsx:4475
 msgid "Failed to update"
 msgstr "Failed to update"
 
@@ -2754,7 +2754,7 @@ msgstr "Failed to update favorite"
 msgid "Failed to update mute"
 msgstr "Failed to update mute"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4411
+#: src/components/settings/SettingsFanoutSection.tsx:4414
 msgid "Failed to update name"
 msgstr "Failed to update name"
 
@@ -2928,7 +2928,7 @@ msgstr "Forced route"
 msgid "Forward mesh data to your own MQTT broker for home automation, logging, or alerting."
 msgstr "Forward mesh data to your own MQTT broker for home automation, logging, or alerting."
 
-#: src/components/settings/SettingsFanoutSection.tsx:3797
+#: src/components/settings/SettingsFanoutSection.tsx:3800
 msgid "Forward MESHRIK-sent messages"
 msgstr "Forward MESHRIK-sent messages"
 
@@ -2936,7 +2936,7 @@ msgstr "Forward MESHRIK-sent messages"
 msgid "Forward Path"
 msgstr "Forward Path"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3508
+#: src/components/settings/SettingsFanoutSection.tsx:3511
 msgid "Forward raw packets"
 msgstr "Forward raw packets"
 
@@ -2977,7 +2977,7 @@ msgstr "Fullscreen"
 msgid "Generate random key"
 msgstr "Generate random key"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2595
+#: src/components/settings/SettingsFanoutSection.tsx:2598
 msgid "Generated topics and broker identity are private. The saved token is never returned by the API."
 msgstr "Generated topics and broker identity are private. The saved token is never returned by the API."
 
@@ -3010,7 +3010,7 @@ msgstr "GitHub"
 msgid "Global"
 msgstr "Global"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2084
+#: src/components/settings/SettingsFanoutSection.tsx:2087
 msgid "GPS Tracked Contacts"
 msgstr "GPS Tracked Contacts"
 
@@ -3091,11 +3091,11 @@ msgstr "History"
 msgid "History ("
 msgstr "History ("
 
-#: src/components/settings/SettingsFanoutSection.tsx:4082
+#: src/components/settings/SettingsFanoutSection.tsx:4085
 msgid "HMAC Secret"
 msgstr "HMAC Secret"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4069
+#: src/components/settings/SettingsFanoutSection.tsx:4072
 msgid "HMAC Signing"
 msgstr "HMAC Signing"
 
@@ -3107,7 +3107,7 @@ msgstr "Home"
 msgid "Home Assistant"
 msgstr "Home Assistant"
 
-#: src/components/settings/SettingsFanoutSection.tsx:1919
+#: src/components/settings/SettingsFanoutSection.tsx:1922
 msgid "Home Assistant device and entity IDs are keyed off the first 12 characters of each node's public key, not the display name. Those same 12 characters are used in the MQTT state topics below."
 msgstr "Home Assistant device and entity IDs are keyed off the first 12 characters of each node's public key, not the display name. Those same 12 characters are used in the MQTT state topics below."
 
@@ -3153,7 +3153,7 @@ msgstr "Hop Width"
 msgid "Hop width for this channel"
 msgstr "Hop width for this channel"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3899
+#: src/components/settings/SettingsFanoutSection.tsx:3902
 msgid "Hops wrapped in backticks for markdown"
 msgstr "Hops wrapped in backticks for markdown"
 
@@ -3186,7 +3186,7 @@ msgstr "How often to automatically advertise presence. Set to 0 to disable. Mini
 msgid "How strongly nodes repel each other. Higher values spread nodes out more."
 msgstr "How strongly nodes repel each other. Higher values spread nodes out more."
 
-#: src/components/settings/SettingsFanoutSection.tsx:4044
+#: src/components/settings/SettingsFanoutSection.tsx:4047
 msgid "HTTP Method"
 msgstr "HTTP Method"
 
@@ -3224,7 +3224,7 @@ msgstr "idle"
 msgid "Idle"
 msgstr "Idle"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3844
+#: src/components/settings/SettingsFanoutSection.tsx:3847
 msgid "If notifications fail on services like Telegram due to special characters in sender names, disable this option."
 msgstr "If notifications fail on services like Telegram due to special characters in sender names, disable this option."
 
@@ -3257,7 +3257,7 @@ msgstr "In the official app, enter <0>MESHRIK's hostname</0> and this virtual TC
 msgid "Inactive"
 msgstr "Inactive"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3800
+#: src/components/settings/SettingsFanoutSection.tsx:3803
 msgid "Include DMs and channel messages sent by this MESHRIK instance, including manual sends and bot replies. Outgoing messages carry no routing path or signal data, so path-related format fields render as direct and RSSI/SNR are empty."
 msgstr "Include DMs and channel messages sent by this MESHRIK instance, including manual sends and bot replies. Outgoing messages carry no routing path or signal data, so path-related format fields render as direct and RSSI/SNR are empty."
 
@@ -3287,35 +3287,35 @@ msgid "Inline alerts"
 msgstr "Inline alerts"
 
 #. placeholder {0}: cfg.name
-#: src/components/settings/SettingsFanoutSection.tsx:4816
+#: src/components/settings/SettingsFanoutSection.tsx:4819
 msgid "Integration {0}"
 msgstr "Integration {0}"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4546
+#: src/components/settings/SettingsFanoutSection.tsx:4549
 msgid "Integration deleted"
 msgstr "Integration deleted"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4470
+#: src/components/settings/SettingsFanoutSection.tsx:4473
 msgid "Integration disabled"
 msgstr "Integration disabled"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4470
+#: src/components/settings/SettingsFanoutSection.tsx:4473
 msgid "Integration enabled"
 msgstr "Integration enabled"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4783
+#: src/components/settings/SettingsFanoutSection.tsx:4786
 msgid "Integration Error"
 msgstr "Integration Error"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4370
+#: src/components/settings/SettingsFanoutSection.tsx:4373
 msgid "Integration saved"
 msgstr "Integration saved"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4370
+#: src/components/settings/SettingsFanoutSection.tsx:4373
 msgid "Integration saved and enabled"
 msgstr "Integration saved and enabled"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4737
+#: src/components/settings/SettingsFanoutSection.tsx:4740
 msgid "Integrations are an experimental feature in open beta, and allow you to fanout raw and decrypted messages across multiple services for automation, analysis, or archiving."
 msgstr "Integrations are an experimental feature in open beta, and allow you to fanout raw and decrypted messages across multiple services for automation, analysis, or archiving."
 
@@ -3328,7 +3328,7 @@ msgstr "Invalid channel names: {0}"
 msgid "Invalid config file"
 msgstr "Invalid config file"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4018
+#: src/components/settings/SettingsFanoutSection.tsx:4021
 msgid "Invalid JSON"
 msgstr "Invalid JSON"
 
@@ -3373,7 +3373,7 @@ msgid "Keep waiting"
 msgstr "Keep waiting"
 
 #. placeholder {0}: item.publicKey
-#: src/components/settings/SettingsFanoutSection.tsx:1947
+#: src/components/settings/SettingsFanoutSection.tsx:1950
 msgid "key {0}"
 msgstr "key {0}"
 
@@ -3480,11 +3480,11 @@ msgstr "Last SNR"
 msgid "Last updated {0}"
 msgstr "Last updated {0}"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3909
+#: src/components/settings/SettingsFanoutSection.tsx:3912
 msgid "Last-hop RSSI in dBm"
 msgstr "Last-hop RSSI in dBm"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3913
+#: src/components/settings/SettingsFanoutSection.tsx:3916
 msgid "Last-hop SNR in dB"
 msgstr "Last-hop SNR in dB"
 
@@ -3510,19 +3510,19 @@ msgstr "Learned Route"
 msgid "Least repeater disambiguation, up to 63 hops"
 msgstr "Least repeater disambiguation, up to 63 hops"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3111
+#: src/components/settings/SettingsFanoutSection.tsx:3114
 msgid "Leave blank to use the default <0>map.meshcore.io</0> endpoint."
 msgstr "Leave blank to use the default <0>map.meshcore.io</0> endpoint."
 
-#: src/components/settings/SettingsFanoutSection.tsx:4215
+#: src/components/settings/SettingsFanoutSection.tsx:4218
 msgid "Leave blank to use the server's normal AWS credential chain."
 msgstr "Leave blank to use the server's normal AWS credential chain."
 
-#: src/components/settings/SettingsFanoutSection.tsx:4087
+#: src/components/settings/SettingsFanoutSection.tsx:4090
 msgid "Leave empty to disable signing"
 msgstr "Leave empty to disable signing"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4512
+#: src/components/settings/SettingsFanoutSection.tsx:4515
 msgid "Leave without saving?"
 msgstr "Leave without saving?"
 
@@ -3546,7 +3546,7 @@ msgstr "LetsMesh (EU)"
 msgid "LetsMesh (US)"
 msgstr "LetsMesh (US)"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2422
+#: src/components/settings/SettingsFanoutSection.tsx:2425
 msgid "LetsMesh uses <0>token</0> auth. MeshRank uses <1>none</1>."
 msgstr "LetsMesh uses <0>token</0> auth. MeshRank uses <1>none</1>."
 
@@ -3575,7 +3575,7 @@ msgstr "Listening"
 msgid "Listens on all IPv4 interfaces, not only the LAN. Connect using this MESHRIK host's LAN address, not 0.0.0.0. Raw TCP has no authentication or encryption; restrict this port to trusted devices with a firewall and never expose it publicly."
 msgstr "Listens on all IPv4 interfaces, not only the LAN. Connect using this MESHRIK host's LAN address, not 0.0.0.0. Raw TCP has no authentication or encryption; restrict this port to trusted devices with a firewall and never expose it publicly."
 
-#: src/components/settings/SettingsFanoutSection.tsx:3074
+#: src/components/settings/SettingsFanoutSection.tsx:3077
 msgid "Live uploads are enabled. Each advert is rate-limited to once per hour per node."
 msgstr "Live uploads are enabled. Each advert is rate-limited to once per hour per node."
 
@@ -3617,7 +3617,7 @@ msgstr "Loading details..."
 msgid "Loading dictionary..."
 msgstr "Loading dictionary..."
 
-#: src/components/settings/SettingsFanoutSection.tsx:2988
+#: src/components/settings/SettingsFanoutSection.tsx:2991
 msgid "Loading editor..."
 msgstr "Loading editor..."
 
@@ -3733,7 +3733,7 @@ msgstr "Local label color"
 msgid "Local label text"
 msgstr "Local label text"
 
-#: src/components/settings/SettingsFanoutSection.tsx:1759
+#: src/components/settings/SettingsFanoutSection.tsx:1762
 msgid "Local radio device"
 msgstr "Local radio device"
 
@@ -3837,7 +3837,7 @@ msgstr "Map View"
 msgid "Mark all as read"
 msgstr "Mark all as read"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3841
+#: src/components/settings/SettingsFanoutSection.tsx:3844
 msgid "Markdown formatting"
 msgstr "Markdown formatting"
 
@@ -3845,7 +3845,7 @@ msgstr "Markdown formatting"
 msgid "Marker recency legend"
 msgstr "Marker recency legend"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2211
+#: src/components/settings/SettingsFanoutSection.tsx:2214
 msgid "Matching messages fire an <0>event.meshcore_{localRadioNodeId}_messages</0> entity in HA with sender, text, channel, and direction attributes. Use HA automations to trigger actions on specific messages, channels, or contacts."
 msgstr "Matching messages fire an <0>event.meshcore_{localRadioNodeId}_messages</0> entity in HA with sender, text, channel, and direction attributes. Use HA automations to trigger actions on specific messages, channels, or contacts."
 
@@ -3896,7 +3896,7 @@ msgid "Mesh Visualizer"
 msgstr "Mesh Visualizer"
 
 #: src/components/settings/SettingsFanoutSection.tsx:1486
-#: src/components/settings/SettingsFanoutSection.tsx:2067
+#: src/components/settings/SettingsFanoutSection.tsx:2070
 msgid "meshcore"
 msgstr "meshcore"
 
@@ -3917,7 +3917,7 @@ msgstr "MeshCore Apps"
 msgid "MeshCore Open clients send GIFs and emoji reactions as encoded text (e.g. <0>g:abc123</0> or <1>r:1a2b:05</1>). When enabled, these render as the GIF image or reaction emoji instead of the raw text. Reactions show generically (the emoji is not tied to a specific message). GIFs load from media.giphy.com, which reaches outside your local network and exposes your IP to Giphy — so this is off by default."
 msgstr "MeshCore Open clients send GIFs and emoji reactions as encoded text (e.g. <0>g:abc123</0> or <1>r:1a2b:05</1>). When enabled, these render as the GIF image or reaction emoji instead of the raw text. Reactions show generically (the emoji is not tied to a specific message). GIFs load from media.giphy.com, which reaches outside your local network and exposes your IP to Giphy — so this is off by default."
 
-#: src/components/settings/SettingsFanoutSection.tsx:2716
+#: src/components/settings/SettingsFanoutSection.tsx:2719
 msgid "MeshCore payload type filter"
 msgstr "MeshCore payload type filter"
 
@@ -3933,15 +3933,15 @@ msgstr "MeshcoreToMQTT-compatible raw-packet feed publishing, compatible with co
 msgid "MeshRank"
 msgstr "MeshRank"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2819
+#: src/components/settings/SettingsFanoutSection.tsx:2822
 msgid "MeshRank publishes under a broker-issued token, not an IATA region or a manually constructed MQTT topic. Provide only your personal uplink token."
 msgstr "MeshRank publishes under a broker-issued token, not an IATA region or a manually constructed MQTT topic. Provide only your personal uplink token."
 
-#: src/components/settings/SettingsFanoutSection.tsx:2835
+#: src/components/settings/SettingsFanoutSection.tsx:2838
 msgid "MeshRank uplink token"
 msgstr "MeshRank uplink token"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2585
+#: src/components/settings/SettingsFanoutSection.tsx:2588
 msgid "MeshRank uplink token (leave blank to keep existing)"
 msgstr "MeshRank uplink token (leave blank to keep existing)"
 
@@ -3970,20 +3970,20 @@ msgstr "Message {0}..."
 msgid "Message Activity"
 msgstr "Message Activity"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3861
+#: src/components/settings/SettingsFanoutSection.tsx:3864
 msgid "Message body"
 msgstr "Message body"
 
 #: src/components/settings/SettingsFanoutSection.tsx:1623
-#: src/components/settings/SettingsFanoutSection.tsx:1883
+#: src/components/settings/SettingsFanoutSection.tsx:1886
 msgid "Message events"
 msgstr "Message events"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2208
+#: src/components/settings/SettingsFanoutSection.tsx:2211
 msgid "Message Events"
 msgstr "Message Events"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3812
+#: src/components/settings/SettingsFanoutSection.tsx:3815
 msgid "Message Format"
 msgstr "Message Format"
 
@@ -4000,7 +4000,7 @@ msgstr "Message resent"
 msgid "Message resent with new timestamp"
 msgstr "Message resent with new timestamp"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3496
+#: src/components/settings/SettingsFanoutSection.tsx:3499
 msgid "Message Scope"
 msgstr "Message Scope"
 
@@ -4061,7 +4061,7 @@ msgstr "Metric selector pills"
 msgid "min"
 msgstr "min"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4347
+#: src/components/settings/SettingsFanoutSection.tsx:4350
 msgid "Missing fanout config id for update"
 msgstr "Missing fanout config id for update"
 
@@ -4077,7 +4077,7 @@ msgstr "More results could not be loaded. Your existing results are unchanged."
 msgid "Most Active Channels"
 msgstr "Most Active Channels"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4786
+#: src/components/settings/SettingsFanoutSection.tsx:4789
 msgid "Most recent backend error retained for this integration."
 msgstr "Most recent backend error retained for this integration."
 
@@ -4097,11 +4097,11 @@ msgstr "Move {displayName} up"
 msgid "MQTT & Automation"
 msgstr "MQTT & Automation"
 
-#: src/components/settings/SettingsFanoutSection.tsx:1974
+#: src/components/settings/SettingsFanoutSection.tsx:1977
 msgid "MQTT Broker"
 msgstr "MQTT Broker"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4012
+#: src/components/settings/SettingsFanoutSection.tsx:4015
 msgid "Must be a JSON object"
 msgstr "Must be a JSON object"
 
@@ -4120,7 +4120,7 @@ msgstr "MyRegion"
 #: src/components/NewMessageModal.tsx:322
 #: src/components/repeater/RepeaterNodeInfoPane.tsx:33
 #: src/components/repeater/RepeaterOwnerInfoPane.tsx:38
-#: src/components/settings/SettingsFanoutSection.tsx:4597
+#: src/components/settings/SettingsFanoutSection.tsx:4600
 msgid "Name"
 msgstr "Name"
 
@@ -4128,9 +4128,9 @@ msgstr "Name"
 msgid "Name and public key are required"
 msgstr "Name and public key are required"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4329
-#: src/components/settings/SettingsFanoutSection.tsx:4330
-#: src/components/settings/SettingsFanoutSection.tsx:4397
+#: src/components/settings/SettingsFanoutSection.tsx:4332
+#: src/components/settings/SettingsFanoutSection.tsx:4333
+#: src/components/settings/SettingsFanoutSection.tsx:4400
 msgid "Name cannot be empty"
 msgstr "Name cannot be empty"
 
@@ -4138,7 +4138,7 @@ msgstr "Name cannot be empty"
 msgid "Name First In Use"
 msgstr "Name First In Use"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4409
+#: src/components/settings/SettingsFanoutSection.tsx:4412
 msgid "Name updated"
 msgstr "Name updated"
 
@@ -4165,11 +4165,11 @@ msgstr "Nearest Repeaters — Geo (last 7 days)"
 msgid "Nearest Repeaters — Hops (last 7 days)"
 msgstr "Nearest Repeaters — Hops (last 7 days)"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2661
+#: src/components/settings/SettingsFanoutSection.tsx:2664
 msgid "Neighbor interval (12–336 h)"
 msgstr "Neighbor interval (12–336 h)"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2679
+#: src/components/settings/SettingsFanoutSection.tsx:2682
 msgid "Neighbor snapshots use only previous host-observed discovery results; scheduling does not send automatic radio discovery or mutate radio contacts."
 msgstr "Neighbor snapshots use only previous host-observed discovery results; scheduling does not send automatic radio discovery or mutate radio contacts."
 
@@ -4254,7 +4254,7 @@ msgstr "nl-gr\n"
 "MyRegion"
 
 #. placeholder {0}: label.toLowerCase()
-#: src/components/settings/SettingsFanoutSection.tsx:3355
+#: src/components/settings/SettingsFanoutSection.tsx:3358
 msgid "No {0} match “{search}”"
 msgstr "No {0} match “{search}”"
 
@@ -4280,11 +4280,11 @@ msgstr "No chart data available."
 msgid "No contacts are being tracked. Enable tracking from a contact's info pane."
 msgstr "No contacts are being tracked. Enable tracking from a contact's info pane."
 
-#: src/components/settings/SettingsFanoutSection.tsx:2117
+#: src/components/settings/SettingsFanoutSection.tsx:2120
 msgid "No contacts available."
 msgstr "No contacts available."
 
-#: src/components/settings/SettingsFanoutSection.tsx:2131
+#: src/components/settings/SettingsFanoutSection.tsx:2134
 msgid "No contacts match “{contactSearch}”"
 msgstr "No contacts match “{contactSearch}”"
 
@@ -4332,7 +4332,7 @@ msgstr "No matches found"
 msgid "No matching history. Enable background jobs to see routine samples."
 msgstr "No matching history. Enable background jobs to see routine samples."
 
-#: src/components/settings/SettingsFanoutSection.tsx:3464
+#: src/components/settings/SettingsFanoutSection.tsx:3467
 msgid "No messages"
 msgstr "No messages"
 
@@ -4390,7 +4390,7 @@ msgstr "No regions reported ({0}/{1} repeaters answered)"
 msgid "No regions returned. The repeater may be unreachable, or full region details require admin access."
 msgstr "No regions returned. The repeater may be unreachable, or full region details require admin access."
 
-#: src/components/settings/SettingsFanoutSection.tsx:2174
+#: src/components/settings/SettingsFanoutSection.tsx:2177
 msgid "No repeaters are being auto-tracked for telemetry. Add repeaters to the auto-telemetry tracking list in the Radio section first, then return here to select which ones to expose to HA."
 msgstr "No repeaters are being auto-tracked for telemetry. Add repeaters to the auto-telemetry tracking list in the Radio section first, then return here to select which ones to expose to HA."
 
@@ -4459,11 +4459,11 @@ msgstr "No telemetry collected yet. Fetch status above to record data points."
 msgid "No telemetry recorded yet"
 msgstr "No telemetry recorded yet"
 
-#: src/components/settings/SettingsFanoutSection.tsx:1927
+#: src/components/settings/SettingsFanoutSection.tsx:1930
 msgid "No topic previews available yet. Connect to a radio to resolve the local radio key, and select contacts or repeaters above to preview their published topics."
 msgstr "No topic previews available yet. Connect to a radio to resolve the local radio key, and select contacts or repeaters above to preview their published topics."
 
-#: src/components/settings/SettingsFanoutSection.tsx:3073
+#: src/components/settings/SettingsFanoutSection.tsx:3076
 msgid "No uploads will be sent. Check the backend logs to verify the payload looks correct before enabling live sends."
 msgstr "No uploads will be sent. Check the backend logs to verify the payload looks correct before enabling live sends."
 
@@ -4480,7 +4480,7 @@ msgid "Node"
 msgstr "Node"
 
 #. placeholder {0}: item.nodeId
-#: src/components/settings/SettingsFanoutSection.tsx:1943
+#: src/components/settings/SettingsFanoutSection.tsx:1946
 msgid "node id {0}"
 msgstr "node id {0}"
 
@@ -4501,7 +4501,7 @@ msgstr "Node Map"
 msgid "Nodes"
 msgstr "Nodes"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3181
+#: src/components/settings/SettingsFanoutSection.tsx:3184
 msgid "Nodes further than this distance from your radio's position will not be uploaded."
 msgstr "Nodes further than this distance from your radio's position will not be uploaded."
 
@@ -4530,12 +4530,12 @@ msgid "Non-repeater contacts (companions, rooms, sensors) can also be tracked fo
 msgstr "Non-repeater contacts (companions, rooms, sensors) can also be tracked for periodic LPP telemetry collection (battery, sensors, GPS). Up to 8 contacts may be tracked. The daily check ceiling is shared with tracked repeaters — adding contacts may clamp the interval upward."
 
 #: src/components/settings/SettingsDatabaseSection.tsx:164
-#: src/components/settings/SettingsFanoutSection.tsx:2415
-#: src/components/settings/SettingsFanoutSection.tsx:3306
+#: src/components/settings/SettingsFanoutSection.tsx:2418
+#: src/components/settings/SettingsFanoutSection.tsx:3309
 msgid "None"
 msgstr "None"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2737
+#: src/components/settings/SettingsFanoutSection.tsx:2740
 msgid "None (status only)"
 msgstr "None (status only)"
 
@@ -4559,7 +4559,7 @@ msgstr "Not yet fetched"
 msgid "Note: direct messages that do not see an ACK retry up to 3 times. The final retry is sent as flood, even when forced routing is configured."
 msgstr "Note: direct messages that do not see an ACK retry up to 3 times. The final retry is sent as flood, even when forced routing is configured."
 
-#: src/components/settings/SettingsFanoutSection.tsx:3530
+#: src/components/settings/SettingsFanoutSection.tsx:3533
 msgid "Nothing is selected — this integration will not forward any data."
 msgstr "Nothing is selected — this integration will not forward any data."
 
@@ -4569,7 +4569,7 @@ msgstr "Nothing is selected — this integration will not forward any data."
 msgid "Notification settings"
 msgstr "Notification settings"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3750
+#: src/components/settings/SettingsFanoutSection.tsx:3753
 msgid "Notification URLs"
 msgstr "Notification URLs"
 
@@ -4613,7 +4613,7 @@ msgstr "Notifications unavailable"
 msgid "Notifications will look like this. These require the tab to stay open, and will not be reliable on mobile."
 msgstr "Notifications will look like this. These require the tab to stay open, and will not be reliable on mobile."
 
-#: src/components/settings/SettingsFanoutSection.tsx:3905
+#: src/components/settings/SettingsFanoutSection.tsx:3908
 msgid "Number of hops (0 for direct)"
 msgstr "Number of hops (0 for direct)"
 
@@ -4631,7 +4631,7 @@ msgstr "of "
 msgid "Off"
 msgstr "Off"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2696
+#: src/components/settings/SettingsFanoutSection.tsx:2699
 msgid "Off (default)"
 msgstr "Off (default)"
 
@@ -4683,7 +4683,7 @@ msgstr "One region name per line. Incoming region-scoped (TransportFlood/Transpo
 msgid "one route"
 msgstr "one route"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3761
+#: src/components/settings/SettingsFanoutSection.tsx:3764
 msgid "One URL per line. All URLs receive every matched notification. For Matrix room version 12 (servername-less room IDs), append <0>?hsreq=no</0> to the URL."
 msgstr "One URL per line. All URLs receive every matched notification. For Matrix room version 12 (servername-less room IDs), append <0>?hsreq=no</0> to the URL."
 
@@ -4695,7 +4695,7 @@ msgstr "Ongoing operations"
 msgid "Only affects this browser. Radio settings and message contents stay unchanged."
 msgstr "Only affects this browser. Radio settings and message contents stay unchanged."
 
-#: src/components/settings/SettingsFanoutSection.tsx:3465
+#: src/components/settings/SettingsFanoutSection.tsx:3468
 msgid "Only listed channels/contacts"
 msgstr "Only listed channels/contacts"
 
@@ -4712,7 +4712,7 @@ msgstr "Only repeated by new repeaters"
 msgid "Only show recently heard/in-a-path nodes"
 msgstr "Only show recently heard/in-a-path nodes"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3131
+#: src/components/settings/SettingsFanoutSection.tsx:3134
 msgid "Only upload nodes whose location falls within the configured radius of your radio's own position. Helps exclude nodes with false or spoofed coordinates. Uses the latitude/longitude set in Radio Settings."
 msgstr "Only upload nodes whose location falls within the configured radius of your radio's own position. Helps exclude nodes with false or spoofed coordinates. Uses the latitude/longitude set in Radio Settings."
 
@@ -4762,8 +4762,8 @@ msgstr "Opt Repeater into Interval Metrics Tracking"
 
 #: src/components/settings/SettingsFanoutSection.tsx:1432
 #: src/components/settings/SettingsFanoutSection.tsx:1444
-#: src/components/settings/SettingsFanoutSection.tsx:2015
-#: src/components/settings/SettingsFanoutSection.tsx:2027
+#: src/components/settings/SettingsFanoutSection.tsx:2018
+#: src/components/settings/SettingsFanoutSection.tsx:2030
 msgid "Optional"
 msgstr "Optional"
 
@@ -4791,7 +4791,7 @@ msgstr "Other possible: "
 msgid "Our Radio"
 msgstr "Our Radio"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2687
+#: src/components/settings/SettingsFanoutSection.tsx:2690
 msgid "Outbound raw frame upload"
 msgstr "Outbound raw frame upload"
 
@@ -4803,7 +4803,7 @@ msgstr "Outcome unknown"
 msgid "Outgoing messages (DMs and group messages) will be reported to private MQTT brokers in decrypted/plaintext form."
 msgstr "Outgoing messages (DMs and group messages) will be reported to private MQTT brokers in decrypted/plaintext form."
 
-#: src/components/settings/SettingsFanoutSection.tsx:4159
+#: src/components/settings/SettingsFanoutSection.tsx:4162
 msgid "Outgoing messages and any selected raw packets will be delivered exactly as forwarded by the fanout scope, including decrypted/plaintext message content."
 msgstr "Outgoing messages and any selected raw packets will be delivered exactly as forwarded by the fanout scope, including decrypted/plaintext message content."
 
@@ -4815,7 +4815,7 @@ msgstr "Outline"
 msgid "Override the path hash mode for this channel. Wider hop identifiers improve repeater disambiguation but extend send time and will prevent users on old (<1.14) firmware from receiving the message."
 msgstr "Override the path hash mode for this channel. Wider hop identifiers improve repeater disambiguation but extend send time and will prevent users on old (<1.14) firmware from receiving the message."
 
-#: src/components/settings/SettingsFanoutSection.tsx:2512
+#: src/components/settings/SettingsFanoutSection.tsx:2515
 msgid "Owner Email (optional)"
 msgstr "Owner Email (optional)"
 
@@ -4865,7 +4865,7 @@ msgstr "Packet received"
 msgid "Packet speed: {particleSpeedMultiplier}x"
 msgstr "Packet speed: {particleSpeedMultiplier}x"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2786
+#: src/components/settings/SettingsFanoutSection.tsx:2789
 msgid "Packet Topic Template"
 msgstr "Packet Topic Template"
 
@@ -4907,8 +4907,8 @@ msgid "Parsed stored raw packets from the last 24 hours: {0}"
 msgstr "Parsed stored raw packets from the last 24 hours: {0}"
 
 #: src/components/settings/SettingsFanoutSection.tsx:1439
-#: src/components/settings/SettingsFanoutSection.tsx:2022
-#: src/components/settings/SettingsFanoutSection.tsx:2543
+#: src/components/settings/SettingsFanoutSection.tsx:2025
+#: src/components/settings/SettingsFanoutSection.tsx:2546
 msgid "Password"
 msgstr "Password"
 
@@ -4936,7 +4936,7 @@ msgstr "Paste multiple hashtag channels to add them in one batch"
 msgid "Paste raw packet hex here..."
 msgstr "Paste raw packet hex here..."
 
-#: src/components/settings/SettingsFanoutSection.tsx:4059
+#: src/components/settings/SettingsFanoutSection.tsx:4062
 msgid "PATCH"
 msgstr "PATCH"
 
@@ -5015,11 +5015,11 @@ msgstr "Payload fields"
 msgid "Pending: <0>{pendingCount}</0>"
 msgstr "Pending: <0>{pendingCount}</0>"
 
-#: src/components/settings/SettingsFanoutSection.tsx:1853
+#: src/components/settings/SettingsFanoutSection.tsx:1856
 msgid "Per tracked contact"
 msgstr "Per tracked contact"
 
-#: src/components/settings/SettingsFanoutSection.tsx:1787
+#: src/components/settings/SettingsFanoutSection.tsx:1790
 msgid "Per tracked repeater"
 msgstr "Per tracked repeater"
 
@@ -5070,7 +5070,7 @@ msgstr "Poll direct/routed-path repeaters hourly"
 msgid "Possible: "
 msgstr "Possible: "
 
-#: src/components/settings/SettingsFanoutSection.tsx:4053
+#: src/components/settings/SettingsFanoutSection.tsx:4056
 msgid "POST"
 msgstr "POST"
 
@@ -5078,7 +5078,7 @@ msgstr "POST"
 msgid "POST /api/contacts/<key>/repeater/status"
 msgstr "POST /api/contacts/<key>/repeater/status"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2872
+#: src/components/settings/SettingsFanoutSection.tsx:2875
 msgid "Pre-filled LetsMesh setup. This saves as a regular Community MQTT integration once created, but only asks for the values LetsMesh expects from you."
 msgstr "Pre-filled LetsMesh setup. This saves as a regular Community MQTT integration once created, but only asks for the values LetsMesh expects from you."
 
@@ -5090,7 +5090,7 @@ msgstr "Pre-shared key (hex)"
 msgid "Preparing details"
 msgstr "Preparing details"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3777
+#: src/components/settings/SettingsFanoutSection.tsx:3780
 msgid "Preserve identity on Discord"
 msgstr "Preserve identity on Discord"
 
@@ -5106,7 +5106,7 @@ msgstr "presets unavailable"
 msgid "Presumed unambiguous distance covered: "
 msgstr "Presumed unambiguous distance covered: "
 
-#: src/components/settings/SettingsFanoutSection.tsx:3689
+#: src/components/settings/SettingsFanoutSection.tsx:3692
 msgid "Preview"
 msgstr "Preview"
 
@@ -5122,7 +5122,7 @@ msgstr "Previous mesh discovery results"
 msgid "Previous region discovery results"
 msgstr "Previous region discovery results"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3889
+#: src/components/settings/SettingsFanoutSection.tsx:3892
 msgid "PRIV or CHAN"
 msgstr "PRIV or CHAN"
 
@@ -5188,7 +5188,7 @@ msgstr "Public key copied!"
 msgid "Publish discovery configs and MeshCore state to your MQTT broker so Home Assistant creates native devices, sensors, GPS trackers, and message events automatically."
 msgstr "Publish discovery configs and MeshCore state to your MQTT broker so Home Assistant creates native devices, sensors, GPS trackers, and message events automatically."
 
-#: src/components/settings/SettingsFanoutSection.tsx:1915
+#: src/components/settings/SettingsFanoutSection.tsx:1918
 msgid "Published topic summary"
 msgstr "Published topic summary"
 
@@ -5216,7 +5216,7 @@ msgstr "Push notifications are not supported by this browser."
 msgid "Push-enabled conversations"
 msgstr "Push-enabled conversations"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4056
+#: src/components/settings/SettingsFanoutSection.tsx:4059
 msgid "PUT"
 msgstr "PUT"
 
@@ -5225,7 +5225,7 @@ msgstr "PUT"
 msgid "Python Bot"
 msgstr "Python Bot"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4167
+#: src/components/settings/SettingsFanoutSection.tsx:4170
 msgid "Queue URL"
 msgstr "Queue URL"
 
@@ -5234,7 +5234,7 @@ msgid "Queue wait"
 msgstr "Queue wait"
 
 #. placeholder {0}: formatSqsQueueSummary(cfg.config as Record<string, unknown>)
-#: src/components/settings/SettingsFanoutSection.tsx:5011
+#: src/components/settings/SettingsFanoutSection.tsx:5014
 msgid "Queue: <0>{0}</0>"
 msgstr "Queue: <0>{0}</0>"
 
@@ -5407,11 +5407,11 @@ msgstr "Radio stats sample"
 msgid "Radio-App Management"
 msgstr "Radio-App Management"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3164
+#: src/components/settings/SettingsFanoutSection.tsx:3167
 msgid "Radius (km)"
 msgstr "Radius (km)"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3689
+#: src/components/settings/SettingsFanoutSection.tsx:3692
 msgid "Raw (email, SMS)"
 msgstr "Raw (email, SMS)"
 
@@ -5546,12 +5546,12 @@ msgstr "Refreshing…"
 msgid "Region"
 msgstr "Region"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4181
+#: src/components/settings/SettingsFanoutSection.tsx:4184
 msgid "Region (optional)"
 msgstr "Region (optional)"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2605
-#: src/components/settings/SettingsFanoutSection.tsx:2904
+#: src/components/settings/SettingsFanoutSection.tsx:2608
+#: src/components/settings/SettingsFanoutSection.tsx:2907
 msgid "Region Code (IATA)"
 msgstr "Region Code (IATA)"
 
@@ -5624,8 +5624,8 @@ msgstr "Remove"
 
 #. placeholder {0}: c.name || c.public_key.slice(0, 12)
 #. placeholder {0}: it.label
-#: src/components/settings/SettingsFanoutSection.tsx:2106
-#: src/components/settings/SettingsFanoutSection.tsx:3331
+#: src/components/settings/SettingsFanoutSection.tsx:2109
+#: src/components/settings/SettingsFanoutSection.tsx:3334
 msgid "Remove {0}"
 msgstr "Remove {0}"
 
@@ -5665,7 +5665,7 @@ msgstr "Remove virtual slot {index}"
 msgid "Render MeshCore Open GIFs & Reactions"
 msgstr "Render MeshCore Open GIFs & Reactions"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3682
+#: src/components/settings/SettingsFanoutSection.tsx:3685
 msgid "Rendered (Discord, Slack, Telegram)"
 msgstr "Rendered (Discord, Slack, Telegram)"
 
@@ -5788,7 +5788,7 @@ msgstr "Requesting reboot..."
 msgid "Requesting zero-hop advert..."
 msgstr "Requesting zero-hop advert..."
 
-#: src/components/settings/SettingsFanoutSection.tsx:2775
+#: src/components/settings/SettingsFanoutSection.tsx:2778
 msgid "reserved"
 msgstr "reserved"
 
@@ -5796,16 +5796,16 @@ msgstr "reserved"
 msgid "Reset"
 msgstr "Reset"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3959
+#: src/components/settings/SettingsFanoutSection.tsx:3962
 msgid "Reset channel format to default"
 msgstr "Reset channel format to default"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3932
+#: src/components/settings/SettingsFanoutSection.tsx:3935
 msgid "Reset DM format to default"
 msgstr "Reset DM format to default"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3936
-#: src/components/settings/SettingsFanoutSection.tsx:3963
+#: src/components/settings/SettingsFanoutSection.tsx:3939
+#: src/components/settings/SettingsFanoutSection.tsx:3966
 msgid "Reset to default"
 msgstr "Reset to default"
 
@@ -5813,7 +5813,7 @@ msgstr "Reset to default"
 msgid "Reset to Default"
 msgstr "Reset to Default"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2981
+#: src/components/settings/SettingsFanoutSection.tsx:2984
 msgid "Reset to Example"
 msgstr "Reset to Example"
 
@@ -6043,11 +6043,11 @@ msgstr "samples)"
 msgid "Save Advertising Interval"
 msgstr "Save Advertising Interval"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4721
+#: src/components/settings/SettingsFanoutSection.tsx:4724
 msgid "Save as Disabled"
 msgstr "Save as Disabled"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4713
+#: src/components/settings/SettingsFanoutSection.tsx:4716
 msgid "Save as Enabled"
 msgstr "Save as Enabled"
 
@@ -6088,8 +6088,8 @@ msgstr "Saving a changed bind address, port, channel map, or disabling this inte
 #: src/components/ChannelFloodScopeOverrideModal.tsx:143
 #: src/components/ChannelPathHashModeOverrideModal.tsx:219
 #: src/components/ContactRoutingOverrideModal.tsx:163
-#: src/components/settings/SettingsFanoutSection.tsx:4713
-#: src/components/settings/SettingsFanoutSection.tsx:4721
+#: src/components/settings/SettingsFanoutSection.tsx:4716
+#: src/components/settings/SettingsFanoutSection.tsx:4724
 #: src/components/settings/SettingsRadioSection.tsx:1508
 #: src/components/settings/SettingsRadioSection.tsx:1773
 #: src/components/settings/SettingsRadioSection.tsx:1819
@@ -6122,7 +6122,7 @@ msgid "Scroll up for older messages"
 msgstr "Scroll up for older messages"
 
 #. placeholder {0}: contactOptions.length
-#: src/components/settings/SettingsFanoutSection.tsx:2123
+#: src/components/settings/SettingsFanoutSection.tsx:2126
 msgid "Search {0} contacts..."
 msgstr "Search {0} contacts..."
 
@@ -6187,13 +6187,13 @@ msgstr "sec"
 msgid "Secondary"
 msgstr "Secondary"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4233
+#: src/components/settings/SettingsFanoutSection.tsx:4236
 msgid "Secret Access Key"
 msgstr "Secret Access Key"
 
 #: src/components/settings/SettingsRadioSection.tsx:772
-msgid "See README_ADVANCED.md for private key export enable"
-msgstr "See README_ADVANCED.md for private key export enable"
+msgid "See docs/ADVANCED_SETUP.md for private key export enable"
+msgstr "See docs/ADVANCED_SETUP.md for private key export enable"
 
 #: src/components/ConversationPane.tsx:286
 msgid "Select a conversation or start a new one"
@@ -6215,11 +6215,11 @@ msgstr "Select contacts to delete. Message history will be preserved and accessi
 msgid "Select none"
 msgstr "Select none"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2740
+#: src/components/settings/SettingsFanoutSection.tsx:2743
 msgid "Selected types"
 msgstr "Selected types"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2319
+#: src/components/settings/SettingsFanoutSection.tsx:2322
 msgid "Selecting a preset changes connection defaults; existing saved broker overrides remain unchanged until you select one."
 msgstr "Selecting a preset changes connection defaults; existing saved broker overrides remain unchanged until you select one."
 
@@ -6252,15 +6252,15 @@ msgstr "Send Flood Advertisement"
 msgid "Send full or scope-customized raw or decrypted packets to an SQS"
 msgstr "Send full or scope-customized raw or decrypted packets to an SQS"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4152
+#: src/components/settings/SettingsFanoutSection.tsx:4155
 msgid "Send matched mesh events to an Amazon SQS queue for durable processing by workers, Lambdas, or downstream automation."
 msgstr "Send matched mesh events to an Amazon SQS queue for durable processing by workers, Lambdas, or downstream automation."
 
-#: src/components/settings/SettingsFanoutSection.tsx:4025
+#: src/components/settings/SettingsFanoutSection.tsx:4028
 msgid "Send message data as JSON to an HTTP endpoint when messages are received."
 msgstr "Send message data as JSON to an HTTP endpoint when messages are received."
 
-#: src/components/settings/SettingsFanoutSection.tsx:3725
+#: src/components/settings/SettingsFanoutSection.tsx:3728
 msgid "Send push notifications via <0>Apprise</0> when messages are received. Supports Discord, Slack, Telegram, email, and <1>100+ other services</1>."
 msgstr "Send push notifications via <0>Apprise</0> when messages are received. Supports Discord, Slack, Telegram, email, and <1>100+ other services</1>."
 
@@ -6281,7 +6281,7 @@ msgstr "Send Zero-Hop Advertisement"
 msgid "Sender"
 msgstr "Sender"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3867
+#: src/components/settings/SettingsFanoutSection.tsx:3870
 msgid "Sender display name"
 msgstr "Sender display name"
 
@@ -6289,7 +6289,7 @@ msgstr "Sender display name"
 msgid "Sender metadata available"
 msgstr "Sender metadata available"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3873
+#: src/components/settings/SettingsFanoutSection.tsx:3876
 msgid "Sender public key (hex)"
 msgstr "Sender public key (hex)"
 
@@ -6321,11 +6321,11 @@ msgstr "Sending command to radio"
 msgid "Sending..."
 msgstr "Sending..."
 
-#: src/components/settings/SettingsFanoutSection.tsx:1821
+#: src/components/settings/SettingsFanoutSection.tsx:1824
 msgid "sensor.meshcore_{exampleRepeaterNodeId}_packets_received"
 msgstr "sensor.meshcore_{exampleRepeaterNodeId}_packets_received"
 
-#: src/components/settings/SettingsFanoutSection.tsx:1825
+#: src/components/settings/SettingsFanoutSection.tsx:1828
 msgid "sensor.meshcore_{exampleRepeaterNodeId}_packets_sent"
 msgstr "sensor.meshcore_{exampleRepeaterNodeId}_packets_sent"
 
@@ -6345,7 +6345,7 @@ msgstr "Sent (Outgoing)"
 msgid "Sent Δ"
 msgstr "Sent Δ"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4246
+#: src/components/settings/SettingsFanoutSection.tsx:4249
 msgid "Session Token (optional)"
 msgstr "Session Token (optional)"
 
@@ -6374,8 +6374,8 @@ msgid "Set regional override"
 msgstr "Set regional override"
 
 #: src/components/CrackerPanel.tsx:671
-msgid "Set up a TLS certificate (see the HTTPS section of README_ADVANCED.md, or re-run the Docker setup script which can generate one automatically)"
-msgstr "Set up a TLS certificate (see the HTTPS section of README_ADVANCED.md, or re-run the Docker setup script which can generate one automatically)"
+msgid "Set up a TLS certificate (see the HTTPS section of docs/ADVANCED_SETUP.md, or re-run the Docker setup script which can generate one automatically)"
+msgstr "Set up a TLS certificate (see the HTTPS section of docs/ADVANCED_SETUP.md, or re-run the Docker setup script which can generate one automatically)"
 
 #: src/components/settings/SettingsRadioSection.tsx:1135
 msgid "Setting & Rebooting..."
@@ -6531,7 +6531,7 @@ msgstr "Signal"
 msgid "Signal Distribution"
 msgstr "Signal Distribution"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4094
+#: src/components/settings/SettingsFanoutSection.tsx:4097
 msgid "Signature Header Name"
 msgstr "Signature Header Name"
 
@@ -6540,7 +6540,7 @@ msgid "Since"
 msgstr "Since"
 
 #: src/components/settings/SettingsFanoutSection.tsx:1472
-#: src/components/settings/SettingsFanoutSection.tsx:2055
+#: src/components/settings/SettingsFanoutSection.tsx:2058
 msgid "Skip certificate verification"
 msgstr "Skip certificate verification"
 
@@ -6630,11 +6630,11 @@ msgstr "Startup message drain"
 msgid "Startup receive service"
 msgstr "Startup receive service"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2072
+#: src/components/settings/SettingsFanoutSection.tsx:2075
 msgid "State updates publish under <0>{prefix}/</0>. Discovery configs always use the <1>homeassistant/</1> prefix."
 msgstr "State updates publish under <0>{prefix}/</0>. Discovery configs always use the <1>homeassistant/</1> prefix."
 
-#: src/components/settings/SettingsFanoutSection.tsx:4212
+#: src/components/settings/SettingsFanoutSection.tsx:4215
 msgid "Static Credentials (optional)"
 msgstr "Static Credentials (optional)"
 
@@ -6655,7 +6655,7 @@ msgstr "Status"
 msgid "Status Dot Glitters"
 msgstr "Status Dot Glitters"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2643
+#: src/components/settings/SettingsFanoutSection.tsx:2646
 msgid "Status interval (1–60 min)"
 msgstr "Status interval (1–60 min)"
 
@@ -6745,11 +6745,11 @@ msgid "Tag outgoing messages with a region name (e.g. MyRegion). Repeaters confi
 msgstr "Tag outgoing messages with a region name (e.g. MyRegion). Repeaters configured for that region can forward the traffic, while repeaters configured to deny other regions may drop it. Leave empty to send unscoped (plain flood). Forcing unscoped when a default scope is configured on the radio requires firmware v12 or newer. Individual channels can override this with their own region or an \"always unscoped\" setting."
 
 #. placeholder {0}: formatAppriseTargets( (cfg.config as Record<string, unknown>).urls as string | undefined )
-#: src/components/settings/SettingsFanoutSection.tsx:4996
+#: src/components/settings/SettingsFanoutSection.tsx:4999
 msgid "Targets: <0>{0}</0>"
 msgstr "Targets: <0>{0}</0>"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2397
+#: src/components/settings/SettingsFanoutSection.tsx:2400
 msgid "TCP"
 msgstr "TCP"
 
@@ -6770,7 +6770,7 @@ msgstr "Telemetry History"
 msgid "Telemetry Sharing"
 msgstr "Telemetry Sharing"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2161
+#: src/components/settings/SettingsFanoutSection.tsx:2164
 msgid "Telemetry Tracked Repeaters"
 msgstr "Telemetry Tracked Repeaters"
 
@@ -6862,7 +6862,7 @@ msgstr "The requested MESHRIK page does not exist."
 msgid "The set of channels or DMs that trigger push notifications are global per-install (i.e. all devices that register for Web Push will have the same set of channels/DMs that trigger notifications). Subscribing or unsubscribing a particular browser only controls whether that browser receives notifications for the configured set of channels/DMs."
 msgstr "The set of channels or DMs that trigger push notifications are global per-install (i.e. all devices that register for Web Push will have the same set of channels/DMs that trigger notifications). Subscribing or unsubscribing a particular browser only controls whether that browser receives notifications for the configured set of channels/DMs."
 
-#: src/components/settings/SettingsFanoutSection.tsx:2848
+#: src/components/settings/SettingsFanoutSection.tsx:2851
 msgid "The token is encrypted at rest and omitted from returned integration details. To rotate a saved token, enter the replacement token here."
 msgstr "The token is encrypted at rest and omitted from returned integration details. To rotate a saved token, enter the replacement token here."
 
@@ -6898,7 +6898,7 @@ msgstr "This code is free and ad-free. If you appreciate the original work, <0>b
 msgid "This config file contains a private key. Importing it will change your radio's identity — your radio will have a new public key and other nodes will see it as a different device. This cannot be undone without the original key."
 msgstr "This config file contains a private key. Importing it will change your radio's identity — your radio will have a new public key and other nodes will see it as a different device. This cannot be undone without the original key."
 
-#: src/components/settings/SettingsFanoutSection.tsx:4529
+#: src/components/settings/SettingsFanoutSection.tsx:4532
 msgid "this integration"
 msgstr "this integration"
 
@@ -6954,11 +6954,11 @@ msgstr "Toggle legends and controls visibility"
 msgid "Toggle palette"
 msgstr "Toggle palette"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2412
+#: src/components/settings/SettingsFanoutSection.tsx:2415
 msgid "Token"
 msgstr "Token"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2497
+#: src/components/settings/SettingsFanoutSection.tsx:2500
 msgid "Token Audience"
 msgstr "Token Audience"
 
@@ -6975,17 +6975,17 @@ msgid "Top Senders (24h)"
 msgstr "Top Senders (24h)"
 
 #: src/components/settings/SettingsFanoutSection.tsx:1481
-#: src/components/settings/SettingsFanoutSection.tsx:2062
+#: src/components/settings/SettingsFanoutSection.tsx:2065
 msgid "Topic Prefix"
 msgstr "Topic Prefix"
 
 #. placeholder {0}: (communityConfig.topic_template as string) || DEFAULT_COMMUNITY_PACKET_TOPIC_TEMPLATE
-#: src/components/settings/SettingsFanoutSection.tsx:4920
+#: src/components/settings/SettingsFanoutSection.tsx:4923
 msgid "Topic: <0>{0}</0>"
 msgstr "Topic: <0>{0}</0>"
 
 #. placeholder {0}: formatPrivateTopicSummary(cfg.config as Record<string, unknown>)
-#: src/components/settings/SettingsFanoutSection.tsx:4969
+#: src/components/settings/SettingsFanoutSection.tsx:4972
 msgid "Topics: <0>{0}</0>"
 msgstr "Topics: <0>{0}</0>"
 
@@ -7057,7 +7057,7 @@ msgid "Transmission outcome uncertain"
 msgstr "Transmission outcome uncertain"
 
 #: src/components/RawPacketDetailModal.tsx:693
-#: src/components/settings/SettingsFanoutSection.tsx:2374
+#: src/components/settings/SettingsFanoutSection.tsx:2377
 msgid "Transport"
 msgstr "Transport"
 
@@ -7141,7 +7141,7 @@ msgid "Type to search across all messages"
 msgstr "Type to search across all messages"
 
 #. placeholder {0}: getDetailTypeLabel(detailType)
-#: src/components/settings/SettingsFanoutSection.tsx:4610
+#: src/components/settings/SettingsFanoutSection.tsx:4613
 msgid "Type: {0}"
 msgstr "Type: {0}"
 
@@ -7251,20 +7251,20 @@ msgstr "Upload repeaters and room servers to map.meshcore.io or a compatible map
 msgid "Uptime"
 msgstr "Uptime"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4030
+#: src/components/settings/SettingsFanoutSection.tsx:4033
 msgid "URL"
 msgstr "URL"
 
 #. placeholder {0}: ((cfg.config as Record<string, unknown>).url as string) || 'Not set'
-#: src/components/settings/SettingsFanoutSection.tsx:4982
+#: src/components/settings/SettingsFanoutSection.tsx:4985
 msgid "URL: <0>{0}</0>"
 msgstr "URL: <0>{0}</0>"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4186
+#: src/components/settings/SettingsFanoutSection.tsx:4189
 msgid "us-east-1"
 msgstr "us-east-1"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2796
+#: src/components/settings/SettingsFanoutSection.tsx:2799
 msgid "Use <0>{IATA}</0> and <1>{PUBLIC_KEY}</1>. Default: <2>{DEFAULT_COMMUNITY_PACKET_TOPIC_TEMPLATE}</2>"
 msgstr "Use <0>{IATA}</0> and <1>{PUBLIC_KEY}</1>. Default: <2>{DEFAULT_COMMUNITY_PACKET_TOPIC_TEMPLATE}</2>"
 
@@ -7284,7 +7284,7 @@ msgstr "Use global region setting"
 msgid "Use My Location"
 msgstr "Use My Location"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2479
+#: src/components/settings/SettingsFanoutSection.tsx:2482
 msgid "Use recommended /"
 msgstr "Use recommended /"
 
@@ -7301,36 +7301,36 @@ msgid "Use the radio-wide path hash mode setting"
 msgstr "Use the radio-wide path hash mode setting"
 
 #: src/components/settings/SettingsFanoutSection.tsx:1459
-#: src/components/settings/SettingsFanoutSection.tsx:2042
-#: src/components/settings/SettingsFanoutSection.tsx:2564
+#: src/components/settings/SettingsFanoutSection.tsx:2045
+#: src/components/settings/SettingsFanoutSection.tsx:2567
 msgid "Use TLS"
 msgstr "Use TLS"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2522
+#: src/components/settings/SettingsFanoutSection.tsx:2525
 msgid "Used to claim your node on the community aggregator"
 msgstr "Used to claim your node on the community aggregator"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4203
+#: src/components/settings/SettingsFanoutSection.tsx:4206
 msgid "Useful for LocalStack or custom endpoints"
 msgstr "Useful for LocalStack or custom endpoints"
 
 #: src/components/settings/SettingsFanoutSection.tsx:1427
-#: src/components/settings/SettingsFanoutSection.tsx:2010
-#: src/components/settings/SettingsFanoutSection.tsx:2532
+#: src/components/settings/SettingsFanoutSection.tsx:2013
+#: src/components/settings/SettingsFanoutSection.tsx:2535
 msgid "Username"
 msgstr "Username"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2418
+#: src/components/settings/SettingsFanoutSection.tsx:2421
 msgid "Username / Password"
 msgstr "Username / Password"
 
 #: src/components/settings/SettingsFanoutSection.tsx:1706
-msgid "Uses <0>MQTT Discovery</0> and the topic conventions documented in <1>README_HA.md</1>."
-msgstr "Uses <0>MQTT Discovery</0> and the topic conventions documented in <1>README_HA.md</1>."
+msgid "Uses <0>MQTT Discovery</0> and the topic conventions documented in <1>docs/HOME_ASSISTANT.md</1>."
+msgstr "Uses <0>MQTT Discovery</0> and the topic conventions documented in <1>docs/HOME_ASSISTANT.md</1>."
 
 #. placeholder {0}: radioLat?.toFixed(5)
 #. placeholder {1}: radioLon?.toFixed(5)
-#: src/components/settings/SettingsFanoutSection.tsx:3153
+#: src/components/settings/SettingsFanoutSection.tsx:3156
 msgid "Using radio position <0>{0}, {1}</0> as the geofence center. Update coordinates in Radio Settings to move the center."
 msgstr "Using radio position <0>{0}, {1}</0> as the geofence center. Update coordinates in Radio Settings to move the center."
 
@@ -7342,7 +7342,7 @@ msgstr "v"
 msgid "Validation notes"
 msgstr "Validation notes"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2265
+#: src/components/settings/SettingsFanoutSection.tsx:2268
 msgid "Verified broker profile"
 msgstr "Verified broker profile"
 
@@ -7350,7 +7350,7 @@ msgstr "Verified broker profile"
 msgid "Verified shared public identity"
 msgstr "Verified shared public identity"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2577
+#: src/components/settings/SettingsFanoutSection.tsx:2580
 msgid "Verify TLS certificates"
 msgstr "Verify TLS certificates"
 
@@ -7368,7 +7368,7 @@ msgid "View echo paths"
 msgstr "View echo paths"
 
 #. placeholder {0}: cfg.name
-#: src/components/settings/SettingsFanoutSection.tsx:4890
+#: src/components/settings/SettingsFanoutSection.tsx:4893
 msgid "View error details for {0}"
 msgstr "View error details for {0}"
 
@@ -7379,7 +7379,7 @@ msgstr "View error details for {0}"
 msgid "View info for {0}"
 msgstr "View info for {0}"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4891
+#: src/components/settings/SettingsFanoutSection.tsx:4894
 msgid "View latest error"
 msgstr "View latest error"
 
@@ -7411,7 +7411,7 @@ msgstr "Virtual channel slots"
 
 #. placeholder {0}: String(cfg.config.bind_host ?? '0.0.0.0')
 #. placeholder {1}: String(cfg.config.port ?? 5000)
-#: src/components/settings/SettingsFanoutSection.tsx:4934
+#: src/components/settings/SettingsFanoutSection.tsx:4937
 msgid "Virtual endpoint: <0>{0}:{1}</0>"
 msgstr "Virtual endpoint: <0>{0}:{1}</0>"
 
@@ -7531,7 +7531,7 @@ msgstr "WebGPU requires HTTPS when not on localhost."
 msgid "Webhook"
 msgstr "Webhook"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2433
+#: src/components/settings/SettingsFanoutSection.tsx:2436
 msgid "WebSocket Path"
 msgstr "WebSocket Path"
 
@@ -7539,15 +7539,15 @@ msgstr "WebSocket Path"
 msgid "WebSocket Path must start with / and contain no spaces, ? or #"
 msgstr "WebSocket Path must start with / and contain no spaces, ? or #"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2394
+#: src/components/settings/SettingsFanoutSection.tsx:2397
 msgid "WebSockets"
 msgstr "WebSockets"
 
-#: src/components/settings/SettingsFanoutSection.tsx:1754
+#: src/components/settings/SettingsFanoutSection.tsx:1757
 msgid "What gets created in Home Assistant"
 msgstr "What gets created in Home Assistant"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4072
+#: src/components/settings/SettingsFanoutSection.tsx:4075
 msgid "When a secret is set, each request includes an HMAC-SHA256 signature of the JSON body in the specified header (e.g. <0>sha256=ab12cd...</0>)."
 msgstr "When a secret is set, each request includes an HMAC-SHA256 signature of the JSON body in the specified header (e.g. <0>sha256=ab12cd...</0>)."
 
@@ -7555,7 +7555,7 @@ msgstr "When a secret is set, each request includes an HMAC-SHA256 signature of 
 msgid "When an ambiguous repeater has a high-confidence likely-identity that matches a sibling definitely-known repeater, and they both connect to the same next hop, collapse them into the known repeater. This should resolve more ambiguity as the mesh navigates the 1.14 upgrade."
 msgstr "When an ambiguous repeater has a high-confidence likely-identity that matches a sibling definitely-known repeater, and they both connect to the same next hop, collapse them into the known repeater. This should resolve more ambiguity as the mesh navigates the 1.14 upgrade."
 
-#: src/components/settings/SettingsFanoutSection.tsx:3780
+#: src/components/settings/SettingsFanoutSection.tsx:3783
 msgid "When enabled, Discord webhooks will use their configured name/avatar instead of overriding with MeshCore sender info."
 msgstr "When enabled, Discord webhooks will use their configured name/avatar instead of overriding with MeshCore sender info."
 
@@ -7579,7 +7579,7 @@ msgstr "When enabled, the server will automatically try to decrypt stored DM pac
 msgid "When enabled, tracked repeaters with a direct or routed path (not flood) are polled every hour instead of on the scheduled interval above. Flood-only repeaters still follow the normal schedule."
 msgstr "When enabled, tracked repeaters with a direct or routed path (not flood) are polled every hour instead of on the scheduled interval above. Flood-only repeaters still follow the normal schedule."
 
-#: src/components/settings/SettingsFanoutSection.tsx:3089
+#: src/components/settings/SettingsFanoutSection.tsx:3092
 msgid "When enabled, upload payloads are logged at INFO level but not sent. Disable once you have confirmed the logged output looks correct."
 msgstr "When enabled, upload payloads are logged at INFO level but not sent. Disable once you have confirmed the logged output looks correct."
 
@@ -7611,7 +7611,7 @@ msgstr "Word Pairs"
 msgid "Working…"
 msgstr "Working…"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4099
+#: src/components/settings/SettingsFanoutSection.tsx:4102
 msgid "X-Webhook-Signature"
 msgstr "X-Webhook-Signature"
 
@@ -7623,8 +7623,8 @@ msgstr "You"
 msgid "You: "
 msgstr "You: "
 
-#: src/components/settings/SettingsFanoutSection.tsx:2517
-#: src/components/settings/SettingsFanoutSection.tsx:2895
+#: src/components/settings/SettingsFanoutSection.tsx:2520
+#: src/components/settings/SettingsFanoutSection.tsx:2898
 msgid "you@example.com"
 msgstr "you@example.com"
 
@@ -7632,11 +7632,11 @@ msgstr "you@example.com"
 msgid "Your browser does not support geolocation"
 msgstr "Your browser does not support geolocation"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2617
+#: src/components/settings/SettingsFanoutSection.tsx:2620
 msgid "Your nearest airport's IATA code (required)"
 msgstr "Your nearest airport's IATA code (required)"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3144
+#: src/components/settings/SettingsFanoutSection.tsx:3147
 msgid "Your radio does not currently have a latitude/longitude configured. Geofencing will be silently skipped until coordinates are set in <0>Settings → Radio → Location</0>."
 msgstr "Your radio does not currently have a latitude/longitude configured. Geofencing will be silently skipped until coordinates are set in <0>Settings → Radio → Location</0>."
 

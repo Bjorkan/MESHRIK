@@ -49,19 +49,19 @@ msgstr " {0}"
 msgid " ✓{0}"
 msgstr " ✓{0}"
 
-#: src/components/settings/SettingsFanoutSection.tsx:1885
+#: src/components/settings/SettingsFanoutSection.tsx:1888
 msgid "— fires for each message matching the scope below"
 msgstr "— utlöses för varje meddelande som matchar omfattningen nedan"
 
-#: src/components/settings/SettingsFanoutSection.tsx:1763
+#: src/components/settings/SettingsFanoutSection.tsx:1766
 msgid "— updates every 60s"
 msgstr "— uppdateras var 60:e sekund"
 
-#: src/components/settings/SettingsFanoutSection.tsx:1789
+#: src/components/settings/SettingsFanoutSection.tsx:1792
 msgid "— updates on telemetry collect cycle (~8h) or manual dashboard fetch. Entity IDs shown use one repeater for example; these sensors are created for each selected repeater."
 msgstr "— uppdateras vid telemetriinsamlingen (~8 h) eller vid manuell hämtning på instrumentpanelen. Visade entitets-ID:n använder en repeater som exempel; sensorerna skapas för varje vald repeater."
 
-#: src/components/settings/SettingsFanoutSection.tsx:1855
+#: src/components/settings/SettingsFanoutSection.tsx:1858
 msgid "— updates passively when advertisements with GPS are heard, and from any GPS reading in the contact's CayenneLPP telemetry. Shown for one contact; a tracker is created for each selected contact."
 msgstr "— uppdateras passivt när adverts med GPS tas emot och från GPS-värden i kontaktens CayenneLPP-telemetri. Exemplet visar en kontakt; en spårare skapas för varje vald kontakt."
 
@@ -87,7 +87,7 @@ msgstr "({0} paket; meddelanden strömmas in efter dekryptering)"
 msgid "(ACL login + load all)"
 msgstr "(ACL-inloggning + hämta alla)"
 
-#: src/components/settings/SettingsFanoutSection.tsx:1761
+#: src/components/settings/SettingsFanoutSection.tsx:1764
 msgid "(always)"
 msgstr "(alltid)"
 
@@ -129,7 +129,7 @@ msgstr "(endast)"
 msgid "), or when the repeater is opted into interval telemetry polling, in which case the repeater will be polled for metrics automatically. Fetch frequency can be configured in"
 msgstr ") eller när repeatern har valts för regelbunden telemetrihämtning. Då hämtas mätvärden automatiskt. Hämtningsintervallet kan ställas in under"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4118
+#: src/components/settings/SettingsFanoutSection.tsx:4121
 msgid "{\"Authorization\": \"Bearer ...\"}"
 msgstr "{\"Authorization\": \"Bearer ...\"}"
 
@@ -224,7 +224,7 @@ msgstr "{0} byte · {1}"
 #. placeholder {0}: health?.fanout_statuses?.[cfg.id]?.clients ?? 0
 #. placeholder {1}: (health?.fanout_statuses?.[cfg.id]?.clients ?? 0) === 1 ? '' : 's'
 #. placeholder {2}: Array.isArray(cfg.config.channel_slots) ? cfg.config.channel_slots.filter((key) => key !== null).length : 0
-#: src/components/settings/SettingsFanoutSection.tsx:4943
+#: src/components/settings/SettingsFanoutSection.tsx:4946
 msgid "{0} connected app client{1} · {2} configured virtual slots"
 msgstr "{0} ansluten appklient{1} · {2} konfigurerade virtuella platser"
 
@@ -262,7 +262,7 @@ msgid "{0} different routes"
 msgstr "{0} olika rutter"
 
 #. placeholder {0}: errorDialogState.integrationName
-#: src/components/settings/SettingsFanoutSection.tsx:4782
+#: src/components/settings/SettingsFanoutSection.tsx:4785
 msgid "{0} Error"
 msgstr "{0} fel"
 
@@ -272,7 +272,7 @@ msgid "{0} hex chars"
 msgstr "{0} hextecken"
 
 #. placeholder {0}: group.label
-#: src/components/settings/SettingsFanoutSection.tsx:4803
+#: src/components/settings/SettingsFanoutSection.tsx:4806
 msgid "{0} integrations"
 msgstr "{0} integrationer"
 
@@ -329,7 +329,7 @@ msgid "{0} unread message{1}"
 msgstr "{0} olästa meddelande{1}"
 
 #. placeholder {0}: legacyRootPathPreset.label
-#: src/components/settings/SettingsFanoutSection.tsx:2461
+#: src/components/settings/SettingsFanoutSection.tsx:2464
 msgid "{0} uses <0>/</0>. This saved <1>/mqtt</1> value is preserved in case it was intentional."
 msgstr "{0} använder <0>/</0>. Det sparade värdet <1>/mqtt</1> behålls om det var avsiktligt."
 
@@ -374,7 +374,7 @@ msgstr "{0} V"
 msgid "{0}x · {1}"
 msgstr "{0}× · {1}"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3876
+#: src/components/settings/SettingsFanoutSection.tsx:3879
 msgid "{channel_name}"
 msgstr "{channel_name}"
 
@@ -382,7 +382,7 @@ msgstr "{channel_name}"
 msgid "{connectionActionLabel}..."
 msgstr "{connectionActionLabel}..."
 
-#: src/components/settings/SettingsFanoutSection.tsx:3882
+#: src/components/settings/SettingsFanoutSection.tsx:3885
 msgid "{conversation_key}"
 msgstr "{conversation_key}"
 
@@ -394,7 +394,7 @@ msgstr "{elapsedHours, plural, one {för # timme sedan} other {för # timmar sed
 msgid "{elapsedMinutes, plural, one {# minute ago} other {# minutes ago}}"
 msgstr "{elapsedMinutes, plural, one {för # minut sedan} other {för # minuter sedan}}"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3902
+#: src/components/settings/SettingsFanoutSection.tsx:3905
 msgid "{hop_count}"
 msgstr "{hop_count}"
 
@@ -406,11 +406,11 @@ msgstr "{hopCount, plural, one {# hopp} other {# hopp}}"
 msgid "{hopCount, plural, one {# hop} other {# hops}} · {hashSize, plural, one {# byte hash} other {# byte hashes}}"
 msgstr "{hopCount, plural, one {# hopp} other {# hopp}} · {hashSize, plural, one {# byte-hash} other {# byte-hashar}}"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3896
+#: src/components/settings/SettingsFanoutSection.tsx:3899
 msgid "{hops_backticked}"
 msgstr "{hops_backticked}"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3891
+#: src/components/settings/SettingsFanoutSection.tsx:3894
 msgid "{hops}"
 msgstr "{hops}"
 
@@ -430,7 +430,7 @@ msgstr "{officialPresetsStatus}. Förslag ändrar inte radion förrän de sparat
 msgid "{part} →"
 msgstr "{part}"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3907
+#: src/components/settings/SettingsFanoutSection.tsx:3910
 msgid "{rssi}"
 msgstr "{rssi}"
 
@@ -442,15 +442,15 @@ msgstr "{seconds, plural, one {för # sekund sedan} other {för # sekunder sedan
 msgid "{selectedCount, plural, one {Added # time} other {Added # times}}"
 msgstr "{selectedCount, plural, one {Tillagd # gång} other {Tillagd # gånger}}"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3870
+#: src/components/settings/SettingsFanoutSection.tsx:3873
 msgid "{sender_key}"
 msgstr "{sender_key}"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3864
+#: src/components/settings/SettingsFanoutSection.tsx:3867
 msgid "{sender_name}"
 msgstr "{sender_name}"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3911
+#: src/components/settings/SettingsFanoutSection.tsx:3914
 msgid "{snr}"
 msgstr "{snr}"
 
@@ -458,7 +458,7 @@ msgstr "{snr}"
 msgid "{snrStr} dB"
 msgstr "{snrStr} dB"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3859
+#: src/components/settings/SettingsFanoutSection.tsx:3862
 msgid "{text}"
 msgstr "{text}"
 
@@ -466,7 +466,7 @@ msgstr "{text}"
 msgid "{textReplaceError} Changes are not saved until this is resolved."
 msgstr "{textReplaceError} Förändringar sparas inte förrän detta är löst."
 
-#: src/components/settings/SettingsFanoutSection.tsx:3887
+#: src/components/settings/SettingsFanoutSection.tsx:3890
 msgid "{type}"
 msgstr "{type}"
 
@@ -497,7 +497,7 @@ msgstr "#ops\n"
 msgid "← Back to Chat"
 msgstr "← Tillbaka till chatten"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4592
+#: src/components/settings/SettingsFanoutSection.tsx:4595
 msgid "← Back to list"
 msgstr "Tillbaka till listan"
 
@@ -509,68 +509,68 @@ msgstr "↻ Skicka igen"
 msgid "↻ Resend as new"
 msgstr "↻ Skicka igen som nytt"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2108
-#: src/components/settings/SettingsFanoutSection.tsx:3333
+#: src/components/settings/SettingsFanoutSection.tsx:2111
+#: src/components/settings/SettingsFanoutSection.tsx:3336
 msgid "×"
 msgstr "×"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2997
+#: src/components/settings/SettingsFanoutSection.tsx:3000
 msgid "<0>Available:</0> Standard Python libraries and any modules installed in the server environment."
 msgstr "<0>Tillgängligt:</0> Pythons standardbibliotek och alla moduler som är installerade i servermiljön."
 
-#: src/components/settings/SettingsFanoutSection.tsx:1767
+#: src/components/settings/SettingsFanoutSection.tsx:1770
 msgid "<0>binary_sensor.meshcore_{localRadioNodeId}_connected</0> — radio online/offline"
 msgstr "<0>binary_sensor.meshcore_{localRadioNodeId}_connected</0> — radion är online/offline"
 
-#: src/components/settings/SettingsFanoutSection.tsx:1862
+#: src/components/settings/SettingsFanoutSection.tsx:1865
 msgid "<0>device_tracker.meshcore_{exampleContactNodeId}</0> — latitude/longitude (plus altitude when telemetry provides it)"
 msgstr "<0>device_tracker.meshcore_{exampleContactNodeId}</0> — latitud/longitud (samt höjd när telemetrin innehåller den)"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2961
+#: src/components/settings/SettingsFanoutSection.tsx:2964
 msgid "<0>Don't wreck the mesh!</0> Bots process ALL messages, including their own. Be careful of creating infinite loops!"
 msgstr "<0>Förstör inte meshnätet!</0> Bottar behandlar ALLA meddelanden, även sina egna. Se upp så att du inte skapar oändliga slingor!"
 
-#: src/components/settings/SettingsFanoutSection.tsx:1888
+#: src/components/settings/SettingsFanoutSection.tsx:1891
 msgid "<0>event.meshcore_{localRadioNodeId}_messages</0> — trigger automations on sender, channel, or message content"
 msgstr "<0>event.meshcore_{localRadioNodeId}_messages</0> — utlöser automatiseringar utifrån avsändare, kanal eller meddelandeinnehåll"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2942
+#: src/components/settings/SettingsFanoutSection.tsx:2945
 msgid "<0>Experimental:</0> This is an alpha feature and introduces automated message sending to your radio; unexpected behavior may occur. Use with caution, and please report any bugs!"
 msgstr "<0>Experimentellt:</0> Det här är en alfafunktion som skickar meddelanden automatiskt via radion. Oväntat beteende kan förekomma. Använd funktionen försiktigt och rapportera gärna fel!"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3003
+#: src/components/settings/SettingsFanoutSection.tsx:3006
 msgid "<0>Limits:</0> 10 second timeout per bot."
 msgstr "<0>Begränsningar: </0> 10 sekunders tidsgräns per bott."
 
-#: src/components/settings/SettingsFanoutSection.tsx:3008
+#: src/components/settings/SettingsFanoutSection.tsx:3011
 msgid "<0>Note:</0> Bots respond to all messages, including your own. For channel messages, <1>sender_key</1> is <2>None</2>. Multiple enabled bots run concurrently. Outgoing messages are serialized with a two-second delay between sends to prevent repeater collision."
 msgstr "<0>Obs!</0> Bottar svarar på alla meddelanden, även dina egna. För kanalmeddelanden är <1>sender_key</1> <2>None</2>. Flera aktiverade bottar körs samtidigt. Utgående meddelanden skickas i ordning med två sekunders mellanrum för att förhindra repeaterkollisioner."
 
-#: src/components/settings/SettingsFanoutSection.tsx:2952
+#: src/components/settings/SettingsFanoutSection.tsx:2955
 msgid "<0>Security Warning:</0> This feature executes arbitrary Python code on the server. Only run trusted code, and be cautious of arbitrary usage of message parameters."
 msgstr "<0>Säkerhetsvarning:</0> Funktionen kör godtycklig Python-kod på servern. Kör endast betrodd kod och var försiktig när meddelandeparametrar används."
 
-#: src/components/settings/SettingsFanoutSection.tsx:1870
+#: src/components/settings/SettingsFanoutSection.tsx:1873
 msgid "<0>sensor.meshcore_{exampleContactNodeId}_lpp_temperature_ch1</0>, etc. — CayenneLPP sensors (when the contact is tracked for telemetry; GPS goes to the tracker above)"
 msgstr "<0>sensor.meshcore_{exampleContactNodeId}_lpp_temperature_ch1</0> med flera — CayenneLPP-sensorer (när kontaktens telemetri spåras; GPS-data går till spåraren ovan)"
 
-#: src/components/settings/SettingsFanoutSection.tsx:1796
+#: src/components/settings/SettingsFanoutSection.tsx:1799
 msgid "<0>sensor.meshcore_{exampleRepeaterNodeId}_battery_voltage</0> (V)"
 msgstr "<0>sensor.meshcore_{exampleRepeaterNodeId}_battery_voltage</0> (V)"
 
-#: src/components/settings/SettingsFanoutSection.tsx:1837
+#: src/components/settings/SettingsFanoutSection.tsx:1840
 msgid "<0>sensor.meshcore_{exampleRepeaterNodeId}_lpp_temperature_ch1</0>, <1>sensor.meshcore_{exampleRepeaterNodeId}_lpp_humidity_ch1</1>, etc. — CayenneLPP sensors (auto-detected from repeater)"
 msgstr "<0>sensor.meshcore_{exampleRepeaterNodeId}_lpp_temperature_ch1</0>, <1>sensor.meshcore_{exampleRepeaterNodeId}_lpp_humidity_ch1</1> med flera — CayenneLPP-sensorer (identifieras automatiskt från repeatern)"
 
-#: src/components/settings/SettingsFanoutSection.tsx:1804
+#: src/components/settings/SettingsFanoutSection.tsx:1807
 msgid "<0>sensor.meshcore_{exampleRepeaterNodeId}_noise_floor</0>, <1>sensor.meshcore_{exampleRepeaterNodeId}_last_rssi</1>, <2>sensor.meshcore_{exampleRepeaterNodeId}_last_snr</2> (dBm/dB)"
 msgstr "<0>sensor.meshcore_{exampleRepeaterNodeId}_noise_floor</0>, <1>sensor.meshcore_{exampleRepeaterNodeId}_last_rssi</1>, <2>sensor.meshcore_{exampleRepeaterNodeId}_last_snr</2> (dBm/dB)"
 
-#: src/components/settings/SettingsFanoutSection.tsx:1829
+#: src/components/settings/SettingsFanoutSection.tsx:1832
 msgid "<0>sensor.meshcore_{exampleRepeaterNodeId}_uptime</0> (seconds)"
 msgstr "<0>sensor.meshcore_{exampleRepeaterNodeId}_uptime</0> (sekunder)"
 
-#: src/components/settings/SettingsFanoutSection.tsx:1775
+#: src/components/settings/SettingsFanoutSection.tsx:1778
 msgid "<0>sensor.meshcore_{localRadioNodeId}_noise_floor</0> — radio noise floor (dBm)"
 msgstr "<0>sensor.meshcore_{localRadioNodeId}_noise_floor</0> — radions brusgolv (dBm)"
 
@@ -598,7 +598,7 @@ msgstr "<OKÄND>"
 msgid "> {0}"
 msgstr "> {0}"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3315
+#: src/components/settings/SettingsFanoutSection.tsx:3318
 msgid ">{MAX_SCOPE_PILL_DISPLAY} selections made; hiding selection preview to keep the interface clean"
 msgstr "Fler än {MAX_SCOPE_PILL_DISPLAY} val har gjorts. Förhandsvisningen döljs för att hålla gränssnittet överskådligt"
 
@@ -735,7 +735,7 @@ msgstr "Om"
 msgid "Access"
 msgstr "Åtkomst"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4222
+#: src/components/settings/SettingsFanoutSection.tsx:4225
 msgid "Access Key ID"
 msgstr "Åtkomstnyckel-ID"
 
@@ -818,7 +818,7 @@ msgstr "Lägg till kanaler"
 msgid "Add custom hop"
 msgstr "Lägg till eget hopp"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4753
+#: src/components/settings/SettingsFanoutSection.tsx:4756
 msgid "Add Integration"
 msgstr "Lägg till integration"
 
@@ -853,7 +853,7 @@ msgstr "Lägga till..."
 msgid "Advanced"
 msgstr "Avancerad"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2256
+#: src/components/settings/SettingsFanoutSection.tsx:2259
 msgid "Advanced community MQTT editor. Use this for manual meshcoretomqtt-compatible setups or for modifying a saved preset after creation. Only raw RF packets are shared — never decrypted messages."
 msgstr "Avancerad redigerare för Community MQTT. Använd den för manuella meshcoretomqtt-kompatibla konfigurationer eller för att ändra en sparad förinställning. Endast råa RF-paket delas – aldrig dekrypterade meddelanden."
 
@@ -875,7 +875,7 @@ msgstr "Positionskälla för adverts"
 msgid "Advertisement"
 msgstr "Advert"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2699
+#: src/components/settings/SettingsFanoutSection.tsx:2702
 msgid "Advertisements only (future firmware)"
 msgstr "Endast adverts (framtida firmware)"
 
@@ -914,7 +914,7 @@ msgstr "Alice"
 #: src/components/MapView.tsx:94
 #: src/components/RawPacketFeedView.tsx:164
 #: src/components/settings/BulkDeleteContactsModal.tsx:301
-#: src/components/settings/SettingsFanoutSection.tsx:3298
+#: src/components/settings/SettingsFanoutSection.tsx:3301
 msgid "All"
 msgstr "Alla"
 
@@ -922,15 +922,15 @@ msgstr "Alla"
 msgid "All discovered regions are already listed"
 msgstr "Alla upptäckta regioner är redan listade"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2702
+#: src/components/settings/SettingsFanoutSection.tsx:2705
 msgid "All eligible raw TX (future firmware)"
 msgstr "Alla berättigade råa TX (framtida firmware)"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3466
+#: src/components/settings/SettingsFanoutSection.tsx:3469
 msgid "All except listed channels/contacts"
 msgstr "Alla utom angivna kanaler och kontakter"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3463
+#: src/components/settings/SettingsFanoutSection.tsx:3466
 msgid "All messages"
 msgstr "Alla meddelanden"
 
@@ -950,7 +950,7 @@ msgstr "Alla numeriska fält måste innehålla fullständiga och giltiga värden
 msgid "All outcomes"
 msgstr "Alla resultat"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2734
+#: src/components/settings/SettingsFanoutSection.tsx:2737
 msgid "All packet types"
 msgstr "Alla pakettyper"
 
@@ -1001,7 +1001,7 @@ msgstr "Analysera paket"
 msgid "Any time repeater telemetry is fetched, the metrics are stored for 30 days (or 1,000 samples, whichever comes first). This telemetry is stored on normal interactive fetches via the repeater pane, API calls to the endpoint ("
 msgstr "När repeatertelemetri hämtas lagras mätvärdena i 30 dagar (eller upp till 1 000 mätpunkter, beroende på vad som inträffar först). Telemetrin lagras både vid vanlig interaktiv hämtning från repeaterpanelen och vid API-anrop till adressen ("
 
-#: src/components/settings/SettingsFanoutSection.tsx:3101
+#: src/components/settings/SettingsFanoutSection.tsx:3104
 msgid "API URL (optional)"
 msgstr "API-URL (valfri)"
 
@@ -1035,7 +1035,7 @@ msgstr "Försöker ansluta"
 msgid "Attempting to connect to {0}"
 msgstr "Försöker ansluta till {0}"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2403
+#: src/components/settings/SettingsFanoutSection.tsx:2406
 msgid "Authentication"
 msgstr "Autentisering"
 
@@ -1055,7 +1055,7 @@ msgstr "Fokusera meddelandefältet automatiskt"
 msgid "Auto-Resend Unheard Channel Messages"
 msgstr "Auto-Resend Unheard kanalmeddelanden"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2182
+#: src/components/settings/SettingsFanoutSection.tsx:2185
 msgid "Auto-tracked repeaters not found in contact list."
 msgstr "Autospårade repeatrar som inte finns i kontaktlistan."
 
@@ -1079,7 +1079,7 @@ msgstr "Automatiskt öppnas igen till sista öppna kanalen eller kontakt när ap
 msgid "Automatically replace characters as you type in the message input. Define replacements as a JSON object mapping source strings to their replacements."
 msgstr "Ersätt automatiskt tecken medan du skriver i meddelandefältet. Definiera ersättningarna som ett JSON-objekt som mappar källsträngar till ersättningssträngar."
 
-#: src/components/settings/SettingsFanoutSection.tsx:3052
+#: src/components/settings/SettingsFanoutSection.tsx:3055
 msgid "Automatically upload heard repeater and room server advertisements to <0>map.meshcore.io</0>. Requires the radio's private key to be available (firmware must have <1>ENABLE_PRIVATE_KEY_EXPORT=1</1>). Only raw RF packets are shared — never decrypted messages."
 msgstr "Ladda automatiskt upp mottagna adverts från repeaters och room servers till <0>map.meshcore.io</0>. Radions privata nyckel måste vara tillgänglig (firmware måste ha <1>ENABLE_PRIVATE_KEY_EXPORT=1</1>). Endast råa RF-paket delas – aldrig dekrypterade meddelanden."
 
@@ -1093,7 +1093,7 @@ msgstr "Automatisering"
 msgid "Autoscroll"
 msgstr "Automatisk rullning"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3855
+#: src/components/settings/SettingsFanoutSection.tsx:3858
 msgid "Available variables"
 msgstr "Tillgängliga variabler"
 
@@ -1155,7 +1155,7 @@ msgstr "Bättre särskiljning av repeaters, upp till 32 hopp"
 msgid "Bits {0}"
 msgstr "Bits {0}"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2484
+#: src/components/settings/SettingsFanoutSection.tsx:2487
 msgid "Blank values normalize to <0>/</0>. Use <1>/mqtt</1> only for brokers that require it; paths cannot contain spaces, <2>?</2> or <3>#</3>."
 msgstr "Tomma värden normaliseras till <0>/</0>. Använd bara <1>/mqtt</1> för brokers som kräver det. Sökvägar får inte innehålla blanksteg, <2>?</2> eller <3>#</3>."
 
@@ -1204,11 +1204,11 @@ msgstr "Blockerade namn"
 msgid "Bot code editor"
 msgstr "Botkodredigerare"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4747
+#: src/components/settings/SettingsFanoutSection.tsx:4750
 msgid "Bot system is disabled by server configuration (MESHCORE_DISABLE_BOTS). Bot integrations cannot run, be created, or be modified."
 msgstr "Bottsystemet har inaktiverats i serverkonfigurationen (MESHCORE_DISABLE_BOTS). Bottintegrationer kan inte köras, skapas eller ändras."
 
-#: src/components/settings/SettingsFanoutSection.tsx:4746
+#: src/components/settings/SettingsFanoutSection.tsx:4749
 msgid "Bot system is disabled until the server restarts. Bot integrations cannot run, be created, or be modified right now."
 msgstr "Bottsystemet är inaktiverat tills servern startas om. Bottintegrationer kan för närvarande inte köras, skapas eller ändras."
 
@@ -1224,30 +1224,30 @@ msgstr "Bottar inaktiverade till omstart"
 msgid "Bright"
 msgstr "Ljus"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2879
+#: src/components/settings/SettingsFanoutSection.tsx:2882
 msgid "Broker <0>{brokerHost}</0> on port <1>{DEFAULT_COMMUNITY_BROKER_PORT}</1> via <2>{DEFAULT_COMMUNITY_TRANSPORT}</2>, auth <3>{DEFAULT_COMMUNITY_AUTH_MODE}</3>, TLS on, certificate verification on, token audience fixed to <4>{brokerHost}</4>."
 msgstr "Broker <0>{brokerHost}</0> på port <1>{DEFAULT_COMMUNITY_BROKER_PORT}</1> via <2>{DEFAULT_COMMUNITY_TRANSPORT}</2>, autentisering <3>{DEFAULT_COMMUNITY_AUTH_MODE}</3>, TLS aktiverat, certifikatverifiering aktiverad och token-målgrupp låst till <4>{brokerHost}</4>."
 
-#: src/components/settings/SettingsFanoutSection.tsx:2825
+#: src/components/settings/SettingsFanoutSection.tsx:2828
 msgid "Broker <0>{DEFAULT_MESHRANK_BROKER_HOST}:{DEFAULT_MESHRANK_BROKER_PORT}</0>, TLS with certificate verification. No MQTT username or password."
 msgstr "Broker <0>{DEFAULT_MESHRANK_BROKER_HOST}:{DEFAULT_MESHRANK_BROKER_PORT}</0>, TLS med certifikatverifiering. Inget MQTT-användarnamn eller lösenord."
 
 #: src/components/settings/SettingsFanoutSection.tsx:1397
-#: src/components/settings/SettingsFanoutSection.tsx:1980
-#: src/components/settings/SettingsFanoutSection.tsx:2329
+#: src/components/settings/SettingsFanoutSection.tsx:1983
+#: src/components/settings/SettingsFanoutSection.tsx:2332
 msgid "Broker Host"
 msgstr "Broker-värd"
 
 #: src/components/settings/SettingsFanoutSection.tsx:1409
-#: src/components/settings/SettingsFanoutSection.tsx:1992
-#: src/components/settings/SettingsFanoutSection.tsx:2353
+#: src/components/settings/SettingsFanoutSection.tsx:1995
+#: src/components/settings/SettingsFanoutSection.tsx:2356
 msgid "Broker Port"
 msgstr "Broker-port"
 
 #. placeholder {0}: formatBrokerSummary(cfg.config as Record<string, unknown>, { host: '', port: 1883, })
 #. placeholder {0}: formatBrokerSummary(communityConfig, { host: DEFAULT_COMMUNITY_BROKER_HOST, port: DEFAULT_COMMUNITY_BROKER_PORT, })
-#: src/components/settings/SettingsFanoutSection.tsx:4911
-#: src/components/settings/SettingsFanoutSection.tsx:4960
+#: src/components/settings/SettingsFanoutSection.tsx:4914
+#: src/components/settings/SettingsFanoutSection.tsx:4963
 msgid "Broker: {0}"
 msgstr "Broker: {0}"
 
@@ -1378,7 +1378,7 @@ msgstr "Kanalfinnare kräver Chrome 113+ eller Edge 113+ med WebGPU-stöd."
 msgid "Channel finder will not be available"
 msgstr "Kanalfinnare är inte tillgänglig"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3954
+#: src/components/settings/SettingsFanoutSection.tsx:3957
 msgid "Channel format"
 msgstr "Kanalformat"
 
@@ -1424,7 +1424,7 @@ msgstr "Kanalnamn"
 msgid "Channel Name"
 msgstr "Kanalnamn"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3879
+#: src/components/settings/SettingsFanoutSection.tsx:3882
 msgid "Channel name (channel messages only)"
 msgstr "Kanalnamn (endast kanalmeddelanden)"
 
@@ -1455,7 +1455,7 @@ msgid "channel-name"
 msgstr "kanalnamn"
 
 #: src/components/CommandPalette.tsx:359
-#: src/components/settings/SettingsFanoutSection.tsx:3540
+#: src/components/settings/SettingsFanoutSection.tsx:3543
 #: src/components/settings/SettingsStatisticsSection.tsx:357
 msgid "Channels"
 msgstr "Kanaler"
@@ -1620,7 +1620,7 @@ msgstr "Färgschema"
 msgid "Color theme"
 msgstr "Färgtema"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3893
+#: src/components/settings/SettingsFanoutSection.tsx:3896
 msgid "Comma-separated hop IDs, or \"direct\""
 msgstr "Kommaseparerade hopp-ID:n eller \"direkt\""
 
@@ -1655,7 +1655,7 @@ msgstr "Community MQTT/meshcoretomqtt"
 msgid "Community Sharing"
 msgstr "Communitydelning"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2706
+#: src/components/settings/SettingsFanoutSection.tsx:2709
 msgid "Companion protocol 13 does not expose verified raw TX frames. This setting is stored for forward compatibility, but no outgoing packet upload is performed. Command send acknowledgements are not proof of RF transmission."
 msgstr "Companion-protokoll 13 exponerar inte verifierade råa TX-ramar. Inställningen sparas för framtida kompatibilitet, men inga utgående paket laddas upp. Bekräftelser på skickade kommandon är inte bevis på RF-sändning."
 
@@ -1812,7 +1812,7 @@ msgstr "Kontakt som inte hittats"
 msgid "Contact observed"
 msgstr "Kontakt observerad"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3885
+#: src/components/settings/SettingsFanoutSection.tsx:3888
 msgid "Contact pubkey (DM) or channel key (channel)"
 msgstr "Kontakta pubkey (DM) eller kanalnyckel (kanal)"
 
@@ -1821,7 +1821,7 @@ msgid "Contact query"
 msgstr "Kontaktfrågor"
 
 #: src/components/CommandPalette.tsx:330
-#: src/components/settings/SettingsFanoutSection.tsx:3562
+#: src/components/settings/SettingsFanoutSection.tsx:3565
 #: src/components/settings/SettingsStatisticsSection.tsx:345
 msgid "Contacts"
 msgstr "Kontakter"
@@ -2078,11 +2078,11 @@ msgstr "Dekrypterade råa paket rensade"
 msgid "Default"
 msgstr "Standard"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2507
+#: src/components/settings/SettingsFanoutSection.tsx:2510
 msgid "Defaults to the broker host when blank"
 msgstr "Använder broker-värden som standard när fältet är tomt"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2970
+#: src/components/settings/SettingsFanoutSection.tsx:2973
 msgid "Define a <0>bot()</0> function that receives message data and optionally returns a reply."
 msgstr "Definiera en <0>bot()</0>-funktion som tar emot meddelandedata och returnerar eventuellt ett svar."
 
@@ -2095,16 +2095,16 @@ msgstr "Degraderad"
 #: src/components/RepeaterDashboard.tsx:303
 #: src/components/RepeaterDashboard.tsx:304
 #: src/components/settings/SettingsDatabaseSection.tsx:222
-#: src/components/settings/SettingsFanoutSection.tsx:4725
+#: src/components/settings/SettingsFanoutSection.tsx:4728
 msgid "Delete"
 msgstr "Radera"
 
 #. placeholder {0}: cfg.name
-#: src/components/settings/SettingsFanoutSection.tsx:4532
+#: src/components/settings/SettingsFanoutSection.tsx:4535
 msgid "Delete \"{0}\" and disconnect its virtual app clients? The physical radio and scheduled jobs will keep running. This cannot be undone."
 msgstr "Radera ”{0}” och koppla från dess virtuella appklienter? Den fysiska radion och schemalagda jobb fortsätter att köras. Åtgärden kan inte ångras."
 
-#: src/components/settings/SettingsFanoutSection.tsx:4533
+#: src/components/settings/SettingsFanoutSection.tsx:4536
 msgid "Delete \"{configName}\"? This cannot be undone."
 msgstr "Radera ”{configName}”? Åtgärden kan inte ångras."
 
@@ -2253,7 +2253,7 @@ msgstr "Inaktivera skrivbordsnotiser för den här konversationen"
 msgid "Disable notifications for this conversation"
 msgstr "Inaktivera notiser för den här konversationen"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4455
+#: src/components/settings/SettingsFanoutSection.tsx:4458
 msgid "Disable the virtual listener and disconnect its app clients? The physical radio and scheduled jobs will keep running."
 msgstr "Inaktivera den virtuella lyssnaren och koppla från dess appklienter? Den fysiska radion och schemalagda jobb fortsätter att köras."
 
@@ -2262,8 +2262,8 @@ msgstr "Inaktivera den virtuella lyssnaren och koppla från dess appklienter? De
 msgid "Disable tracking on another repeater to free a slot: {0}"
 msgstr "Inaktivera spårning på en annan repeater för att frigöra en plats: {0}"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4871
-#: src/components/settings/SettingsFanoutSection.tsx:4875
+#: src/components/settings/SettingsFanoutSection.tsx:4874
+#: src/components/settings/SettingsFanoutSection.tsx:4878
 msgid "Disabled"
 msgstr "Inaktiverad"
 
@@ -2285,7 +2285,7 @@ msgstr "Koppla bort pauser automatisk återanslutning försök så en annan enhe
 msgid "Disconnected"
 msgstr "Frånkopplad"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3755
+#: src/components/settings/SettingsFanoutSection.tsx:3758
 msgid "discord://webhook_id/token\n"
 "slack://token_a/token_b/token_c\n"
 "tgram://bot_token/chat_id"
@@ -2325,7 +2325,7 @@ msgstr "Upptäck sensorer"
 msgid "Discovery"
 msgstr "Upptäckt"
 
-#: src/components/settings/SettingsFanoutSection.tsx:1962
+#: src/components/settings/SettingsFanoutSection.tsx:1965
 msgid "Discovery config topics are also published under <0>homeassistant/.../config</0>, but the topics above are the primary runtime state and event topics."
 msgstr "Discovery-konfigurationsämnen publiceras också under <0>homeassistant/.../config</0>, men ämnena ovan är de primära tillstånds- och händelseämnena under drift."
 
@@ -2368,7 +2368,7 @@ msgstr "DM"
 msgid "DM Decryption"
 msgstr "DM-dekryptering"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3927
+#: src/components/settings/SettingsFanoutSection.tsx:3930
 msgid "DM format"
 msgstr "DM-format"
 
@@ -2384,12 +2384,12 @@ msgstr "Ladda ner all telemetri historia som CSV"
 msgid "Download CSV"
 msgstr "Ladda ner CSV"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3086
+#: src/components/settings/SettingsFanoutSection.tsx:3089
 msgid "Dry Run (log only, no uploads)"
 msgstr "Testkörning (logga bara, ladda inte upp)"
 
 #. placeholder {0}: isDryRun ? 'ON' : 'OFF'
-#: src/components/settings/SettingsFanoutSection.tsx:3070
+#: src/components/settings/SettingsFanoutSection.tsx:3073
 msgid "Dry Run is {0}."
 msgstr "Testkörning är {0}."
 
@@ -2405,17 +2405,17 @@ msgstr "Varaktighet"
 msgid "Duty Cycle Limit"
 msgstr "Gräns för duty cycle"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3171
+#: src/components/settings/SettingsFanoutSection.tsx:3174
 msgid "e.g. 100"
 msgstr "t.ex. 100"
 
 #: src/components/settings/SettingsFanoutSection.tsx:1402
-#: src/components/settings/SettingsFanoutSection.tsx:1985
+#: src/components/settings/SettingsFanoutSection.tsx:1988
 msgid "e.g. 192.168.1.100"
 msgstr "t.ex. 192.168.1.100"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2611
-#: src/components/settings/SettingsFanoutSection.tsx:2910
+#: src/components/settings/SettingsFanoutSection.tsx:2614
+#: src/components/settings/SettingsFanoutSection.tsx:2913
 msgid "e.g. DEN, LAX, NYC"
 msgstr "DEN, LAX, NYC"
 
@@ -2423,33 +2423,33 @@ msgstr "DEN, LAX, NYC"
 msgid "e.g. Home Base, Field Radio 2"
 msgstr "Till exempel Home Base, Field Radio 2"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2087
+#: src/components/settings/SettingsFanoutSection.tsx:2090
 msgid "Each selected contact becomes a <0>device_tracker</0> in HA, updated whenever an advertisement with GPS coordinates is heard. Useful for tracking mobile nodes on an HA map dashboard."
 msgstr "Varje vald kontakt blir en <0>device_tracker</0> i HA och uppdateras när en advert med GPS-koordinater tas emot. Det är användbart för att följa mobila noder på en HA-kartpanel."
 
-#: src/components/settings/SettingsFanoutSection.tsx:2164
+#: src/components/settings/SettingsFanoutSection.tsx:2167
 msgid "Each selected repeater becomes an HA device with sensors for battery voltage, RSSI, SNR, noise floor, packet counts, and uptime. Data updates whenever telemetry is collected (auto-collect runs every ~8 hours, or on manual dashboard fetch). Only repeaters already in the auto-telemetry tracking list appear here (add new repeaters by logging into the repeater and opting in at the bottom of the page)."
 msgstr "Varje vald repeater blir en HA-enhet med sensorer för batterispänning, RSSI, SNR, brusgolv, paketantal och drifttid. Data uppdateras när telemetri samlas in (automatiskt ungefär var åttonde timme eller manuellt från instrumentpanelen). Här visas bara repeaters som redan finns i listan för automatisk telemetri. Lägg till en repeater genom att logga in på den och aktivera funktionen längst ned på sidan."
 
-#: src/components/settings/SettingsFanoutSection.tsx:4904
+#: src/components/settings/SettingsFanoutSection.tsx:4907
 msgid "Edit"
 msgstr "Redigera"
 
 #. placeholder {0}: cfg.name
-#: src/components/settings/SettingsFanoutSection.tsx:4852
+#: src/components/settings/SettingsFanoutSection.tsx:4855
 msgid "Edit name for {0}"
 msgstr "Redigera namn för {0}"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2890
+#: src/components/settings/SettingsFanoutSection.tsx:2893
 msgid "Email"
 msgstr "E-post"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3917
+#: src/components/settings/SettingsFanoutSection.tsx:3920
 msgid "Empty textareas use the default format. RSSI/SNR may be empty if unavailable."
 msgstr "Tomma textområden använder standardformatet. RSSI/SNR kan vara tom om det inte finns tillgängligt."
 
 #. placeholder {0}: cfg.name
-#: src/components/settings/SettingsFanoutSection.tsx:4830
+#: src/components/settings/SettingsFanoutSection.tsx:4833
 msgid "Enable {0}"
 msgstr "Aktivera {0}"
 
@@ -2457,7 +2457,7 @@ msgstr "Aktivera {0}"
 msgid "Enable desktop notifications for this conversation"
 msgstr "Aktivera skrivbordsnotiser för den här konversationen"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3128
+#: src/components/settings/SettingsFanoutSection.tsx:3131
 msgid "Enable Geofence"
 msgstr "Aktivera geostaket"
 
@@ -2470,7 +2470,7 @@ msgstr "Aktivera notiser för den här konversationen"
 msgid "Encrypted"
 msgstr "Krypterad"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4193
+#: src/components/settings/SettingsFanoutSection.tsx:4196
 msgid "Endpoint URL (optional)"
 msgstr "Slutpunkts-URL (valfri)"
 
@@ -2495,11 +2495,11 @@ msgstr "Öppna helskärm"
 msgid "Enter hex only"
 msgstr "Ange endast hex"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2841
+#: src/components/settings/SettingsFanoutSection.tsx:2844
 msgid "Enter your broker-issued token"
 msgstr "Ange den token som utfärdats av din broker"
 
-#: src/components/settings/SettingsFanoutSection.tsx:1899
+#: src/components/settings/SettingsFanoutSection.tsx:1902
 msgid "Entity IDs use the first 12 characters of the node's public key. Entities are removed from HA when this integration is disabled or deleted. State topics are published under <0>{prefix}/<node_id>/health|telemetry|gps</0>."
 msgstr "Entitets-ID:n använder de första 12 tecknen i nodens publika nyckel. Entiteter tas bort från HA när integrationen inaktiveras eller raderas. Tillståndsämnen publiceras under <0>{prefix}/<node_id>/health|telemetry|gps</0>."
 
@@ -2556,7 +2556,7 @@ msgstr "Avrätta {0} kommandot"
 msgid "Executing command"
 msgstr "Kör kommando"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2310
+#: src/components/settings/SettingsFanoutSection.tsx:2313
 msgid "Existing custom/legacy settings"
 msgstr "Befintliga anpassade/legacy inställningar"
 
@@ -2593,7 +2593,7 @@ msgstr "Export sparar den aktuella serverkonfigurationen i en JSON-fil. Import l
 msgid "Extra Direct ACK Transmission"
 msgstr "Extra direkt ACK Transmission"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4111
+#: src/components/settings/SettingsFanoutSection.tsx:4114
 msgid "Extra Headers (JSON)"
 msgstr "Extra headerfält (JSON)"
 
@@ -2611,7 +2611,7 @@ msgstr "Misslyckades med att ändra radioanslutningsstatus"
 msgid "Failed to create"
 msgstr "Det gick inte att skapa"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4548
+#: src/components/settings/SettingsFanoutSection.tsx:4551
 msgid "Failed to delete"
 msgstr "Det gick inte att radera"
 
@@ -2720,7 +2720,7 @@ msgstr "Det gick inte att skicka igen"
 msgid "Failed to run mesh discovery"
 msgstr "Misslyckades med att köra mesh upptäckt"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4372
+#: src/components/settings/SettingsFanoutSection.tsx:4375
 #: src/components/settings/SettingsRadioSection.tsx:342
 #: src/components/settings/SettingsRadioSection.tsx:467
 #: src/components/settings/SettingsRadioSection.tsx:500
@@ -2744,7 +2744,7 @@ msgstr "Det gick inte att skicka meddelandet"
 msgid "Failed to set private key"
 msgstr "Misslyckades med att ställa in privat nyckel"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4472
+#: src/components/settings/SettingsFanoutSection.tsx:4475
 msgid "Failed to update"
 msgstr "Det gick inte att uppdatera"
 
@@ -2764,7 +2764,7 @@ msgstr "Misslyckades med att uppdatera favorit"
 msgid "Failed to update mute"
 msgstr "Det gick inte att uppdatera tystningen"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4411
+#: src/components/settings/SettingsFanoutSection.tsx:4414
 msgid "Failed to update name"
 msgstr "Det gick inte att uppdatera namnet"
 
@@ -2938,7 +2938,7 @@ msgstr "Tvingad rutt"
 msgid "Forward mesh data to your own MQTT broker for home automation, logging, or alerting."
 msgstr "Vidarebefordra meshdata till din egen MQTT-broker för hemautomatisering, loggning eller notiser."
 
-#: src/components/settings/SettingsFanoutSection.tsx:3797
+#: src/components/settings/SettingsFanoutSection.tsx:3800
 msgid "Forward MESHRIK-sent messages"
 msgstr "Vidarebefordra meddelanden som skickats av MESHRIK"
 
@@ -2946,7 +2946,7 @@ msgstr "Vidarebefordra meddelanden som skickats av MESHRIK"
 msgid "Forward Path"
 msgstr "Framåtriktad väg"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3508
+#: src/components/settings/SettingsFanoutSection.tsx:3511
 msgid "Forward raw packets"
 msgstr "Vidarebefordra råpaket"
 
@@ -2987,7 +2987,7 @@ msgstr "Helskärm"
 msgid "Generate random key"
 msgstr "Generera slumpmässig nyckel"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2595
+#: src/components/settings/SettingsFanoutSection.tsx:2598
 msgid "Generated topics and broker identity are private. The saved token is never returned by the API."
 msgstr "Genererade ämnen och brokeridentiteten är privata. Den sparade token returneras aldrig av API:t."
 
@@ -3020,7 +3020,7 @@ msgstr "GitHub"
 msgid "Global"
 msgstr "Global"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2084
+#: src/components/settings/SettingsFanoutSection.tsx:2087
 msgid "GPS Tracked Contacts"
 msgstr "GPS-spårade kontakter"
 
@@ -3101,11 +3101,11 @@ msgstr "Historik"
 msgid "History ("
 msgstr "Historik ("
 
-#: src/components/settings/SettingsFanoutSection.tsx:4082
+#: src/components/settings/SettingsFanoutSection.tsx:4085
 msgid "HMAC Secret"
 msgstr "HMAC-hemlighet"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4069
+#: src/components/settings/SettingsFanoutSection.tsx:4072
 msgid "HMAC Signing"
 msgstr "HMAC-signering"
 
@@ -3117,7 +3117,7 @@ msgstr "Hem"
 msgid "Home Assistant"
 msgstr "Home Assistant"
 
-#: src/components/settings/SettingsFanoutSection.tsx:1919
+#: src/components/settings/SettingsFanoutSection.tsx:1922
 msgid "Home Assistant device and entity IDs are keyed off the first 12 characters of each node's public key, not the display name. Those same 12 characters are used in the MQTT state topics below."
 msgstr "Home Assistant-enheters och entiteters ID:n baseras på de första 12 tecknen i varje nods publika nyckel, inte visningsnamnet. Samma 12 tecken används i MQTT-tillståndsämnena nedan."
 
@@ -3163,7 +3163,7 @@ msgstr "Hoppbredd"
 msgid "Hop width for this channel"
 msgstr "Hoppbredd för denna kanal"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3899
+#: src/components/settings/SettingsFanoutSection.tsx:3902
 msgid "Hops wrapped in backticks for markdown"
 msgstr "Hopp inslagna i backticks för markdown"
 
@@ -3196,7 +3196,7 @@ msgstr "Hur ofta närvaron ska annonseras automatiskt med en advert. Ange 0 för
 msgid "How strongly nodes repel each other. Higher values spread nodes out more."
 msgstr "Hur starkt noder stöter bort varandra. Högre värden sprider ut noderna mer."
 
-#: src/components/settings/SettingsFanoutSection.tsx:4044
+#: src/components/settings/SettingsFanoutSection.tsx:4047
 msgid "HTTP Method"
 msgstr "HTTP-metod"
 
@@ -3234,7 +3234,7 @@ msgstr "Idle"
 msgid "Idle"
 msgstr "Inaktiv"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3844
+#: src/components/settings/SettingsFanoutSection.tsx:3847
 msgid "If notifications fail on services like Telegram due to special characters in sender names, disable this option."
 msgstr "Inaktivera alternativet om notiser till tjänster som Telegram misslyckas på grund av specialtecken i avsändarnamn."
 
@@ -3267,7 +3267,7 @@ msgstr "Ange <0>MESHRIKs värdnamn</0> och den här virtuella TCP-porten i den o
 msgid "Inactive"
 msgstr "Inaktiv"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3800
+#: src/components/settings/SettingsFanoutSection.tsx:3803
 msgid "Include DMs and channel messages sent by this MESHRIK instance, including manual sends and bot replies. Outgoing messages carry no routing path or signal data, so path-related format fields render as direct and RSSI/SNR are empty."
 msgstr "Inkludera DM och kanalmeddelanden som skickats av den här MESHRIK-instansen, både manuella sändningar och bottsvar. Utgående meddelanden saknar rutt- och signaldata, så vägrelaterade formatfält visas som direkta och RSSI/SNR lämnas tomma."
 
@@ -3297,35 +3297,35 @@ msgid "Inline alerts"
 msgstr "Infällda varningar"
 
 #. placeholder {0}: cfg.name
-#: src/components/settings/SettingsFanoutSection.tsx:4816
+#: src/components/settings/SettingsFanoutSection.tsx:4819
 msgid "Integration {0}"
 msgstr "Integration {0}"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4546
+#: src/components/settings/SettingsFanoutSection.tsx:4549
 msgid "Integration deleted"
 msgstr "Integration raderad"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4470
+#: src/components/settings/SettingsFanoutSection.tsx:4473
 msgid "Integration disabled"
 msgstr "Integration inaktiverad"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4470
+#: src/components/settings/SettingsFanoutSection.tsx:4473
 msgid "Integration enabled"
 msgstr "Integration aktiverad"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4783
+#: src/components/settings/SettingsFanoutSection.tsx:4786
 msgid "Integration Error"
 msgstr "Integrationsfel"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4370
+#: src/components/settings/SettingsFanoutSection.tsx:4373
 msgid "Integration saved"
 msgstr "Integration sparad"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4370
+#: src/components/settings/SettingsFanoutSection.tsx:4373
 msgid "Integration saved and enabled"
 msgstr "Integration sparad och aktiverad"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4737
+#: src/components/settings/SettingsFanoutSection.tsx:4740
 msgid "Integrations are an experimental feature in open beta, and allow you to fanout raw and decrypted messages across multiple services for automation, analysis, or archiving."
 msgstr "Integrationer är en experimentell funktion i öppen beta. De kan distribuera råa och dekrypterade meddelanden till flera tjänster för automatisering, analys eller arkivering."
 
@@ -3338,7 +3338,7 @@ msgstr "Ogiltiga kanalnamn: {0}"
 msgid "Invalid config file"
 msgstr "Ogiltig konfigurationsfil"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4018
+#: src/components/settings/SettingsFanoutSection.tsx:4021
 msgid "Invalid JSON"
 msgstr "Ogiltig JSON"
 
@@ -3383,7 +3383,7 @@ msgid "Keep waiting"
 msgstr "Fortsätt vänta"
 
 #. placeholder {0}: item.publicKey
-#: src/components/settings/SettingsFanoutSection.tsx:1947
+#: src/components/settings/SettingsFanoutSection.tsx:1950
 msgid "key {0}"
 msgstr "Nyckel {0}"
 
@@ -3490,11 +3490,11 @@ msgstr "Sista SNR"
 msgid "Last updated {0}"
 msgstr "Senast uppdaterad {0}"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3909
+#: src/components/settings/SettingsFanoutSection.tsx:3912
 msgid "Last-hop RSSI in dBm"
 msgstr "RSSI för senaste hoppet i dBm"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3913
+#: src/components/settings/SettingsFanoutSection.tsx:3916
 msgid "Last-hop SNR in dB"
 msgstr "SNR för senaste hoppet i dB"
 
@@ -3520,19 +3520,19 @@ msgstr "Inlärd rutt"
 msgid "Least repeater disambiguation, up to 63 hops"
 msgstr "Enklast särskiljning av repeaters, upp till 63 hopp"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3111
+#: src/components/settings/SettingsFanoutSection.tsx:3114
 msgid "Leave blank to use the default <0>map.meshcore.io</0> endpoint."
 msgstr "Lämna tomt för att använda standardslutpunkten <0>map.meshcore.io</0>."
 
-#: src/components/settings/SettingsFanoutSection.tsx:4215
+#: src/components/settings/SettingsFanoutSection.tsx:4218
 msgid "Leave blank to use the server's normal AWS credential chain."
 msgstr "Lämna tomt för att använda serverns normala AWS-kreditkedja."
 
-#: src/components/settings/SettingsFanoutSection.tsx:4087
+#: src/components/settings/SettingsFanoutSection.tsx:4090
 msgid "Leave empty to disable signing"
 msgstr "Lämna tom för att inaktivera signering"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4512
+#: src/components/settings/SettingsFanoutSection.tsx:4515
 msgid "Leave without saving?"
 msgstr "Lämna utan att spara?"
 
@@ -3556,7 +3556,7 @@ msgstr "LetsMesh (EU)"
 msgid "LetsMesh (US)"
 msgstr "LetsMesh (USA)"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2422
+#: src/components/settings/SettingsFanoutSection.tsx:2425
 msgid "LetsMesh uses <0>token</0> auth. MeshRank uses <1>none</1>."
 msgstr "LetsMesh använder <0>Token</0> auth. MeshRank använder <1>Ingen</1>."
 
@@ -3585,7 +3585,7 @@ msgstr "Lyssnar"
 msgid "Listens on all IPv4 interfaces, not only the LAN. Connect using this MESHRIK host's LAN address, not 0.0.0.0. Raw TCP has no authentication or encryption; restrict this port to trusted devices with a firewall and never expose it publicly."
 msgstr "Lyssnar på alla IPv4-gränssnitt, inte bara LAN. Anslut med MESHRIK-värdens LAN-adress, inte 0.0.0.0. Rå TCP saknar autentisering och kryptering. Begränsa porten till betrodda enheter med en brandvägg och exponera den aldrig offentligt."
 
-#: src/components/settings/SettingsFanoutSection.tsx:3074
+#: src/components/settings/SettingsFanoutSection.tsx:3077
 msgid "Live uploads are enabled. Each advert is rate-limited to once per hour per node."
 msgstr "Liveuppladdning är aktiverad. Varje nod får ladda upp högst en advert per timme."
 
@@ -3627,7 +3627,7 @@ msgstr "Läser in detaljer..."
 msgid "Loading dictionary..."
 msgstr "Laddar lexikon..."
 
-#: src/components/settings/SettingsFanoutSection.tsx:2988
+#: src/components/settings/SettingsFanoutSection.tsx:2991
 msgid "Loading editor..."
 msgstr "Läser in redigeraren..."
 
@@ -3743,7 +3743,7 @@ msgstr "Lokal etikettfärg"
 msgid "Local label text"
 msgstr "Lokal etiketttext"
 
-#: src/components/settings/SettingsFanoutSection.tsx:1759
+#: src/components/settings/SettingsFanoutSection.tsx:1762
 msgid "Local radio device"
 msgstr "Lokal radioenhet"
 
@@ -3847,7 +3847,7 @@ msgstr "Kartvy"
 msgid "Mark all as read"
 msgstr "Markera alla som lästa"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3841
+#: src/components/settings/SettingsFanoutSection.tsx:3844
 msgid "Markdown formatting"
 msgstr "Markdown formatering"
 
@@ -3855,7 +3855,7 @@ msgstr "Markdown formatering"
 msgid "Marker recency legend"
 msgstr "Teckenförklaring för markörernas aktualitet"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2211
+#: src/components/settings/SettingsFanoutSection.tsx:2214
 msgid "Matching messages fire an <0>event.meshcore_{localRadioNodeId}_messages</0> entity in HA with sender, text, channel, and direction attributes. Use HA automations to trigger actions on specific messages, channels, or contacts."
 msgstr "Matchande meddelanden utlöser entiteten <0>event.meshcore_{localRadioNodeId}_messages</0> i HA med attribut för avsändare, text, kanal och riktning. Använd HA-automatiseringar för att utlösa åtgärder på särskilda meddelanden, kanaler eller kontakter."
 
@@ -3906,7 +3906,7 @@ msgid "Mesh Visualizer"
 msgstr "Mesh-visualisering"
 
 #: src/components/settings/SettingsFanoutSection.tsx:1486
-#: src/components/settings/SettingsFanoutSection.tsx:2067
+#: src/components/settings/SettingsFanoutSection.tsx:2070
 msgid "meshcore"
 msgstr "Meshcore"
 
@@ -3927,7 +3927,7 @@ msgstr "MeshCore-appar"
 msgid "MeshCore Open clients send GIFs and emoji reactions as encoded text (e.g. <0>g:abc123</0> or <1>r:1a2b:05</1>). When enabled, these render as the GIF image or reaction emoji instead of the raw text. Reactions show generically (the emoji is not tied to a specific message). GIFs load from media.giphy.com, which reaches outside your local network and exposes your IP to Giphy — so this is off by default."
 msgstr "MeshCore Open-klienter skickar GIF-bilder och emojireaktioner som kodad text (t.ex. <0>g:abc123</0> eller <1>r:1a2b:05</1>). När funktionen är aktiverad visas GIF-bilden eller emojin i stället för råtexten. Reaktioner visas generellt; emojin är inte kopplad till ett visst meddelande. GIF-bilder hämtas från media.giphy.com, vilket ansluter utanför ditt lokala nätverk och visar din IP-adress för Giphy. Därför är funktionen avstängd som standard."
 
-#: src/components/settings/SettingsFanoutSection.tsx:2716
+#: src/components/settings/SettingsFanoutSection.tsx:2719
 msgid "MeshCore payload type filter"
 msgstr "Filter för MeshCore-nyttolasttyp"
 
@@ -3943,15 +3943,15 @@ msgstr "Publicerar ett MeshcoreToMQTT-kompatibelt råpaketflöde för communitya
 msgid "MeshRank"
 msgstr "MeshRank"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2819
+#: src/components/settings/SettingsFanoutSection.tsx:2822
 msgid "MeshRank publishes under a broker-issued token, not an IATA region or a manually constructed MQTT topic. Provide only your personal uplink token."
 msgstr "MeshRank publicerar med en token utfärdad av brokern, inte med en IATA-region eller ett manuellt skapat MQTT-ämne. Ange endast din personliga upplänkstoken."
 
-#: src/components/settings/SettingsFanoutSection.tsx:2835
+#: src/components/settings/SettingsFanoutSection.tsx:2838
 msgid "MeshRank uplink token"
 msgstr "MeshRank-upplänkstoken"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2585
+#: src/components/settings/SettingsFanoutSection.tsx:2588
 msgid "MeshRank uplink token (leave blank to keep existing)"
 msgstr "MeshRank-upplänkstoken (lämna tomt för att behålla den befintliga)"
 
@@ -3980,20 +3980,20 @@ msgstr "Meddelande {0}..."
 msgid "Message Activity"
 msgstr "Meddelandeaktivitet"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3861
+#: src/components/settings/SettingsFanoutSection.tsx:3864
 msgid "Message body"
 msgstr "Meddelandeinnehåll"
 
 #: src/components/settings/SettingsFanoutSection.tsx:1623
-#: src/components/settings/SettingsFanoutSection.tsx:1883
+#: src/components/settings/SettingsFanoutSection.tsx:1886
 msgid "Message events"
 msgstr "Meddelandehändelser"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2208
+#: src/components/settings/SettingsFanoutSection.tsx:2211
 msgid "Message Events"
 msgstr "Meddelandehändelser"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3812
+#: src/components/settings/SettingsFanoutSection.tsx:3815
 msgid "Message Format"
 msgstr "Meddelandeformat"
 
@@ -4010,7 +4010,7 @@ msgstr "Meddelandet skickades igen"
 msgid "Message resent with new timestamp"
 msgstr "Meddelandet skickades igen med en ny tidsstämpel"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3496
+#: src/components/settings/SettingsFanoutSection.tsx:3499
 msgid "Message Scope"
 msgstr "Meddelandets omfattning"
 
@@ -4071,7 +4071,7 @@ msgstr "Måttväljare"
 msgid "min"
 msgstr "min"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4347
+#: src/components/settings/SettingsFanoutSection.tsx:4350
 msgid "Missing fanout config id for update"
 msgstr "Konfigurations-ID för uppdatering av fanout saknas"
 
@@ -4087,7 +4087,7 @@ msgstr "Fler resultat kunde inte läsas in. Befintliga resultat är oförändrad
 msgid "Most Active Channels"
 msgstr "Mest aktiva kanaler"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4786
+#: src/components/settings/SettingsFanoutSection.tsx:4789
 msgid "Most recent backend error retained for this integration."
 msgstr "Det senaste felet från serverdelen behålls för den här integrationen."
 
@@ -4107,11 +4107,11 @@ msgstr "Flytta {displayName} upp"
 msgid "MQTT & Automation"
 msgstr "MQTT och automatisering"
 
-#: src/components/settings/SettingsFanoutSection.tsx:1974
+#: src/components/settings/SettingsFanoutSection.tsx:1977
 msgid "MQTT Broker"
 msgstr "MQTT-broker"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4012
+#: src/components/settings/SettingsFanoutSection.tsx:4015
 msgid "Must be a JSON object"
 msgstr "Måste vara ett JSON-objekt"
 
@@ -4130,7 +4130,7 @@ msgstr "MyRegion"
 #: src/components/NewMessageModal.tsx:322
 #: src/components/repeater/RepeaterNodeInfoPane.tsx:33
 #: src/components/repeater/RepeaterOwnerInfoPane.tsx:38
-#: src/components/settings/SettingsFanoutSection.tsx:4597
+#: src/components/settings/SettingsFanoutSection.tsx:4600
 msgid "Name"
 msgstr "Namn"
 
@@ -4138,9 +4138,9 @@ msgstr "Namn"
 msgid "Name and public key are required"
 msgstr "Namn och offentlig nyckel krävs"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4329
-#: src/components/settings/SettingsFanoutSection.tsx:4330
-#: src/components/settings/SettingsFanoutSection.tsx:4397
+#: src/components/settings/SettingsFanoutSection.tsx:4332
+#: src/components/settings/SettingsFanoutSection.tsx:4333
+#: src/components/settings/SettingsFanoutSection.tsx:4400
 msgid "Name cannot be empty"
 msgstr "Namnet kan inte vara tomt"
 
@@ -4148,7 +4148,7 @@ msgstr "Namnet kan inte vara tomt"
 msgid "Name First In Use"
 msgstr "Namn först i användning"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4409
+#: src/components/settings/SettingsFanoutSection.tsx:4412
 msgid "Name updated"
 msgstr "Namn uppdaterat"
 
@@ -4175,11 +4175,11 @@ msgstr "Närmaste repeaters – geografiskt (senaste 7 dagarna)"
 msgid "Nearest Repeaters — Hops (last 7 days)"
 msgstr "Närmaste repeaters – hopp (senaste 7 dagarna)"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2661
+#: src/components/settings/SettingsFanoutSection.tsx:2664
 msgid "Neighbor interval (12–336 h)"
 msgstr "Grannesintervall (12–336 h)"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2679
+#: src/components/settings/SettingsFanoutSection.tsx:2682
 msgid "Neighbor snapshots use only previous host-observed discovery results; scheduling does not send automatic radio discovery or mutate radio contacts."
 msgstr "Ögonblicksbilder av grannar använder bara tidigare sökresultat som värden har observerat. Schemaläggningen startar ingen automatisk radiosökning och ändrar inte radions kontakter."
 
@@ -4264,7 +4264,7 @@ msgstr "nl-gr\n"
 "MyRegion"
 
 #. placeholder {0}: label.toLowerCase()
-#: src/components/settings/SettingsFanoutSection.tsx:3355
+#: src/components/settings/SettingsFanoutSection.tsx:3358
 msgid "No {0} match “{search}”"
 msgstr "Ingen {0}-match \"{search}\""
 
@@ -4290,11 +4290,11 @@ msgstr "Inga diagramdata tillgängliga."
 msgid "No contacts are being tracked. Enable tracking from a contact's info pane."
 msgstr "Inga kontakter spåras. Aktivera spårning från en kontakts infopanel."
 
-#: src/components/settings/SettingsFanoutSection.tsx:2117
+#: src/components/settings/SettingsFanoutSection.tsx:2120
 msgid "No contacts available."
 msgstr "Inga kontakter tillgängliga."
 
-#: src/components/settings/SettingsFanoutSection.tsx:2131
+#: src/components/settings/SettingsFanoutSection.tsx:2134
 msgid "No contacts match “{contactSearch}”"
 msgstr "Inga kontakter matchar \"{contactSearch}\""
 
@@ -4342,7 +4342,7 @@ msgstr "Inga matcher hittades"
 msgid "No matching history. Enable background jobs to see routine samples."
 msgstr "Ingen matchande historik. Aktivera bakgrundsjobb för att se regelbundna mätvärden."
 
-#: src/components/settings/SettingsFanoutSection.tsx:3464
+#: src/components/settings/SettingsFanoutSection.tsx:3467
 msgid "No messages"
 msgstr "Inga meddelanden"
 
@@ -4400,7 +4400,7 @@ msgstr "Inga regioner rapporterade ({0}/{1} repeaters svarade)"
 msgid "No regions returned. The repeater may be unreachable, or full region details require admin access."
 msgstr "Inga regioner returnerades. Repeatern kan vara onåbar, eller så krävs administratörsbehörighet för fullständig regioninformation."
 
-#: src/components/settings/SettingsFanoutSection.tsx:2174
+#: src/components/settings/SettingsFanoutSection.tsx:2177
 msgid "No repeaters are being auto-tracked for telemetry. Add repeaters to the auto-telemetry tracking list in the Radio section first, then return here to select which ones to expose to HA."
 msgstr "Inga repeaters spåras automatiskt för telemetri. Lägg först till repeaters i listan för automatisk telemetri under Radio. Gå sedan tillbaka hit och välj vilka som ska exponeras för HA."
 
@@ -4469,11 +4469,11 @@ msgstr "Ingen telemetri har samlats in ännu. Hämta status ovan för att regist
 msgid "No telemetry recorded yet"
 msgstr "Ingen telemetri registrerad ännu"
 
-#: src/components/settings/SettingsFanoutSection.tsx:1927
+#: src/components/settings/SettingsFanoutSection.tsx:1930
 msgid "No topic previews available yet. Connect to a radio to resolve the local radio key, and select contacts or repeaters above to preview their published topics."
 msgstr "Det finns inga ämnesförhandsvisningar ännu. Anslut till en radio så att den lokala radionyckeln kan fastställas och välj sedan kontakter eller repeaters ovan för att förhandsgranska publicerade ämnen."
 
-#: src/components/settings/SettingsFanoutSection.tsx:3073
+#: src/components/settings/SettingsFanoutSection.tsx:3076
 msgid "No uploads will be sent. Check the backend logs to verify the payload looks correct before enabling live sends."
 msgstr "Inga uppladdningar skickas. Kontrollera backendloggarna och verifiera att nyttolasten ser korrekt ut innan livesändning aktiveras."
 
@@ -4490,7 +4490,7 @@ msgid "Node"
 msgstr "Nod"
 
 #. placeholder {0}: item.nodeId
-#: src/components/settings/SettingsFanoutSection.tsx:1943
+#: src/components/settings/SettingsFanoutSection.tsx:1946
 msgid "node id {0}"
 msgstr "Nod id {0}"
 
@@ -4511,7 +4511,7 @@ msgstr "Nodkarta"
 msgid "Nodes"
 msgstr "Noder"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3181
+#: src/components/settings/SettingsFanoutSection.tsx:3184
 msgid "Nodes further than this distance from your radio's position will not be uploaded."
 msgstr "Noder längre än detta avstånd från radions position kommer inte att laddas upp."
 
@@ -4540,12 +4540,12 @@ msgid "Non-repeater contacts (companions, rooms, sensors) can also be tracked fo
 msgstr "Kontakter som inte är repeaters (companions, rooms och sensorer) kan också spåras för periodisk insamling av LPP-telemetri från batteri, sensorer och GPS. Högst åtta kontakter kan spåras. Den dagliga gränsen för kontroller delas med spårade repeaters, så fler kontakter kan tvinga fram ett längre intervall."
 
 #: src/components/settings/SettingsDatabaseSection.tsx:164
-#: src/components/settings/SettingsFanoutSection.tsx:2415
-#: src/components/settings/SettingsFanoutSection.tsx:3306
+#: src/components/settings/SettingsFanoutSection.tsx:2418
+#: src/components/settings/SettingsFanoutSection.tsx:3309
 msgid "None"
 msgstr "Ingen"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2737
+#: src/components/settings/SettingsFanoutSection.tsx:2740
 msgid "None (status only)"
 msgstr "Ingen (endast status)"
 
@@ -4569,7 +4569,7 @@ msgstr "Inte hämtad ännu"
 msgid "Note: direct messages that do not see an ACK retry up to 3 times. The final retry is sent as flood, even when forced routing is configured."
 msgstr "Obs! Direktmeddelanden som inte får någon ACK försöker skickas upp till tre gånger. Det sista försöket skickas som flood även när tvingad routning är konfigurerad."
 
-#: src/components/settings/SettingsFanoutSection.tsx:3530
+#: src/components/settings/SettingsFanoutSection.tsx:3533
 msgid "Nothing is selected — this integration will not forward any data."
 msgstr "Ingenting väljs – denna integration kommer inte att vidarebefordra några data."
 
@@ -4579,7 +4579,7 @@ msgstr "Ingenting väljs – denna integration kommer inte att vidarebefordra n�
 msgid "Notification settings"
 msgstr "Notisinställningar"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3750
+#: src/components/settings/SettingsFanoutSection.tsx:3753
 msgid "Notification URLs"
 msgstr "Notis-URL:er"
 
@@ -4623,7 +4623,7 @@ msgstr "Notiser är inte tillgängliga"
 msgid "Notifications will look like this. These require the tab to stay open, and will not be reliable on mobile."
 msgstr "Notiser kommer att se ut så här. Fliken måste vara öppen och funktionen är inte tillförlitlig på mobila enheter."
 
-#: src/components/settings/SettingsFanoutSection.tsx:3905
+#: src/components/settings/SettingsFanoutSection.tsx:3908
 msgid "Number of hops (0 for direct)"
 msgstr "Antal hopp (0 för direkt)"
 
@@ -4641,7 +4641,7 @@ msgstr "av "
 msgid "Off"
 msgstr "Av"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2696
+#: src/components/settings/SettingsFanoutSection.tsx:2699
 msgid "Off (default)"
 msgstr "Av (standard)"
 
@@ -4693,7 +4693,7 @@ msgstr "Ange ett regionnamn per rad. Inkommande regionbegränsade paket (Transpo
 msgid "one route"
 msgstr "En rutt"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3761
+#: src/components/settings/SettingsFanoutSection.tsx:3764
 msgid "One URL per line. All URLs receive every matched notification. For Matrix room version 12 (servername-less room IDs), append <0>?hsreq=no</0> to the URL."
 msgstr "Ange en URL per rad. Alla URL:er tar emot varje matchande notis. Lägg till <0>?hsreq=no</0> i URL:en för Matrix-rum version 12 (rums-ID utan servernamn)."
 
@@ -4705,7 +4705,7 @@ msgstr "Pågående åtgärder"
 msgid "Only affects this browser. Radio settings and message contents stay unchanged."
 msgstr "Påverkar bara den här webbläsaren. Radioinställningar och meddelandeinnehåll ändras inte."
 
-#: src/components/settings/SettingsFanoutSection.tsx:3465
+#: src/components/settings/SettingsFanoutSection.tsx:3468
 msgid "Only listed channels/contacts"
 msgstr "Endast angivna kanaler och kontakter"
 
@@ -4722,7 +4722,7 @@ msgstr "Endast repeterat av nya repeaters"
 msgid "Only show recently heard/in-a-path nodes"
 msgstr "Visa endast nyligen hörda noder eller noder i en väg"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3131
+#: src/components/settings/SettingsFanoutSection.tsx:3134
 msgid "Only upload nodes whose location falls within the configured radius of your radio's own position. Helps exclude nodes with false or spoofed coordinates. Uses the latitude/longitude set in Radio Settings."
 msgstr "Ladda bara upp noder vars position ligger inom den konfigurerade radien från din radio. Det hjälper till att utesluta noder med felaktiga eller manipulerade koordinater. Funktionen använder latitud och longitud från radioinställningarna."
 
@@ -4772,8 +4772,8 @@ msgstr "Opt Repeater in Interval Metrics Tracking"
 
 #: src/components/settings/SettingsFanoutSection.tsx:1432
 #: src/components/settings/SettingsFanoutSection.tsx:1444
-#: src/components/settings/SettingsFanoutSection.tsx:2015
-#: src/components/settings/SettingsFanoutSection.tsx:2027
+#: src/components/settings/SettingsFanoutSection.tsx:2018
+#: src/components/settings/SettingsFanoutSection.tsx:2030
 msgid "Optional"
 msgstr "Valfritt"
 
@@ -4801,7 +4801,7 @@ msgstr "Andra möjliga: "
 msgid "Our Radio"
 msgstr "Vår radio"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2687
+#: src/components/settings/SettingsFanoutSection.tsx:2690
 msgid "Outbound raw frame upload"
 msgstr "Uppladdning av utgående råramar"
 
@@ -4813,7 +4813,7 @@ msgstr "Okänt resultat"
 msgid "Outgoing messages (DMs and group messages) will be reported to private MQTT brokers in decrypted/plaintext form."
 msgstr "Utgående meddelanden (DM och gruppmeddelanden) rapporteras till privata MQTT-brokers i dekrypterad klartext."
 
-#: src/components/settings/SettingsFanoutSection.tsx:4159
+#: src/components/settings/SettingsFanoutSection.tsx:4162
 msgid "Outgoing messages and any selected raw packets will be delivered exactly as forwarded by the fanout scope, including decrypted/plaintext message content."
 msgstr "Utgående meddelanden och valda råpaket levereras exakt enligt fanout-omfattningen, inklusive dekrypterat meddelandeinnehåll i klartext."
 
@@ -4825,7 +4825,7 @@ msgstr "Utekontur"
 msgid "Override the path hash mode for this channel. Wider hop identifiers improve repeater disambiguation but extend send time and will prevent users on old (<1.14) firmware from receiving the message."
 msgstr "Åsidosätt väghashläget för kanalen. Bredare hoppidentifierare gör det lättare att skilja repeaters åt men förlänger sändningstiden och hindrar användare med äldre firmware (<1.14) från att ta emot meddelandet."
 
-#: src/components/settings/SettingsFanoutSection.tsx:2512
+#: src/components/settings/SettingsFanoutSection.tsx:2515
 msgid "Owner Email (optional)"
 msgstr "Ägarens e-postadress (valfri)"
 
@@ -4875,7 +4875,7 @@ msgstr "Paket mottaget"
 msgid "Packet speed: {particleSpeedMultiplier}x"
 msgstr "Pakethastighet: {particleSpeedMultiplier}X"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2786
+#: src/components/settings/SettingsFanoutSection.tsx:2789
 msgid "Packet Topic Template"
 msgstr "Paketets ämnesmall"
 
@@ -4917,8 +4917,8 @@ msgid "Parsed stored raw packets from the last 24 hours: {0}"
 msgstr "Tolkade lagrade råpaket från de senaste 24 timmarna: {0}"
 
 #: src/components/settings/SettingsFanoutSection.tsx:1439
-#: src/components/settings/SettingsFanoutSection.tsx:2022
-#: src/components/settings/SettingsFanoutSection.tsx:2543
+#: src/components/settings/SettingsFanoutSection.tsx:2025
+#: src/components/settings/SettingsFanoutSection.tsx:2546
 msgid "Password"
 msgstr "Lösenord"
 
@@ -4946,7 +4946,7 @@ msgstr "Klistra in flera hashtaggkanaler för att lägga till dem samtidigt"
 msgid "Paste raw packet hex here..."
 msgstr "Klistra in råpaketet som hex här..."
 
-#: src/components/settings/SettingsFanoutSection.tsx:4059
+#: src/components/settings/SettingsFanoutSection.tsx:4062
 msgid "PATCH"
 msgstr "PATCH"
 
@@ -5025,11 +5025,11 @@ msgstr "Nyttolastfält"
 msgid "Pending: <0>{pendingCount}</0>"
 msgstr "I väntan: <0>{pendingCount}</0>"
 
-#: src/components/settings/SettingsFanoutSection.tsx:1853
+#: src/components/settings/SettingsFanoutSection.tsx:1856
 msgid "Per tracked contact"
 msgstr "Per spårad kontakt"
 
-#: src/components/settings/SettingsFanoutSection.tsx:1787
+#: src/components/settings/SettingsFanoutSection.tsx:1790
 msgid "Per tracked repeater"
 msgstr "Per spårad repeater"
 
@@ -5080,7 +5080,7 @@ msgstr "Hämta data från repeaters på direkta/routade vägar varje timme"
 msgid "Possible: "
 msgstr "Möjlig: "
 
-#: src/components/settings/SettingsFanoutSection.tsx:4053
+#: src/components/settings/SettingsFanoutSection.tsx:4056
 msgid "POST"
 msgstr "POST"
 
@@ -5088,7 +5088,7 @@ msgstr "POST"
 msgid "POST /api/contacts/<key>/repeater/status"
 msgstr "POST /api/contacts/<key>/repeater/status"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2872
+#: src/components/settings/SettingsFanoutSection.tsx:2875
 msgid "Pre-filled LetsMesh setup. This saves as a regular Community MQTT integration once created, but only asks for the values LetsMesh expects from you."
 msgstr "Förifylld LetsMesh-konfiguration. När den skapas sparas den som en vanlig Community MQTT-integration, men den frågar bara efter de värden som LetsMesh kräver."
 
@@ -5100,7 +5100,7 @@ msgstr "Fördelad nyckel (hex)"
 msgid "Preparing details"
 msgstr "Förbereder detaljer"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3777
+#: src/components/settings/SettingsFanoutSection.tsx:3780
 msgid "Preserve identity on Discord"
 msgstr "Bevara identitet på Discord"
 
@@ -5116,7 +5116,7 @@ msgstr "Förinställningar otillgängliga"
 msgid "Presumed unambiguous distance covered: "
 msgstr "Förmodat entydigt avstånd täckt: "
 
-#: src/components/settings/SettingsFanoutSection.tsx:3689
+#: src/components/settings/SettingsFanoutSection.tsx:3692
 msgid "Preview"
 msgstr "Förhandsgranskning"
 
@@ -5132,7 +5132,7 @@ msgstr "Tidigare resultat från mesh-sökningen"
 msgid "Previous region discovery results"
 msgstr "Föregående region upptäckt resultat"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3889
+#: src/components/settings/SettingsFanoutSection.tsx:3892
 msgid "PRIV or CHAN"
 msgstr "Priv eller chan"
 
@@ -5198,7 +5198,7 @@ msgstr "Den publika nyckeln har kopierats!"
 msgid "Publish discovery configs and MeshCore state to your MQTT broker so Home Assistant creates native devices, sensors, GPS trackers, and message events automatically."
 msgstr "Publicera discovery-konfigurationer och MeshCore-tillstånd till din MQTT-broker så att Home Assistant automatiskt skapar enheter, sensorer, GPS-spårare och meddelandehändelser."
 
-#: src/components/settings/SettingsFanoutSection.tsx:1915
+#: src/components/settings/SettingsFanoutSection.tsx:1918
 msgid "Published topic summary"
 msgstr "Publicerad ämnessammanfattning"
 
@@ -5226,7 +5226,7 @@ msgstr "Push-meddelanden stöds inte av denna webbläsare."
 msgid "Push-enabled conversations"
 msgstr "Pushaktiverade konversationer"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4056
+#: src/components/settings/SettingsFanoutSection.tsx:4059
 msgid "PUT"
 msgstr "PUT"
 
@@ -5235,7 +5235,7 @@ msgstr "PUT"
 msgid "Python Bot"
 msgstr "Python-bot"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4167
+#: src/components/settings/SettingsFanoutSection.tsx:4170
 msgid "Queue URL"
 msgstr "Kö-URL"
 
@@ -5244,7 +5244,7 @@ msgid "Queue wait"
 msgstr "Köväntan"
 
 #. placeholder {0}: formatSqsQueueSummary(cfg.config as Record<string, unknown>)
-#: src/components/settings/SettingsFanoutSection.tsx:5011
+#: src/components/settings/SettingsFanoutSection.tsx:5014
 msgid "Queue: <0>{0}</0>"
 msgstr "Kö: <0>{0}</0>"
 
@@ -5417,11 +5417,11 @@ msgstr "Radiostatsprov"
 msgid "Radio-App Management"
 msgstr "Hantering av radioappen"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3164
+#: src/components/settings/SettingsFanoutSection.tsx:3167
 msgid "Radius (km)"
 msgstr "Radie (km)"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3689
+#: src/components/settings/SettingsFanoutSection.tsx:3692
 msgid "Raw (email, SMS)"
 msgstr "Rå (email, SMS)"
 
@@ -5556,12 +5556,12 @@ msgstr "Uppdaterar…"
 msgid "Region"
 msgstr "Region"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4181
+#: src/components/settings/SettingsFanoutSection.tsx:4184
 msgid "Region (optional)"
 msgstr "Region (valfritt)"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2605
-#: src/components/settings/SettingsFanoutSection.tsx:2904
+#: src/components/settings/SettingsFanoutSection.tsx:2608
+#: src/components/settings/SettingsFanoutSection.tsx:2907
 msgid "Region Code (IATA)"
 msgstr "Regionkod (IATA)"
 
@@ -5634,8 +5634,8 @@ msgstr "Ta bort"
 
 #. placeholder {0}: c.name || c.public_key.slice(0, 12)
 #. placeholder {0}: it.label
-#: src/components/settings/SettingsFanoutSection.tsx:2106
-#: src/components/settings/SettingsFanoutSection.tsx:3331
+#: src/components/settings/SettingsFanoutSection.tsx:2109
+#: src/components/settings/SettingsFanoutSection.tsx:3334
 msgid "Remove {0}"
 msgstr "Ta bort {0}"
 
@@ -5675,7 +5675,7 @@ msgstr "Ta bort virtuell plats {index}"
 msgid "Render MeshCore Open GIFs & Reactions"
 msgstr "Visa GIF-bilder och reaktioner från MeshCore Open"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3682
+#: src/components/settings/SettingsFanoutSection.tsx:3685
 msgid "Rendered (Discord, Slack, Telegram)"
 msgstr "Renderat (Discord, Slack, Telegram)"
 
@@ -5798,7 +5798,7 @@ msgstr "Begär omstart..."
 msgid "Requesting zero-hop advert..."
 msgstr "Begär zero-hop-advert..."
 
-#: src/components/settings/SettingsFanoutSection.tsx:2775
+#: src/components/settings/SettingsFanoutSection.tsx:2778
 msgid "reserved"
 msgstr "reserverad"
 
@@ -5806,16 +5806,16 @@ msgstr "reserverad"
 msgid "Reset"
 msgstr "Återställ"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3959
+#: src/components/settings/SettingsFanoutSection.tsx:3962
 msgid "Reset channel format to default"
 msgstr "Återställ kanalformat till standard"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3932
+#: src/components/settings/SettingsFanoutSection.tsx:3935
 msgid "Reset DM format to default"
 msgstr "Återställ DM-format till standard"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3936
-#: src/components/settings/SettingsFanoutSection.tsx:3963
+#: src/components/settings/SettingsFanoutSection.tsx:3939
+#: src/components/settings/SettingsFanoutSection.tsx:3966
 msgid "Reset to default"
 msgstr "Återställ till standard"
 
@@ -5823,7 +5823,7 @@ msgstr "Återställ till standard"
 msgid "Reset to Default"
 msgstr "Återställ till standard"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2981
+#: src/components/settings/SettingsFanoutSection.tsx:2984
 msgid "Reset to Example"
 msgstr "Återställ till Exempel"
 
@@ -6053,11 +6053,11 @@ msgstr "prover)"
 msgid "Save Advertising Interval"
 msgstr "Spara advertintervall"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4721
+#: src/components/settings/SettingsFanoutSection.tsx:4724
 msgid "Save as Disabled"
 msgstr "Spara som inaktiverad"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4713
+#: src/components/settings/SettingsFanoutSection.tsx:4716
 msgid "Save as Enabled"
 msgstr "Spara som aktiverad"
 
@@ -6098,8 +6098,8 @@ msgstr "Om du sparar en ändrad bindningsadress, port eller kanalkarta, eller in
 #: src/components/ChannelFloodScopeOverrideModal.tsx:143
 #: src/components/ChannelPathHashModeOverrideModal.tsx:219
 #: src/components/ContactRoutingOverrideModal.tsx:163
-#: src/components/settings/SettingsFanoutSection.tsx:4713
-#: src/components/settings/SettingsFanoutSection.tsx:4721
+#: src/components/settings/SettingsFanoutSection.tsx:4716
+#: src/components/settings/SettingsFanoutSection.tsx:4724
 #: src/components/settings/SettingsRadioSection.tsx:1508
 #: src/components/settings/SettingsRadioSection.tsx:1773
 #: src/components/settings/SettingsRadioSection.tsx:1819
@@ -6132,7 +6132,7 @@ msgid "Scroll up for older messages"
 msgstr "Rulla upp för äldre meddelanden"
 
 #. placeholder {0}: contactOptions.length
-#: src/components/settings/SettingsFanoutSection.tsx:2123
+#: src/components/settings/SettingsFanoutSection.tsx:2126
 msgid "Search {0} contacts..."
 msgstr "Sök {0} kontakter..."
 
@@ -6197,13 +6197,13 @@ msgstr "Sec"
 msgid "Secondary"
 msgstr "Sekundär"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4233
+#: src/components/settings/SettingsFanoutSection.tsx:4236
 msgid "Secret Access Key"
 msgstr "Hemlig åtkomstnyckel"
 
 #: src/components/settings/SettingsRadioSection.tsx:772
-msgid "See README_ADVANCED.md for private key export enable"
-msgstr "Se README_ADVANCED.md för aktivering av export av privat nyckel"
+msgid "See docs/ADVANCED_SETUP.md for private key export enable"
+msgstr "Se docs/ADVANCED_SETUP.md för aktivering av export av privat nyckel"
 
 #: src/components/ConversationPane.tsx:286
 msgid "Select a conversation or start a new one"
@@ -6225,11 +6225,11 @@ msgstr "Välj kontakter att radera. Meddelandehistoriken behålls och blir tillg
 msgid "Select none"
 msgstr "Välj ingen"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2740
+#: src/components/settings/SettingsFanoutSection.tsx:2743
 msgid "Selected types"
 msgstr "Valda typer"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2319
+#: src/components/settings/SettingsFanoutSection.tsx:2322
 msgid "Selecting a preset changes connection defaults; existing saved broker overrides remain unchanged until you select one."
 msgstr "När du väljer en förinställning ändras anslutningens standardvärden. Befintliga sparade åsidosättningar för brokern ändras inte förrän du väljer en."
 
@@ -6262,15 +6262,15 @@ msgstr "Skicka flood-advert"
 msgid "Send full or scope-customized raw or decrypted packets to an SQS"
 msgstr "Skicka full eller omfattningskrävd rå eller dekrypterade paket till en SQS"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4152
+#: src/components/settings/SettingsFanoutSection.tsx:4155
 msgid "Send matched mesh events to an Amazon SQS queue for durable processing by workers, Lambdas, or downstream automation."
 msgstr "Skicka matchande meshhändelser till en Amazon SQS-kö för beständig bearbetning av workers, Lambda-funktioner eller efterföljande automatisering."
 
-#: src/components/settings/SettingsFanoutSection.tsx:4025
+#: src/components/settings/SettingsFanoutSection.tsx:4028
 msgid "Send message data as JSON to an HTTP endpoint when messages are received."
 msgstr "Skicka meddelandedata som JSON till en HTTP-slutpunkt när meddelanden tas emot."
 
-#: src/components/settings/SettingsFanoutSection.tsx:3725
+#: src/components/settings/SettingsFanoutSection.tsx:3728
 msgid "Send push notifications via <0>Apprise</0> when messages are received. Supports Discord, Slack, Telegram, email, and <1>100+ other services</1>."
 msgstr "Skicka push-meddelanden via <0>Apprise</0> när meddelanden tas emot. Stöder Discord, Slack, Telegram, e-post och <1>100+ övriga tjänster</1>."
 
@@ -6291,7 +6291,7 @@ msgstr "Skicka zero-hop-advert"
 msgid "Sender"
 msgstr "Avsändare"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3867
+#: src/components/settings/SettingsFanoutSection.tsx:3870
 msgid "Sender display name"
 msgstr "Avsändarens visningsnamn"
 
@@ -6299,7 +6299,7 @@ msgstr "Avsändarens visningsnamn"
 msgid "Sender metadata available"
 msgstr "Avsändarmetadata tillgängliga"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3873
+#: src/components/settings/SettingsFanoutSection.tsx:3876
 msgid "Sender public key (hex)"
 msgstr "Avsändarens publika nyckel (hex)"
 
@@ -6331,11 +6331,11 @@ msgstr "Skicka kommando till radio"
 msgid "Sending..."
 msgstr "Skicka..."
 
-#: src/components/settings/SettingsFanoutSection.tsx:1821
+#: src/components/settings/SettingsFanoutSection.tsx:1824
 msgid "sensor.meshcore_{exampleRepeaterNodeId}_packets_received"
 msgstr "sensor.meshcore_{exampleRepeaterNodeId}_packets_received"
 
-#: src/components/settings/SettingsFanoutSection.tsx:1825
+#: src/components/settings/SettingsFanoutSection.tsx:1828
 msgid "sensor.meshcore_{exampleRepeaterNodeId}_packets_sent"
 msgstr "sensor.meshcore_{exampleRepeaterNodeId}_packets_sent"
 
@@ -6355,7 +6355,7 @@ msgstr "Skickat (utgående)"
 msgid "Sent Δ"
 msgstr "Skickat Δ"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4246
+#: src/components/settings/SettingsFanoutSection.tsx:4249
 msgid "Session Token (optional)"
 msgstr "Sessionstoken (valfri)"
 
@@ -6384,8 +6384,8 @@ msgid "Set regional override"
 msgstr "Ange regional åsidosättning"
 
 #: src/components/CrackerPanel.tsx:671
-msgid "Set up a TLS certificate (see the HTTPS section of README_ADVANCED.md, or re-run the Docker setup script which can generate one automatically)"
-msgstr "Konfigurera ett TLS-certifikat (se avsnittet HTTPS i README_ADVANCED.md eller kör Docker-konfigurationsskriptet igen för att skapa ett automatiskt)"
+msgid "Set up a TLS certificate (see the HTTPS section of docs/ADVANCED_SETUP.md, or re-run the Docker setup script which can generate one automatically)"
+msgstr "Konfigurera ett TLS-certifikat (se avsnittet HTTPS i docs/ADVANCED_SETUP.md eller kör Docker-konfigurationsskriptet igen för att skapa ett automatiskt)"
 
 #: src/components/settings/SettingsRadioSection.tsx:1135
 msgid "Setting & Rebooting..."
@@ -6541,7 +6541,7 @@ msgstr "Signal"
 msgid "Signal Distribution"
 msgstr "Signalfördelning"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4094
+#: src/components/settings/SettingsFanoutSection.tsx:4097
 msgid "Signature Header Name"
 msgstr "Namn på signaturens headerfält"
 
@@ -6550,7 +6550,7 @@ msgid "Since"
 msgstr "Sedan dess"
 
 #: src/components/settings/SettingsFanoutSection.tsx:1472
-#: src/components/settings/SettingsFanoutSection.tsx:2055
+#: src/components/settings/SettingsFanoutSection.tsx:2058
 msgid "Skip certificate verification"
 msgstr "Hoppa över certifikatverifiering"
 
@@ -6640,11 +6640,11 @@ msgstr "Töm meddelandekön vid start"
 msgid "Startup receive service"
 msgstr "Mottagningstjänst vid start"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2072
+#: src/components/settings/SettingsFanoutSection.tsx:2075
 msgid "State updates publish under <0>{prefix}/</0>. Discovery configs always use the <1>homeassistant/</1> prefix."
 msgstr "Tillståndsuppdateringar publiceras under <0>{prefix}/</0>. Discovery-konfigurationer använder alltid prefixet <1>homeassistant/</1>."
 
-#: src/components/settings/SettingsFanoutSection.tsx:4212
+#: src/components/settings/SettingsFanoutSection.tsx:4215
 msgid "Static Credentials (optional)"
 msgstr "Statiska referenser (tillval)"
 
@@ -6665,7 +6665,7 @@ msgstr "Status"
 msgid "Status Dot Glitters"
 msgstr "Glittrande statuspunkt"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2643
+#: src/components/settings/SettingsFanoutSection.tsx:2646
 msgid "Status interval (1–60 min)"
 msgstr "Statusintervall (1–60 min)"
 
@@ -6755,11 +6755,11 @@ msgid "Tag outgoing messages with a region name (e.g. MyRegion). Repeaters confi
 msgstr "Märk utgående meddelanden med ett regionnamn (t.ex. MyRegion). Repeaters som är konfigurerade för regionen kan vidarebefordra trafiken, medan repeaters som nekar andra regioner kan släppa den. Lämna fältet tomt för att skicka utan regionetikett (vanlig flood). För att tvinga trafik utan regionetikett när radion har en standardregion krävs firmware v12 eller senare. Enskilda kanaler kan åsidosätta detta med en egen region eller inställningen ”alltid utan regionetikett”."
 
 #. placeholder {0}: formatAppriseTargets( (cfg.config as Record<string, unknown>).urls as string | undefined )
-#: src/components/settings/SettingsFanoutSection.tsx:4996
+#: src/components/settings/SettingsFanoutSection.tsx:4999
 msgid "Targets: <0>{0}</0>"
 msgstr "Mål: <0>{0}</0>"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2397
+#: src/components/settings/SettingsFanoutSection.tsx:2400
 msgid "TCP"
 msgstr "TCP"
 
@@ -6780,7 +6780,7 @@ msgstr "Telemetrihistorik"
 msgid "Telemetry Sharing"
 msgstr "Telemetridelning"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2161
+#: src/components/settings/SettingsFanoutSection.tsx:2164
 msgid "Telemetry Tracked Repeaters"
 msgstr "Repeaters med telemetrispårning"
 
@@ -6872,7 +6872,7 @@ msgstr "Den begärda MESHRIK-sidan finns inte."
 msgid "The set of channels or DMs that trigger push notifications are global per-install (i.e. all devices that register for Web Push will have the same set of channels/DMs that trigger notifications). Subscribing or unsubscribing a particular browser only controls whether that browser receives notifications for the configured set of channels/DMs."
 msgstr "Vilka kanaler och DM som utlöser pushnotiser gäller globalt för installationen. Alla enheter som registreras för Web Push använder alltså samma uppsättning kanaler och DM. Att prenumerera eller avsluta prenumerationen i en viss webbläsare styr bara om den webbläsaren tar emot notiser för den konfigurerade uppsättningen."
 
-#: src/components/settings/SettingsFanoutSection.tsx:2848
+#: src/components/settings/SettingsFanoutSection.tsx:2851
 msgid "The token is encrypted at rest and omitted from returned integration details. To rotate a saved token, enter the replacement token here."
 msgstr "Token krypteras vid lagring och utelämnas från returnerade integrationsuppgifter. Ange en ny token här för att ersätta den sparade."
 
@@ -6908,7 +6908,7 @@ msgstr "Denna kod är gratis och annonsfri. Om du uppskattar det ursprungliga ar
 msgid "This config file contains a private key. Importing it will change your radio's identity — your radio will have a new public key and other nodes will see it as a different device. This cannot be undone without the original key."
 msgstr "Konfigurationsfilen innehåller en privat nyckel. Om den importeras ändras radions identitet: radion får en ny publik nyckel och andra noder ser den som en annan enhet. Ändringen kan inte återställas utan originalnyckeln."
 
-#: src/components/settings/SettingsFanoutSection.tsx:4529
+#: src/components/settings/SettingsFanoutSection.tsx:4532
 msgid "this integration"
 msgstr "Denna integration"
 
@@ -6964,11 +6964,11 @@ msgstr "Växla legender och kontrollerar synlighet"
 msgid "Toggle palette"
 msgstr "Växla palett"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2412
+#: src/components/settings/SettingsFanoutSection.tsx:2415
 msgid "Token"
 msgstr "Token"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2497
+#: src/components/settings/SettingsFanoutSection.tsx:2500
 msgid "Token Audience"
 msgstr "Token-audience"
 
@@ -6985,17 +6985,17 @@ msgid "Top Senders (24h)"
 msgstr "Toppsändare (24h)"
 
 #: src/components/settings/SettingsFanoutSection.tsx:1481
-#: src/components/settings/SettingsFanoutSection.tsx:2062
+#: src/components/settings/SettingsFanoutSection.tsx:2065
 msgid "Topic Prefix"
 msgstr "Ämnesprefix"
 
 #. placeholder {0}: (communityConfig.topic_template as string) || DEFAULT_COMMUNITY_PACKET_TOPIC_TEMPLATE
-#: src/components/settings/SettingsFanoutSection.tsx:4920
+#: src/components/settings/SettingsFanoutSection.tsx:4923
 msgid "Topic: <0>{0}</0>"
 msgstr "Ämne: <0>{0}</0>"
 
 #. placeholder {0}: formatPrivateTopicSummary(cfg.config as Record<string, unknown>)
-#: src/components/settings/SettingsFanoutSection.tsx:4969
+#: src/components/settings/SettingsFanoutSection.tsx:4972
 msgid "Topics: <0>{0}</0>"
 msgstr "Ämnen: <0>{0}</0>"
 
@@ -7067,7 +7067,7 @@ msgid "Transmission outcome uncertain"
 msgstr "Överföringsresultat osäkert"
 
 #: src/components/RawPacketDetailModal.tsx:693
-#: src/components/settings/SettingsFanoutSection.tsx:2374
+#: src/components/settings/SettingsFanoutSection.tsx:2377
 msgid "Transport"
 msgstr "Transport"
 
@@ -7151,7 +7151,7 @@ msgid "Type to search across all messages"
 msgstr "Typ för att söka igenom alla meddelanden"
 
 #. placeholder {0}: getDetailTypeLabel(detailType)
-#: src/components/settings/SettingsFanoutSection.tsx:4610
+#: src/components/settings/SettingsFanoutSection.tsx:4613
 msgid "Type: {0}"
 msgstr "Typ: {0}"
 
@@ -7261,20 +7261,20 @@ msgstr "Ladda upp repeaters och room servers till map.meshcore.io eller en kompa
 msgid "Uptime"
 msgstr "Drifttid"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4030
+#: src/components/settings/SettingsFanoutSection.tsx:4033
 msgid "URL"
 msgstr "URL"
 
 #. placeholder {0}: ((cfg.config as Record<string, unknown>).url as string) || 'Not set'
-#: src/components/settings/SettingsFanoutSection.tsx:4982
+#: src/components/settings/SettingsFanoutSection.tsx:4985
 msgid "URL: <0>{0}</0>"
 msgstr "URL: <0>{0}</0>"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4186
+#: src/components/settings/SettingsFanoutSection.tsx:4189
 msgid "us-east-1"
 msgstr "Ost-1"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2796
+#: src/components/settings/SettingsFanoutSection.tsx:2799
 msgid "Use <0>{IATA}</0> and <1>{PUBLIC_KEY}</1>. Default: <2>{DEFAULT_COMMUNITY_PACKET_TOPIC_TEMPLATE}</2>"
 msgstr "Använd <0>{IATA}</0> och <1>{PUBLIC_KEY}</1>. Standardvärde: <2>{DEFAULT_COMMUNITY_PACKET_TOPIC_TEMPLATE}</2>"
 
@@ -7294,7 +7294,7 @@ msgstr "Använd global regioninställning"
 msgid "Use My Location"
 msgstr "Använd min plats"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2479
+#: src/components/settings/SettingsFanoutSection.tsx:2482
 msgid "Use recommended /"
 msgstr "Använd rekommenderad /"
 
@@ -7311,36 +7311,36 @@ msgid "Use the radio-wide path hash mode setting"
 msgstr "Använd den radio-breda vägen hash läge inställning"
 
 #: src/components/settings/SettingsFanoutSection.tsx:1459
-#: src/components/settings/SettingsFanoutSection.tsx:2042
-#: src/components/settings/SettingsFanoutSection.tsx:2564
+#: src/components/settings/SettingsFanoutSection.tsx:2045
+#: src/components/settings/SettingsFanoutSection.tsx:2567
 msgid "Use TLS"
 msgstr "Använd TLS"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2522
+#: src/components/settings/SettingsFanoutSection.tsx:2525
 msgid "Used to claim your node on the community aggregator"
 msgstr "Används för att hävda din nod på gemenskapen aggregator"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4203
+#: src/components/settings/SettingsFanoutSection.tsx:4206
 msgid "Useful for LocalStack or custom endpoints"
 msgstr "Användbart för LocalStack eller anpassade slutpunkter"
 
 #: src/components/settings/SettingsFanoutSection.tsx:1427
-#: src/components/settings/SettingsFanoutSection.tsx:2010
-#: src/components/settings/SettingsFanoutSection.tsx:2532
+#: src/components/settings/SettingsFanoutSection.tsx:2013
+#: src/components/settings/SettingsFanoutSection.tsx:2535
 msgid "Username"
 msgstr "Användarnamn"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2418
+#: src/components/settings/SettingsFanoutSection.tsx:2421
 msgid "Username / Password"
 msgstr "Användarnamn / lösenord"
 
 #: src/components/settings/SettingsFanoutSection.tsx:1706
-msgid "Uses <0>MQTT Discovery</0> and the topic conventions documented in <1>README_HA.md</1>."
-msgstr "Använder <0>MQTT Discovery</0> och ämneskonventionerna som dokumenteras i <1>README_HA.md</1>."
+msgid "Uses <0>MQTT Discovery</0> and the topic conventions documented in <1>docs/HOME_ASSISTANT.md</1>."
+msgstr "Använder <0>MQTT Discovery</0> och ämneskonventionerna som dokumenteras i <1>docs/HOME_ASSISTANT.md</1>."
 
 #. placeholder {0}: radioLat?.toFixed(5)
 #. placeholder {1}: radioLon?.toFixed(5)
-#: src/components/settings/SettingsFanoutSection.tsx:3153
+#: src/components/settings/SettingsFanoutSection.tsx:3156
 msgid "Using radio position <0>{0}, {1}</0> as the geofence center. Update coordinates in Radio Settings to move the center."
 msgstr "Radions position <0>{0}, {1}</0> används som geostakets mittpunkt. Uppdatera koordinaterna i radioinställningarna för att flytta mittpunkten."
 
@@ -7352,7 +7352,7 @@ msgstr "v"
 msgid "Validation notes"
 msgstr "Valideringsanteckningar"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2265
+#: src/components/settings/SettingsFanoutSection.tsx:2268
 msgid "Verified broker profile"
 msgstr "Verifierad brokerprofil"
 
@@ -7360,7 +7360,7 @@ msgstr "Verifierad brokerprofil"
 msgid "Verified shared public identity"
 msgstr "Verifierad gemensam identitet"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2577
+#: src/components/settings/SettingsFanoutSection.tsx:2580
 msgid "Verify TLS certificates"
 msgstr "Verifiera TLS-certifikat"
 
@@ -7378,7 +7378,7 @@ msgid "View echo paths"
 msgstr "Visa ekovägar"
 
 #. placeholder {0}: cfg.name
-#: src/components/settings/SettingsFanoutSection.tsx:4890
+#: src/components/settings/SettingsFanoutSection.tsx:4893
 msgid "View error details for {0}"
 msgstr "Visa felinformation för {0}"
 
@@ -7389,7 +7389,7 @@ msgstr "Visa felinformation för {0}"
 msgid "View info for {0}"
 msgstr "Visa information om {0}"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4891
+#: src/components/settings/SettingsFanoutSection.tsx:4894
 msgid "View latest error"
 msgstr "Visa senaste fel"
 
@@ -7421,7 +7421,7 @@ msgstr "Virtuella kanalplatser"
 
 #. placeholder {0}: String(cfg.config.bind_host ?? '0.0.0.0')
 #. placeholder {1}: String(cfg.config.port ?? 5000)
-#: src/components/settings/SettingsFanoutSection.tsx:4934
+#: src/components/settings/SettingsFanoutSection.tsx:4937
 msgid "Virtual endpoint: <0>{0}:{1}</0>"
 msgstr "Virtuell slutpunkt: <0>{0}:{1}</0>"
 
@@ -7541,7 +7541,7 @@ msgstr "WebGPU kräver HTTPS när den inte finns på localhost."
 msgid "Webhook"
 msgstr "Webhook"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2433
+#: src/components/settings/SettingsFanoutSection.tsx:2436
 msgid "WebSocket Path"
 msgstr "WebSocket-sökväg"
 
@@ -7549,15 +7549,15 @@ msgstr "WebSocket-sökväg"
 msgid "WebSocket Path must start with / and contain no spaces, ? or #"
 msgstr "WebSocket-sökvägen måste börja med / och får inte innehålla blanksteg, ? eller #"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2394
+#: src/components/settings/SettingsFanoutSection.tsx:2397
 msgid "WebSockets"
 msgstr "WebSockets"
 
-#: src/components/settings/SettingsFanoutSection.tsx:1754
+#: src/components/settings/SettingsFanoutSection.tsx:1757
 msgid "What gets created in Home Assistant"
 msgstr "Vad som skapas i Home Assistant"
 
-#: src/components/settings/SettingsFanoutSection.tsx:4072
+#: src/components/settings/SettingsFanoutSection.tsx:4075
 msgid "When a secret is set, each request includes an HMAC-SHA256 signature of the JSON body in the specified header (e.g. <0>sha256=ab12cd...</0>)."
 msgstr "När en hemlighet har angetts innehåller varje förfrågan en HMAC-SHA256-signatur för JSON-innehållet i det angivna headerfältet (t.ex. <0>sha256=ab12cd...</0>)."
 
@@ -7565,7 +7565,7 @@ msgstr "När en hemlighet har angetts innehåller varje förfrågan en HMAC-SHA2
 msgid "When an ambiguous repeater has a high-confidence likely-identity that matches a sibling definitely-known repeater, and they both connect to the same next hop, collapse them into the known repeater. This should resolve more ambiguity as the mesh navigates the 1.14 upgrade."
 msgstr "Slå samman en tvetydig repeater med en säkert identifierad repeater när den troliga identiteten har hög tillförlitlighet och båda ansluter till samma nästa hopp. Det bör minska tvetydigheten medan meshnätet går över till version 1.14."
 
-#: src/components/settings/SettingsFanoutSection.tsx:3780
+#: src/components/settings/SettingsFanoutSection.tsx:3783
 msgid "When enabled, Discord webhooks will use their configured name/avatar instead of overriding with MeshCore sender info."
 msgstr "När funktionen är aktiverad använder Discord-webhooks sitt konfigurerade namn och sin avatar i stället för att ersättas med MeshCore-avsändarens uppgifter."
 
@@ -7589,7 +7589,7 @@ msgstr "När funktionen är aktiverad försöker servern automatiskt dekryptera 
 msgid "When enabled, tracked repeaters with a direct or routed path (not flood) are polled every hour instead of on the scheduled interval above. Flood-only repeaters still follow the normal schedule."
 msgstr "När funktionen är aktiverad hämtas data varje timme från spårade repeaters med en direkt eller routad väg (inte flood), i stället för enligt intervallet ovan. Repeaters som endast nås via flood följer det vanliga schemat."
 
-#: src/components/settings/SettingsFanoutSection.tsx:3089
+#: src/components/settings/SettingsFanoutSection.tsx:3092
 msgid "When enabled, upload payloads are logged at INFO level but not sent. Disable once you have confirmed the logged output looks correct."
 msgstr "När funktionen är aktiverad loggas uppladdningens nyttolaster på INFO-nivå men skickas inte. Inaktivera den när du har bekräftat att den loggade utdata ser korrekt ut."
 
@@ -7621,7 +7621,7 @@ msgstr "Ordpar"
 msgid "Working…"
 msgstr "Arbetar..."
 
-#: src/components/settings/SettingsFanoutSection.tsx:4099
+#: src/components/settings/SettingsFanoutSection.tsx:4102
 msgid "X-Webhook-Signature"
 msgstr "X-Webhook-Signatur"
 
@@ -7633,8 +7633,8 @@ msgstr "Du"
 msgid "You: "
 msgstr "Du: "
 
-#: src/components/settings/SettingsFanoutSection.tsx:2517
-#: src/components/settings/SettingsFanoutSection.tsx:2895
+#: src/components/settings/SettingsFanoutSection.tsx:2520
+#: src/components/settings/SettingsFanoutSection.tsx:2898
 msgid "you@example.com"
 msgstr "You@example.com"
 
@@ -7642,11 +7642,11 @@ msgstr "You@example.com"
 msgid "Your browser does not support geolocation"
 msgstr "Din webbläsare stöder inte geolokalisering"
 
-#: src/components/settings/SettingsFanoutSection.tsx:2617
+#: src/components/settings/SettingsFanoutSection.tsx:2620
 msgid "Your nearest airport's IATA code (required)"
 msgstr "Din närmaste flygplats IATA-kod (krävs)"
 
-#: src/components/settings/SettingsFanoutSection.tsx:3144
+#: src/components/settings/SettingsFanoutSection.tsx:3147
 msgid "Your radio does not currently have a latitude/longitude configured. Geofencing will be silently skipped until coordinates are set in <0>Settings → Radio → Location</0>."
 msgstr "Radion saknar för närvarande konfigurerad latitud och longitud. Geostaket hoppas över utan varning tills koordinater anges under <0>Inställningar → Radio → Position</0>."
 

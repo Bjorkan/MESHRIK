@@ -19,6 +19,3 @@ Inherits [root AGENTS.md](../AGENTS.md).
   already deployed migrations.
 - Test `id` vs `observation_id` and WebSocket reconnect flow
   for packet/stream changes.
-- Detailed test inventory is in the
-  [backend reference](../docs/agent-guides/backend-reference.md)
-  when a historical file map is useful.

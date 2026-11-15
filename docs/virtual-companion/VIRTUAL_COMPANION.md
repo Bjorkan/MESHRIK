@@ -5,7 +5,7 @@
 > opens an unauthenticated raw TCP listener, so use it only on a trusted LAN or behind a protected
 > VPN/mTLS gateway. Automated protocol and SDK coverage is complete; compatibility with particular
 > released Android/iOS app builds is claimed only when recorded in the
-> [compatibility evidence table](../tests/e2e/virtual_companion/README.md).
+> [compatibility evidence table](../../tests/e2e/virtual_companion/README.md).
 
 The MeshCore App integration lets Companion-protocol clients talk to a **virtual TCP endpoint owned
 by MESHRIK**. MESHRIK remains the only owner of the physical radio connection. This is not a TCP
@@ -78,7 +78,7 @@ menu labels must therefore **not** be guessed in release documentation.
 
 Before claiming compatibility with a specific mobile release, complete the
 version/OS/click-path/transcript table in
-[`tests/e2e/virtual_companion/README.md`](../tests/e2e/virtual_companion/README.md) with real Android
+[`tests/e2e/virtual_companion/README.md`](../../tests/e2e/virtual_companion/README.md) with real Android
 and iOS builds and two simultaneous clients. If a current build has no custom TCP option, cannot
 connect, or demands a private key, record that result without weakening the security policy. The
 source-derived fixtures and `meshcore_py` harness prove protocol behavior, not official mobile UI

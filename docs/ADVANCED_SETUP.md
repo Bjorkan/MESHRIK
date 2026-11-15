@@ -88,7 +88,7 @@ devices with a firewall, or select loopback/a protected VPN/mTLS gateway. Map a 
 container/add-on port, never expose it publicly, and never forward the
 physical radio's TCP endpoint.
 
-See the [Virtual Companion operator guide and release checklist](docs/VIRTUAL_COMPANION.md) for
+See the [Virtual Companion operator guide and release checklist](virtual-companion/VIRTUAL_COMPANION.md) for
 native, Docker and Home Assistant add-on deployment; status/error recovery; the supported command
 matrix; privacy-safe support capture; and the gated S01–S13 merge plan.
 
@@ -164,7 +164,7 @@ You can also navigate to `/api/debug` (or go to Settings -> About -> "Open debug
 
 ## Development Notes
 
-For day-to-day development, see [CONTRIBUTING.md](CONTRIBUTING.md).
+For day-to-day development, see [CONTRIBUTING.md](../CONTRIBUTING.md).
 
 Windows note: I've seen an intermittent startup issue like `"Received empty packet: index out of range"` with failed contact sync. I can't figure out why this happens. The issue typically resolves on restart. If you can figure out why this happens, I will buy you a virtual or iRL six pack if you're in the PNW. As a former always-windows-girlie before embracing WSL2, I despise second-classing M$FT users, but I'm just stuck with this one.
 
@@ -175,7 +175,7 @@ async command executor for application-managed radio operations. The existing
 synchronous endpoints remain compatible, while Radio Activity and the
 read-only job API make queued and running work observable.
 
-See the [radio scheduler operator runbook](docs/RADIO_SCHEDULER_OPERATIONS.md)
+See the [radio scheduler operator runbook](radio/RADIO_SCHEDULER_OPERATIONS.md)
 for exact deploy, verification, cancellation and rollback procedures. The
 runbook also explains `unknown` send outcomes and the deliberately bounded
 message-operation and login waits.
@@ -215,6 +215,6 @@ operation whose outcome is `unknown`.
 
 ## MeshCore 1.18 / Companion protocol 14
 
-See [MeshCore 1.18 compatibility and safe operator workflow](docs/MESHCORE_118_COMPATIBILITY.md)
+See [MeshCore 1.18 compatibility and safe operator workflow](radio/MESHCORE_118_COMPATIBILITY.md)
 for local/remote CLI restrictions, binary datagram handling, SDK 2.3.16 and
 optional single-radio smoke checks.

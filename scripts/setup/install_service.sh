@@ -210,7 +210,7 @@ if [[ "$ENABLE_BOTS" =~ ^[Yy] ]]; then
         done
         echo -e "${GREEN}Basic Auth configured for user '${AUTH_USERNAME}'.${NC}"
         echo -e "${YELLOW}Note:${NC} Basic Auth credentials are not safe over plain HTTP."
-        echo    "See README_ADVANCED.md for HTTPS setup."
+        echo    "See docs/ADVANCED_SETUP.md for HTTPS setup."
     fi
 else
     echo -e "${GREEN}Bots disabled.${NC}"

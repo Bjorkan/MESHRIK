@@ -89,7 +89,7 @@ opted-in maintenance;
 `MESHCORE_STARTUP_CLEAR_CHANNEL_SLOTS` and
 `MESHCORE_STARTUP_ALLOW_PERIODIC_OFFLOAD` are explicitly destructive and
 must not be enabled on a real device merely for a test. See
-`RADIO_STARTUP_LIFECYCLE.md` for the complete stage matrix, migration and rollback.
+`docs/radio/RADIO_STARTUP_LIFECYCLE.md` for the complete stage matrix, migration and rollback.
 
 ## Phase C: fault injection only after ordinary sends succeed
 

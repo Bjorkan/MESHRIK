@@ -769,7 +769,7 @@ export function SettingsRadioSection({
       downloadJson(profile, 'config');
       toast.info(t`Export generated without private key`, {
         get description() {
-          return t`See README_ADVANCED.md for private key export enable`;
+          return t`See docs/ADVANCED_SETUP.md for private key export enable`;
         },
       });
     }

@@ -15,7 +15,7 @@ Connect your radio over Serial, TCP, or BLE, and then you can:
 - Use the more recent 1.14+ firmwares which support multibyte pathing
 - Visualize the mesh as a map or node set, view repeater stats, and more!
 
-For advanced setup and troubleshooting see [README_ADVANCED.md](README_ADVANCED.md). If you plan to contribute, read [CONTRIBUTING.md](CONTRIBUTING.md).
+For advanced setup and troubleshooting see [docs/ADVANCED_SETUP.md](docs/ADVANCED_SETUP.md). If you plan to contribute, read [CONTRIBUTING.md](CONTRIBUTING.md).
 
 **Warning:** This app is for trusted environments only. _Do not put this on an untrusted network, or open it to the public._ You can optionally set `MESHCORE_BASIC_AUTH_USERNAME` and `MESHCORE_BASIC_AUTH_PASSWORD` for app-wide HTTP Basic auth, but that is only a coarse gate and must be paired with HTTPS. The bots can execute arbitrary Python code which means anyone who gets access to the app can, too. To completely disable the bot system, start the server with `MESHCORE_DISABLE_BOTS=true` — this prevents all bot execution and blocks bot configuration changes via the API. If you need stronger access control, consider using a reverse proxy like Nginx, or extending FastAPI; full access control and user management are outside the scope of this app.
 
@@ -24,7 +24,7 @@ For advanced setup and troubleshooting see [README_ADVANCED.md](README_ADVANCED.
 > auth or HTTPS. It defaults OFF with bind address `0.0.0.0` (all IPv4 interfaces). Restrict access
 > to trusted LAN devices using a firewall, or select loopback/a protected VPN/mTLS gateway;
 > never expose it publicly, and never give an app the physical radio's TCP endpoint. See the
-> [operator guide and release gate](docs/VIRTUAL_COMPANION.md).
+> [operator guide and release gate](docs/virtual-companion/VIRTUAL_COMPANION.md).
 
 ![Screenshot of the application's web interface](app_screenshot.png)
 
@@ -111,7 +111,7 @@ Source checkouts expect a normal frontend build in `frontend/dist`.
 > bash scripts/setup/install_service.sh
 > ```
 >
-> For the full service workflow and post-install operations, see [README_ADVANCED.md](README_ADVANCED.md).
+> For the full service workflow and post-install operations, see [docs/ADVANCED_SETUP.md](docs/ADVANCED_SETUP.md).
 
 ## Install Path 2: Docker
 
@@ -241,9 +241,11 @@ If you enable Basic Auth, protect the app with HTTPS. HTTP Basic credentials are
 
 ## Where To Go Next
 
-- Advanced setup, troubleshooting, HTTPS, systemd, remediation variables, and debug logging: [README_ADVANCED.md](README_ADVANCED.md)
-- Home Assistant-specific guidance and entity/sensor naming schemes: [README_HA.md](README_HA.md)
-- Virtual Companion setup, security, API, deployment, support matrix, and controlled stacked rollout: [docs/VIRTUAL_COMPANION.md](docs/VIRTUAL_COMPANION.md)
+See the [documentation index](docs/README.md) for all guides and technical references.
+
+- Advanced setup, troubleshooting, HTTPS, systemd, remediation variables, and debug logging: [docs/ADVANCED_SETUP.md](docs/ADVANCED_SETUP.md)
+- Home Assistant-specific guidance and entity/sensor naming schemes: [docs/HOME_ASSISTANT.md](docs/HOME_ASSISTANT.md)
+- Virtual Companion setup, security, API, deployment, support matrix, and controlled stacked rollout: [docs/virtual-companion/VIRTUAL_COMPANION.md](docs/virtual-companion/VIRTUAL_COMPANION.md)
 - Contributing, tests, linting, E2E notes, and important AGENTS files: [CONTRIBUTING.md](CONTRIBUTING.md)
 - Live API docs after the backend is running: http://localhost:8000/docs
 
@@ -260,10 +262,10 @@ Startup and reconnect now run as bounded, visible single-worker lifecycle jobs.
 contact and channel data without exporting keys, writing radio settings,
 draining messages, sending RF or clearing/offloading slots. Every sensitive or
 state-changing maintenance stage requires its own opt-in. See
-[`RADIO_STARTUP_LIFECYCLE.md`](RADIO_STARTUP_LIFECYCLE.md) for the stage matrix,
+[`docs/radio/RADIO_STARTUP_LIFECYCLE.md`](docs/radio/RADIO_STARTUP_LIFECYCLE.md) for the stage matrix,
 configuration migration, readiness and rollback.
 
 For a first controlled Companion connection and non-destructive startup, follow
-[`HARDWARE_SMOKE_TEST.md`](HARDWARE_SMOKE_TEST.md). This includes the
+[`docs/radio/HARDWARE_SMOKE_TEST.md`](docs/radio/HARDWARE_SMOKE_TEST.md). This includes the
 non-destructive full baseline, the clock-reboot opt-in and explicit limits on
 what may be tested without sending RF.

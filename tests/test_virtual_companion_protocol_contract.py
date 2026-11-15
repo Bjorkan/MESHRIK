@@ -16,7 +16,7 @@ CONTRACT = json.loads(
     (ROOT / "tests/fixtures/virtual_companion_protocol_s01.json").read_text(encoding="utf-8")
 )
 BY_NAME = {sample["name"]: sample for sample in CONTRACT["examples"]}
-DOC = (ROOT / "docs/VIRTUAL_COMPANION_PROTOCOL.md").read_text(encoding="utf-8")
+DOC = (ROOT / "docs/virtual-companion/VIRTUAL_COMPANION_PROTOCOL.md").read_text(encoding="utf-8")
 
 # Independently pinned from firmware's MyMesh.cpp CMD_* declarations. IDs 44–49
 # and 53 are not assigned in this source; new opcodes must be reviewed first.

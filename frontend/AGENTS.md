@@ -52,7 +52,4 @@ npm run build
 ```
 
 For major cross-layer changes run the root quality gate. `packaged-build`
-is release-only, not the normal build. The
-[detailed frontend reference](../docs/agent-guides/frontend-reference.md)
-contains prior architecture/routing/component/test notes: read only relevant
-sections if necessary, not the entire file by default.
+is release-only, not the normal build.

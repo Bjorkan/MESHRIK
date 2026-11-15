@@ -29,7 +29,6 @@ not all guides at startup.
 | React frontend | [frontend/AGENTS.md](frontend/AGENTS.md) | `cd frontend && npm run test:run` |
 | Backend tests | [tests/AGENTS.md](tests/AGENTS.md) | focused `pytest` |
 | Build, setup, release | [scripts/AGENTS.md](scripts/AGENTS.md) | validate side effects |
-| Deep technical history | [Reference index](docs/agent-guides/README.md) | read on demand only |
 
 Backend startup: `uv sync && uv run uvicorn app.main:app --reload`.
 Frontend development: `cd frontend && npm ci && npm run dev`.
@@ -54,7 +53,6 @@ Production FastAPI serves the built frontend; API routes use `/api`.
 ## Maintaining this guidance
 
 Place domain rules at the nearest directory that **owns the invariant**;
-avoid repeating parent guidance. Keep root instructions short. Detailed
-historic notes are preserved in [docs/agent-guides](docs/agent-guides/README.md)
-for selective reading, not eager context loading. When behavior changes,
-update the relevant scoped guide and reconcile affected long-form references.
+avoid repeating parent guidance. Keep root instructions short. Use Git history
+for superseded guidance. When behavior changes, update the relevant scoped
+guide and affected technical documentation.

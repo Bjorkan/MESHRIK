@@ -30,6 +30,5 @@ Consult deeper guides when editing [routers](routers/AGENTS.md),
   diagnostics, errors or logs. Respect generation fences after disconnects.
 - Run focused backend tests: `PYTHONPATH=. uv run pytest tests/ -v`;
   see [test guidance](../tests/AGENTS.md).
-- The [detailed backend reference](../docs/agent-guides/backend-reference.md)
-  preserves protocol, endpoint, scheduler and test rationale; open only
-  sections relevant to the task. Code/tests are authoritative.
+- For startup and scheduler details, see [radio lifecycle](../docs/radio/RADIO_STARTUP_LIFECYCLE.md)
+  and [scheduler API](../docs/radio/RADIO_JOB_SCHEDULER.md). Code/tests are authoritative.

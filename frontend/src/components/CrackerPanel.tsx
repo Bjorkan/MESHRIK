@@ -669,8 +669,8 @@ export function CrackerPanel({
               <ul className="list-disc ml-4 mt-1 space-y-0.5">
                 <li>
                   <Trans>
-                    Set up a TLS certificate (see the HTTPS section of README_ADVANCED.md, or re-run
-                    the Docker setup script which can generate one automatically)
+                    Set up a TLS certificate (see the HTTPS section of docs/ADVANCED_SETUP.md, or
+                    re-run the Docker setup script which can generate one automatically)
                   </Trans>
                 </li>
                 <li>

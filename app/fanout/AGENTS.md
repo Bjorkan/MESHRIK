@@ -4,7 +4,7 @@ Inherits [app/AGENTS.md](../AGENTS.md). This area owns MQTT,
 Home Assistant MQTT discovery, community feeds, Python bots,
 webhooks, Apprise, SQS and map upload.
 
-The existing [full fanout architecture notes](AGENTS_fanout.md)
+The existing [full fanout architecture notes](../../docs/architecture/FANOUT.md)
 contain module-specific detail. Read them **when changing fanout**,
 not during unrelated API or frontend work. This short file makes
 the local scope automatically discoverable without eagerly

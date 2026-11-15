@@ -45,7 +45,7 @@ Hardware-only verification is still required for real repeater/room responses, C
 
 ## Worker-owned startup and hardware preflight
 
-See `RADIO_STARTUP_LIFECYCLE.md` for the lifecycle stages, readiness barrier,
+See `docs/radio/RADIO_STARTUP_LIFECYCLE.md` for the lifecycle stages, readiness barrier,
 reconnect fencing, all explicit maintenance permissions and rollback. `full`
 is the only supported startup policy. Its baseline reads radio/device/contact/
 channel data without device writes or startup RF and merely permits
@@ -55,7 +55,7 @@ visible single-worker lifecycle jobs;
 ordinary user commands are gated until initialization settles. The underlying
 lock is still the final transport guard, not a bypass.
 
-Read `HARDWARE_SMOKE_TEST.md` before connecting a real device. Automatic reboot
+Read `docs/radio/HARDWARE_SMOKE_TEST.md` before connecting a real device. Automatic reboot
 on failed clock sync requires `MESHCORE_AUTO_REBOOT_ON_CLOCK_SKEW=true`.
 Login reply deadlines are independent from worker command/queue deadlines;
 `MESHCORE_LOGIN_RESPONSE_TIMEOUT_SECONDS` defaults to 5 seconds (range 1–60).

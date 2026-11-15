@@ -2,7 +2,7 @@
 
 Inherits [frontend/AGENTS.md](../../../AGENTS.md).
 
-Read the detailed [packet visualizer architecture guide](AGENTS_packet_visualizer.md)
+Read the detailed [packet visualizer architecture guide](../../../../docs/architecture/PACKET_VISUALIZER.md)
 **for work in this directory**, not for unrelated frontend tasks.
 This new scoped file makes the specialized reference discoverable.
 

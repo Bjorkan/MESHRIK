@@ -18,5 +18,4 @@ request/response boundaries, not parallel workflow owners.
   logic: only a timed-out non-flood directed login may escalate
   to one flood retry; explicit `LOGIN_FAILED` must not.
 - Update focused router tests and regenerated OpenAPI contracts
-  when altering endpoint behavior. Deeper historical endpoint
-  inventory: [backend reference](../../docs/agent-guides/backend-reference.md).
+  when altering endpoint behavior.
