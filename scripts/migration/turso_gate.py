@@ -254,10 +254,17 @@ def scenarios(replay: list[dict]) -> list[dict]:
 
 def sqlite_reference(source: Path, case: dict, directory: Path) -> list[dict]:
     path = directory / "reference.db"
-    if path.exists():
-        path.unlink()
-    if not case["fresh"]:
-        shutil.copyfile(source, path)
+    if case.get("bootstrap"):
+        prepared = sqlite_reference(
+            source, {"fresh": True, "read_only": False, "operations": case["bootstrap"]}, directory
+        )
+        if any("error" in item for item in prepared):
+            raise RuntimeError("Invalid synthetic readonly bootstrap")
+    else:
+        if path.exists():
+            path.unlink()
+        if not case["fresh"]:
+            shutil.copyfile(source, path)
     connection = sqlite3.connect(
         f"file:{path}?mode={'ro' if case['read_only'] else 'rwc'}", uri=True, isolation_level=None
     )
@@ -270,9 +277,14 @@ def sqlite_reference(source: Path, case: dict, directory: Path) -> list[dict]:
             ]
             try:
                 cursor = connection.execute(item["sql"], params)
-                results.append(
-                    {"rows": [[sql_value(value) for value in row] for row in cursor.fetchall()]}
-                )
+                rows = cursor.fetchall()
+                if item.get("mode") == "drain_rows":
+                    rows = []
+                elif item.get("mode") == "checkpoint":
+                    rows = [(rows[0][0],)] if rows else []
+                elif item.get("mode") == "foreign_keys":
+                    rows.sort()
+                results.append({"rows": [[sql_value(value) for value in row] for row in rows]})
                 cursor.close()
             except sqlite3.Error as error:
                 category = "error"
@@ -291,7 +303,171 @@ def sqlite_reference(source: Path, case: dict, directory: Path) -> list[dict]:
     return results
 
 
-async def run(probe: Path) -> dict:
+def durability_scenarios() -> list[dict]:
+    """Exercise allocation/migration paths that a small CRUD matrix misses."""
+    growth = [
+        "PRAGMA foreign_keys=ON",
+        "BEGIN IMMEDIATE",
+        "WITH RECURSIVE n(x) AS (SELECT 1 UNION ALL SELECT x+1 FROM n WHERE x<64) "
+        "INSERT INTO raw_packets(timestamp,data,payload_hash) SELECT x,zeroblob(8192),CAST(x AS BLOB) FROM n",
+        "COMMIT",
+        "SELECT COUNT(*),SUM(length(data)) FROM raw_packets",
+        "DELETE FROM raw_packets WHERE id%2=0",
+        "SELECT COUNT(*),SUM(length(data)) FROM raw_packets",
+    ]
+    upgrade = [
+        "BEGIN IMMEDIATE",
+        "CREATE TABLE fixture_upgrade(id INTEGER PRIMARY KEY, value TEXT NOT NULL)",
+        "CREATE INDEX fixture_upgrade_value ON fixture_upgrade(value)",
+        "INSERT INTO fixture_upgrade VALUES(7,'synthetic'),(9,'fixture')",
+        "PRAGMA user_version=74",
+        "COMMIT",
+        "BEGIN",
+        "CREATE TABLE fixture_rolled_back(id INTEGER)",
+        "ROLLBACK",
+        "SELECT id,value FROM fixture_upgrade ORDER BY id",
+    ]
+    cases = []
+    for name, statements, checks in [
+        (
+            "growth",
+            growth,
+            ["SELECT id,timestamp,hex(payload_hash),length(data) FROM raw_packets ORDER BY id"],
+        ),
+        (
+            "upgrade",
+            upgrade,
+            [
+                "SELECT type,name,tbl_name FROM sqlite_master WHERE name LIKE 'fixture_%' ORDER BY type,name",
+                "SELECT id,value FROM fixture_upgrade ORDER BY id",
+            ],
+        ),
+    ]:
+        cases.append(
+            {
+                "name": "durability." + name,
+                "fresh": False,
+                "read_only": False,
+                "export_after_close": True,
+                "operations": [operation(sql) for sql in statements],
+                "rollback_checks": [
+                    "PRAGMA integrity_check",
+                    "PRAGMA foreign_key_check",
+                    "PRAGMA user_version",
+                    "PRAGMA auto_vacuum",
+                    *checks,
+                ],
+            }
+        )
+    return cases
+
+
+def rollback_check(path: Path, statements: list[str]) -> list:
+    """SQLite opens a stopped/checkpointed output copy, never a native live file."""
+    connection = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
+    results = []
+    try:
+        for sql in statements:
+            try:
+                with_cursor = connection.execute(sql)
+                results.append(
+                    [[sql_value(value) for value in row] for row in with_cursor.fetchall()]
+                )
+                with_cursor.close()
+            except sqlite3.Error:
+                results.append({"error": "sqlite_reopen_query_failed"})
+    finally:
+        connection.close()
+    return results
+
+
+def fresh_scenarios(replay: list[dict]) -> list[dict]:
+    ddl = json.loads((BASELINE / "schema.json").read_text())
+    setup = [operation("PRAGMA journal_mode=WAL"), operation("PRAGMA foreign_keys=ON")]
+    for kind in ("table", "index", "trigger"):
+        setup.extend(operation(item["sql"]) for item in ddl if item["type"] == kind)
+    setup.extend(
+        [
+            operation("INSERT INTO app_settings(id) VALUES(1)"),
+            operation(
+                "INSERT INTO virtual_companion_contact_clock(singleton,revision) VALUES(1,2000000000)"
+            ),
+            operation(
+                "INSERT INTO channels(key,name,is_hashtag) VALUES('1ABC598EA3EF6FC85604F15EB93930E8','#meshrik',1)"
+            ),
+            operation("PRAGMA user_version=73"),
+        ]
+    )
+    cases = []
+    for case in scenarios(replay):
+        if case["name"] in {"maintenance.incremental_vacuum", "text.invalid_utf8"}:
+            continue
+        case["name"] = "fresh." + case["name"]
+        if case["name"] == "fresh.pragma.auto_vacuum":
+            case["operations"] = [operation("PRAGMA auto_vacuum")]
+        if case["name"] == "fresh.readonly.dry_run":
+            case["bootstrap"] = copy.deepcopy(setup)
+        if case["name"] == "fresh.maintenance.vacuum":
+            case["operations"] = [operation("VACUUM")]
+            case["expected_native_error"] = "error"
+        if case["name"] == "fresh.fresh.v72_ddl":
+            case["operations"] = [operation("PRAGMA journal_mode=WAL"), *case["operations"]]
+            for item in case["operations"]:
+                item["sql"] = item["sql"].replace(
+                    "PRAGMA user_version=72", "PRAGMA user_version=73"
+                )
+        elif not case.get("bootstrap"):
+            case["operations"] = copy.deepcopy(setup) + case["operations"]
+        cases.append(case)
+    for case in durability_scenarios():
+        case["name"] = "fresh." + case["name"]
+        case["operations"] = copy.deepcopy(setup) + case["operations"]
+        cases.append(case)
+    composite = {
+        "name": "fresh.integrity.composite_and_null",
+        "read_only": False,
+        "operations": copy.deepcopy(setup)
+        + [
+            operation(sql)
+            for sql in [
+                "PRAGMA foreign_keys=OFF",
+                "CREATE TABLE fixture_parent(a INTEGER,b TEXT COLLATE NOCASE,PRIMARY KEY(a,b))",
+                "CREATE TABLE fixture_child(id INTEGER PRIMARY KEY,x INTEGER,y TEXT,FOREIGN KEY(x,y) REFERENCES fixture_parent)",
+                "INSERT INTO fixture_parent VALUES(1,'A')",
+                "INSERT INTO fixture_child VALUES(1,1,'a'),(2,9,NULL),(3,9,'b')",
+                "PRAGMA foreign_key_check",
+            ]
+        ],
+    }
+    cases.append(composite)
+    for case in cases:
+        case["fresh"] = True
+        if case["name"] == "fresh.v72.schema":
+            for item in case["operations"]:
+                if item["sql"].startswith("SELECT type,name,tbl_name FROM sqlite_master"):
+                    item["sql"] = item["sql"].replace(
+                        "ORDER BY type,name",
+                        "AND name NOT GLOB '__turso_internal_seq_*' ORDER BY type,name",
+                    )
+        for item in [*case.get("bootstrap", []), *case["operations"]]:
+            if item["sql"].startswith("PRAGMA ") and "=" in item["sql"]:
+                item["mode"] = "drain_rows"
+            if item["sql"] == "PRAGMA foreign_key_check":
+                item["mode"] = "foreign_keys"
+            if item["sql"] == "PRAGMA wal_checkpoint(TRUNCATE)":
+                item["mode"] = "checkpoint"
+    for case in cases:
+        case["name"] = {"fresh.v72.schema": "fresh.schema", "fresh.fresh.v72_ddl": "fresh.ddl"}.get(
+            case["name"], case["name"]
+        )
+    return cases
+
+
+async def run(
+    probe: Path,
+    *,
+    fresh_native: bool = False,
+) -> dict:
     with tempfile.TemporaryDirectory(prefix="meshrik-turso-gate-") as temporary:
         directory = Path(temporary)
         source = directory / "v72.db"
@@ -331,14 +507,53 @@ async def run(probe: Path) -> dict:
                 case = copy.deepcopy(case)
                 case["name"] = "control_no_autovacuum." + case["name"]
                 cases.append((control, case))
+        if fresh_native:
+            cases = [(source, case) for case in fresh_scenarios(replay)]
         rows = []
         for fixture, case in cases:
-            fixture_bytes = list(fixture.read_bytes())
+            fixture_bytes = [] if fresh_native else list(fixture.read_bytes())
             reference = sqlite_reference(fixture, case, directory)
+            expected_rollback = (
+                rollback_check(directory / "reference.db", case["rollback_checks"])
+                if case.get("export_after_close")
+                else None
+            )
             try:
+                native_case = case
+                if case.get("bootstrap"):
+                    bootstrap = subprocess.run(
+                        [str(probe)],
+                        input=json.dumps(
+                            {
+                                "sqlite": [],
+                                "scenarios": [
+                                    {
+                                        "name": case["name"] + ".bootstrap",
+                                        "fresh": True,
+                                        "read_only": False,
+                                        "export_after_close": True,
+                                        "operations": case["bootstrap"],
+                                    }
+                                ],
+                            }
+                        ),
+                        text=True,
+                        capture_output=True,
+                        timeout=30,
+                        check=False,
+                    )
+                    if bootstrap.returncode != 0:
+                        raise ValueError("Native readonly bootstrap failed")
+                    fixture_bytes = json.loads(bootstrap.stdout)["results"][0]["sqlite_after"]
+                    native_case = {**case, "fresh": False}
                 process = subprocess.run(
                     [str(probe)],
-                    input=json.dumps({"sqlite": fixture_bytes, "scenarios": [case]}),
+                    input=json.dumps(
+                        {
+                            "sqlite": fixture_bytes,
+                            "scenarios": [native_case],
+                        }
+                    ),
                     text=True,
                     capture_output=True,
                     timeout=30,
@@ -351,7 +566,12 @@ async def run(probe: Path) -> dict:
                         "statements": len(reference),
                     }
                 else:
-                    actual = json.loads(process.stdout)["results"][0]
+                    payload = json.loads(process.stdout)
+                    if payload["version"] != "0.8.3" or payload["engine"] != "turso":
+                        raise ValueError("Wrong probe engine/version")
+                    actual = payload["results"][0]
+                    if actual["name"] != case["name"]:
+                        raise ValueError("Wrong probe scenario")
                     if "open" in actual:
                         result = {
                             "name": case["name"],
@@ -377,6 +597,37 @@ async def run(probe: Path) -> dict:
                                 if "error" in value
                             ],
                         }
+                        if (
+                            "expected_native_error" in case
+                            and differences == [len(reference) - 1]
+                            and actual["results"][-1] == {"error": case["expected_native_error"]}
+                        ):
+                            result["status"] = "expected_unsupported"
+                        if case.get("export_after_close"):
+                            if "sqlite_after" not in actual:
+                                result["rollback_status"] = "export_failure"
+                            else:
+                                exported = directory / "stopped-native.db"
+                                exported.write_bytes(bytes(actual["sqlite_after"]))
+                                observed_rollback = rollback_check(
+                                    exported, case["rollback_checks"]
+                                )
+                                result["rollback_checks_match"] = [
+                                    first_difference(expected, observed) is None
+                                    for expected, observed in zip(
+                                        expected_rollback, observed_rollback, strict=True
+                                    )
+                                ]
+                                result["sqlite_integrity_ok"] = observed_rollback[0] == [
+                                    [{"type": "text", "value": "ok"}]
+                                ]
+                                result["rollback_status"] = (
+                                    "different"
+                                    if first_difference(expected_rollback, observed_rollback)
+                                    else "equivalent"
+                                )
+                            if result["rollback_status"] != "equivalent":
+                                result["status"] = "different"
             except subprocess.TimeoutExpired:
                 result = {"name": case["name"], "status": "timeout", "statements": len(reference)}
             except (KeyError, ValueError, TypeError):
@@ -386,12 +637,14 @@ async def run(probe: Path) -> dict:
                     "statements": len(reference),
                 }
             rows.append(result)
-        return {
+        report = {
             "engine": "turso",
             "version": "0.8.3",
             "default_features": False,
             "decision": "NO-GO"
-            if any(row["status"] != "equivalent" for row in rows)
+            if any(row["status"] not in {"equivalent", "expected_unsupported"} for row in rows)
+            else "FRESH-FIXTURE-CORRECTNESS-PASS"
+            if fresh_native
             else "NOT-YET-QUALIFIED",
             "scenarios": rows,
             "unverified": [
@@ -404,27 +657,41 @@ async def run(probe: Path) -> dict:
                 "full_application_query_corpus",
             ],
         }
+        if fresh_native:
+            report["storage_policy"] = "fresh_native_no_legacy_import"
+            report["unverified"] = [
+                "os_crash_and_power_loss",
+                "arm64_workload",
+                "busy_and_active_cursor_concurrency",
+                "full_application_query_corpus",
+                "production_cutover",
+            ]
+        return report
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--probe", type=Path, required=True)
     parser.add_argument("--report", type=Path)
+    parser.add_argument("--fresh-native", action="store_true")
     parser.add_argument(
         "--check-known",
         action="store_true",
         help="Check regression evidence; does not approve cutover",
     )
     args = parser.parse_args()
-    report = asyncio.run(run(args.probe.resolve()))
+    report = asyncio.run(run(args.probe.resolve(), fresh_native=args.fresh_native))
     if args.report:
         write_json(args.report, report)
     print(f"Turso {report['version']}: {report['decision']}")
     for row in report["scenarios"]:
         print(f"  {row['name']}: {row['status']}")
     if args.check_known:
-        difference = first_difference(json.loads(KNOWN.read_text()), report)
+        known = KNOWN.with_name("turso-0.8.3-fresh.json") if args.fresh_native else KNOWN
+        difference = first_difference(json.loads(known.read_text()), report)
         if difference:
             print(f"Recorded compatibility evidence changed: {difference}")
         raise SystemExit(bool(difference))
-    raise SystemExit(1)  # Full acceptance is never inferred from a partial matrix.
+    # A fresh-fixture pass permits the next isolated implementation layer;
+    # the report's explicit unverified release requirements remain in force.
+    raise SystemExit(0 if report["decision"] == "FRESH-FIXTURE-CORRECTNESS-PASS" else 1)

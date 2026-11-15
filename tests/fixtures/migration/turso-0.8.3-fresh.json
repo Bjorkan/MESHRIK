@@ -1,0 +1,225 @@
+{
+  "decision": "FRESH-FIXTURE-CORRECTNESS-PASS",
+  "default_features": false,
+  "engine": "turso",
+  "scenarios": [
+    {
+      "different_operations": [],
+      "name": "fresh.schema",
+      "native_errors": [],
+      "statements": 51,
+      "status": "equivalent"
+    },
+    {
+      "different_operations": [],
+      "name": "fresh.pragma.journal_mode",
+      "native_errors": [],
+      "statements": 50,
+      "status": "equivalent"
+    },
+    {
+      "different_operations": [],
+      "name": "fresh.pragma.synchronous",
+      "native_errors": [],
+      "statements": 50,
+      "status": "equivalent"
+    },
+    {
+      "different_operations": [],
+      "name": "fresh.pragma.busy_timeout",
+      "native_errors": [],
+      "statements": 50,
+      "status": "equivalent"
+    },
+    {
+      "different_operations": [],
+      "name": "fresh.pragma.cache_size",
+      "native_errors": [],
+      "statements": 50,
+      "status": "equivalent"
+    },
+    {
+      "different_operations": [],
+      "name": "fresh.pragma.temp_store",
+      "native_errors": [],
+      "statements": 50,
+      "status": "equivalent"
+    },
+    {
+      "different_operations": [],
+      "name": "fresh.pragma.foreign_keys",
+      "native_errors": [],
+      "statements": 50,
+      "status": "equivalent"
+    },
+    {
+      "different_operations": [],
+      "name": "fresh.pragma.auto_vacuum",
+      "native_errors": [],
+      "statements": 49,
+      "status": "equivalent"
+    },
+    {
+      "different_operations": [
+        48
+      ],
+      "name": "fresh.maintenance.vacuum",
+      "native_errors": [
+        {
+          "category": "error",
+          "operation": 48
+        }
+      ],
+      "statements": 49,
+      "status": "expected_unsupported"
+    },
+    {
+      "different_operations": [],
+      "name": "fresh.maintenance.foreign_key_check",
+      "native_errors": [],
+      "statements": 51,
+      "status": "equivalent"
+    },
+    {
+      "different_operations": [],
+      "name": "fresh.wal.checkpoint",
+      "native_errors": [],
+      "statements": 50,
+      "status": "equivalent"
+    },
+    {
+      "different_operations": [],
+      "name": "fresh.readonly.dry_run",
+      "native_errors": [
+        {
+          "category": "readonly",
+          "operation": 1
+        }
+      ],
+      "statements": 2,
+      "status": "equivalent"
+    },
+    {
+      "different_operations": [],
+      "name": "fresh.ddl",
+      "native_errors": [],
+      "statements": 64,
+      "status": "equivalent"
+    },
+    {
+      "different_operations": [],
+      "name": "fresh.contacts.triggers_upsert_rollback_tombstone",
+      "native_errors": [],
+      "statements": 62,
+      "status": "equivalent"
+    },
+    {
+      "different_operations": [],
+      "name": "fresh.foreign_keys.cascade_and_enforcement",
+      "native_errors": [
+        {
+          "category": "constraint",
+          "operation": 51
+        }
+      ],
+      "statements": 54,
+      "status": "equivalent"
+    },
+    {
+      "different_operations": [],
+      "name": "fresh.foreign_keys.set_null_and_pending_ack_cascade",
+      "native_errors": [],
+      "statements": 55,
+      "status": "equivalent"
+    },
+    {
+      "different_operations": [],
+      "name": "fresh.transactions.ingress_send_recovery",
+      "native_errors": [],
+      "statements": 59,
+      "status": "equivalent"
+    },
+    {
+      "different_operations": [],
+      "name": "fresh.transactions.savepoint",
+      "native_errors": [],
+      "statements": 55,
+      "status": "equivalent"
+    },
+    {
+      "different_operations": [],
+      "name": "fresh.queries.window_json_blob",
+      "native_errors": [],
+      "statements": 52,
+      "status": "equivalent"
+    },
+    {
+      "different_operations": [],
+      "name": "fresh.indexes.partial_expression",
+      "native_errors": [
+        {
+          "category": "constraint",
+          "operation": 49
+        }
+      ],
+      "statements": 52,
+      "status": "equivalent"
+    },
+    {
+      "different_operations": [],
+      "name": "fresh.repository.actual_sql_replay",
+      "native_errors": [],
+      "statements": 102,
+      "status": "equivalent"
+    },
+    {
+      "different_operations": [],
+      "name": "fresh.durability.growth",
+      "native_errors": [],
+      "rollback_checks_match": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "rollback_status": "equivalent",
+      "sqlite_integrity_ok": true,
+      "statements": 55,
+      "status": "equivalent"
+    },
+    {
+      "different_operations": [],
+      "name": "fresh.durability.upgrade",
+      "native_errors": [],
+      "rollback_checks_match": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "rollback_status": "equivalent",
+      "sqlite_integrity_ok": true,
+      "statements": 58,
+      "status": "equivalent"
+    },
+    {
+      "different_operations": [],
+      "name": "fresh.integrity.composite_and_null",
+      "native_errors": [],
+      "statements": 54,
+      "status": "equivalent"
+    }
+  ],
+  "storage_policy": "fresh_native_no_legacy_import",
+  "unverified": [
+    "os_crash_and_power_loss",
+    "arm64_workload",
+    "busy_and_active_cursor_concurrency",
+    "full_application_query_corpus",
+    "production_cutover"
+  ],
+  "version": "0.8.3"
+}

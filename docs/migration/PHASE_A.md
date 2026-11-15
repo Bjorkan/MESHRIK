@@ -13,7 +13,7 @@ Create and validate each PR before starting its successor, with the bottom on
 1. #276 frozen Python contracts and hardware-free oracle.
 2. #277 isolated Rust service foundation.
 3. #296 pinned native Turso feasibility probe (blocking storage gate).
-4. #278 production storage adapter, only after the gate passes.
+4. #278 fresh native storage initialization and legacy discard, after the fresh-storage gate.
 5. #279 contacts/channels/settings/fanout repositories.
 6. #280 messages/packets/cursors/stats/push repositories.
 
@@ -23,9 +23,12 @@ Do not merge or enable the migration on the basis of partial fixture coverage.
 Current stack: [A01 / #303](https://github.com/Bjorkan/MESHRIK/pull/303) →
 [A02 / #304](https://github.com/Bjorkan/MESHRIK/pull/304) → A03 / #296 evidence.
 The native GitHub stack is #305.
-The [Turso feasibility result](TURSO_FEASIBILITY.md) is **NO-GO** on pinned
-0.8.3: normal mode-2 v72 files become read-only. A04–A06 are blocked, not
-implemented as placeholder repositories or considered complete.
+The [storage-reset decision](STORAGE_RESET_DECISION.md), explicitly requested
+by the maintainer on 2026-11-15 and recorded in every migration issue, permits
+discarding legacy SQLite without backup or import. The historical legacy-file
+NO-GO no longer blocks a fresh `auto_vacuum=NONE` database. See the
+[fresh-native qualification](TURSO_FEASIBILITY.md) before the storage/repository
+layers. The HTTP backend remains fixture-only until its later release gates.
 
 ## Rust foundation (Linux fixture mode)
 
