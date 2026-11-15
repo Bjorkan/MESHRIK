@@ -19,7 +19,7 @@ impl Drop for Server {
 }
 
 #[test]
-fn binary_starts_stops_and_does_not_create_a_database() {
+fn binary_starts_stops_with_owned_native_fixture_storage() {
     let directory = tempfile::tempdir().unwrap();
     let reservation = TcpListener::bind("127.0.0.1:0").unwrap();
     let address = reservation.local_addr().unwrap();
@@ -56,6 +56,7 @@ fn binary_starts_stops_and_does_not_create_a_database() {
     let mut response = String::new();
     connection.read_to_string(&mut response).unwrap();
     assert!(response.starts_with("HTTP/1.1 503"));
+    assert!(response.contains("\"database_open\":true"));
     drop(connection);
     let database = directory.path().join("fixture.db");
     assert!(ProcessLease::acquire(&database).is_err());
@@ -76,7 +77,7 @@ fn binary_starts_stops_and_does_not_create_a_database() {
         thread::sleep(Duration::from_millis(10));
     }
     assert!(ProcessLease::acquire(&database).is_ok());
-    assert!(!database.exists());
+    assert!(database.exists());
 }
 
 #[test]

@@ -76,7 +76,7 @@ fn lease_is_compatible_with_python_flock() {
 async fn health_is_explicitly_unready_and_api_is_not_a_spa() {
     let directory = TempDir::new().unwrap();
     fs::write(directory.path().join("index.html"), "<head></head>fixture").unwrap();
-    let app = router(Config::parse(&environment(&directory)).unwrap());
+    let app = router(Config::parse(&environment(&directory)).unwrap(), None);
     let response = app
         .clone()
         .oneshot(Request::get("/api/health").body(Body::empty()).unwrap())
@@ -106,7 +106,7 @@ async fn auth_covers_http_ws_docs_and_static() {
     let mut env = environment(&directory);
     env.insert("MESHCORE_BASIC_AUTH_USERNAME".into(), "fixture".into());
     env.insert("MESHCORE_BASIC_AUTH_PASSWORD".into(), "synthetic".into());
-    let app = router(Config::parse(&env).unwrap());
+    let app = router(Config::parse(&env).unwrap(), None);
     for path in [
         "/api/health",
         "/api/ws",
@@ -160,7 +160,7 @@ async fn static_spa_and_ingress_have_correct_base_and_cache() {
     fs::create_dir(directory.path().join("assets")).unwrap();
     fs::write(directory.path().join("assets/a.js"), "fixture").unwrap();
     fs::write(directory.path().join("sw.js"), "fixture-worker").unwrap();
-    let app = router(Config::parse(&environment(&directory)).unwrap());
+    let app = router(Config::parse(&environment(&directory)).unwrap(), None);
     for path in ["/", "/index.html", "/channels/fixture"] {
         let response = app
             .clone()
@@ -205,7 +205,7 @@ async fn static_spa_and_ingress_have_correct_base_and_cache() {
 #[tokio::test]
 async fn manifest_uses_proxy_origin_and_ingress_scope() {
     let directory = TempDir::new().unwrap();
-    let app = router(Config::parse(&environment(&directory)).unwrap());
+    let app = router(Config::parse(&environment(&directory)).unwrap(), None);
     let response = app
         .oneshot(
             Request::get("/site.webmanifest")
@@ -238,7 +238,7 @@ async fn invalid_ingress_is_not_reflected_and_large_responses_are_gzipped() {
         format!("<head></head>{}", "fixture".repeat(200)),
     )
     .unwrap();
-    let app = router(Config::parse(&environment(&directory)).unwrap());
+    let app = router(Config::parse(&environment(&directory)).unwrap(), None);
     let response = app
         .clone()
         .oneshot(
@@ -272,7 +272,7 @@ async fn static_symlinks_cannot_escape_the_frontend_directory() {
     let outside = TempDir::new().unwrap();
     fs::write(outside.path().join("fixture.txt"), "outside-fixture").unwrap();
     std::os::unix::fs::symlink(outside.path(), directory.path().join("escape")).unwrap();
-    let app = router(Config::parse(&environment(&directory)).unwrap());
+    let app = router(Config::parse(&environment(&directory)).unwrap(), None);
     for path in ["/escape/fixture.txt", "/escape%2Ffixture.txt"] {
         let response = app
             .clone()
@@ -289,7 +289,7 @@ async fn cors_preflight_precedes_auth_and_preserves_trusted_network_policy() {
     let mut env = environment(&directory);
     env.insert("MESHCORE_BASIC_AUTH_USERNAME".into(), "fixture".into());
     env.insert("MESHCORE_BASIC_AUTH_PASSWORD".into(), "synthetic".into());
-    let app = router(Config::parse(&env).unwrap());
+    let app = router(Config::parse(&env).unwrap(), None);
     let response = app
         .clone()
         .oneshot(

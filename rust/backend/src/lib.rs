@@ -1,5 +1,6 @@
 pub mod config;
 pub mod lifecycle;
+pub mod storage;
 
 use axum::{
     Json, Router,
@@ -25,14 +26,16 @@ use uuid::Uuid;
 struct AppState {
     frontend_dir: PathBuf,
     basic_auth: Option<(String, String)>,
+    storage: Option<Arc<storage::Storage>>,
 }
 
-pub fn router(config: Config) -> Router {
+pub fn router(config: Config, storage: Option<Arc<storage::Storage>>) -> Router {
     let static_files = ServeDir::new(config.frontend_dir.clone());
     let assets = ServeDir::new(config.frontend_dir.join("assets"));
     let state = Arc::new(AppState {
         frontend_dir: config.frontend_dir,
         basic_auth: config.basic_auth,
+        storage,
     });
     Router::new()
         .route("/api/health", get(health))
@@ -56,11 +59,14 @@ pub fn router(config: Config) -> Router {
         .with_state(state)
 }
 
-async fn health() -> impl IntoResponse {
+async fn health(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     // Not a production readiness claim or a substitute for HealthResponse parity.
     (
         StatusCode::SERVICE_UNAVAILABLE,
-        Json(RuntimeStatus::default()),
+        Json(RuntimeStatus {
+            database_open: state.storage.is_some(),
+            ..RuntimeStatus::default()
+        }),
     )
 }
 
@@ -76,13 +82,13 @@ async fn openapi() -> impl IntoResponse {
     // remains in tests/fixtures; serving it here would falsely claim API parity.
     Json(json!({
         "openapi": "3.1.0", "info": {"title": "MESHRIK Rust fixture backend", "version": "0.1.0"},
-        "paths": {"/api/health": {"get": {"responses": {"503": {"description": "Fixture mode; no radio/database/integrations"}}}}}
+        "paths": {"/api/health": {"get": {"responses": {"503": {"description": "Fixture mode; native storage may be open; radio and integrations unavailable"}}}}}
     }))
 }
 
 async fn docs() -> Html<&'static str> {
     Html(
-        "<!doctype html><html><head><title>MESHRIK fixture API</title></head><body><h1>MESHRIK Rust fixture API</h1><p>Migration in progress. No radio or database is connected.</p><a href='/openapi.json'>OpenAPI JSON</a></body></html>",
+        "<!doctype html><html><head><title>MESHRIK fixture API</title></head><body><h1>MESHRIK Rust fixture API</h1><p>Migration in progress. Native storage is available in fixture mode. No radio or integrations are connected.</p><a href='/openapi.json'>OpenAPI JSON</a></body></html>",
     )
 }
 

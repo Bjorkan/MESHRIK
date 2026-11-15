@@ -38,18 +38,21 @@ MESHRIK_RUST_FIXTURE=1 MESHRIK_RUST_FIXTURE_DIR=/tmp/meshrik-rust-fixture \
 bash scripts/quality/rust.sh
 ```
 
-Requires Rust >=1.89 and a built frontend (`frontend/dist`, or explicit
+Use the pinned Rust toolchain and a built frontend (`frontend/dist`, or explicit
 `MESHRIK_RUST_FRONTEND_DIR`). The listener defaults to `127.0.0.1:8001`;
 `MESHRIK_RUST_LISTEN` accepts only loopback addresses. Fixture mode rejects any
-configured physical transport and never opens a database. It holds Python's
-`.radio-owner.lock` protocol against the disposable fixture DB path for its
-entire lifetime. SIGINT/SIGTERM gracefully stop HTTP before releasing the lease.
+configured physical transport. It initializes/reopens native storage only at
+the explicitly supplied fixture directory, under Python's `.radio-owner.lock`
+protocol for its entire lifetime. See [native storage](NATIVE_STORAGE.md) for
+the approved legacy discard boundary and native preservation/recovery rules.
+SIGINT/SIGTERM gracefully stop HTTP before releasing the lease.
 No installer, container, Python startup or production default selects Rust.
 
 Root/deep links, assets, service worker, PWA manifest, validated HA ingress base,
 Basic auth and CORS use the same public conventions. `/docs` and `/openapi.json`
 describe only the fixture health endpoint; `/api/health` returns 503 with
-explicit unavailable resources and other API/WS operations return 501. This is
+explicit unavailable resources (`database_open=true` when initialized) and
+other API/WS operations return 501. This is
 a bootable foundation, not a production frontend/API or integration readiness
 claim. #289/#290 own full REST/WS implementation and differential acceptance.
 
