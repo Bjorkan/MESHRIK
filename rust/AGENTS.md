@@ -5,7 +5,10 @@ cutover gate. Foundation code runs only with explicit fixture configuration;
 never add production radio or DB access by relaxing that check.
 
 - Native embedded `turso`, never libSQL/SQLx/rusqlite for production storage.
-  #296 must pass before implementing #278/#279/#280.
+  #296's fresh-native correctness gate precedes #278/#279/#280; remaining
+  production acceptance must stay explicit. The maintainer allows discarding
+  legacy SQLite without backup or import. Preserve initialized native Turso
+  databases on restart; classify/reset only under exclusive ownership.
 - Keep exact crate pins and Cargo.lock. Run `cargo fmt --check`,
   `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace`.
 - Hold the same `.radio-owner.lock` advisory lease as Python throughout resource
