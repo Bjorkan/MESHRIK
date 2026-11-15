@@ -1255,6 +1255,7 @@ dependencies = [
  "tower-http",
  "tracing",
  "tracing-subscriber",
+ "turso",
  "uuid",
 ]
 
@@ -1262,6 +1263,7 @@ dependencies = [
 name = "meshrik-turso-probe"
 version = "0.1.0"
 dependencies = [
+ "meshrik-backend",
  "serde",
  "serde_json",
  "tempfile",
