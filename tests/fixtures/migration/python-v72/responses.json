@@ -1,0 +1,112 @@
+[
+  {
+    "body": [],
+    "content_type": "application/json",
+    "method": "GET",
+    "path": "/api/contacts",
+    "status": 200
+  },
+  {
+    "body": [
+      {
+        "favorite": false,
+        "flood_scope_override": null,
+        "is_hashtag": true,
+        "key": "1ABC598EA3EF6FC85604F15EB93930E8",
+        "last_read_at": null,
+        "muted": false,
+        "name": "#meshrik",
+        "on_radio": false,
+        "path_hash_mode_override": null,
+        "radio_residency": "database_only"
+      }
+    ],
+    "content_type": "application/json",
+    "method": "GET",
+    "path": "/api/channels",
+    "status": 200
+  },
+  {
+    "body": [],
+    "content_type": "application/json",
+    "method": "GET",
+    "path": "/api/messages",
+    "status": 200
+  },
+  {
+    "body": {
+      "counts": {},
+      "first_unread_ids": {},
+      "last_message_times": {},
+      "last_read_ats": {},
+      "mentions": {}
+    },
+    "content_type": "application/json",
+    "method": "GET",
+    "path": "/api/read-state/unreads",
+    "status": 200
+  },
+  {
+    "body": {
+      "detail": [
+        {
+          "ctx": {
+            "ge": 1
+          },
+          "input": "0",
+          "loc": [
+            "query",
+            "limit"
+          ],
+          "msg": "Input should be greater than or equal to 1",
+          "type": "greater_than_equal"
+        }
+      ]
+    },
+    "content_type": "application/json",
+    "method": "GET",
+    "path": "/api/contacts?limit=0",
+    "status": 422
+  },
+  {
+    "body": {
+      "detail": [
+        {
+          "ctx": {
+            "le": 1000
+          },
+          "input": "1001",
+          "loc": [
+            "query",
+            "limit"
+          ],
+          "msg": "Input should be less than or equal to 1000",
+          "type": "less_than_equal"
+        }
+      ]
+    },
+    "content_type": "application/json",
+    "method": "GET",
+    "path": "/api/contacts?limit=1001",
+    "status": 422
+  },
+  {
+    "body": {
+      "detail": [
+        {
+          "input": "invalid",
+          "loc": [
+            "query",
+            "limit"
+          ],
+          "msg": "Input should be a valid integer, unable to parse string as an integer",
+          "type": "int_parsing"
+        }
+      ]
+    },
+    "content_type": "application/json",
+    "method": "GET",
+    "path": "/api/messages?limit=invalid",
+    "status": 422
+  }
+]

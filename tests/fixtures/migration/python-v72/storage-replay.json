@@ -1,0 +1,69 @@
+{
+  "created": [
+    1,
+    2,
+    3
+  ],
+  "packet_first": [
+    1,
+    true
+  ],
+  "packet_repeat": [
+    1,
+    false
+  ],
+  "recovery": {
+    "first": 1,
+    "second": 0,
+    "status": "unknown"
+  },
+  "room_fallback": {
+    "first": 5,
+    "second": null
+  },
+  "same_second_page": [
+    1,
+    3
+  ],
+  "searches": {
+    "%_": [
+      1
+    ],
+    "alpha": [
+      2,
+      1
+    ],
+    "channel:\"#fixture\"": [
+      2,
+      1,
+      3
+    ],
+    "historical": [
+      3
+    ],
+    "user:\"Fixture Peer\" alpha": [
+      2,
+      1
+    ]
+  },
+  "unreads": {
+    "counts": {
+      "channel-fixture-channel": 1,
+      "contact-fixture-room": 1
+    },
+    "first_unread_ids": {
+      "channel-fixture-channel": 2,
+      "contact-fixture-room": 5
+    },
+    "last_message_times": {
+      "channel-fixture-channel": 1000,
+      "contact-fixture-peer": 1000,
+      "contact-fixture-room": 1000
+    },
+    "last_read_ats": {
+      "channel-fixture-channel": 1000,
+      "contact-fixture-peer": null
+    },
+    "mentions": {}
+  }
+}

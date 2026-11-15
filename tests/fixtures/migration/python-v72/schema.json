@@ -1,0 +1,254 @@
+[
+  {
+    "name": "idx_contact_advert_paths_recent",
+    "sql": "CREATE INDEX idx_contact_advert_paths_recent ON contact_advert_paths(public_key, last_seen DESC)",
+    "tbl_name": "contact_advert_paths",
+    "type": "index"
+  },
+  {
+    "name": "idx_contact_name_history_key",
+    "sql": "CREATE INDEX idx_contact_name_history_key ON contact_name_history(public_key, last_seen DESC)",
+    "tbl_name": "contact_name_history",
+    "type": "index"
+  },
+  {
+    "name": "idx_contact_telemetry_pk_ts",
+    "sql": "CREATE INDEX idx_contact_telemetry_pk_ts\n                ON contact_telemetry_history(public_key, timestamp)\n            ",
+    "tbl_name": "contact_telemetry_history",
+    "type": "index"
+  },
+  {
+    "name": "idx_contacts_public_key_lower",
+    "sql": "CREATE INDEX idx_contacts_public_key_lower ON contacts(lower(public_key))",
+    "tbl_name": "contacts",
+    "type": "index"
+  },
+  {
+    "name": "idx_contacts_type_last_seen",
+    "sql": "CREATE INDEX idx_contacts_type_last_seen ON contacts(type, last_seen)",
+    "tbl_name": "contacts",
+    "type": "index"
+  },
+  {
+    "name": "idx_dm_ack_expiry",
+    "sql": "CREATE INDEX idx_dm_ack_expiry ON pending_dm_ack_correlations(expiry_at)",
+    "tbl_name": "pending_dm_ack_correlations",
+    "type": "index"
+  },
+  {
+    "name": "idx_fanout_virtual_companion_singleton",
+    "sql": "CREATE UNIQUE INDEX idx_fanout_virtual_companion_singleton\n    ON fanout_configs(type) WHERE type = 'virtual_companion_tcp'",
+    "tbl_name": "fanout_configs",
+    "type": "index"
+  },
+  {
+    "name": "idx_messages_content_fallback",
+    "sql": "CREATE INDEX idx_messages_content_fallback ON messages(type,conversation_key,sender_timestamp)",
+    "tbl_name": "messages",
+    "type": "index"
+  },
+  {
+    "name": "idx_messages_pagination",
+    "sql": "CREATE INDEX idx_messages_pagination ON messages(type, conversation_key, received_at DESC, id DESC)",
+    "tbl_name": "messages",
+    "type": "index"
+  },
+  {
+    "name": "idx_messages_received",
+    "sql": "CREATE INDEX idx_messages_received ON messages(received_at)",
+    "tbl_name": "messages",
+    "type": "index"
+  },
+  {
+    "name": "idx_messages_sender_key",
+    "sql": "CREATE INDEX idx_messages_sender_key ON messages(sender_key)",
+    "tbl_name": "messages",
+    "type": "index"
+  },
+  {
+    "name": "idx_messages_type_received_conversation",
+    "sql": "CREATE INDEX idx_messages_type_received_conversation\n                ON messages(type, received_at, conversation_key)\n                ",
+    "tbl_name": "messages",
+    "type": "index"
+  },
+  {
+    "name": "idx_messages_unread_covering",
+    "sql": "CREATE INDEX idx_messages_unread_covering ON messages(type, conversation_key, outgoing, received_at)",
+    "tbl_name": "messages",
+    "type": "index"
+  },
+  {
+    "name": "idx_messages_wire_identity",
+    "sql": "CREATE UNIQUE INDEX idx_messages_wire_identity ON messages(type,conversation_key,wire_packet_id) WHERE wire_packet_id IS NOT NULL",
+    "tbl_name": "messages",
+    "type": "index"
+  },
+  {
+    "name": "idx_pending_radio_ingress_status",
+    "sql": "CREATE INDEX idx_pending_radio_ingress_status\n    ON pending_radio_ingress(status, id)",
+    "tbl_name": "pending_radio_ingress",
+    "type": "index"
+  },
+  {
+    "name": "idx_raw_packets_message_id",
+    "sql": "CREATE INDEX idx_raw_packets_message_id ON raw_packets(message_id)",
+    "tbl_name": "raw_packets",
+    "type": "index"
+  },
+  {
+    "name": "idx_raw_packets_payload_hash",
+    "sql": "CREATE UNIQUE INDEX idx_raw_packets_payload_hash ON raw_packets(payload_hash)",
+    "tbl_name": "raw_packets",
+    "type": "index"
+  },
+  {
+    "name": "idx_raw_packets_timestamp",
+    "sql": "CREATE INDEX idx_raw_packets_timestamp ON raw_packets(timestamp)",
+    "tbl_name": "raw_packets",
+    "type": "index"
+  },
+  {
+    "name": "idx_repeater_telemetry_pk_ts",
+    "sql": "CREATE INDEX idx_repeater_telemetry_pk_ts\n            ON repeater_telemetry_history (public_key, timestamp)\n        ",
+    "tbl_name": "repeater_telemetry_history",
+    "type": "index"
+  },
+  {
+    "name": "idx_virtual_companion_channel_sends_created",
+    "sql": "CREATE INDEX idx_virtual_companion_channel_sends_created\n        ON virtual_companion_channel_sends(created_at)",
+    "tbl_name": "virtual_companion_channel_sends",
+    "type": "index"
+  },
+  {
+    "name": "idx_virtual_companion_contact_changes_revision",
+    "sql": "CREATE INDEX idx_virtual_companion_contact_changes_revision\n        ON virtual_companion_contact_changes(revision)",
+    "tbl_name": "virtual_companion_contact_changes",
+    "type": "index"
+  },
+  {
+    "name": "app_settings",
+    "sql": "CREATE TABLE app_settings (\n    id INTEGER PRIMARY KEY CHECK (id = 1),\n    max_radio_contacts INTEGER DEFAULT 200,\n    auto_decrypt_dm_on_advert INTEGER DEFAULT 1,\n    last_message_times TEXT DEFAULT '{}',\n    preferences_migrated INTEGER DEFAULT 0,\n    advert_interval INTEGER DEFAULT 0,\n    last_advert_time INTEGER DEFAULT 0,\n    flood_scope TEXT DEFAULT '',\n    blocked_keys TEXT DEFAULT '[]',\n    blocked_names TEXT DEFAULT '[]',\n    discovery_blocked_types TEXT DEFAULT '[]',\n    tracked_telemetry_repeaters TEXT DEFAULT '[]',\n    auto_resend_channel INTEGER DEFAULT 0,\n    telemetry_interval_hours INTEGER DEFAULT 8,\n    vapid_private_key TEXT DEFAULT '',\n    vapid_public_key TEXT DEFAULT '',\n    push_conversations TEXT DEFAULT '[]'\n, telemetry_routed_hourly INTEGER DEFAULT 0, tracked_telemetry_contacts TEXT DEFAULT '[]', known_regions TEXT)",
+    "tbl_name": "app_settings",
+    "type": "table"
+  },
+  {
+    "name": "channels",
+    "sql": "CREATE TABLE channels (\n    key TEXT PRIMARY KEY,\n    name TEXT NOT NULL,\n    is_hashtag INTEGER DEFAULT 0,\n    on_radio INTEGER DEFAULT 0,\n    flood_scope_override TEXT,\n    path_hash_mode_override INTEGER,\n    last_read_at INTEGER,\n    last_read_message_id INTEGER,\n    favorite INTEGER DEFAULT 0,\n    muted INTEGER DEFAULT 0\n)",
+    "tbl_name": "channels",
+    "type": "table"
+  },
+  {
+    "name": "community_observed_neighbors",
+    "sql": "CREATE TABLE community_observed_neighbors (\n    public_key TEXT PRIMARY KEY,\n    first_seen INTEGER NOT NULL,\n    last_seen INTEGER NOT NULL,\n    last_discovery_at INTEGER,\n    source TEXT NOT NULL,\n    node_type TEXT NOT NULL,\n    local_snr REAL,\n    local_rssi INTEGER,\n    remote_snr REAL,\n    scope_names TEXT,\n    scope_queried_at INTEGER,\n    scope_status TEXT NOT NULL DEFAULT 'not_queried'\n)",
+    "tbl_name": "community_observed_neighbors",
+    "type": "table"
+  },
+  {
+    "name": "companion_channel_datagrams",
+    "sql": "CREATE TABLE companion_channel_datagrams (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    received_at INTEGER NOT NULL,\n    channel_idx INTEGER NOT NULL,\n    data_type INTEGER NOT NULL,\n    payload BLOB NOT NULL,\n    snr REAL,\n    path_len INTEGER,\n    identity_hash BLOB NOT NULL UNIQUE,\n    attribution_status TEXT NOT NULL DEFAULT 'unresolved'\n)",
+    "tbl_name": "companion_channel_datagrams",
+    "type": "table"
+  },
+  {
+    "name": "contact_advert_paths",
+    "sql": "CREATE TABLE \"contact_advert_paths\" (\n                id INTEGER PRIMARY KEY AUTOINCREMENT,\n                public_key TEXT NOT NULL,\n                path_hex TEXT NOT NULL,\n                path_len INTEGER NOT NULL,\n                first_seen INTEGER NOT NULL,\n                last_seen INTEGER NOT NULL,\n                heard_count INTEGER NOT NULL DEFAULT 1,\n                UNIQUE(public_key, path_hex, path_len),\n                FOREIGN KEY (public_key) REFERENCES contacts(public_key) ON DELETE CASCADE\n            )",
+    "tbl_name": "contact_advert_paths",
+    "type": "table"
+  },
+  {
+    "name": "contact_name_history",
+    "sql": "CREATE TABLE \"contact_name_history\" (\n                id INTEGER PRIMARY KEY AUTOINCREMENT,\n                public_key TEXT NOT NULL,\n                name TEXT NOT NULL,\n                first_seen INTEGER NOT NULL,\n                last_seen INTEGER NOT NULL,\n                UNIQUE(public_key, name),\n                FOREIGN KEY (public_key) REFERENCES contacts(public_key) ON DELETE CASCADE\n            )",
+    "tbl_name": "contact_name_history",
+    "type": "table"
+  },
+  {
+    "name": "contact_telemetry_history",
+    "sql": "CREATE TABLE contact_telemetry_history (\n                id INTEGER PRIMARY KEY AUTOINCREMENT,\n                public_key TEXT NOT NULL,\n                timestamp INTEGER NOT NULL,\n                data TEXT NOT NULL,\n                FOREIGN KEY (public_key) REFERENCES contacts(public_key) ON DELETE CASCADE\n            )",
+    "tbl_name": "contact_telemetry_history",
+    "type": "table"
+  },
+  {
+    "name": "contacts",
+    "sql": "CREATE TABLE \"contacts\" (\n            public_key TEXT PRIMARY KEY,\n            name TEXT,\n            type INTEGER DEFAULT 0,\n            flags INTEGER DEFAULT 0,\n            direct_path TEXT,\n            direct_path_len INTEGER,\n            direct_path_hash_mode INTEGER,\n            direct_path_updated_at INTEGER,\n            route_override_path TEXT,\n            route_override_len INTEGER,\n            route_override_hash_mode INTEGER,\n            last_advert INTEGER,\n            lat REAL,\n            lon REAL,\n            last_seen INTEGER,\n            on_radio INTEGER DEFAULT 0,\n            last_contacted INTEGER,\n            first_seen INTEGER,\n            last_read_at INTEGER\n        , favorite INTEGER DEFAULT 0, last_read_message_id INTEGER)",
+    "tbl_name": "contacts",
+    "type": "table"
+  },
+  {
+    "name": "fanout_configs",
+    "sql": "CREATE TABLE fanout_configs (\n    id TEXT PRIMARY KEY,\n    type TEXT NOT NULL,\n    name TEXT NOT NULL,\n    enabled INTEGER DEFAULT 0,\n    config TEXT NOT NULL DEFAULT '{}',\n    scope TEXT NOT NULL DEFAULT '{}',\n    sort_order INTEGER DEFAULT 0,\n    created_at INTEGER NOT NULL\n)",
+    "tbl_name": "fanout_configs",
+    "type": "table"
+  },
+  {
+    "name": "messages",
+    "sql": "CREATE TABLE messages (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    type TEXT NOT NULL,\n    conversation_key TEXT NOT NULL,\n    text TEXT NOT NULL,\n    sender_timestamp INTEGER,\n    received_at INTEGER NOT NULL,\n    paths TEXT,\n    txt_type INTEGER DEFAULT 0,\n    signature TEXT,\n    outgoing INTEGER DEFAULT 0,\n    acked INTEGER DEFAULT 0,\n    send_status TEXT NOT NULL DEFAULT 'confirmed',\n    sender_name TEXT,\n    sender_key TEXT,\n    wire_packet_id INTEGER\n    -- Deduplication: channel echoes/repeats use a content/time unique index so\n    -- duplicate observations reconcile onto a single stored row. Legacy\n    -- databases may also gain an incoming-DM content index via migration 44.\n    -- Enforced via idx_messages_dedup_null_safe (unique index) rather than a table constraint\n    -- to avoid the storage overhead of SQLite's autoindex duplicating every message text.\n, transport_code INTEGER, region TEXT)",
+    "tbl_name": "messages",
+    "type": "table"
+  },
+  {
+    "name": "pending_dm_ack_correlations",
+    "sql": "CREATE TABLE pending_dm_ack_correlations (\n    code TEXT PRIMARY KEY,\n    message_id INTEGER NOT NULL,\n    radio_key TEXT NOT NULL,\n    expiry_at INTEGER NOT NULL,\n    FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE\n)",
+    "tbl_name": "pending_dm_ack_correlations",
+    "type": "table"
+  },
+  {
+    "name": "pending_radio_ingress",
+    "sql": "CREATE TABLE pending_radio_ingress (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    kind TEXT NOT NULL CHECK(kind IN ('CHAN', 'PRIV')),\n    payload TEXT NOT NULL,\n    status TEXT NOT NULL DEFAULT 'unresolved',\n    created_at INTEGER NOT NULL,\n    attempts INTEGER NOT NULL DEFAULT 0,\n    last_error TEXT\n)",
+    "tbl_name": "pending_radio_ingress",
+    "type": "table"
+  },
+  {
+    "name": "push_subscriptions",
+    "sql": "CREATE TABLE push_subscriptions (\n    id TEXT PRIMARY KEY,\n    endpoint TEXT NOT NULL,\n    p256dh TEXT NOT NULL,\n    auth TEXT NOT NULL,\n    label TEXT NOT NULL DEFAULT '',\n    created_at INTEGER NOT NULL,\n    last_success_at INTEGER,\n    failure_count INTEGER DEFAULT 0,\n    UNIQUE(endpoint)\n)",
+    "tbl_name": "push_subscriptions",
+    "type": "table"
+  },
+  {
+    "name": "raw_packets",
+    "sql": "CREATE TABLE \"raw_packets\" (id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp INTEGER NOT NULL, data BLOB NOT NULL, message_id INTEGER, payload_hash BLOB, FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE SET NULL)",
+    "tbl_name": "raw_packets",
+    "type": "table"
+  },
+  {
+    "name": "repeater_telemetry_history",
+    "sql": "CREATE TABLE repeater_telemetry_history (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    public_key TEXT NOT NULL,\n    timestamp INTEGER NOT NULL,\n    data TEXT NOT NULL,\n    FOREIGN KEY (public_key) REFERENCES contacts(public_key) ON DELETE CASCADE\n)",
+    "tbl_name": "repeater_telemetry_history",
+    "type": "table"
+  },
+  {
+    "name": "virtual_companion_channel_sends",
+    "sql": "CREATE TABLE virtual_companion_channel_sends (\n            identity_key TEXT NOT NULL,\n            virtual_index INTEGER NOT NULL CHECK (virtual_index BETWEEN 0 AND 255),\n            sender_timestamp INTEGER NOT NULL CHECK (sender_timestamp BETWEEN 0 AND 4294967295),\n            text_hash TEXT NOT NULL,\n            status TEXT NOT NULL CHECK (status IN ('pending', 'ok', 'uncertain')),\n            created_at INTEGER NOT NULL,\n            PRIMARY KEY (identity_key, virtual_index, sender_timestamp, text_hash)\n        )",
+    "tbl_name": "virtual_companion_channel_sends",
+    "type": "table"
+  },
+  {
+    "name": "virtual_companion_contact_changes",
+    "sql": "CREATE TABLE virtual_companion_contact_changes (\n    public_key TEXT PRIMARY KEY,\n    revision INTEGER NOT NULL,\n    deleted INTEGER NOT NULL CHECK (deleted IN (0, 1))\n)",
+    "tbl_name": "virtual_companion_contact_changes",
+    "type": "table"
+  },
+  {
+    "name": "virtual_companion_contact_clock",
+    "sql": "CREATE TABLE virtual_companion_contact_clock (\n    singleton INTEGER PRIMARY KEY CHECK (singleton = 1),\n    revision INTEGER NOT NULL\n)",
+    "tbl_name": "virtual_companion_contact_clock",
+    "type": "table"
+  },
+  {
+    "name": "trg_virtual_companion_contact_delete",
+    "sql": "CREATE TRIGGER trg_virtual_companion_contact_delete\n        AFTER DELETE ON contacts BEGIN\n            UPDATE virtual_companion_contact_clock\n            SET revision = MAX(revision + 1, CAST(strftime('%s', 'now') AS INTEGER))\n            WHERE singleton = 1;\n            INSERT INTO virtual_companion_contact_changes(public_key, revision, deleted)\n            SELECT lower(OLD.public_key), revision, 1\n            FROM virtual_companion_contact_clock WHERE singleton = 1\n            ON CONFLICT(public_key) DO UPDATE SET revision = excluded.revision, deleted = 1;\n        END",
+    "tbl_name": "contacts",
+    "type": "trigger"
+  },
+  {
+    "name": "trg_virtual_companion_contact_insert",
+    "sql": "CREATE TRIGGER trg_virtual_companion_contact_insert\n        AFTER INSERT ON contacts BEGIN\n            UPDATE virtual_companion_contact_clock\n            SET revision = MAX(revision + 1, CAST(strftime('%s', 'now') AS INTEGER))\n            WHERE singleton = 1;\n            INSERT INTO virtual_companion_contact_changes(public_key, revision, deleted)\n            SELECT lower(NEW.public_key), revision, 0\n            FROM virtual_companion_contact_clock WHERE singleton = 1\n            ON CONFLICT(public_key) DO UPDATE SET revision = excluded.revision, deleted = 0;\n        END",
+    "tbl_name": "contacts",
+    "type": "trigger"
+  },
+  {
+    "name": "trg_virtual_companion_contact_update",
+    "sql": "CREATE TRIGGER trg_virtual_companion_contact_update\n        AFTER UPDATE ON contacts BEGIN\n            UPDATE virtual_companion_contact_clock\n            SET revision = MAX(revision + 1, CAST(strftime('%s', 'now') AS INTEGER))\n            WHERE singleton = 1;\n            INSERT INTO virtual_companion_contact_changes(public_key, revision, deleted)\n            SELECT lower(NEW.public_key), revision, 0\n            FROM virtual_companion_contact_clock WHERE singleton = 1\n            ON CONFLICT(public_key) DO UPDATE SET revision = excluded.revision, deleted = 0;\n        END",
+    "tbl_name": "contacts",
+    "type": "trigger"
+  }
+]
