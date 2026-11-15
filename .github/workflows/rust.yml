@@ -1,0 +1,21 @@
+name: Rust migration fixtures
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fixtures:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install pinned Rust toolchain
+        run: rustup show active-toolchain
+      - name: Check Rust format, lint and hardware-free tests
+        run: bash scripts/quality/rust.sh

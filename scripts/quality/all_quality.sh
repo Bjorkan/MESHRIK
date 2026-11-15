@@ -106,4 +106,8 @@ echo -e "${GREEN}Passed!${NC}"
 echo -e "${GREEN}=== Phase 2 complete ===${NC}"
 echo
 
+echo -ne "${BLUE}[rust]${NC} "
+bash "$REPO_ROOT/scripts/quality/rust.sh"
+echo -e "${GREEN}Passed!${NC}"
+
 echo -e "${GREEN}=== All quality checks passed! ===${NC}"
