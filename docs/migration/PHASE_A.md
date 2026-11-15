@@ -20,6 +20,29 @@ Create and validate each PR before starting its successor, with the bottom on
 This is a review sequence, not a claim that any issue is already complete.
 Do not merge or enable the migration on the basis of partial fixture coverage.
 
+## Rust foundation (Linux fixture mode)
+
+```sh
+MESHRIK_RUST_FIXTURE=1 MESHRIK_RUST_FIXTURE_DIR=/tmp/meshrik-rust-fixture \
+  cargo run --locked -p meshrik-backend
+bash scripts/quality/rust.sh
+```
+
+Requires Rust >=1.89 and a built frontend (`frontend/dist`, or explicit
+`MESHRIK_RUST_FRONTEND_DIR`). The listener defaults to `127.0.0.1:8001`;
+`MESHRIK_RUST_LISTEN` accepts only loopback addresses. Fixture mode rejects any
+configured physical transport and never opens a database. It holds Python's
+`.radio-owner.lock` protocol against the disposable fixture DB path for its
+entire lifetime. SIGINT/SIGTERM gracefully stop HTTP before releasing the lease.
+No installer, container, Python startup or production default selects Rust.
+
+Root/deep links, assets, service worker, PWA manifest, validated HA ingress base,
+Basic auth and CORS use the same public conventions. `/docs` and `/openapi.json`
+describe only the fixture health endpoint; `/api/health` returns 503 with
+explicit unavailable resources and other API/WS operations return 501. This is
+a bootable foundation, not a production frontend/API or integration readiness
+claim. #289/#290 own full REST/WS implementation and differential acceptance.
+
 ## Frozen oracle
 
 `tests/fixtures/migration/python-v72` contains REST/OpenAPI (including errors,
