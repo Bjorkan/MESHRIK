@@ -1,0 +1,1153 @@
+{
+  "async_functions_by_module": {
+    "app/__init__.py": [],
+    "app/api_docs.py": [
+      "swagger_ui_html"
+    ],
+    "app/channel_constants.py": [],
+    "app/config.py": [],
+    "app/database.py": [
+      "connect",
+      "disconnect",
+      "readonly",
+      "tx"
+    ],
+    "app/decoder.py": [],
+    "app/event_handlers.py": [
+      "contact_evicted",
+      "contacts_full",
+      "on_ack",
+      "on_binary_channel_data",
+      "on_channel_message",
+      "on_contact_message",
+      "on_messages_waiting",
+      "on_new_contact",
+      "on_path_update",
+      "on_radio_contact_deleted",
+      "on_radio_contacts_full",
+      "on_rx_log_data"
+    ],
+    "app/events.py": [],
+    "app/fanout/__init__.py": [],
+    "app/fanout/apprise_mod.py": [
+      "on_message"
+    ],
+    "app/fanout/base.py": [
+      "on_contact",
+      "on_health",
+      "on_message",
+      "on_raw",
+      "on_telemetry",
+      "start",
+      "stop"
+    ],
+    "app/fanout/bot.py": [
+      "_run_for_message",
+      "on_message",
+      "stop"
+    ],
+    "app/fanout/bot_exec.py": [
+      "_send_single_bot_message",
+      "process_bot_response"
+    ],
+    "app/fanout/community_mqtt.py": [
+      "_fetch_device_info",
+      "_fetch_stats",
+      "_on_connected_async",
+      "_on_disconnected_async",
+      "_on_periodic_wake",
+      "_pre_connect",
+      "_publish_neighbors",
+      "_publish_status",
+      "_read_broker_errors",
+      "_sign_jwt_on_connected_radio",
+      "fetch_device_info",
+      "fetch_stats",
+      "publish",
+      "sign_with_worker",
+      "start",
+      "submit_packet"
+    ],
+    "app/fanout/community_topics.py": [],
+    "app/fanout/manager.py": [
+      "_dispatch_matching",
+      "_remove_config_unlocked",
+      "_restart_module",
+      "_run_handler",
+      "_start_module",
+      "broadcast_contact",
+      "broadcast_health_fanout",
+      "broadcast_message",
+      "broadcast_raw",
+      "broadcast_telemetry",
+      "disable_bots_until_restart",
+      "load_from_db",
+      "notify_virtual_companion_ack",
+      "reload_config",
+      "remove_config",
+      "stop_all"
+    ],
+    "app/fanout/map_upload.py": [
+      "_upload",
+      "on_raw",
+      "start",
+      "stop"
+    ],
+    "app/fanout/mqtt.py": [],
+    "app/fanout/mqtt_base.py": [
+      "_connection_loop",
+      "_on_connected_async",
+      "_on_disconnected_async",
+      "_on_periodic_wake",
+      "_pre_connect",
+      "publish",
+      "restart",
+      "start",
+      "stop"
+    ],
+    "app/fanout/mqtt_community.py": [
+      "_flush_packets",
+      "_publish_community_packet",
+      "on_message",
+      "on_raw",
+      "start",
+      "stop"
+    ],
+    "app/fanout/mqtt_ha.py": [
+      "_clear_retained_topics",
+      "_on_connected_async",
+      "_publish_discovery",
+      "_remove_discovery",
+      "_resolve_contact_name",
+      "_resolve_latest_contact_telemetry",
+      "_resolve_latest_telemetry",
+      "on_contact",
+      "on_health",
+      "on_message",
+      "on_telemetry",
+      "start",
+      "stop"
+    ],
+    "app/fanout/mqtt_private.py": [
+      "on_message",
+      "on_raw",
+      "start",
+      "stop"
+    ],
+    "app/fanout/packet_filter.py": [],
+    "app/fanout/secret_storage.py": [],
+    "app/fanout/sqs.py": [
+      "_send",
+      "on_message",
+      "on_raw",
+      "start",
+      "stop"
+    ],
+    "app/fanout/virtual_companion_tcp.py": [
+      "_watch_radio_generation",
+      "notify_send_confirmed",
+      "start",
+      "stop"
+    ],
+    "app/fanout/webhook.py": [
+      "_send",
+      "on_message",
+      "start",
+      "stop"
+    ],
+    "app/frontend_static.py": [
+      "frontend_not_built",
+      "serve_frontend",
+      "serve_index",
+      "serve_webmanifest"
+    ],
+    "app/keystore.py": [
+      "export_and_store_private_key"
+    ],
+    "app/main.py": [
+      "_startup_radio_connect_and_setup",
+      "lifespan",
+      "log_server_errors",
+      "radio_disconnected_handler",
+      "radio_operation_busy_handler"
+    ],
+    "app/migrations/_001_add_last_read_at.py": [
+      "migrate"
+    ],
+    "app/migrations/_002_drop_decrypt_attempt_columns.py": [
+      "migrate"
+    ],
+    "app/migrations/_003_drop_decrypted_column.py": [
+      "migrate"
+    ],
+    "app/migrations/_004_add_payload_hash_column.py": [
+      "migrate"
+    ],
+    "app/migrations/_005_backfill_payload_hashes.py": [
+      "migrate"
+    ],
+    "app/migrations/_006_replace_path_len_with_path.py": [
+      "migrate"
+    ],
+    "app/migrations/_007_backfill_message_paths.py": [
+      "migrate"
+    ],
+    "app/migrations/_008_convert_path_to_paths_array.py": [
+      "migrate"
+    ],
+    "app/migrations/_009_create_app_settings_table.py": [
+      "migrate"
+    ],
+    "app/migrations/_010_add_advert_interval.py": [
+      "migrate"
+    ],
+    "app/migrations/_011_add_last_advert_time.py": [
+      "migrate"
+    ],
+    "app/migrations/_012_add_bot_settings.py": [
+      "migrate"
+    ],
+    "app/migrations/_013_convert_to_multi_bot.py": [
+      "migrate"
+    ],
+    "app/migrations/_014_lowercase_public_keys.py": [
+      "migrate"
+    ],
+    "app/migrations/_015_fix_null_sender_timestamp.py": [
+      "migrate"
+    ],
+    "app/migrations/_016_add_experimental_channel_double_send.py": [
+      "migrate"
+    ],
+    "app/migrations/_017_drop_experimental_channel_double_send.py": [
+      "migrate"
+    ],
+    "app/migrations/_018_drop_raw_packets_data_unique.py": [
+      "migrate"
+    ],
+    "app/migrations/_019_drop_messages_unique_constraint.py": [
+      "migrate"
+    ],
+    "app/migrations/_020_enable_wal_and_auto_vacuum.py": [
+      "migrate"
+    ],
+    "app/migrations/_021_enforce_min_advert_interval.py": [
+      "migrate"
+    ],
+    "app/migrations/_022_add_repeater_advert_paths.py": [
+      "migrate"
+    ],
+    "app/migrations/_023_add_first_seen.py": [
+      "migrate"
+    ],
+    "app/migrations/_024_create_contact_name_history.py": [
+      "migrate"
+    ],
+    "app/migrations/_025_add_sender_columns.py": [
+      "migrate"
+    ],
+    "app/migrations/_026_rename_advert_paths_table.py": [
+      "migrate"
+    ],
+    "app/migrations/_027_backfill_first_seen_from_advert_paths.py": [
+      "migrate"
+    ],
+    "app/migrations/_028_payload_hash_text_to_blob.py": [
+      "migrate"
+    ],
+    "app/migrations/_029_add_unread_covering_index.py": [
+      "migrate"
+    ],
+    "app/migrations/_030_add_pagination_index.py": [
+      "migrate"
+    ],
+    "app/migrations/_031_add_mqtt_columns.py": [
+      "migrate"
+    ],
+    "app/migrations/_032_add_community_mqtt_columns.py": [
+      "migrate"
+    ],
+    "app/migrations/_033_seed_meshrik_channel.py": [
+      "migrate"
+    ],
+    "app/migrations/_034_add_flood_scope.py": [
+      "migrate"
+    ],
+    "app/migrations/_035_add_block_lists.py": [
+      "migrate"
+    ],
+    "app/migrations/_036_create_fanout_configs.py": [
+      "migrate"
+    ],
+    "app/migrations/_037_bots_to_fanout.py": [
+      "migrate"
+    ],
+    "app/migrations/_038_drop_legacy_columns.py": [
+      "migrate"
+    ],
+    "app/migrations/_039_add_contact_out_path_hash_mode.py": [
+      "migrate"
+    ],
+    "app/migrations/_040_rebuild_contact_advert_paths_identity.py": [
+      "migrate"
+    ],
+    "app/migrations/_041_add_contact_routing_override_columns.py": [
+      "migrate"
+    ],
+    "app/migrations/_042_add_channel_flood_scope_override.py": [
+      "migrate"
+    ],
+    "app/migrations/_043_split_message_dedup_by_type.py": [
+      "migrate"
+    ],
+    "app/migrations/_044_dedupe_incoming_direct_messages.py": [
+      "migrate"
+    ],
+    "app/migrations/_045_rebuild_contacts_direct_route_columns.py": [
+      "migrate"
+    ],
+    "app/migrations/_046_cleanup_orphaned_contact_child_rows.py": [
+      "migrate"
+    ],
+    "app/migrations/_047_add_statistics_indexes.py": [
+      "migrate"
+    ],
+    "app/migrations/_048_discovery_blocked_types.py": [
+      "migrate"
+    ],
+    "app/migrations/_049_foreign_key_cascade.py": [
+      "migrate"
+    ],
+    "app/migrations/_050_repeater_telemetry_history.py": [
+      "migrate"
+    ],
+    "app/migrations/_051_drop_sidebar_sort_order.py": [
+      "migrate"
+    ],
+    "app/migrations/_052_add_channel_path_hash_mode_override.py": [
+      "migrate"
+    ],
+    "app/migrations/_053_tracked_telemetry_repeaters.py": [
+      "migrate"
+    ],
+    "app/migrations/_054_auto_resend_channel.py": [
+      "migrate"
+    ],
+    "app/migrations/_055_favorites_to_columns.py": [
+      "migrate"
+    ],
+    "app/migrations/_056_priv_dedup_include_sender_key.py": [
+      "migrate"
+    ],
+    "app/migrations/_057_telemetry_interval_hours.py": [
+      "migrate"
+    ],
+    "app/migrations/_058_web_push.py": [
+      "migrate"
+    ],
+    "app/migrations/_059_channel_muted.py": [
+      "migrate"
+    ],
+    "app/migrations/_060_apprise_format_strings.py": [
+      "migrate"
+    ],
+    "app/migrations/_061_telemetry_routed_hourly.py": [
+      "migrate"
+    ],
+    "app/migrations/_062_contact_telemetry_history.py": [
+      "migrate"
+    ],
+    "app/migrations/_063_message_region_scope.py": [
+      "migrate"
+    ],
+    "app/migrations/_064_message_send_status.py": [
+      "migrate"
+    ],
+    "app/migrations/_065_add_read_message_cursor.py": [
+      "_add_cursor",
+      "migrate"
+    ],
+    "app/migrations/_066_wire_message_identity.py": [
+      "migrate"
+    ],
+    "app/migrations/_067_canonical_raw_packet_identity.py": [
+      "migrate"
+    ],
+    "app/migrations/_068_bounded_message_paths.py": [
+      "migrate"
+    ],
+    "app/migrations/_069_virtual_companion_singleton.py": [
+      "migrate"
+    ],
+    "app/migrations/_070_virtual_companion_contact_revisions.py": [
+      "migrate"
+    ],
+    "app/migrations/_071_virtual_companion_channel_sends.py": [
+      "migrate"
+    ],
+    "app/migrations/_072_contact_key_lookup_index.py": [
+      "migrate"
+    ],
+    "app/migrations/__init__.py": [
+      "get_version",
+      "run_migrations",
+      "set_version"
+    ],
+    "app/models.py": [],
+    "app/packet_processor.py": [
+      "_process_advertisement",
+      "_process_direct_message",
+      "_process_group_text",
+      "_process_path_packet",
+      "_run",
+      "create_dm_message_from_decrypted",
+      "create_message_from_decrypted",
+      "process_raw_packet",
+      "run_historical_dm_decryption",
+      "start_historical_dm_decryption",
+      "stop"
+    ],
+    "app/path_utils.py": [],
+    "app/push/__init__.py": [],
+    "app/push/manager.py": [
+      "_send_one",
+      "dispatch_message"
+    ],
+    "app/push/send.py": [
+      "send_push"
+    ],
+    "app/push/vapid.py": [
+      "ensure_vapid_keys"
+    ],
+    "app/radio.py": [
+      "_acquire_operation_lock",
+      "_connect_ble",
+      "_connect_serial",
+      "_connect_tcp",
+      "_disable_meshcore_auto_reconnect",
+      "connect",
+      "disconnect",
+      "find_radio_port",
+      "pause_connection",
+      "post_connect_setup",
+      "radio_operation",
+      "reconnect",
+      "start_connection_monitor",
+      "stop_connection_monitor",
+      "test_serial_device"
+    ],
+    "app/radio_sync.py": [
+      "_attempt_clock_wraparound",
+      "_collect_contact_telemetry",
+      "_collect_repeater_telemetry",
+      "_enable_autoevict_on_radio",
+      "_get_queued_message",
+      "_load_contacts_to_radio",
+      "_maybe_run_scheduled_cycle",
+      "_message_poll_loop",
+      "_periodic_advert_loop",
+      "_periodic_sync_loop",
+      "_query_radio_time",
+      "_reconcile_contact_messages_background",
+      "_reconcile_radio_contacts_in_background",
+      "_resolve_channel_for_pending_message",
+      "_run_inbound_catchup",
+      "_run_telemetry_cycle",
+      "_sleep_until_next_utc_top_of_hour",
+      "_store_pending_channel_message",
+      "_store_pending_direct_message",
+      "_sync_contacts_to_radio_inner",
+      "_telemetry_collect_loop",
+      "advertise",
+      "audit_channel_send_cache",
+      "collect",
+      "drain_pending_messages",
+      "ensure_contact_on_radio",
+      "ensure_default_channels",
+      "get_contacts_selected_for_radio_sync",
+      "load_contact",
+      "pause_polling",
+      "poll_and_audit",
+      "poll_for_messages",
+      "reconcile_batch",
+      "retry_quarantined_messages",
+      "run_periodic_sync",
+      "send_advertisement",
+      "should_run_full_periodic_sync",
+      "stop_background_contact_reconciliation",
+      "stop_inbound_catchup",
+      "stop_message_polling",
+      "stop_periodic_advert",
+      "stop_periodic_sync",
+      "stop_telemetry_collect",
+      "sync_and_offload_all",
+      "sync_and_offload_channels",
+      "sync_channels_from_radio",
+      "sync_contacts",
+      "sync_contacts_from_radio",
+      "sync_radio_time",
+      "sync_recent_contacts_to_radio",
+      "upsert_channel_from_radio_slot"
+    ],
+    "app/region_resolver.py": [],
+    "app/region_scope.py": [],
+    "app/repository/__init__.py": [],
+    "app/repository/channels.py": [
+      "clear_on_radio_except",
+      "delete",
+      "get_all",
+      "get_by_key",
+      "get_companion_channel",
+      "mark_all_read",
+      "set_favorite",
+      "set_muted",
+      "set_on_radio",
+      "update_flood_scope_override",
+      "update_last_read_at",
+      "update_path_hash_mode_override",
+      "upsert"
+    ],
+    "app/repository/contact_telemetry.py": [
+      "get_history",
+      "get_latest",
+      "record"
+    ],
+    "app/repository/contacts.py": [
+      "_get_prefix_matches",
+      "apply_companion_mutation",
+      "clear_on_radio_except",
+      "clear_routing_override",
+      "delete",
+      "delete_companion_contact",
+      "get_all",
+      "get_by_key",
+      "get_by_key_or_prefix",
+      "get_by_key_prefix",
+      "get_by_name",
+      "get_by_pubkey_first_byte",
+      "get_companion_contact_by_key",
+      "get_companion_snapshot",
+      "get_favorites",
+      "get_history",
+      "get_recent_for_all_contacts",
+      "get_recent_for_contact",
+      "get_recently_advertised_non_repeaters",
+      "get_recently_contacted_non_repeaters",
+      "get_recently_dm_active_non_repeaters",
+      "get_repeaters_by_recent",
+      "mark_all_read",
+      "migrate_child_rows",
+      "promote_prefix_placeholders",
+      "record_name",
+      "record_observation",
+      "resolve_prefixes",
+      "set_favorite",
+      "set_radio_contact_not_resident",
+      "set_routing_override",
+      "touch_last_seen",
+      "update_direct_path",
+      "update_last_contacted",
+      "update_last_read_at",
+      "upsert"
+    ],
+    "app/repository/fanout.py": [
+      "_get_in_conn",
+      "create",
+      "delete",
+      "get",
+      "get_all",
+      "get_enabled",
+      "update"
+    ],
+    "app/repository/messages.py": [
+      "_get_activity_hour_buckets",
+      "_get_weekly_activity",
+      "add_path",
+      "add_path_with_status",
+      "backfill_channel_sender_key",
+      "claim_prefix_messages",
+      "count_channel_messages_by_sender",
+      "count_channel_messages_by_sender_name",
+      "count_channels_with_incoming_messages",
+      "count_dm_messages",
+      "create",
+      "delete_by_id",
+      "finish_companion_channel_send",
+      "get_ack_and_paths",
+      "get_all",
+      "get_around",
+      "get_by_content",
+      "get_by_id",
+      "get_channel_stats",
+      "get_companion_initial_cursor",
+      "get_companion_message_after",
+      "get_companion_outgoing_channel",
+      "get_contact_activity_series",
+      "get_first_channel_message_by_sender_name",
+      "get_most_active_rooms",
+      "get_most_active_rooms_by_sender_name",
+      "get_sender_name_activity_series",
+      "get_unread_counts",
+      "increment_ack_count",
+      "recover_interrupted_outgoing_sends",
+      "release_companion_channel_send",
+      "reserve_companion_channel_send",
+      "set_transport_scope",
+      "stream_chan_messages_with_raw",
+      "update_send_status"
+    ],
+    "app/repository/observed_neighbors.py": [
+      "get_recent_observations",
+      "observe_discovery",
+      "record_scope_result"
+    ],
+    "app/repository/push_subscriptions.py": [
+      "batch_record_outcomes",
+      "create",
+      "delete",
+      "delete_by_endpoint",
+      "get",
+      "get_all",
+      "get_by_endpoint",
+      "update"
+    ],
+    "app/repository/raw_packets.py": [
+      "_stream_undecrypted_rows",
+      "count_undecrypted_text_messages",
+      "create",
+      "get_by_id",
+      "get_linked_message_id",
+      "get_oldest_undecrypted",
+      "get_undecrypted_count",
+      "mark_decrypted",
+      "prune_old_undecrypted",
+      "purge_linked_to_messages",
+      "stream_all_undecrypted",
+      "stream_undecrypted_text_messages"
+    ],
+    "app/repository/repeater_telemetry.py": [
+      "get_history",
+      "get_latest",
+      "record"
+    ],
+    "app/repository/settings.py": [
+      "_activity_counts",
+      "_apply_updates",
+      "_get_in_conn",
+      "_known_channels_active",
+      "_packet_shape_24h",
+      "_packets_per_hour_72h",
+      "_region_scope_senders_24h",
+      "get",
+      "get_all",
+      "get_database_message_totals",
+      "get_push_conversations",
+      "get_vapid_keys",
+      "set_push_conversations",
+      "set_vapid_keys",
+      "toggle_blocked_key",
+      "toggle_blocked_name",
+      "toggle_push_conversation",
+      "update"
+    ],
+    "app/request_context.py": [
+      "__call__",
+      "send_with_request_id"
+    ],
+    "app/routers/__init__.py": [],
+    "app/routers/channels.py": [
+      "_run_historical_channel_decryption_for_channels",
+      "bulk_create_hashtag_channels",
+      "create_channel",
+      "delete_channel",
+      "get_channel_detail",
+      "list_channels",
+      "mark_channel_read",
+      "send_channel_datagram",
+      "set_channel_flood_scope_override",
+      "set_channel_path_hash_mode_override"
+    ],
+    "app/routers/contacts.py": [
+      "_best_effort_push_contact_to_radio",
+      "_broadcast_contact_resolution",
+      "_broadcast_contact_update",
+      "_build_keyed_contact_analytics",
+      "_build_name_only_contact_analytics",
+      "_ensure_on_radio",
+      "_resolve_contact_or_404",
+      "bulk_delete_contacts",
+      "create_contact",
+      "delete_contact",
+      "discover_path",
+      "fetch_telemetry",
+      "get_contact_analytics",
+      "get_contact_telemetry_history",
+      "list_contacts",
+      "list_repeater_advert_paths",
+      "mark_contact_read",
+      "push_contact",
+      "remove_contact",
+      "remove_contacts",
+      "request_contact_telemetry",
+      "request_path_discovery",
+      "request_trace",
+      "set_contact_routing_override",
+      "trace"
+    ],
+    "app/routers/debug.py": [
+      "_build_channel_audit",
+      "_build_contact_audit",
+      "_probe_radio",
+      "debug_support_snapshot",
+      "probe"
+    ],
+    "app/routers/fanout.py": [
+      "create_fanout_config",
+      "delete_fanout_config",
+      "disable_bots_until_restart",
+      "list_fanout_configs",
+      "update_fanout_config"
+    ],
+    "app/routers/health.py": [
+      "build_health_data",
+      "healthcheck"
+    ],
+    "app/routers/messages.py": [
+      "get_messages_around",
+      "list_messages",
+      "resend_channel_message",
+      "send_channel_message",
+      "send_direct_message"
+    ],
+    "app/routers/packets.py": [
+      "_run_historical_channel_decryption",
+      "backfill_regions",
+      "decrypt_historical_packets",
+      "get_raw_packet",
+      "get_undecrypted_count",
+      "run_maintenance"
+    ],
+    "app/routers/push.py": [
+      "get_push_conversations",
+      "list_subscriptions",
+      "subscribe",
+      "test_push",
+      "toggle_push_conversation",
+      "unsubscribe",
+      "update_subscription",
+      "vapid_public_key"
+    ],
+    "app/routers/radio.py": [
+      "_attach_known_names",
+      "_attempt_reconnect",
+      "_persist_new_discovery_contacts",
+      "_prepare_connected",
+      "_reconnect_and_prepare",
+      "_resolve_region_discovery_targets",
+      "_resolve_trace_hops",
+      "advanced_companion_radio_diagnostics",
+      "advertise",
+      "apply_config",
+      "disconnect_radio",
+      "discover",
+      "discover_from_repeaters",
+      "discover_mesh",
+      "discover_regions",
+      "get_community_radio_presets",
+      "get_private_key",
+      "get_radio_config",
+      "import_key",
+      "local_companion_cli",
+      "reboot",
+      "reboot_radio",
+      "reconnect_radio",
+      "remote_companion_cli",
+      "send_advertisement",
+      "set_private_key",
+      "trace",
+      "trace_path",
+      "update_radio_config"
+    ],
+    "app/routers/radio_jobs.py": [
+      "cancel_radio_job",
+      "command",
+      "command",
+      "command",
+      "enqueue_advertisement",
+      "enqueue_channel_message",
+      "enqueue_direct_message",
+      "get_radio_job",
+      "list_radio_activity",
+      "list_radio_jobs"
+    ],
+    "app/routers/read_state.py": [
+      "get_unreads",
+      "mark_all_read"
+    ],
+    "app/routers/repeaters.py": [
+      "_batch_cli_fetch",
+      "_fetch_anon_flood_allowed_regions",
+      "fetch_acl",
+      "fetch_neighbors",
+      "fetch_regions",
+      "fetch_status",
+      "fetch_telemetry",
+      "login",
+      "prepare_repeater_connection",
+      "repeater_acl",
+      "repeater_advert_intervals",
+      "repeater_login",
+      "repeater_lpp_telemetry",
+      "repeater_neighbors",
+      "repeater_node_info",
+      "repeater_owner_info",
+      "repeater_radio_settings",
+      "repeater_regions",
+      "repeater_status",
+      "repeater_telemetry_history",
+      "request_anon_region_names",
+      "send_repeater_command"
+    ],
+    "app/routers/rooms.py": [
+      "fetch_acl",
+      "fetch_status",
+      "fetch_telemetry",
+      "login",
+      "room_acl",
+      "room_login",
+      "room_lpp_telemetry",
+      "room_status"
+    ],
+    "app/routers/server_control.py": [
+      "_attempt_server_login",
+      "_flush_pending_messages",
+      "batch_cli_fetch",
+      "fetch_contact_cli_response",
+      "fetch_one",
+      "fetch_owner_info",
+      "fetch_repeater_owner_info_binary",
+      "flood_attempt",
+      "initial_command",
+      "prepare_authenticated_contact_connection",
+      "scheduled_authenticated_contact_login",
+      "send_command",
+      "send_contact_cli_command"
+    ],
+    "app/routers/settings.py": [
+      "_resolve_names",
+      "_resolve_names",
+      "apply_flood_scope",
+      "get_contact_telemetry_schedule",
+      "get_settings",
+      "get_telemetry_schedule",
+      "toggle_blocked_key",
+      "toggle_blocked_name",
+      "toggle_favorite",
+      "toggle_muted_channel",
+      "toggle_tracked_telemetry",
+      "toggle_tracked_telemetry_contact",
+      "update_settings"
+    ],
+    "app/routers/statistics.py": [
+      "get_statistics"
+    ],
+    "app/routers/ws.py": [
+      "websocket_endpoint"
+    ],
+    "app/security.py": [
+      "__call__",
+      "_send_http_unauthorized",
+      "_send_websocket_unauthorized"
+    ],
+    "app/services/__init__.py": [],
+    "app/services/channel_data_tx.py": [
+      "execute",
+      "send_binary_channel_data"
+    ],
+    "app/services/channel_datagrams.py": [
+      "stage_channel_datagram"
+    ],
+    "app/services/community_radio_presets.py": [
+      "get_suggested_presets"
+    ],
+    "app/services/companion_cli.py": [
+      "execute",
+      "run_safe_local_cli"
+    ],
+    "app/services/contact_reconciliation.py": [
+      "backfill_channel_sender_for_contact",
+      "claim_prefix_messages_for_contact",
+      "promote_prefix_contacts_for_contact",
+      "reconcile_contact_messages",
+      "record_contact_name",
+      "record_contact_name_and_reconcile"
+    ],
+    "app/services/contact_residency.py": [],
+    "app/services/dm_ack_apply.py": [
+      "apply_dm_ack_code"
+    ],
+    "app/services/dm_ack_persistence.py": [
+      "confirm",
+      "lookup",
+      "remember",
+      "retire"
+    ],
+    "app/services/dm_ack_tracker.py": [],
+    "app/services/dm_ingest.py": [
+      "_prepare_resolved_contact",
+      "_store_direct_message",
+      "ingest_decrypted_direct_message",
+      "ingest_fallback_direct_message",
+      "resolve_direct_message_sender_metadata",
+      "resolve_fallback_direct_message_context",
+      "store"
+    ],
+    "app/services/flood_scope.py": [
+      "force_radio_unscoped",
+      "set_radio_flood_scope"
+    ],
+    "app/services/message_send.py": [
+      "_apply_direct_message_ack_tracking",
+      "_channel_echo_watchdog",
+      "_is_message_acked",
+      "_retry_direct_message_until_acked",
+      "_run_radio_command",
+      "allocate_outgoing_sender_timestamp",
+      "release_outgoing_sender_timestamp",
+      "resend_channel",
+      "resend_channel_message_record",
+      "retry_send",
+      "send_channel",
+      "send_channel_message_to_channel",
+      "send_channel_message_with_effective_scope",
+      "send_direct",
+      "send_direct_message_to_contact"
+    ],
+    "app/services/messages.py": [
+      "backfill_message_regions",
+      "build_stored_outgoing_channel_message",
+      "create_dm_message_from_decrypted",
+      "create_fallback_channel_message",
+      "create_message_from_decrypted",
+      "create_outgoing_channel_message",
+      "create_outgoing_direct_message",
+      "handle_duplicate_message",
+      "increment_ack_and_broadcast",
+      "reconcile_duplicate_message"
+    ],
+    "app/services/pending_radio_ingress.py": [
+      "counters",
+      "settle",
+      "stage",
+      "unresolved"
+    ],
+    "app/services/radio_advanced_diagnostics.py": [
+      "read_advanced_radio_diagnostics",
+      "read_all"
+    ],
+    "app/services/radio_commands.py": [
+      "apply_radio_config_transaction",
+      "apply_radio_config_update",
+      "import_private_key_and_refresh_keystore"
+    ],
+    "app/services/radio_job_scheduler.py": [
+      "wait_for_change"
+    ],
+    "app/services/radio_job_worker.py": [
+      "_dispatch",
+      "_execute",
+      "_run",
+      "stop"
+    ],
+    "app/services/radio_jobs.py": [],
+    "app/services/radio_lifecycle.py": [
+      "_direct_test_stage",
+      "_query_device_info",
+      "_run_lifecycle_workflow",
+      "_run_stage",
+      "advertise",
+      "apply_scope",
+      "cancel_radio_lifecycle",
+      "capture_handle_rx",
+      "channel_clear",
+      "channel_sync",
+      "clock_sync",
+      "command",
+      "connection_monitor_loop",
+      "contact_sync",
+      "device_bootstrap",
+      "early_backlog",
+      "export_key",
+      "prepare_connected_radio",
+      "reconnect_and_prepare_radio",
+      "run_post_connect_setup",
+      "start_auto_fetch"
+    ],
+    "app/services/radio_producers.py": [
+      "run_scheduled_radio_command",
+      "worker_command"
+    ],
+    "app/services/radio_response_tracker.py": [
+      "wait"
+    ],
+    "app/services/radio_runtime.py": [
+      "disconnect",
+      "prepare_connected",
+      "raw_radio_operation",
+      "reconnect_and_prepare",
+      "run_radio_command",
+      "start_connection_monitor",
+      "stop_connection_monitor"
+    ],
+    "app/services/radio_stats.py": [
+      "_sample_all_stats",
+      "_stats_sampling_loop",
+      "fetch_stats",
+      "start_radio_stats_sampling",
+      "stop_radio_stats_sampling"
+    ],
+    "app/services/remote_companion_cli.py": [
+      "execute",
+      "remote_read_command"
+    ],
+    "app/services/rx_coverage.py": [],
+    "app/services/rx_ingress.py": [
+      "_consume",
+      "stop"
+    ],
+    "app/services/virtual_companion/__init__.py": [],
+    "app/services/virtual_companion/channel_send.py": [
+      "_durable_duplicate",
+      "_send_once",
+      "finish_companion_channel_send",
+      "get_by_key",
+      "get_companion_outgoing_channel",
+      "release_companion_channel_send",
+      "reserve_companion_channel_send",
+      "send_channel"
+    ],
+    "app/services/virtual_companion/channels.py": [
+      "get_channel",
+      "get_companion_channel",
+      "resolve_slot"
+    ],
+    "app/services/virtual_companion/command_policy.py": [
+      "_deny",
+      "add_update_contact",
+      "apply_companion_mutation",
+      "delete_companion_contact",
+      "get_companion_snapshot",
+      "get_device_time",
+      "remove_contact"
+    ],
+    "app/services/virtual_companion/contacts.py": [
+      "get_companion_contact_by_key",
+      "get_companion_snapshot",
+      "get_contact_by_key",
+      "get_contacts"
+    ],
+    "app/services/virtual_companion/direct_send.py": [
+      "_send_once",
+      "get_by_content",
+      "get_by_key_or_prefix",
+      "send_direct"
+    ],
+    "app/services/virtual_companion/dispatch.py": [
+      "dispatch"
+    ],
+    "app/services/virtual_companion/framing.py": [
+      "_readexactly",
+      "read_frame"
+    ],
+    "app/services/virtual_companion/identity.py": [
+      "app_start",
+      "device_query"
+    ],
+    "app/services/virtual_companion/messages.py": [
+      "get_companion_initial_cursor",
+      "get_companion_message_after",
+      "sync_next_message"
+    ],
+    "app/services/virtual_companion/server.py": [
+      "_accept_client",
+      "disconnect_clients",
+      "notify_send_confirmed",
+      "start",
+      "stop"
+    ],
+    "app/services/virtual_companion/session.py": [
+      "_enqueue_response_wait",
+      "_next_outbound",
+      "_read_loop",
+      "_write_loop",
+      "close",
+      "run"
+    ],
+    "app/telemetry_interval.py": [],
+    "app/version_info.py": [],
+    "app/websocket.py": [
+      "_broadcast",
+      "_write_client",
+      "broadcast",
+      "connect",
+      "disconnect",
+      "send_personal"
+    ]
+  },
+  "capture_commit": "075064e8d0cc428c39ff7607424e91ef93b3ce0e",
+  "coverage_note": "Inventory is not proof of parity. See docs/migration/PHASE_A.md.",
+  "environment_settings": [
+    "auto_reboot_on_clock_skew",
+    "basic_auth_password",
+    "basic_auth_username",
+    "ble_address",
+    "ble_pin",
+    "clowntown_do_clock_wraparound",
+    "database_path",
+    "disable_bots",
+    "enable_local_private_key_export",
+    "enable_message_poll_fallback",
+    "force_channel_slot_reconfigure",
+    "load_with_autoevict",
+    "log_level",
+    "log_sensitive_payloads",
+    "login_response_timeout_seconds",
+    "radio_add_contact_timeout_seconds",
+    "radio_operation_lock_timeout_seconds",
+    "serial_baudrate",
+    "serial_port",
+    "startup_allow_periodic_offload",
+    "startup_apply_flood_scope",
+    "startup_clear_channel_slots",
+    "startup_drain_messages",
+    "startup_enable_telemetry_collection",
+    "startup_export_private_key",
+    "startup_policy",
+    "startup_reconcile_contacts",
+    "startup_send_advertisement",
+    "startup_sync_clock",
+    "tcp_host",
+    "tcp_port",
+    "vapid_subject"
+  ],
+  "persisted_settings": [
+    "advert_interval",
+    "auto_decrypt_dm_on_advert",
+    "auto_resend_channel",
+    "blocked_keys",
+    "blocked_names",
+    "discovery_blocked_types",
+    "flood_scope",
+    "known_regions",
+    "last_advert_time",
+    "last_message_times",
+    "max_radio_contacts",
+    "telemetry_interval_hours",
+    "telemetry_routed_hourly",
+    "tracked_telemetry_contacts",
+    "tracked_telemetry_repeaters"
+  ],
+  "reference_commit": "68647d0fa2439a6f47dbb53e3614df9f6aaf013e",
+  "routes": [],
+  "schema_version": 72
+}

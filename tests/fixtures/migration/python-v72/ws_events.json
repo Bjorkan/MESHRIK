@@ -1,0 +1,2410 @@
+{
+  "$comment": "Auto-generated from app/events.py. Each WebSocket message is a JSON object: {\"type\": \"<event_type>\", \"data\": <payload>}. The client also sends \"ping\" as plain text; the server replies {\"type\": \"pong\"}.",
+  "events": {
+    "channel": {
+      "description": "Channel created or updated.",
+      "payload_schema": {
+        "properties": {
+          "favorite": {
+            "default": false,
+            "title": "Favorite",
+            "type": "boolean"
+          },
+          "flood_scope_override": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Per-channel outbound flood scope override, tri-state: null = inherit the global app setting; '*' (UNSCOPED_OVERRIDE_MARKER) = force unscoped/plain flood even over a scoped global; a region name (e.g. '#Esperance') = scope this channel.",
+            "title": "Flood Scope Override"
+          },
+          "is_hashtag": {
+            "default": false,
+            "title": "Is Hashtag",
+            "type": "boolean"
+          },
+          "key": {
+            "description": "Channel key (32-char hex)",
+            "title": "Key",
+            "type": "string"
+          },
+          "last_read_at": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Last Read At"
+          },
+          "muted": {
+            "default": false,
+            "title": "Muted",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "on_radio": {
+            "default": false,
+            "title": "On Radio",
+            "type": "boolean"
+          },
+          "path_hash_mode_override": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Per-channel path hash mode override (0=1-byte, 1=2-byte, 2=3-byte, null = use radio default)",
+            "title": "Path Hash Mode Override"
+          },
+          "radio_residency": {
+            "default": "database_only",
+            "description": "Current confidence in radio residency: database_only when the channel is local, confirmed when its slot was verified in this radio generation, and stale when a previous residency claim has not been verified in the current generation.",
+            "enum": [
+              "database_only",
+              "confirmed",
+              "stale"
+            ],
+            "title": "Radio Residency",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "name"
+        ],
+        "title": "Channel",
+        "type": "object"
+      }
+    },
+    "channel_deleted": {
+      "description": "A channel was removed from the database.",
+      "payload_schema": {
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key"
+        ],
+        "title": "ChannelDeletedPayload",
+        "type": "object"
+      }
+    },
+    "contact": {
+      "description": "Contact created or updated (from advertisements, radio sync, or API).",
+      "payload_schema": {
+        "$defs": {
+          "ContactRoute": {
+            "description": "A normalized contact route.",
+            "properties": {
+              "path": {
+                "description": "Hex-encoded path bytes (empty string for direct/flood)",
+                "title": "Path",
+                "type": "string"
+              },
+              "path_hash_mode": {
+                "description": "Path hash mode (-1=flood, 0=1-byte, 1=2-byte, 2=3-byte hop identifiers)",
+                "title": "Path Hash Mode",
+                "type": "integer"
+              },
+              "path_len": {
+                "description": "Hop count (-1=flood, 0=direct, >0=explicit route)",
+                "title": "Path Len",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "path",
+              "path_len",
+              "path_hash_mode"
+            ],
+            "title": "ContactRoute",
+            "type": "object"
+          }
+        },
+        "properties": {
+          "direct_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Direct Path"
+          },
+          "direct_path_hash_mode": {
+            "default": -1,
+            "title": "Direct Path Hash Mode",
+            "type": "integer"
+          },
+          "direct_path_len": {
+            "default": -1,
+            "title": "Direct Path Len",
+            "type": "integer"
+          },
+          "direct_path_updated_at": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Direct Path Updated At"
+          },
+          "direct_route": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ContactRoute"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "effective_route": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ContactRoute"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "effective_route_source": {
+            "default": "flood",
+            "enum": [
+              "override",
+              "direct",
+              "flood"
+            ],
+            "title": "Effective Route Source",
+            "type": "string"
+          },
+          "favorite": {
+            "default": false,
+            "title": "Favorite",
+            "type": "boolean"
+          },
+          "first_seen": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "First Seen"
+          },
+          "flags": {
+            "default": 0,
+            "title": "Flags",
+            "type": "integer"
+          },
+          "last_advert": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Last Advert"
+          },
+          "last_contacted": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Last Contacted"
+          },
+          "last_read_at": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Last Read At"
+          },
+          "last_seen": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Last Seen"
+          },
+          "lat": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Lat"
+          },
+          "lon": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Lon"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Name"
+          },
+          "on_radio": {
+            "default": false,
+            "title": "On Radio",
+            "type": "boolean"
+          },
+          "public_key": {
+            "description": "Public key (64-char hex)",
+            "title": "Public Key",
+            "type": "string"
+          },
+          "route_override": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ContactRoute"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "route_override_hash_mode": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Route Override Hash Mode"
+          },
+          "route_override_len": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Route Override Len"
+          },
+          "route_override_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Route Override Path"
+          },
+          "type": {
+            "default": 0,
+            "title": "Type",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "public_key"
+        ],
+        "title": "Contact",
+        "type": "object"
+      }
+    },
+    "contact_deleted": {
+      "description": "A contact was removed from the database.",
+      "payload_schema": {
+        "properties": {
+          "public_key": {
+            "title": "Public Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "public_key"
+        ],
+        "title": "ContactDeletedPayload",
+        "type": "object"
+      }
+    },
+    "contact_resolved": {
+      "description": "A prefix-only placeholder contact was resolved to a full public key.",
+      "payload_schema": {
+        "$defs": {
+          "Contact": {
+            "properties": {
+              "direct_path": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Direct Path"
+              },
+              "direct_path_hash_mode": {
+                "default": -1,
+                "title": "Direct Path Hash Mode",
+                "type": "integer"
+              },
+              "direct_path_len": {
+                "default": -1,
+                "title": "Direct Path Len",
+                "type": "integer"
+              },
+              "direct_path_updated_at": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Direct Path Updated At"
+              },
+              "direct_route": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/ContactRoute"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null
+              },
+              "effective_route": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/ContactRoute"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null
+              },
+              "effective_route_source": {
+                "default": "flood",
+                "enum": [
+                  "override",
+                  "direct",
+                  "flood"
+                ],
+                "title": "Effective Route Source",
+                "type": "string"
+              },
+              "favorite": {
+                "default": false,
+                "title": "Favorite",
+                "type": "boolean"
+              },
+              "first_seen": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "First Seen"
+              },
+              "flags": {
+                "default": 0,
+                "title": "Flags",
+                "type": "integer"
+              },
+              "last_advert": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Last Advert"
+              },
+              "last_contacted": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Last Contacted"
+              },
+              "last_read_at": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Last Read At"
+              },
+              "last_seen": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Last Seen"
+              },
+              "lat": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Lat"
+              },
+              "lon": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Lon"
+              },
+              "name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Name"
+              },
+              "on_radio": {
+                "default": false,
+                "title": "On Radio",
+                "type": "boolean"
+              },
+              "public_key": {
+                "description": "Public key (64-char hex)",
+                "title": "Public Key",
+                "type": "string"
+              },
+              "route_override": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/ContactRoute"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null
+              },
+              "route_override_hash_mode": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Route Override Hash Mode"
+              },
+              "route_override_len": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Route Override Len"
+              },
+              "route_override_path": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Route Override Path"
+              },
+              "type": {
+                "default": 0,
+                "title": "Type",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "public_key"
+            ],
+            "title": "Contact",
+            "type": "object"
+          },
+          "ContactRoute": {
+            "description": "A normalized contact route.",
+            "properties": {
+              "path": {
+                "description": "Hex-encoded path bytes (empty string for direct/flood)",
+                "title": "Path",
+                "type": "string"
+              },
+              "path_hash_mode": {
+                "description": "Path hash mode (-1=flood, 0=1-byte, 1=2-byte, 2=3-byte hop identifiers)",
+                "title": "Path Hash Mode",
+                "type": "integer"
+              },
+              "path_len": {
+                "description": "Hop count (-1=flood, 0=direct, >0=explicit route)",
+                "title": "Path Len",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "path",
+              "path_len",
+              "path_hash_mode"
+            ],
+            "title": "ContactRoute",
+            "type": "object"
+          }
+        },
+        "properties": {
+          "contact": {
+            "$ref": "#/$defs/Contact"
+          },
+          "previous_public_key": {
+            "title": "Previous Public Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "previous_public_key",
+          "contact"
+        ],
+        "title": "ContactResolvedPayload",
+        "type": "object"
+      }
+    },
+    "error": {
+      "description": "Toast-level error notification (e.g., radio setup failure, missing private key).",
+      "payload_schema": {
+        "properties": {
+          "details": {
+            "title": "Details",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "ToastPayload",
+        "type": "object"
+      }
+    },
+    "health": {
+      "description": "Radio connection status. Sent on WS connect and on every state change.",
+      "payload_schema": {
+        "$defs": {
+          "AppInfoResponse": {
+            "properties": {
+              "commit_hash": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Commit Hash"
+              },
+              "version": {
+                "title": "Version",
+                "type": "string"
+              }
+            },
+            "required": [
+              "version"
+            ],
+            "title": "AppInfoResponse",
+            "type": "object"
+          },
+          "FanoutStatusResponse": {
+            "properties": {
+              "bind_host": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Bind Host"
+              },
+              "client_sessions": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "$ref": "#/$defs/VirtualCompanionSessionStatusResponse"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Client Sessions"
+              },
+              "clients": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Clients"
+              },
+              "configured_channel_slots": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Configured Channel Slots"
+              },
+              "identity_public_key": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Identity Public Key"
+              },
+              "identity_status": {
+                "anyOf": [
+                  {
+                    "enum": [
+                      "verified",
+                      "unavailable"
+                    ],
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Identity Status"
+              },
+              "last_error": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Last Error"
+              },
+              "name": {
+                "title": "Name",
+                "type": "string"
+              },
+              "network_warning": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Network Warning"
+              },
+              "port": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Port"
+              },
+              "status": {
+                "title": "Status",
+                "type": "string"
+              },
+              "type": {
+                "title": "Type",
+                "type": "string"
+              },
+              "virtual_channel_capacity": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Virtual Channel Capacity"
+              }
+            },
+            "required": [
+              "name",
+              "type",
+              "status"
+            ],
+            "title": "FanoutStatusResponse",
+            "type": "object"
+          },
+          "RadioDeviceInfoResponse": {
+            "properties": {
+              "firmware_build": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Firmware Build"
+              },
+              "firmware_version": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Firmware Version"
+              },
+              "max_channels": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Max Channels"
+              },
+              "max_contacts": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Max Contacts"
+              },
+              "model": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Model"
+              }
+            },
+            "title": "RadioDeviceInfoResponse",
+            "type": "object"
+          },
+          "RadioStatsSnapshot": {
+            "description": "Latest cached stats from the local radio's periodic 60s poll.",
+            "properties": {
+              "battery_mv": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Battery Mv"
+              },
+              "direct_rx": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Direct Rx"
+              },
+              "direct_tx": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Direct Tx"
+              },
+              "errors": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Errors"
+              },
+              "flood_rx": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Flood Rx"
+              },
+              "flood_tx": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Flood Tx"
+              },
+              "last_rssi": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Last Rssi"
+              },
+              "last_snr": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Last Snr"
+              },
+              "noise_floor": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Noise Floor"
+              },
+              "packets_recv": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Packets Recv"
+              },
+              "packets_sent": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Packets Sent"
+              },
+              "queue_len": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Queue Len"
+              },
+              "rx_air_secs": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Rx Air Secs"
+              },
+              "timestamp": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Timestamp"
+              },
+              "tx_air_secs": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Tx Air Secs"
+              },
+              "uptime_secs": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Uptime Secs"
+              }
+            },
+            "title": "RadioStatsSnapshot",
+            "type": "object"
+          },
+          "VirtualCompanionSessionStatusResponse": {
+            "properties": {
+              "connected_at": {
+                "title": "Connected At",
+                "type": "integer"
+              },
+              "identity_verified": {
+                "default": false,
+                "title": "Identity Verified",
+                "type": "boolean"
+              },
+              "last_seen_at": {
+                "title": "Last Seen At",
+                "type": "integer"
+              },
+              "protocol_version": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Protocol Version"
+              },
+              "session_id": {
+                "title": "Session Id",
+                "type": "string"
+              },
+              "status": {
+                "title": "Status",
+                "type": "string"
+              }
+            },
+            "required": [
+              "session_id",
+              "status",
+              "connected_at",
+              "last_seen_at"
+            ],
+            "title": "VirtualCompanionSessionStatusResponse",
+            "type": "object"
+          }
+        },
+        "properties": {
+          "app_info": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/AppInfoResponse"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "basic_auth_enabled": {
+            "default": false,
+            "title": "Basic Auth Enabled",
+            "type": "boolean"
+          },
+          "bots_disabled": {
+            "default": false,
+            "title": "Bots Disabled",
+            "type": "boolean"
+          },
+          "bots_disabled_source": {
+            "anyOf": [
+              {
+                "enum": [
+                  "env",
+                  "until_restart"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Bots Disabled Source"
+          },
+          "connection_info": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Connection Info"
+          },
+          "database_size_mb": {
+            "title": "Database Size Mb",
+            "type": "number"
+          },
+          "fanout_statuses": {
+            "additionalProperties": {
+              "$ref": "#/$defs/FanoutStatusResponse"
+            },
+            "title": "Fanout Statuses",
+            "type": "object"
+          },
+          "oldest_undecrypted_timestamp": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Oldest Undecrypted Timestamp"
+          },
+          "radio_connected": {
+            "title": "Radio Connected",
+            "type": "boolean"
+          },
+          "radio_device_info": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/RadioDeviceInfoResponse"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "radio_initializing": {
+            "default": false,
+            "title": "Radio Initializing",
+            "type": "boolean"
+          },
+          "radio_scheduler": {
+            "additionalProperties": true,
+            "title": "Radio Scheduler",
+            "type": "object"
+          },
+          "radio_state": {
+            "default": "disconnected",
+            "enum": [
+              "ready",
+              "connected",
+              "degraded",
+              "failed",
+              "initializing",
+              "connecting",
+              "disconnected",
+              "paused"
+            ],
+            "title": "Radio State",
+            "type": "string"
+          },
+          "radio_stats": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/RadioStatsSnapshot"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "rx_coverage": {
+            "additionalProperties": true,
+            "title": "Rx Coverage",
+            "type": "object"
+          },
+          "startup_error_stage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Startup Error Stage"
+          },
+          "startup_policy": {
+            "const": "full",
+            "default": "full",
+            "title": "Startup Policy",
+            "type": "string"
+          },
+          "startup_skipped_stages": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Startup Skipped Stages",
+            "type": "array"
+          },
+          "startup_stage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Startup Stage"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "radio_connected",
+          "connection_info",
+          "database_size_mb",
+          "oldest_undecrypted_timestamp"
+        ],
+        "title": "HealthResponse",
+        "type": "object"
+      }
+    },
+    "message": {
+      "description": "New or incoming message (DM or channel). Includes outgoing messages sent by this radio.",
+      "payload_schema": {
+        "$defs": {
+          "MessagePath": {
+            "description": "A single path that a message took to reach us.",
+            "properties": {
+              "path": {
+                "description": "Hex-encoded routing path",
+                "title": "Path",
+                "type": "string"
+              },
+              "path_len": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Hop count. None = legacy (infer as len(path)//2, i.e. 1-byte hops)",
+                "title": "Path Len"
+              },
+              "received_at": {
+                "description": "Unix timestamp when this path was received",
+                "title": "Received At",
+                "type": "integer"
+              },
+              "rssi": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Last-hop RSSI in dBm",
+                "title": "Rssi"
+              },
+              "snr": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Last-hop SNR in dB",
+                "title": "Snr"
+              }
+            },
+            "required": [
+              "path",
+              "received_at"
+            ],
+            "title": "MessagePath",
+            "type": "object"
+          }
+        },
+        "properties": {
+          "acked": {
+            "default": 0,
+            "title": "Acked",
+            "type": "integer"
+          },
+          "channel_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Channel Name"
+          },
+          "conversation_key": {
+            "description": "User pubkey for PRIV, channel key for CHAN",
+            "title": "Conversation Key",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "outgoing": {
+            "default": false,
+            "title": "Outgoing",
+            "type": "boolean"
+          },
+          "packet_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Representative raw packet row ID when archival raw bytes exist",
+            "title": "Packet Id"
+          },
+          "paths": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/MessagePath"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "List of routing paths this message arrived via",
+            "title": "Paths"
+          },
+          "received_at": {
+            "title": "Received At",
+            "type": "integer"
+          },
+          "region": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Resolved region name for the transport code, if it matched a known region",
+            "title": "Region"
+          },
+          "send_status": {
+            "default": "confirmed",
+            "enum": [
+              "pending",
+              "confirmed",
+              "unknown"
+            ],
+            "title": "Send Status",
+            "type": "string"
+          },
+          "sender_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Sender Key"
+          },
+          "sender_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Sender Name"
+          },
+          "sender_timestamp": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Sender Timestamp"
+          },
+          "signature": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Signature"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "transport_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Region scope transport code (uint16) when the message arrived via a TransportFlood/TransportDirect packet; None for unscoped (plain flood) messages",
+            "title": "Transport Code"
+          },
+          "txt_type": {
+            "default": 0,
+            "title": "Txt Type",
+            "type": "integer"
+          },
+          "type": {
+            "description": "PRIV or CHAN",
+            "enum": [
+              "PRIV",
+              "CHAN"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "conversation_key",
+          "text",
+          "received_at"
+        ],
+        "title": "Message",
+        "type": "object"
+      }
+    },
+    "message_acked": {
+      "description": "An existing message received an ACK or echo/repeat update.",
+      "payload_schema": {
+        "$defs": {
+          "MessagePath": {
+            "description": "A single path that a message took to reach us.",
+            "properties": {
+              "path": {
+                "description": "Hex-encoded routing path",
+                "title": "Path",
+                "type": "string"
+              },
+              "path_len": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Hop count. None = legacy (infer as len(path)//2, i.e. 1-byte hops)",
+                "title": "Path Len"
+              },
+              "received_at": {
+                "description": "Unix timestamp when this path was received",
+                "title": "Received At",
+                "type": "integer"
+              },
+              "rssi": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Last-hop RSSI in dBm",
+                "title": "Rssi"
+              },
+              "snr": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Last-hop SNR in dB",
+                "title": "Snr"
+              }
+            },
+            "required": [
+              "path",
+              "received_at"
+            ],
+            "title": "MessagePath",
+            "type": "object"
+          }
+        },
+        "properties": {
+          "ack_count": {
+            "title": "Ack Count",
+            "type": "integer"
+          },
+          "message_id": {
+            "title": "Message Id",
+            "type": "integer"
+          },
+          "packet_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Packet Id"
+          },
+          "paths": {
+            "items": {
+              "$ref": "#/$defs/MessagePath"
+            },
+            "title": "Paths",
+            "type": "array"
+          }
+        },
+        "required": [
+          "message_id",
+          "ack_count"
+        ],
+        "title": "MessageAckedPayload",
+        "type": "object"
+      }
+    },
+    "radio_activity": {
+      "description": "Sanitized inbound radio observation, deduplicate by sequence; refetch activity after reconnect.",
+      "payload_schema": {
+        "$defs": {
+          "RadioActivityKind": {
+            "description": "Allowlisted, non-payload inbound/connection observations.",
+            "enum": [
+              "packet_received",
+              "ack_observed",
+              "contact_message_observed",
+              "path_update",
+              "contact_observed",
+              "login_response",
+              "cli_response",
+              "connection_changed"
+            ],
+            "title": "RadioActivityKind",
+            "type": "string"
+          },
+          "RadioActivitySource": {
+            "enum": [
+              "raw_rf_log",
+              "meshcore_event",
+              "radio_lifecycle"
+            ],
+            "title": "RadioActivitySource",
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Only classification and opaque reliable job correlation; no RF payloads.",
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "connected": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Connected"
+          },
+          "hops": {
+            "anyOf": [
+              {
+                "maximum": 64,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Hops"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Job Id"
+          },
+          "kind": {
+            "$ref": "#/$defs/RadioActivityKind"
+          },
+          "packet_type": {
+            "anyOf": [
+              {
+                "enum": [
+                  "channel",
+                  "direct",
+                  "advertisement",
+                  "ack",
+                  "path",
+                  "control",
+                  "other"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Packet Type"
+          },
+          "previous_connected": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Previous Connected"
+          },
+          "previous_readiness": {
+            "anyOf": [
+              {
+                "enum": [
+                  "ready",
+                  "connected",
+                  "degraded",
+                  "failed",
+                  "initializing",
+                  "connecting",
+                  "disconnected",
+                  "paused"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Previous Readiness"
+          },
+          "radio_generation": {
+            "minimum": 0,
+            "title": "Radio Generation",
+            "type": "integer"
+          },
+          "readiness": {
+            "anyOf": [
+              {
+                "enum": [
+                  "ready",
+                  "connected",
+                  "degraded",
+                  "failed",
+                  "initializing",
+                  "connecting",
+                  "disconnected",
+                  "paused"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Readiness"
+          },
+          "rssi": {
+            "anyOf": [
+              {
+                "maximum": 0,
+                "minimum": -160,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Rssi"
+          },
+          "sequence": {
+            "minimum": 1,
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "snr": {
+            "anyOf": [
+              {
+                "maximum": 40,
+                "minimum": -40,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Snr"
+          },
+          "source": {
+            "$ref": "#/$defs/RadioActivitySource"
+          }
+        },
+        "required": [
+          "sequence",
+          "at",
+          "kind",
+          "source",
+          "radio_generation"
+        ],
+        "title": "RadioActivityRecord",
+        "type": "object"
+      }
+    },
+    "radio_job": {
+      "description": "Sanitized job snapshot delta. Merge by ID/version; refetch jobs after WebSocket reconnect.",
+      "payload_schema": {
+        "$defs": {
+          "RadioJobKind": {
+            "description": "Safe, fixed identifiers; never use arbitrary command or target strings.",
+            "enum": [
+              "direct_message",
+              "channel_message",
+              "repeater_login",
+              "room_login",
+              "radio_settings",
+              "advertisement",
+              "discovery",
+              "trace",
+              "server_query",
+              "contact_query",
+              "radio_query",
+              "companion_local_cli",
+              "remote_companion_cli",
+              "channel_datagram",
+              "radio_diagnostics",
+              "periodic_sync",
+              "radio_stats_sample",
+              "periodic_advertisement",
+              "lifecycle_device_info",
+              "lifecycle_key_export",
+              "lifecycle_clock_sync",
+              "lifecycle_flood_scope",
+              "lifecycle_contact_sync",
+              "lifecycle_channel_sync",
+              "lifecycle_channel_clear",
+              "lifecycle_advertisement",
+              "lifecycle_message_drain",
+              "lifecycle_auto_fetch"
+            ],
+            "title": "RadioJobKind",
+            "type": "string"
+          },
+          "RadioJobPriority": {
+            "enum": [
+              0,
+              10,
+              20
+            ],
+            "title": "RadioJobPriority",
+            "type": "integer"
+          },
+          "RadioJobResult": {
+            "description": "Outcome codes only, not arbitrary exception messages or radio payloads.",
+            "enum": [
+              "command_finished",
+              "response_received",
+              "ack_received",
+              "rejected",
+              "queue_expired",
+              "response_expired",
+              "command_error",
+              "command_timeout",
+              "radio_changed",
+              "shutdown",
+              "cancelled_before_send",
+              "stopped_waiting",
+              "transmission_uncertain"
+            ],
+            "title": "RadioJobResult",
+            "type": "string"
+          },
+          "RadioJobStage": {
+            "description": "Predefined user-facing phase labels; never arbitrary transport text.",
+            "enum": [
+              "waiting_turn",
+              "transport_command",
+              "waiting_for_response",
+              "waiting_for_ack",
+              "retry_pending",
+              "finished",
+              "failed",
+              "cancelled",
+              "uncertain"
+            ],
+            "title": "RadioJobStage",
+            "type": "string"
+          },
+          "RadioJobState": {
+            "enum": [
+              "queued",
+              "executing",
+              "awaiting_response",
+              "awaiting_ack",
+              "retrying",
+              "completed",
+              "failed",
+              "cancelled",
+              "unknown"
+            ],
+            "title": "RadioJobState",
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Frozen JSON-safe view. No command inputs or untrusted free-text fields.",
+        "properties": {
+          "attempt": {
+            "default": 1,
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Attempt",
+            "type": "integer"
+          },
+          "cancellation_requested": {
+            "default": false,
+            "title": "Cancellation Requested",
+            "type": "boolean"
+          },
+          "command_deadline": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Command Deadline"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Completed At"
+          },
+          "correlation_scope": {
+            "format": "uuid",
+            "title": "Correlation Scope",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/$defs/RadioJobKind"
+          },
+          "priority": {
+            "$ref": "#/$defs/RadioJobPriority"
+          },
+          "queue_deadline": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Queue Deadline"
+          },
+          "queue_entered_at": {
+            "format": "date-time",
+            "title": "Queue Entered At",
+            "type": "string"
+          },
+          "radio_generation": {
+            "minimum": 0,
+            "title": "Radio Generation",
+            "type": "integer"
+          },
+          "response_deadline": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Response Deadline"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/RadioJobResult"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "sequence": {
+            "minimum": 1,
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "stage": {
+            "$ref": "#/$defs/RadioJobStage",
+            "default": "waiting_turn"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Started At"
+          },
+          "state": {
+            "$ref": "#/$defs/RadioJobState"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "state",
+          "priority",
+          "version",
+          "sequence",
+          "radio_generation",
+          "created_at",
+          "updated_at",
+          "queue_entered_at",
+          "correlation_scope"
+        ],
+        "title": "RadioJobSnapshot",
+        "type": "object"
+      }
+    },
+    "raw_packet": {
+      "description": "Every incoming RF packet (pre-decryption). Use observation_id as the dedup key, not id.",
+      "payload_schema": {
+        "$defs": {
+          "RawPacketDecryptedInfo": {
+            "description": "Decryption info for a raw packet (when successfully decrypted).",
+            "properties": {
+              "channel_key": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Channel Key"
+              },
+              "channel_name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Channel Name"
+              },
+              "contact_key": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Contact Key"
+              },
+              "message": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Message"
+              },
+              "sender": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Sender"
+              },
+              "sender_timestamp": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Sender Timestamp"
+              }
+            },
+            "title": "RawPacketDecryptedInfo",
+            "type": "object"
+          }
+        },
+        "description": "Raw packet payload broadcast via WebSocket.\n\nThis extends the database model with runtime-computed fields\nlike payload_type, snr, rssi, and decryption info.",
+        "properties": {
+          "data": {
+            "description": "Hex-encoded packet data",
+            "title": "Data",
+            "type": "string"
+          },
+          "decrypted": {
+            "default": false,
+            "title": "Decrypted",
+            "type": "boolean"
+          },
+          "decrypted_info": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/RawPacketDecryptedInfo"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "observation_id": {
+            "description": "Monotonic per-process ID for this RF observation (distinct from the DB packet row ID)",
+            "title": "Observation Id",
+            "type": "integer"
+          },
+          "payload_type": {
+            "description": "Packet type name (e.g., GROUP_TEXT, ADVERT)",
+            "title": "Payload Type",
+            "type": "string"
+          },
+          "region": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Resolved region name for the transport code, if it matched a known region",
+            "title": "Region"
+          },
+          "rssi": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Received signal strength in dBm",
+            "title": "Rssi"
+          },
+          "snr": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Signal-to-noise ratio in dB",
+            "title": "Snr"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "integer"
+          },
+          "transport_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Region scope transport code (uint16) for TransportFlood/TransportDirect packets",
+            "title": "Transport Code"
+          }
+        },
+        "required": [
+          "id",
+          "observation_id",
+          "timestamp",
+          "data",
+          "payload_type"
+        ],
+        "title": "RawPacketBroadcast",
+        "type": "object"
+      }
+    },
+    "success": {
+      "description": "Toast-level success notification (e.g., historical decrypt complete).",
+      "payload_schema": {
+        "properties": {
+          "details": {
+            "title": "Details",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "ToastPayload",
+        "type": "object"
+      }
+    }
+  }
+}
